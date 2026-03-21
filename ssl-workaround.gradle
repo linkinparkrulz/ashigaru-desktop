@@ -1,0 +1,15 @@
+// Workaround for maven.ecs.soton.ac.uk SSL certificate hostname mismatch.
+// Run once to populate the Gradle cache: ./gradlew dependencies --init-script ssl-workaround.gradle
+import javax.net.ssl.*
+import java.security.cert.X509Certificate
+
+def trustAllCerts = [new X509TrustManager() {
+    X509Certificate[] getAcceptedIssuers() { return null }
+    void checkClientTrusted(X509Certificate[] certs, String authType) {}
+    void checkServerTrusted(X509Certificate[] certs, String authType) {}
+}] as TrustManager[]
+
+def sc = SSLContext.getInstance("SSL")
+sc.init(null, trustAllCerts, new java.security.SecureRandom())
+HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory())
+HttpsURLConnection.setDefaultHostnameVerifier({ hostname, session -> true } as HostnameVerifier)
