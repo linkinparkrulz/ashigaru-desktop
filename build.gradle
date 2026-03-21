@@ -41,6 +41,7 @@ version "${ashigaruTerminalVersion}"
 repositories {
     mavenCentral()
     mavenLocal()
+    maven { url 'https://code.sparrowwallet.com/api/packages/sparrowwallet/maven' }
     maven { url 'https://oss.sonatype.org/content/groups/public' }
     maven { url 'https://mymavenrepo.com/repo/29EACwkkGcoOKnbx3bxN/' }
     maven { url 'https://jitpack.io' }
