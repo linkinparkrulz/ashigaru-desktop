@@ -121,7 +121,7 @@ public class AshigaruTerminal {
                 Drongo.removeRootLogAppender("STDOUT");
                 com.sun.javafx.application.LauncherImpl.launchApplication(SparrowTerminal.class, SparrowWalletPreloader.class, argv);
             } else {
-                com.sun.javafx.application.LauncherImpl.launchApplication(SparrowDesktop.class, SparrowWalletPreloader.class, argv);
+                com.sun.javafx.application.LauncherImpl.launchApplication(com.sparrowwallet.sparrow.gui.AshigaruGui.class, SparrowWalletPreloader.class, argv);
             }
         } catch(UnsupportedOperationException e) {
             Drongo.removeRootLogAppender("STDOUT");

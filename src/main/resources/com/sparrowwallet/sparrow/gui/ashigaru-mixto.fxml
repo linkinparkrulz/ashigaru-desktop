@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<DialogPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.sparrowwallet.sparrow.gui.AshigaruMixToController"
+            prefWidth="440" prefHeight="280"
+            styleClass="mixto-pane">
+
+    <buttonTypes/><!-- handled programmatically via onApply / onCancel -->
+
+    <content>
+        <VBox spacing="16">
+            <padding><Insets top="16" right="20" bottom="8" left="20"/></padding>
+
+            <Label text="MIX TO CONFIGURATION" styleClass="section-title"/>
+            <Separator/>
+
+            <GridPane hgap="14" vgap="12">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="160"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+
+                <Label text="Destination wallet"
+                       GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="field-label"/>
+                <ComboBox fx:id="mixToWalletCombo" maxWidth="Infinity"
+                          GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                <Label text="Minimum mixes"
+                       GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="field-label"/>
+                <Spinner fx:id="minMixesSpinner" minWidth="90"
+                         GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                <Label text="Postmix index range"
+                       GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="field-label"/>
+                <Label fx:id="indexRangeLabel" text="Full"
+                       GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="field-value"/>
+            </GridPane>
+
+            <Separator/>
+
+            <HBox spacing="10" alignment="CENTER_RIGHT">
+                <Button fx:id="cancelBtn" text="Cancel"   onAction="#onCancel" styleClass="action-btn"/>
+                <Button fx:id="applyBtn"  text="Apply"    onAction="#onApply"  styleClass="primary-btn"/>
+            </HBox>
+        </VBox>
+    </content>
+</DialogPane>

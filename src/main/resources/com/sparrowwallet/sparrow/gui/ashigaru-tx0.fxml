@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!--
+  Tx0 dialog — loaded as a DialogPane.
+  The Dialog wrapping is done programmatically in AshigaruTx0Controller.show().
+-->
+<DialogPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.sparrowwallet.sparrow.gui.AshigaruTx0Controller"
+            prefWidth="520" prefHeight="480"
+            styleClass="tx0-pane">
+
+    <buttonTypes>
+        <ButtonType fx:id="broadcastBtnType" text="Broadcast" buttonData="OK_DONE"/>
+        <ButtonType text="Cancel" buttonData="CANCEL_CLOSE"/>
+    </buttonTypes>
+
+    <content>
+        <VBox spacing="14">
+            <padding><Insets top="16" right="20" bottom="8" left="20"/></padding>
+
+            <Label text="WHIRLPOOL TRANSACTION ZERO" styleClass="section-title"/>
+            <Separator/>
+
+            <!-- SCODE -->
+            <GridPane hgap="12" vgap="8">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="180" maxWidth="180"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+
+                <Label text="SCODE (optional)" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="field-label"/>
+                <TextField fx:id="scodeField" promptText="Enter SCODE"
+                           GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="scode-field"/>
+
+                <Label text="Premix fee rate" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="field-label"/>
+                <Label fx:id="feeRateLabel" text="—" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="field-value"/>
+            </GridPane>
+
+            <Separator/>
+
+            <!-- Pool selector -->
+            <GridPane hgap="12" vgap="8">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="180" maxWidth="180"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+
+                <Label text="Pool" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="field-label"/>
+                <ComboBox fx:id="poolCombo" maxWidth="Infinity" disable="true"
+                          GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                <Label fx:id="poolFeeLabel" text="Anti-Sybil fee"
+                       GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="field-label"/>
+                <Label fx:id="poolFeeValue" text="—"
+                       GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="field-value"/>
+            </GridPane>
+
+            <Separator/>
+
+            <!-- Preview breakdown -->
+            <GridPane hgap="12" vgap="6" styleClass="preview-grid">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="200"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+
+                <Label text="UTXOs created (premix outputs)"
+                       GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="field-label"/>
+                <Label fx:id="premixOutputsValue" text="—"
+                       GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="field-value"/>
+
+                <Label text="Amount to Whirlpool"
+                       GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="field-label"/>
+                <Label fx:id="amountToWhirlpoolValue" text="—"
+                       GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="field-value"/>
+
+                <Label text="Unmixed change"
+                       GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="field-label"/>
+                <Label fx:id="unmixedChangeValue" text="—"
+                       GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="field-value"/>
+
+                <Label text="Transaction miner fee"
+                       GridPane.rowIndex="3" GridPane.columnIndex="0" styleClass="field-label"/>
+                <Label fx:id="minerFeeValue" text="—"
+                       GridPane.rowIndex="3" GridPane.columnIndex="1" styleClass="field-value"/>
+
+                <Separator GridPane.rowIndex="4" GridPane.columnIndex="0"
+                           GridPane.columnSpan="2"/>
+
+                <Label text="Total fees"
+                       GridPane.rowIndex="5" GridPane.columnIndex="0" styleClass="field-label total-label"/>
+                <Label fx:id="totalFeesValue" text="—"
+                       GridPane.rowIndex="5" GridPane.columnIndex="1" styleClass="field-value total-value"/>
+            </GridPane>
+        </VBox>
+    </content>
+</DialogPane>

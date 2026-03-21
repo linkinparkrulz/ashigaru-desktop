@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.sparrowwallet.sparrow.gui.AshigaruMainController"
+            styleClass="root-pane">
+
+    <!-- ===== TOP HEADER ===== -->
+    <top>
+        <HBox styleClass="header-bar" alignment="CENTER_LEFT" spacing="12">
+            <padding><Insets top="10" right="16" bottom="10" left="16"/></padding>
+
+            <Label text="Ashigaru Terminal" styleClass="app-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <Label fx:id="networkLabel" text="MAINNET" styleClass="network-label mainnet"/>
+            <Label fx:id="blockHeightLabel" text="Block —" styleClass="header-info"/>
+            <Label fx:id="connectionLabel" text="○ Disconnected" styleClass="header-info disconnected"/>
+        </HBox>
+    </top>
+
+    <!-- ===== LEFT SIDEBAR ===== -->
+    <left>
+        <VBox styleClass="sidebar" minWidth="200" prefWidth="220" spacing="0">
+
+            <Label text="WALLETS" styleClass="sidebar-section-title">
+                <padding><Insets top="14" right="12" bottom="6" left="12"/></padding>
+            </Label>
+
+            <ListView fx:id="walletListView" styleClass="wallet-list" VBox.vgrow="ALWAYS"/>
+
+            <Separator/>
+
+            <VBox spacing="8" styleClass="sidebar-actions">
+                <padding><Insets top="10" right="12" bottom="12" left="12"/></padding>
+                <Button text="Open Wallet..." onAction="#onOpenWallet"
+                        maxWidth="Infinity" styleClass="action-btn"/>
+                <Button text="Create / Restore..." onAction="#onCreateWallet"
+                        maxWidth="Infinity" styleClass="action-btn secondary-btn"/>
+            </VBox>
+        </VBox>
+    </left>
+
+    <!-- ===== CENTER CONTENT ===== -->
+    <center>
+        <BorderPane fx:id="contentPane" styleClass="content-area">
+            <center>
+                <!-- Welcome placeholder shown before any wallet is opened -->
+                <StackPane fx:id="welcomePane" styleClass="welcome-pane">
+                    <VBox alignment="CENTER" spacing="16">
+                        <Label text="Ashigaru Terminal" styleClass="welcome-title"/>
+                        <Label text="Open a wallet to get started." styleClass="welcome-sub"/>
+                        <Label text="Use &#8220;Open Wallet...&#8221; in the sidebar, or launch with" styleClass="welcome-hint"/>
+                        <Label text="--terminal to create or restore a wallet." styleClass="welcome-hint mono"/>
+                    </VBox>
+                </StackPane>
+            </center>
+        </BorderPane>
+    </center>
+
+    <!-- ===== BOTTOM STATUS BAR ===== -->
+    <bottom>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT">
+            <padding><Insets top="5" right="12" bottom="5" left="12"/></padding>
+            <Label fx:id="statusLabel" text="Ready" styleClass="status-label"/>
+        </HBox>
+    </bottom>
+</BorderPane>

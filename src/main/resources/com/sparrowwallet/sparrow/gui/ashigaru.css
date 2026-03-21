@@ -1,0 +1,333 @@
+/* ==========================================================================
+   Ashigaru Terminal — GUI Stylesheet
+   Dark theme, monospace-friendly
+   ========================================================================== */
+
+/* ── Palette ──────────────────────────────────────────────────────────────── */
+* {
+    -ag-bg:           #1a1a1a;
+    -ag-bg-mid:       #242424;
+    -ag-bg-light:     #2e2e2e;
+    -ag-bg-raised:    #363636;
+    -ag-border:       #3d3d3d;
+    -ag-text:         #e8e8e8;
+    -ag-text-dim:     #9a9a9a;
+    -ag-text-faint:   #606060;
+    -ag-accent:       #f7931a;   /* Bitcoin orange */
+    -ag-accent-dark:  #c76e10;
+    -ag-green:        #4caf50;
+    -ag-red:          #e53935;
+    -ag-blue:         #42a5f5;
+    -ag-testnet:      #f7931a;
+    -ag-mainnet:      #4caf50;
+    -ag-radius:       4px;
+}
+
+/* ── Root / Scene ─────────────────────────────────────────────────────────── */
+.root {
+    -fx-base:             -ag-bg;
+    -fx-background:       -ag-bg;
+    -fx-control-inner-background: -ag-bg-mid;
+    -fx-text-fill:        -ag-text;
+    -fx-font-family:      "RobotoMono Regular", "Monospaced", monospace;
+    -fx-font-size:        13px;
+}
+
+.root-pane {
+    -fx-background-color: -ag-bg;
+}
+
+/* ── Header bar ───────────────────────────────────────────────────────────── */
+.header-bar {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 0 0 1 0;
+}
+
+.app-title {
+    -fx-text-fill: -ag-accent;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.network-label {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 3 8 3 8;
+    -fx-background-radius: -ag-radius;
+}
+.network-label.mainnet  { -fx-background-color: derive(-ag-mainnet, -50%); -fx-text-fill: -ag-mainnet; }
+.network-label.testnet  { -fx-background-color: derive(-ag-testnet, -50%); -fx-text-fill: -ag-testnet; }
+
+.header-info {
+    -fx-text-fill: -ag-text-dim;
+    -fx-font-size: 12px;
+}
+
+.connected    { -fx-text-fill: -ag-green !important; }
+.disconnected { -fx-text-fill: -ag-red !important; }
+
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+.sidebar {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 0 1 0 0;
+}
+
+.sidebar-section-title {
+    -fx-text-fill: -ag-text-faint;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.wallet-list {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+.wallet-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -ag-text;
+    -fx-padding: 8 12 8 12;
+    -fx-font-size: 13px;
+}
+.wallet-list .list-cell:hover {
+    -fx-background-color: -ag-bg-raised;
+}
+.wallet-list .list-cell:selected {
+    -fx-background-color: derive(-ag-accent, -60%);
+    -fx-text-fill: -ag-accent;
+}
+
+.sidebar-actions {
+    -fx-background-color: -ag-bg-mid;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.button {
+    -fx-background-color: -ag-bg-light;
+    -fx-text-fill: -ag-text;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: -ag-radius;
+    -fx-background-radius: -ag-radius;
+    -fx-padding: 6 14 6 14;
+    -fx-cursor: hand;
+}
+.button:hover  { -fx-background-color: -ag-bg-raised; }
+.button:armed  { -fx-background-color: derive(-ag-accent, -70%); }
+.button:disabled { -fx-opacity: 0.45; }
+
+.primary-btn {
+    -fx-background-color: -ag-accent;
+    -fx-text-fill: #000;
+    -fx-border-color: -ag-accent-dark;
+    -fx-font-weight: bold;
+}
+.primary-btn:hover { -fx-background-color: -ag-accent-dark; -fx-text-fill: #fff; }
+
+.secondary-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: -ag-text-dim;
+    -fx-border-color: -ag-border;
+}
+.secondary-btn:hover { -fx-text-fill: -ag-text; }
+
+.action-btn { -fx-background-color: -ag-bg-light; }
+
+.mix-btn { -fx-min-width: 140; }
+.refresh-btn { -fx-font-size: 11px; -fx-padding: 4 10 4 10; }
+
+/* ── Content area ─────────────────────────────────────────────────────────── */
+.content-area {
+    -fx-background-color: -ag-bg;
+}
+
+/* ── Welcome pane ─────────────────────────────────────────────────────────── */
+.welcome-pane {
+    -fx-background-color: -ag-bg;
+}
+.welcome-title {
+    -fx-text-fill: -ag-text;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+.welcome-sub   { -fx-text-fill: -ag-text-dim;   -fx-font-size: 14px; }
+.welcome-hint  { -fx-text-fill: -ag-text-faint; -fx-font-size: 12px; }
+.welcome-hint.mono { -fx-font-family: monospace; -fx-text-fill: -ag-accent; }
+
+/* ── Wallet panel ─────────────────────────────────────────────────────────── */
+.wallet-panel {
+    -fx-background-color: -ag-bg;
+}
+.wallet-header {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 0 0 1 0;
+}
+.wallet-name-label {
+    -fx-text-fill: -ag-text;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+/* ── Account tabs ─────────────────────────────────────────────────────────── */
+.account-tabs {
+    -fx-background-color: -ag-bg-mid;
+    -fx-tab-min-height: 34;
+}
+.account-tabs .tab-header-area {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 0 0 1 0;
+}
+.account-tabs .tab {
+    -fx-background-color: -ag-bg-mid;
+    -fx-text-fill: -ag-text-dim;
+    -fx-padding: 6 16 6 16;
+    -fx-border-width: 0;
+}
+.account-tabs .tab:selected {
+    -fx-background-color: -ag-bg;
+    -fx-text-fill: -ag-accent;
+    -fx-border-color: -ag-accent;
+    -fx-border-width: 0 0 2 0;
+}
+.account-tabs .tab:hover { -fx-text-fill: -ag-text; }
+.account-tabs .tab-content-area { -fx-background-color: transparent; -fx-padding: 0; }
+
+/* ── Balance row ──────────────────────────────────────────────────────────── */
+.balance-row {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 0 0 1 0;
+}
+.balance-caption {
+    -fx-text-fill: -ag-text-faint;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+.balance-value          { -fx-text-fill: -ag-text;     -fx-font-size: 14px; -fx-font-weight: bold; }
+.balance-value.secondary { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
+
+/* ── UTXO table ───────────────────────────────────────────────────────────── */
+.utxo-table {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 0;
+}
+.utxo-table .column-header-background {
+    -fx-background-color: -ag-bg-mid;
+}
+.utxo-table .column-header-background .label {
+    -fx-text-fill: -ag-text-dim;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-alignment: CENTER_LEFT;
+}
+.utxo-table .table-row-cell {
+    -fx-background-color: -ag-bg;
+    -fx-text-fill: -ag-text;
+    -fx-border-color: transparent transparent -ag-border transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-table-cell-border-color: transparent;
+}
+.utxo-table .table-row-cell:odd  { -fx-background-color: derive(-ag-bg, 5%); }
+.utxo-table .table-row-cell:hover { -fx-background-color: -ag-bg-raised; }
+.utxo-table .table-row-cell:selected { -fx-background-color: derive(-ag-accent, -65%); }
+.utxo-table .table-cell {
+    -fx-text-fill: -ag-text;
+    -fx-padding: 6 10 6 10;
+    -fx-font-size: 12px;
+    -fx-alignment: CENTER_LEFT;
+}
+.table-placeholder { -fx-text-fill: -ag-text-faint; }
+
+/* ── Mix button row ───────────────────────────────────────────────────────── */
+.mix-button-row {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ── Status bar ───────────────────────────────────────────────────────────── */
+.status-bar {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 1 0 0 0;
+}
+.status-label {
+    -fx-text-fill: -ag-text-dim;
+    -fx-font-size: 11px;
+}
+
+/* ── Dialogs (Tx0, Mix To) ────────────────────────────────────────────────── */
+.dialog-pane {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+}
+.dialog-pane .header-panel {
+    -fx-background-color: -ag-bg;
+}
+.dialog-pane .header-panel .label {
+    -fx-text-fill: -ag-text;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+.dialog-pane .content { -fx-background-color: -ag-bg-mid; }
+.dialog-pane .button-bar .button-bar { -fx-background-color: -ag-bg; }
+
+.section-title {
+    -fx-text-fill: -ag-accent;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+.field-label  { -fx-text-fill: -ag-text-dim; }
+.field-value  { -fx-text-fill: -ag-text;     -fx-font-family: monospace; }
+.total-label  { -fx-text-fill: -ag-text;     -fx-font-weight: bold; }
+.total-value  { -fx-text-fill: -ag-accent;   -fx-font-weight: bold; -fx-font-family: monospace; }
+
+/* ── TextField / ComboBox / Spinner ──────────────────────────────────────── */
+.text-field, .combo-box, .spinner {
+    -fx-background-color: -ag-bg;
+    -fx-text-fill: -ag-text;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: -ag-radius;
+    -fx-background-radius: -ag-radius;
+    -fx-prompt-text-fill: -ag-text-faint;
+}
+.text-field:focused, .combo-box:focused, .spinner:focused {
+    -fx-border-color: -ag-accent;
+}
+.combo-box .list-cell { -fx-text-fill: -ag-text; -fx-background-color: -ag-bg; }
+.combo-box-popup .list-view { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border; }
+.combo-box-popup .list-cell:hover { -fx-background-color: -ag-bg-raised; }
+.combo-box-popup .list-cell:selected { -fx-background-color: derive(-ag-accent, -60%); -fx-text-fill: -ag-accent; }
+
+.scode-field {
+    -fx-text-fill: -ag-accent;
+    -fx-font-family: monospace;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+/* ── Separator ────────────────────────────────────────────────────────────── */
+.separator .line { -fx-border-color: -ag-border; }
+
+/* ── Scroll bars ──────────────────────────────────────────────────────────── */
+.scroll-bar {
+    -fx-background-color: -ag-bg-mid;
+}
+.scroll-bar .thumb {
+    -fx-background-color: -ag-border;
+    -fx-background-radius: 4;
+}
+.scroll-bar .thumb:hover { -fx-background-color: -ag-text-faint; }
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 2;
+}
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-background-color: -ag-text-faint;
+}
