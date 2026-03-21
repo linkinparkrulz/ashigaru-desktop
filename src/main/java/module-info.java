@@ -42,12 +42,11 @@ open module com.sparrowwallet.sparrow {
     requires com.h2database;
     requires com.sparrowwallet.hummingbird;
     requires org.fxmisc.flowless;
-    requires com.github.sarxos.webcam.capture;
+    requires openpnp.capture.java;
     requires centerdevice.nsmenufx;
     requires com.beust.jcommander;
     requires jul.to.slf4j;
     requires net.sourceforge.javacsv;
-    requires com.nativelibs4java.bridj;
     requires org.reactfx.reactfx;
     requires dev.bwt.jni;
     requires com.sparrowwallet.nightjar;

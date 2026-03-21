@@ -6,6 +6,7 @@ import com.sparrowwallet.sparrow.UnitFormat;
 import com.sparrowwallet.sparrow.Mode;
 import com.sparrowwallet.sparrow.Theme;
 import com.sparrowwallet.sparrow.control.QRDensity;
+import com.sparrowwallet.sparrow.control.WebcamResolution;
 import com.sparrowwallet.sparrow.net.*;
 import com.sparrowwallet.sparrow.wallet.FeeRatesSelection;
 import com.sparrowwallet.sparrow.wallet.OptimizationStrategy;
@@ -58,8 +59,11 @@ public class Config {
     private int enumerateHwPeriod = ENUMERATE_HW_PERIOD_SECS;
     private QRDensity qrDensity;
     private Boolean hdCapture;
+    private WebcamResolution webcamResolution;
+    private boolean mirrorCapture = true;
     private boolean useZbar = true;
     private String webcamDevice;
+    private String webcamDeviceId;
     private ServerType serverType;
     private Server publicElectrumServer;
     private Server coreServer;
@@ -419,12 +423,39 @@ public class Config {
         return useZbar;
     }
 
+    public WebcamResolution getWebcamResolution() {
+        return webcamResolution;
+    }
+
+    public void setWebcamResolution(WebcamResolution webcamResolution) {
+        this.webcamResolution = webcamResolution;
+        flush();
+    }
+
+    public boolean isMirrorCapture() {
+        return mirrorCapture;
+    }
+
+    public void setMirrorCapture(boolean mirrorCapture) {
+        this.mirrorCapture = mirrorCapture;
+        flush();
+    }
+
     public String getWebcamDevice() {
         return webcamDevice;
     }
 
     public void setWebcamDevice(String webcamDevice) {
         this.webcamDevice = webcamDevice;
+        flush();
+    }
+
+    public String getWebcamDeviceId() {
+        return webcamDeviceId;
+    }
+
+    public void setWebcamDeviceId(String webcamDeviceId) {
+        this.webcamDeviceId = webcamDeviceId;
         flush();
     }
 

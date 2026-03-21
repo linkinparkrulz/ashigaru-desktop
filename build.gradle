@@ -44,7 +44,6 @@ repositories {
     maven { url 'https://oss.sonatype.org/content/groups/public' }
     maven { url 'https://mymavenrepo.com/repo/29EACwkkGcoOKnbx3bxN/' }
     maven { url 'https://jitpack.io' }
-    maven { url 'https://maven.ecs.soton.ac.uk/content/groups/maven.openimaj.org/' }
 }
 
 tasks.withType(AbstractArchiveTask) {
@@ -93,12 +92,7 @@ dependencies {
     }
     implementation('com.sparrowwallet:hummingbird:1.7.3')
     implementation('co.nstant.in:cbor:0.9')
-    implementation("com.nativelibs4java:bridj${targetName}:0.7-20140918-3") {
-        exclude group: 'com.google.android.tools', module: 'dx'
-    }
-    implementation("com.github.sarxos:webcam-capture${targetName}:0.3.13-SNAPSHOT") {
-        exclude group: 'com.nativelibs4java', module: 'bridj'
-    }
+    implementation('org.openpnp:openpnp-capture-java:0.0.30-1')
     implementation "io.matthewnelson.kotlin-components:kmp-tor:${vTor}-${vKmpTor}"
     if(kmpOs == "linux" && kmpArch == "arm64") {
         implementation("com.sparrowwallet.kmp-tor-binary:kmp-tor-binary-${kmpOs}${kmpArch}-jvm:${vTor}")
@@ -391,18 +385,9 @@ extraJavaModuleInfo {
         requires('org.slf4j')
         requires('com.fasterxml.jackson.databind')
     }
-    module("bridj${targetName}-0.7-20140918-3.jar", 'com.nativelibs4java.bridj', '0.7-20140918-3') {
-        exports('org.bridj')
-        exports('org.bridj.cpp')
-        requires('java.logging')
-    }
-    module("webcam-capture${targetName}-0.3.13-SNAPSHOT.jar", 'com.github.sarxos.webcam.capture', '0.3.13-SNAPSHOT') {
-        exports('com.github.sarxos.webcam')
-        exports('com.github.sarxos.webcam.ds.buildin')
-        exports('com.github.sarxos.webcam.ds.buildin.natives')
-        requires('java.desktop')
-        requires('com.nativelibs4java.bridj')
-        requires('org.slf4j')
+    module('org.openpnp:openpnp-capture-java', 'openpnp.capture.java') {
+        exports('org.openpnp.capture')
+        exports('org.openpnp.capture.library')
     }
     module('centerdevice-nsmenufx-2.1.7.jar', 'centerdevice.nsmenufx', '2.1.7') {
         exports('de.codecentric.centerdevice')
