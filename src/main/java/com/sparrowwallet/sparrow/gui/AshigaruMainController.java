@@ -148,15 +148,7 @@ public class AshigaruMainController implements Initializable {
 
     @FXML
     private void onCreateWallet() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Create / Restore Wallet");
-        alert.setHeaderText("Use Terminal Mode");
-        alert.setContentText(
-                "Wallet creation and BIP39 seed restore require the terminal mode.\n\n" +
-                "Launch with --terminal, set up your wallet there, then\n" +
-                "reopen this GUI to use it.");
-        alert.initOwner(AshigaruGui.get().getMainStage());
-        alert.showAndWait();
+        new WalletCreationFlow(AshigaruGui.get().getMainStage()).start();
     }
 
     public void openWalletFile(File file) {

@@ -55,8 +55,7 @@
                     <VBox alignment="CENTER" spacing="16">
                         <Label text="Ashigaru Terminal" styleClass="welcome-title"/>
                         <Label text="Open a wallet to get started." styleClass="welcome-sub"/>
-                        <Label text="Use &#8220;Open Wallet...&#8221; in the sidebar, or launch with" styleClass="welcome-hint"/>
-                        <Label text="--terminal to create or restore a wallet." styleClass="welcome-hint mono"/>
+                        <Label text="Use &#8220;Open Wallet...&#8221; or &#8220;Create / Restore...&#8221; in the sidebar." styleClass="welcome-hint"/>
                     </VBox>
                 </StackPane>
             </center>
