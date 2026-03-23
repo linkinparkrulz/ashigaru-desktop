@@ -58,6 +58,11 @@ public class AshigaruMainController implements Initializable {
                 showWalletPanel(selected.walletId());
             }
         });
+        // Also handle re-clicks on the already-selected wallet (no selection change fires)
+        walletListView.setOnMouseClicked(e -> {
+            WalletListItem sel = walletListView.getSelectionModel().getSelectedItem();
+            if (sel != null) showWalletPanel(sel.walletId());
+        });
 
         showWelcome();
         EventManager.get().register(this);
@@ -188,7 +193,6 @@ public class AshigaruMainController implements Initializable {
             Storage.DeleteWalletService svc = new Storage.DeleteWalletService(form.getStorage(), false);
             svc.setOnSucceeded(e -> Platform.runLater(() -> {
                 AshigaruGui.removeWallet(item.walletId());
-                walletListView.getSelectionModel().clearSelection();
                 refreshWalletList();
                 showWelcome();
             }));
@@ -201,7 +205,6 @@ public class AshigaruMainController implements Initializable {
 
     @FXML
     private void onPreferences() {
-        walletListView.getSelectionModel().clearSelection();
         try {
             FXMLLoader loader = new FXMLLoader(AppServices.class.getResource("preferences/preferences.fxml"));
             Node prefsPanel = loader.load();
