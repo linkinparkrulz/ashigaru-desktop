@@ -565,7 +565,7 @@ public class AppServices {
 
     private static Image getWindowIcon() {
         if(windowIcon == null) {
-            windowIcon = new Image(AshigaruTerminal.class.getResourceAsStream("/image/sparrow-icon.png"));
+            windowIcon = new Image(AshigaruTerminal.class.getResourceAsStream("/image/Ashigaru_Terminal_Logo_Circle.png"));
         }
 
         return windowIcon;

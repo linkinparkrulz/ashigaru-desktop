@@ -67,9 +67,9 @@ public class AshigaruGui extends Application {
         stage.setMinHeight(540);
         stage.setScene(scene);
 
-        // Set app icon — replace sparrow-icon.png with ashigaru-icon.png when available
+        // Set app icon
         try {
-            Image icon = new Image(getClass().getResourceAsStream("/image/sparrow-icon.png"));
+            Image icon = new Image(getClass().getResourceAsStream("/image/Ashigaru_Terminal_Logo_Circle.png"));
             stage.getIcons().add(icon);
         } catch(Exception e) {
             log.warn("Could not load application icon", e);
