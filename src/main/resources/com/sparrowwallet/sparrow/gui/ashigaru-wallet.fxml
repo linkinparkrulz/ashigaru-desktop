@@ -14,6 +14,7 @@
         <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
         <Label fx:id="walletNameLabel" text="" styleClass="wallet-name-label"/>
         <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="receiveBtn" text="⬇  Receive" onAction="#onReceive" styleClass="action-btn" visible="false" managed="false"/>
         <Button text="⟳  Refresh" onAction="#onRefresh" styleClass="refresh-btn"/>
     </HBox>
 
@@ -40,6 +41,22 @@
         </VBox>
     </HBox>
 
+    <!-- Badbank / doxxic-change info bar (shown only when Badbank tab is active) -->
+    <HBox fx:id="badbankInfoBar" styleClass="badbank-info-bar" alignment="CENTER_LEFT" spacing="8" visible="false" managed="false">
+        <padding><Insets top="8" right="16" bottom="8" left="16"/></padding>
+        <Label text="⚠" styleClass="badbank-warning-icon"/>
+        <Label fx:id="badbankInfoLabel"
+               text="Doxxic Change — these UTXOs were not mixed. Select them and use 'Mix Selected UTXOs' to re-enter a smaller pool, or handle them carefully as described in the guide."
+               styleClass="badbank-info-text" wrapText="true"/>
+    </HBox>
+
+    <!-- View toggle: UTXOs / Transactions -->
+    <HBox styleClass="view-toggle-bar" alignment="CENTER_LEFT" spacing="0">
+        <padding><Insets top="6" right="16" bottom="6" left="16"/></padding>
+        <ToggleButton fx:id="utxoViewBtn"  text="UTXOs"        onAction="#onViewToggle" styleClass="view-toggle-btn" selected="true"/>
+        <ToggleButton fx:id="txnViewBtn"   text="Transactions" onAction="#onViewToggle" styleClass="view-toggle-btn"/>
+    </HBox>
+
     <Separator/>
 
     <!-- UTXO table -->
@@ -52,6 +69,19 @@
         </columns>
         <placeholder>
             <Label text="No UTXOs" styleClass="table-placeholder"/>
+        </placeholder>
+    </TableView>
+
+    <!-- Transaction history table (hidden by default) -->
+    <TableView fx:id="txnTable" styleClass="utxo-table" VBox.vgrow="ALWAYS" visible="false" managed="false">
+        <columns>
+            <TableColumn fx:id="colTxnDate"   text="Date"   prefWidth="160" minWidth="120"/>
+            <TableColumn fx:id="colTxnId"     text="TxID"   prefWidth="260" minWidth="160"/>
+            <TableColumn fx:id="colTxnLabel"  text="Label"  prefWidth="160" minWidth="100"/>
+            <TableColumn fx:id="colTxnAmount" text="Amount" prefWidth="160" minWidth="120"/>
+        </columns>
+        <placeholder>
+            <Label text="No transactions" styleClass="table-placeholder"/>
         </placeholder>
     </TableView>
 

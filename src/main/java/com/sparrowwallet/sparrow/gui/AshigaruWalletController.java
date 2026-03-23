@@ -38,15 +38,24 @@ public class AshigaruWalletController implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(AshigaruWalletController.class);
 
     @FXML private Label walletNameLabel;
+    @FXML private Button receiveBtn;
     @FXML private TabPane accountTabs;
     @FXML private Label balanceLabel;
     @FXML private Label mempoolLabel;
     @FXML private Label utxoCountLabel;
+    @FXML private HBox badbankInfoBar;
+    @FXML private ToggleButton utxoViewBtn;
+    @FXML private ToggleButton txnViewBtn;
     @FXML private TableView<UtxoRow> utxoTable;
     @FXML private TableColumn<UtxoRow, String> colDate;
     @FXML private TableColumn<UtxoRow, String> colOutput;
     @FXML private TableColumn<UtxoRow, String> colMixes;
     @FXML private TableColumn<UtxoRow, String> colValue;
+    @FXML private TableView<TxnRow> txnTable;
+    @FXML private TableColumn<TxnRow, String> colTxnDate;
+    @FXML private TableColumn<TxnRow, String> colTxnId;
+    @FXML private TableColumn<TxnRow, String> colTxnLabel;
+    @FXML private TableColumn<TxnRow, String> colTxnAmount;
     @FXML private HBox mixButtonBox;
     @FXML private Button startMixBtn;
     @FXML private Button mixToBtn;
@@ -57,9 +66,11 @@ public class AshigaruWalletController implements Initializable {
     private WalletForm activeAccountForm;   // currently shown account form
 
     private final ObservableList<UtxoRow> utxoRows = FXCollections.observableArrayList();
+    private final ObservableList<TxnRow> txnRows   = FXCollections.observableArrayList();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        // UTXO table
         utxoTable.setItems(utxoRows);
         utxoTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
@@ -70,6 +81,22 @@ public class AshigaruWalletController implements Initializable {
 
         utxoTable.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) ->
                 updateMixSelectedButton());
+
+        // Transaction table
+        txnTable.setItems(txnRows);
+        colTxnDate.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().date()));
+        colTxnId.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().txid()));
+        colTxnLabel.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().label()));
+        colTxnAmount.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().amount()));
+
+        // View toggle group
+        ToggleGroup viewGroup = new ToggleGroup();
+        utxoViewBtn.setToggleGroup(viewGroup);
+        txnViewBtn.setToggleGroup(viewGroup);
+        // Prevent deselecting both
+        viewGroup.selectedToggleProperty().addListener((obs, old, neu) -> {
+            if (neu == null) old.setSelected(true);
+        });
 
         EventManager.get().register(this);
     }
@@ -170,6 +197,22 @@ public class AshigaruWalletController implements Initializable {
         // UTXO table
         refreshUtxoTable(utxosEntry, wallet.isWhirlpoolMixWallet());
 
+        // Transaction table (only refresh if visible)
+        if (txnTable.isVisible()) {
+            refreshTransactionTable();
+        }
+
+        // Receive button — only for Deposit (master wallet)
+        boolean isDeposit = wallet.isMasterWallet() || wallet.getStandardAccountType() == null
+                || wallet.getStandardAccountType() == StandardAccount.ACCOUNT_0;
+        receiveBtn.setVisible(isDeposit);
+        receiveBtn.setManaged(isDeposit);
+
+        // Badbank info bar
+        boolean isBadbank = wallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_BADBANK;
+        badbankInfoBar.setVisible(isBadbank);
+        badbankInfoBar.setManaged(isBadbank);
+
         // Buttons
         configureMixButtons(wallet);
     }
@@ -200,6 +243,34 @@ public class AshigaruWalletController implements Initializable {
         }
     }
 
+    private void refreshTransactionTable() {
+        if (activeAccountForm == null) return;
+        txnRows.clear();
+
+        WalletTransactionsEntry txnEntry = activeAccountForm.getWalletTransactionsEntry();
+        if (txnEntry == null || txnEntry.getChildren() == null) return;
+
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+        UnitFormat fmt = Config.get().getUnitFormat() == null ? UnitFormat.DOT : Config.get().getUnitFormat();
+
+        List<Entry> entries = new ArrayList<>(txnEntry.getChildren());
+        // Most recent first
+        Collections.reverse(entries);
+
+        for (Entry entry : entries) {
+            if (!(entry instanceof TransactionEntry txEntry)) continue;
+            BlockTransaction blockTx = txEntry.getBlockTransaction();
+
+            String date = blockTx.getDate() != null ? df.format(blockTx.getDate()) : "Unconfirmed";
+            String txid = abbreviate(blockTx.getHashAsString());
+            String label = blockTx.getLabel() != null ? blockTx.getLabel() : "";
+            long net = txEntry.getValue();
+            String amount = (net >= 0 ? "+" : "") + fmt.formatBtcValue(net) + " BTC";
+
+            txnRows.add(new TxnRow(date, txid, label, amount, txEntry));
+        }
+    }
+
     private void configureMixButtons(Wallet wallet) {
         // Hide all by default
         startMixBtn.setVisible(false);
@@ -208,7 +279,7 @@ public class AshigaruWalletController implements Initializable {
         mixButtonBox.setVisible(false);
 
         if (wallet.isWhirlpoolMixWallet()) {
-            // Premix / Postmix / Badbank — show Start/Stop Mixing
+            // Premix / Postmix — show Start/Stop Mixing
             mixButtonBox.setVisible(true);
             startMixBtn.setVisible(true);
 
@@ -224,7 +295,7 @@ public class AshigaruWalletController implements Initializable {
                 updateMixToButton();
             }
         } else if (WhirlpoolServices.canWalletMix(wallet)) {
-            // Deposit / regular — show Mix Selected to initiate Tx0
+            // Deposit / Badbank — show Mix Selected to initiate Tx0
             mixButtonBox.setVisible(true);
             mixSelectedBtn.setVisible(true);
             mixSelectedBtn.setText("Mix Selected UTXOs");
@@ -261,6 +332,28 @@ public class AshigaruWalletController implements Initializable {
     // -------------------------------------------------------------------------
     // Button actions
     // -------------------------------------------------------------------------
+
+    @FXML
+    private void onReceive() {
+        if (activeAccountForm == null) return;
+        try {
+            AshigaruReceiveController.show(activeAccountForm);
+        } catch (Exception e) {
+            log.error("Error opening Receive dialog", e);
+        }
+    }
+
+    @FXML
+    private void onViewToggle() {
+        boolean showUtxos = utxoViewBtn.isSelected();
+        utxoTable.setVisible(showUtxos);
+        utxoTable.setManaged(showUtxos);
+        txnTable.setVisible(!showUtxos);
+        txnTable.setManaged(!showUtxos);
+        if (!showUtxos) {
+            refreshTransactionTable();
+        }
+    }
 
     @FXML
     private void onStartMix() {
@@ -358,9 +451,15 @@ public class AshigaruWalletController implements Initializable {
         Whirlpool.Tx0BroadcastService svc = new Whirlpool.Tx0BroadcastService(wp, pool, utxos);
         svc.setOnSucceeded(e -> {
             Sha256Hash txid = svc.getValue();
-            Platform.runLater(() ->
-                    AppServices.showSuccessDialog("Broadcast Successful",
-                            "Transaction Zero ID:\n" + txid.toString()));
+            Platform.runLater(() -> {
+                AppServices.showSuccessDialog("Broadcast Successful",
+                        "Transaction Zero ID:\n" + txid.toString());
+                // Auto-switch to Premix tab so user can see equalized UTXOs
+                accountTabs.getTabs().stream()
+                        .filter(t -> "Premix".equals(t.getText()))
+                        .findFirst()
+                        .ifPresent(t -> accountTabs.getSelectionModel().select(t));
+            });
         });
         svc.setOnFailed(e -> {
             Throwable ex = e.getSource().getException();
@@ -453,4 +552,5 @@ public class AshigaruWalletController implements Initializable {
     // -------------------------------------------------------------------------
 
     record UtxoRow(String date, String output, String mixes, String value, UtxoEntry utxoEntry) {}
+    record TxnRow(String date, String txid, String label, String amount, TransactionEntry txnEntry) {}
 }
