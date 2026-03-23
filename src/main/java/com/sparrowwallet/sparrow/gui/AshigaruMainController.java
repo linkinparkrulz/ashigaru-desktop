@@ -48,6 +48,7 @@ public class AshigaruMainController implements Initializable {
     @FXML private StackPane welcomePane;
 
     private final ObservableList<WalletListItem> walletItems = FXCollections.observableArrayList();
+    private AshigaruWalletController currentWalletController;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -94,10 +95,16 @@ public class AshigaruMainController implements Initializable {
             WalletForm walletForm = AshigaruGui.get().getWalletForms().get(walletId);
             if (walletForm == null) return;
 
+            // Unregister previous controller to prevent event listener accumulation
+            if (currentWalletController != null) {
+                EventManager.get().unregister(currentWalletController);
+                currentWalletController = null;
+            }
+
             FXMLLoader loader = new FXMLLoader(getClass().getResource("ashigaru-wallet.fxml"));
             Node walletPanel = loader.load();
-            AshigaruWalletController controller = loader.getController();
-            controller.setWalletForm(walletForm);
+            currentWalletController = loader.getController();
+            currentWalletController.setWalletForm(walletForm);
             contentPane.setCenter(walletPanel);
         } catch (Exception e) {
             log.error("Error loading wallet panel", e);
@@ -114,6 +121,11 @@ public class AshigaruMainController implements Initializable {
             if (form.getWallet().isMasterWallet()) {
                 walletItems.add(new WalletListItem(form.getWalletId(), form.getWallet().getFullDisplayName()));
             }
+        }
+
+        // Don't auto-navigate when preferences is open — just update the list contents
+        if (contentPane.getUserData() instanceof PreferencesController) {
+            return;
         }
 
         if (currentSelection != null) {
@@ -193,6 +205,7 @@ public class AshigaruMainController implements Initializable {
             Storage.DeleteWalletService svc = new Storage.DeleteWalletService(form.getStorage(), false);
             svc.setOnSucceeded(e -> Platform.runLater(() -> {
                 AshigaruGui.removeWallet(item.walletId());
+                walletListView.getSelectionModel().clearSelection();
                 refreshWalletList();
                 showWelcome();
             }));
@@ -205,6 +218,7 @@ public class AshigaruMainController implements Initializable {
 
     @FXML
     private void onPreferences() {
+        walletListView.getSelectionModel().clearSelection();
         try {
             FXMLLoader loader = new FXMLLoader(AppServices.class.getResource("preferences/preferences.fxml"));
             Node prefsPanel = loader.load();

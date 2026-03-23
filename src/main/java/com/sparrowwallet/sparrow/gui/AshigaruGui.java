@@ -180,16 +180,4 @@ public class AshigaruGui extends Application {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Global event subscriptions
-    // -------------------------------------------------------------------------
-
-    @Subscribe
-    public void walletOpened(WalletOpenedEvent event) {
-        if (event.getWallet().isMasterWallet()) {
-            Platform.runLater(() -> {
-                if (mainController != null) mainController.refreshWalletList();
-            });
-        }
-    }
 }
