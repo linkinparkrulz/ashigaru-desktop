@@ -2,51 +2,82 @@
     -fx-padding: 0;
 }
 
+/* ── Left nav sidebar ─────────────────────────────────────────────────────── */
 .list-menu {
     -fx-pref-width: 160;
-    -fx-background-color: #3da0e3;
+    -fx-background-color: #161616;
+    -fx-border-color: #2a2a2a;
+    -fx-border-width: 0 1 0 0;
 }
 
 .list-item {
     -fx-pref-width: 160;
     -fx-padding: 0 20 0 20;
-    -fx-background-color: #3da0e3;
+    -fx-background-color: #161616;
 }
 
 .list-item * {
-    -fx-fill: #fff;
+    -fx-fill: #888888;
+    -fx-text-fill: #888888;
+}
+
+.list-item .label {
+    -fx-text-fill: #888888;
 }
 
 .list-item:hover {
-    -fx-background-color: #4aa7e5;
+    -fx-background-color: #1e1e1e;
+}
+
+.list-item:hover .label,
+.list-item:hover * {
+    -fx-text-fill: #e0e0e0;
+    -fx-fill: #e0e0e0;
 }
 
 .list-item:selected {
-    -fx-background-color: #1e88cf;
+    -fx-background-color: #1e1e1e;
+    -fx-border-color: #cc1111;
+    -fx-border-width: 0 0 0 3;
 }
 
+.list-item:selected .label,
+.list-item:selected * {
+    -fx-text-fill: #cc1111;
+    -fx-fill: #cc1111;
+}
+
+/* ── Main preferences area ────────────────────────────────────────────────── */
 #preferencesPane {
-    -fx-background-color: -fx-background;
+    -fx-background-color: #0d0d0d;
 }
 
 .scroll-pane {
     -fx-background-color: transparent;
 }
 
+/* ── Form fields (tornadofx) ──────────────────────────────────────────────── */
+.form .fieldset-header,
+.form .fieldset-header .label {
+    -fx-text-fill: #cc1111;
+    -fx-font-weight: bold;
+}
+
+.form .field .label {
+    -fx-text-fill: #888888;
+}
+
+/* ── Server type icons ────────────────────────────────────────────────────── */
 .public-warning {
-    -fx-text-fill: rgb(238, 210, 2);
+    -fx-text-fill: #e57c00;
 }
 
 .public-electrum {
-    -fx-text-fill: linear-gradient(to bottom, derive(rgb(238, 210, 2), 30%), rgb(238, 210, 2));
-}
-
-.bitcoin-core {
-    -fx-text-fill: linear-gradient(to bottom, derive(#50a14f, 30%), #50a14f);
+    -fx-text-fill: #cc1111;
 }
 
 .private-electrum {
-    -fx-text-fill: linear-gradient(to bottom, derive(#0b99c9, 30%), #0b99c9);
+    -fx-text-fill: #cc1111;
 }
 
 #electrumUseSsl {

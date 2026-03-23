@@ -16,6 +16,7 @@ import com.sparrowwallet.sparrow.wallet.*;
 import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -73,6 +74,8 @@ public class AshigaruWalletController implements Initializable {
         EventManager.get().register(this);
     }
 
+    private ChangeListener<Tab> tabSelectionListener;
+
     // -------------------------------------------------------------------------
     // Public API: called by AshigaruMainController after FXML load
     // -------------------------------------------------------------------------
@@ -89,6 +92,14 @@ public class AshigaruWalletController implements Initializable {
     // -------------------------------------------------------------------------
 
     private void buildAccountTabs(WalletForm masterForm) {
+        // Remember which tab was active
+        Tab previouslySelected = accountTabs.getSelectionModel().getSelectedItem();
+        String previousTabText = previouslySelected != null ? previouslySelected.getText() : null;
+
+        // Remove old tab selection listener before clearing
+        if (tabSelectionListener != null) {
+            accountTabs.getSelectionModel().selectedItemProperty().removeListener(tabSelectionListener);
+        }
         accountTabs.getTabs().clear();
 
         // Master wallet = Deposit account
@@ -108,16 +119,24 @@ public class AshigaruWalletController implements Initializable {
             accountTabs.getTabs().add(buildAccountTab(tabName, nestedForm));
         }
 
-        // Show first tab
-        if (!accountTabs.getTabs().isEmpty()) {
-            activateAccountForm(masterForm);
+        // Restore previously selected tab, or default to first
+        Tab toSelect = accountTabs.getTabs().stream()
+                .filter(t -> t.getText().equals(previousTabText))
+                .findFirst()
+                .orElse(accountTabs.getTabs().isEmpty() ? null : accountTabs.getTabs().get(0));
+        if (toSelect != null) {
+            accountTabs.getSelectionModel().select(toSelect);
+            if (toSelect.getUserData() instanceof WalletForm form) {
+                activateAccountForm(form);
+            }
         }
 
-        accountTabs.getSelectionModel().selectedItemProperty().addListener((obs, old, tab) -> {
+        tabSelectionListener = (obs, old, tab) -> {
             if (tab != null && tab.getUserData() instanceof WalletForm form) {
                 activateAccountForm(form);
             }
-        });
+        };
+        accountTabs.getSelectionModel().selectedItemProperty().addListener(tabSelectionListener);
     }
 
     private Tab buildAccountTab(String name, WalletForm form) {
@@ -410,6 +429,14 @@ public class AshigaruWalletController implements Initializable {
     @Subscribe
     public void openWallets(OpenWalletsEvent event) {
         Platform.runLater(this::updateMixToButton);
+    }
+
+    @Subscribe
+    public void walletOpened(WalletOpenedEvent event) {
+        if (!event.getWallet().isNested()) return;
+        if (currentWalletForm == null) return;
+        if (!event.getWallet().getMasterWallet().equals(currentWalletForm.getWallet())) return;
+        Platform.runLater(() -> buildAccountTabs(currentWalletForm));
     }
 
     // -------------------------------------------------------------------------
