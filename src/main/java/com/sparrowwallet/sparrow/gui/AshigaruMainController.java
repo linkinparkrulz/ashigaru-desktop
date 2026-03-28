@@ -4,6 +4,7 @@ import com.google.common.eventbus.Subscribe;
 import com.sparrowwallet.drongo.Network;
 import com.sparrowwallet.drongo.SecureString;
 import com.sparrowwallet.drongo.crypto.InvalidPasswordException;
+import com.sparrowwallet.drongo.wallet.StandardAccount;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.EventManager;
@@ -41,27 +42,43 @@ public class AshigaruMainController implements Initializable {
     @FXML private Label networkLabel;
     @FXML private Label connectionLabel;
     @FXML private Label blockHeightLabel;
-    @FXML private ListView<WalletListItem> walletListView;
+    @FXML private ComboBox<WalletListItem> walletSelector;
     @FXML private BorderPane contentPane;
     @FXML private Label statusLabel;
     @FXML private StackPane welcomePane;
 
+    // Account sidebar controls
+    @FXML private VBox accountButtonsBox;
+    @FXML private ToggleGroup accountToggleGroup;
+    @FXML private ToggleButton depositBtn;
+    @FXML private ToggleButton premixBtn;
+    @FXML private ToggleButton postmixBtn;
+    @FXML private ToggleButton badbankBtn;
+
     private final ObservableList<WalletListItem> walletItems = FXCollections.observableArrayList();
     private AshigaruWalletController currentWalletController;
+    private WalletForm currentWalletForm;
+
+    // Track which account is selected for the current wallet
+    private StandardAccount selectedAccount = StandardAccount.ACCOUNT_0;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        walletListView.setItems(walletItems);
-        walletListView.setCellFactory(lv -> new WalletListCell(this));
-        walletListView.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
+        // Wallet selector setup
+        walletSelector.setItems(walletItems);
+        walletSelector.setCellFactory(lv -> new WalletListCell());
+        walletSelector.setButtonCell(new WalletListCell());
+        walletSelector.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             if (selected != null) {
-                showWalletPanel(selected.walletId());
+                selectWallet(selected.walletId());
             }
         });
-        // Also handle re-clicks on the already-selected wallet (no selection change fires)
-        walletListView.setOnMouseClicked(e -> {
-            WalletListItem sel = walletListView.getSelectionModel().getSelectedItem();
-            if (sel != null) showWalletPanel(sel.walletId());
+
+        // Account toggle group - prevent deselecting all
+        accountToggleGroup.selectedToggleProperty().addListener((obs, old, neu) -> {
+            if (neu == null && old != null) {
+                old.setSelected(true);
+            }
         });
 
         showWelcome();
@@ -86,24 +103,47 @@ public class AshigaruMainController implements Initializable {
     private void showWelcome() {
         maybeReconnectOnLeavingPrefs();
         contentPane.setCenter(welcomePane);
+        walletSelector.setVisible(false);
+        accountButtonsBox.setVisible(false);
+        accountButtonsBox.setManaged(false);
     }
 
-    private void showWalletPanel(String walletId) {
+    private void selectWallet(String walletId) {
+        WalletForm walletForm = AshigaruGui.get().getWalletForms().get(walletId);
+        if (walletForm == null) return;
+
+        currentWalletForm = walletForm;
+        selectedAccount = StandardAccount.ACCOUNT_0; // Default to Deposit
+
+        // Show account sidebar and wallet selector
+        walletSelector.setVisible(true);
+        accountButtonsBox.setVisible(true);
+        accountButtonsBox.setManaged(true);
+
+        // Select Deposit by default
+        depositBtn.setSelected(true);
+
+        showAccountView();
+    }
+
+    private void showAccountView() {
+        if (currentWalletForm == null) return;
+
         maybeReconnectOnLeavingPrefs();
         try {
-            WalletForm walletForm = AshigaruGui.get().getWalletForms().get(walletId);
-            if (walletForm == null) return;
-
-            // Unregister previous controller to prevent event listener accumulation
+            // Unregister previous controller
             if (currentWalletController != null) {
                 EventManager.get().unregister(currentWalletController);
                 currentWalletController = null;
             }
 
+            // Get the appropriate account form based on selected account
+            WalletForm activeForm = getAccountForm(currentWalletForm, selectedAccount);
+
             FXMLLoader loader = new FXMLLoader(getClass().getResource("ashigaru-wallet.fxml"));
             Node walletPanel = loader.load();
             currentWalletController = loader.getController();
-            currentWalletController.setWalletForm(walletForm);
+            currentWalletController.setWalletForm(activeForm, currentWalletForm);
             contentPane.setCenter(walletPanel);
         } catch (Exception e) {
             log.error("Error loading wallet panel", e);
@@ -111,30 +151,34 @@ public class AshigaruMainController implements Initializable {
         }
     }
 
-    public void refreshWalletList() {
-        String currentSelection = walletListView.getSelectionModel().getSelectedItem() != null
-                ? walletListView.getSelectionModel().getSelectedItem().walletId() : null;
-
-        walletItems.clear();
-        for (WalletForm form : AshigaruGui.get().getWalletForms().values()) {
-            if (form.getWallet().isMasterWallet()) {
-                walletItems.add(new WalletListItem(form.getWalletId(), form.getWallet().getFullDisplayName()));
+    private WalletForm getAccountForm(WalletForm masterForm, StandardAccount account) {
+        if (account == StandardAccount.ACCOUNT_0) {
+            return masterForm;
+        }
+        for (WalletForm nested : masterForm.getNestedWalletForms()) {
+            if (nested.getWallet().getStandardAccountType() == account) {
+                return nested;
             }
         }
+        return masterForm; // Fallback to master
+    }
 
-        // Don't auto-navigate when preferences is open — just update the list contents
-        if (contentPane.getUserData() instanceof PreferencesController) {
-            return;
+    @FXML
+    private void onAccountSelected() {
+        ToggleButton selected = (ToggleButton) accountToggleGroup.getSelectedToggle();
+        if (selected == null) return;
+
+        if (selected == depositBtn) {
+            selectedAccount = StandardAccount.ACCOUNT_0;
+        } else if (selected == premixBtn) {
+            selectedAccount = StandardAccount.WHIRLPOOL_PREMIX;
+        } else if (selected == postmixBtn) {
+            selectedAccount = StandardAccount.WHIRLPOOL_POSTMIX;
+        } else if (selected == badbankBtn) {
+            selectedAccount = StandardAccount.WHIRLPOOL_BADBANK;
         }
 
-        if (currentSelection != null) {
-            walletItems.stream()
-                    .filter(item -> item.walletId().equals(currentSelection))
-                    .findFirst()
-                    .ifPresent(item -> walletListView.getSelectionModel().select(item));
-        } else if (!walletItems.isEmpty()) {
-            walletListView.getSelectionModel().selectFirst();
-        }
+        showAccountView();
     }
 
     // -------------------------------------------------------------------------
@@ -202,13 +246,9 @@ public class AshigaruMainController implements Initializable {
         confirm.showAndWait().ifPresent(btn -> {
             if (btn != ButtonType.OK) return;
             Storage.DeleteWalletService svc = new Storage.DeleteWalletService(form.getStorage(), false);
-            // DeleteWalletService extends ScheduledService, which auto-restarts after each run.
-            // Cancel immediately on completion (success or failure) to prevent repeated setOnSucceeded
-            // calls that would keep calling showWelcome() and wiping out any newly opened wallet.
             svc.setOnSucceeded(e -> {
                 svc.cancel();
                 AshigaruGui.removeWallet(item.walletId());
-                walletListView.getSelectionModel().clearSelection();
                 refreshWalletList();
                 showWelcome();
             });
@@ -222,7 +262,7 @@ public class AshigaruMainController implements Initializable {
 
     @FXML
     private void onPreferences() {
-        walletListView.getSelectionModel().clearSelection();
+        walletSelector.getSelectionModel().clearSelection();
         try {
             FXMLLoader loader = new FXMLLoader(AppServices.class.getResource("preferences/preferences.fxml"));
             Node prefsPanel = loader.load();
@@ -231,7 +271,6 @@ public class AshigaruMainController implements Initializable {
             prefsController.reconnectOnClosingProperty().set(AppServices.isConnecting() || AppServices.isConnected());
             contentPane.setCenter(prefsPanel);
             contentPane.setUserData(prefsController);
-            // Auto-navigate to General so preferences never opens blank
             prefsController.selectGroup(PreferenceGroup.GENERAL);
         } catch (IOException e) {
             log.error("Error loading preferences panel", e);
@@ -245,7 +284,6 @@ public class AshigaruMainController implements Initializable {
             if (!storage.isEncrypted()) {
                 Platform.runLater(() -> runLoadService(storage, null));
             } else {
-                // Password dialog
                 Dialog<String> pwDialog = buildPasswordDialog(storage.getWalletName(null));
                 Optional<String> result = pwDialog.showAndWait();
                 result.ifPresent(pw -> Platform.runLater(() -> runLoadService(storage, new SecureString(pw))));
@@ -324,7 +362,6 @@ public class AshigaruMainController implements Initializable {
     public void connectionEvent(ConnectionEvent event) {
         Platform.runLater(() -> {
             updateConnectionLabel(true);
-            // Update block height immediately on connection if available
             Integer height = AppServices.getCurrentBlockHeight();
             if (height != null) {
                 blockHeightLabel.setText("Block " + height);
@@ -354,6 +391,32 @@ public class AshigaruMainController implements Initializable {
         }
     }
 
+    public void refreshWalletList() {
+        String currentSelection = walletSelector.getSelectionModel().getSelectedItem() != null
+                ? walletSelector.getSelectionModel().getSelectedItem().walletId() : null;
+
+        walletItems.clear();
+        for (WalletForm form : AshigaruGui.get().getWalletForms().values()) {
+            if (form.getWallet().isMasterWallet()) {
+                walletItems.add(new WalletListItem(form.getWalletId(), form.getWallet().getFullDisplayName()));
+            }
+        }
+
+        // Don't auto-navigate when preferences is open
+        if (contentPane.getUserData() instanceof PreferencesController) {
+            return;
+        }
+
+        if (currentSelection != null) {
+            walletItems.stream()
+                    .filter(item -> item.walletId().equals(currentSelection))
+                    .findFirst()
+                    .ifPresent(item -> walletSelector.getSelectionModel().select(item));
+        } else if (!walletItems.isEmpty()) {
+            walletSelector.getSelectionModel().selectFirst();
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Inner types
     // -------------------------------------------------------------------------
@@ -364,23 +427,13 @@ public class AshigaruMainController implements Initializable {
     }
 
     private static class WalletListCell extends ListCell<WalletListItem> {
-        private final AshigaruMainController controller;
-
-        WalletListCell(AshigaruMainController controller) {
-            this.controller = controller;
-        }
-
         @Override
         protected void updateItem(WalletListItem item, boolean empty) {
             super.updateItem(item, empty);
             if (empty || item == null) {
                 setText(null);
-                setContextMenu(null);
             } else {
                 setText(item.displayName());
-                MenuItem deleteItem = new MenuItem("Delete Wallet...");
-                deleteItem.setOnAction(e -> controller.deleteWallet(item));
-                setContextMenu(new ContextMenu(deleteItem));
             }
         }
     }
