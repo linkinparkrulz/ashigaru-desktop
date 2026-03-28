@@ -9,19 +9,6 @@
       fx:controller="com.sparrowwallet.sparrow.gui.AshigaruWalletController"
       styleClass="wallet-panel" spacing="0">
 
-    <!-- Wallet name header -->
-    <HBox styleClass="wallet-header" alignment="CENTER_LEFT" spacing="10">
-        <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
-        <Label fx:id="walletNameLabel" text="" styleClass="wallet-name-label"/>
-        <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="receiveBtn" text="⬇  Receive" onAction="#onReceive" styleClass="action-btn" visible="false" managed="false"/>
-        <Button text="⟳  Refresh" onAction="#onRefresh" styleClass="refresh-btn"/>
-        <Button text="✕  Delete" onAction="#onDelete" styleClass="delete-btn"/>
-    </HBox>
-
-    <!-- Account tabs -->
-    <TabPane fx:id="accountTabs" styleClass="account-tabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="NEVER"/>
-
     <!-- Balance row -->
     <HBox styleClass="balance-row" alignment="CENTER_LEFT" spacing="24">
         <padding><Insets top="10" right="16" bottom="10" left="16"/></padding>
@@ -40,6 +27,12 @@
             <Label text="UTXOs" styleClass="balance-caption"/>
             <Label fx:id="utxoCountLabel" text="0" styleClass="balance-value secondary"/>
         </VBox>
+
+        <Region HBox.hgrow="ALWAYS"/>
+
+        <Button fx:id="receiveBtn" text="⬇  Receive" onAction="#onReceive" styleClass="action-btn" visible="false" managed="false"/>
+        <Button text="⟳  Refresh" onAction="#onRefresh" styleClass="refresh-btn"/>
+        <Button text="✕  Delete" onAction="#onDelete" styleClass="delete-btn"/>
     </HBox>
 
     <!-- Badbank / doxxic-change info bar (shown only when Badbank tab is active) -->
@@ -96,7 +89,6 @@
         <Button fx:id="mixToBtn"      text="Mix To..."          onAction="#onMixTo"        styleClass="action-btn mix-btn"  visible="false"/>
         <Button fx:id="mixSelectedBtn" text="Mix Selected UTXOs" onAction="#onMixSelected" styleClass="action-btn mix-btn"  visible="false"/>
 
-        <!-- VBox inside wallet panel is the accountPanel anchor -->
-        <VBox fx:id="accountPanel" HBox.hgrow="ALWAYS"/>
+        <Region HBox.hgrow="ALWAYS"/>
     </HBox>
 </VBox>

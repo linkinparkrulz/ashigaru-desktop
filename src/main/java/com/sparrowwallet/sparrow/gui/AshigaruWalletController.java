@@ -107,11 +107,17 @@ public class AshigaruWalletController implements Initializable {
     // Public API: called by AshigaruMainController after FXML load
     // -------------------------------------------------------------------------
 
-    public void setWalletForm(WalletForm masterForm) {
-        this.currentWalletForm = masterForm;
-        walletNameLabel.setText(masterForm.getWallet().getFullDisplayName());
+    public void setWalletForm(WalletForm form) {
+        setWalletForm(form, form);
+    }
 
-        buildAccountTabs(masterForm);
+    public void setWalletForm(WalletForm activeForm, WalletForm masterForm) {
+        this.currentWalletForm = masterForm;
+        this.activeAccountForm = activeForm;
+        // Wallet name label removed from UI - account is now shown in sidebar
+        // walletNameLabel.setText(masterForm.getWallet().getFullDisplayName());
+
+        refreshAccountView();
     }
 
     // -------------------------------------------------------------------------

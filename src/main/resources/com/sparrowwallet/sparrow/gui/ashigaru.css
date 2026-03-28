@@ -245,7 +245,7 @@
 }
 .utxo-table .table-row-cell:odd  { -fx-background-color: derive(-ag-bg, 5%); }
 .utxo-table .table-row-cell:hover { -fx-background-color: -ag-bg-raised; }
-.utxo-table .table-row-cell:selected { -fx-background-color: derive(-ag-accent, -65%); }
+.utxo-table .table-row-cell:selected { -fx-background-color: derive(-ag-accent, -45%); }
 .utxo-table .table-cell {
     -fx-text-fill: -ag-text;
     -fx-padding: 6 10 6 10;
@@ -347,18 +347,24 @@
     -fx-border-color: transparent;
 }
 .view-toggle-bar .toggle-button {
-    -fx-border-radius: 0;
-    -fx-background-radius: 0;
-    -fx-border-color: -ag-border;
-    -fx-border-width: 0 1 1 0;
+    -fx-border-radius: -ag-radius;
+    -fx-background-radius: -ag-radius;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 2 0;
     -fx-min-width: 110;
+    -fx-background-color: transparent;
+}
+.view-toggle-bar .toggle-button:hover {
+    -fx-text-fill: -ag-text;
+    -fx-border-color: -ag-border;
 }
 .view-toggle-bar .toggle-button:selected {
-    -fx-border-color: -ag-border;
-    -fx-border-bottom-color: -ag-accent;
-    -fx-border-width: 0 1 2 0;
+    -fx-border-color: transparent transparent -ag-accent transparent;
     -fx-text-fill: -ag-accent;
-    -fx-background-color: -ag-bg;
+    -fx-background-color: transparent;
+}
+.view-toggle-bar .toggle-button:selected:hover {
+    -fx-background-color: transparent;
 }
 
 /* ── Badbank info bar ─────────────────────────────────────────────────────── */
@@ -385,10 +391,10 @@
     -fx-background-color: -ag-bg-mid;
 }
 .scroll-bar .thumb {
-    -fx-background-color: -ag-border;
+    -fx-background-color: -ag-text-dim;
     -fx-background-radius: 4;
 }
-.scroll-bar .thumb:hover { -fx-background-color: -ag-text-faint; }
+.scroll-bar .thumb:hover { -fx-background-color: -ag-text; }
 .scroll-bar .increment-button,
 .scroll-bar .decrement-button {
     -fx-background-color: transparent;
@@ -421,6 +427,40 @@
 }
 .menu-item:hover .label, .menu-item:focused .label {
     -fx-text-fill: -ag-accent;
+}
+
+/* ── Account buttons (sidebar) ───────────────────────────────────────────── */
+.account-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: -ag-text-dim;
+    -fx-border-color: transparent;
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
+    -fx-padding: 10 16 10 16;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER_LEFT;
+    -fx-font-size: 13px;
+}
+.account-btn:hover { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
+.account-btn:selected, .account-btn.account-selected {
+    -fx-background-color: derive(-ag-accent, -60%);
+    -fx-text-fill: -ag-accent;
+    -fx-border-color: transparent transparent transparent -ag-accent;
+    -fx-border-width: 0 0 0 3;
+}
+
+/* ── Wallet selector (header combo) ─────────────────────────────────────── */
+.wallet-selector {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border;
+    -fx-min-width: 160;
+}
+.wallet-selector:hover {
+    -fx-border-color: derive(-ag-accent, -30%);
+}
+.wallet-selector .list-cell {
+    -fx-text-fill: -ag-text;
+    -fx-font-size: 12px;
 }
 
 /* ── Preferences panel toggle buttons (use styleClass="list-item") ─────────── */
