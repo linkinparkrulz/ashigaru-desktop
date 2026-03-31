@@ -1,6 +1,11 @@
 package com.sparrowwallet.sparrow.control;
 
-import com.github.sarxos.webcam.*;
+import com.google.common.base.Throwables;
+import com.sparrowwallet.sparrow.EventManager;
+import com.sparrowwallet.sparrow.event.WebcamResolutionChangedEvent;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import org.openpnp.capture.CaptureDevice;
 import com.sparrowwallet.drongo.ExtendedKey;
 import com.sparrowwallet.drongo.KeyDerivation;
 import com.sparrowwallet.drongo.OutputDescriptor;
@@ -61,7 +66,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-@SuppressWarnings("deprecation")
 public class QRScanDialog extends Dialog<QRScanDialog.Result> {
     private static final Logger log = LoggerFactory.getLogger(QRScanDialog.class);
 
@@ -76,107 +80,141 @@ public class QRScanDialog extends Dialog<QRScanDialog.Result> {
     private static final Pattern PART_PATTERN = Pattern.compile("p(\\d+)of(\\d+) (.+)");
 
     private static final int SCAN_PERIOD_MILLIS = 100;
-    private final ObjectProperty<WebcamResolution> webcamResolutionProperty = new SimpleObjectProperty<>(WebcamResolution.VGA);
+    private final ObjectProperty<WebcamResolution> webcamResolutionProperty = new SimpleObjectProperty<>(WebcamResolution.HD);
+    private final ObservableList<CaptureDevice> foundDevices = FXCollections.observableList(new ArrayList<>());
+    private final ObservableList<WebcamResolution> availableResolutions = FXCollections.observableList(new ArrayList<>());
+    private boolean postOpenUpdate;
 
     private final DoubleProperty percentComplete = new SimpleDoubleProperty(0.0);
 
-    private final ObjectProperty<WebcamDevice> webcamDeviceProperty = new SimpleObjectProperty<>();
+    private final ObjectProperty<CaptureDevice> webcamDeviceProperty = new SimpleObjectProperty<>();
 
     public QRScanDialog() {
         this.urDecoder = new URDecoder();
         this.legacyUrDecoder = new LegacyURDecoder();
         this.bbqrDecoder = new BBQRDecoder();
 
-        if(Config.get().isHdCapture()) {
-            webcamResolutionProperty.set(WebcamResolution.HD);
+        if(Config.get().getWebcamResolution() != null) {
+            webcamResolutionProperty.set(Config.get().getWebcamResolution());
         }
 
-        this.webcamService = new WebcamService(webcamResolutionProperty.get(), null, new QRScanListener(), new ScanDelayCalculator());
+        this.webcamService = new WebcamService(webcamResolutionProperty.get(), null);
         webcamService.setPeriod(Duration.millis(SCAN_PERIOD_MILLIS));
         webcamService.setRestartOnFailure(false);
-        WebcamView webcamView = new WebcamView(webcamService);
 
         final DialogPane dialogPane = new QRScanDialogPane();
         setDialogPane(dialogPane);
         AppServices.setStageIcon(dialogPane.getScene().getWindow());
 
-        StackPane stackPane = new StackPane();
-        stackPane.getChildren().add(webcamView.getView());
-        Node wrappedView = Borders.wrap(stackPane).lineBorder().buildAll();
+        WebcamView webcamView = new WebcamView(webcamService, Config.get().isMirrorCapture());
 
         ProgressBar progressBar = new ProgressBar();
         progressBar.setMinHeight(20);
         progressBar.setPadding(new Insets(0, 10, 0, 10));
         progressBar.setPrefWidth(Integer.MAX_VALUE);
         progressBar.progressProperty().bind(percentComplete);
-        webcamService.openingProperty().addListener((observable, oldValue, newValue) -> {
-            if(percentComplete.get() <= 0.0) {
-                Platform.runLater(() -> percentComplete.set(newValue ? 0.0 : -1.0));
-            }
-            Platform.runLater(() -> {
-                if(Config.get().getWebcamDevice() != null && webcamDeviceProperty.get() == null) {
-                    for(WebcamDevice device : WebcamScanDriver.getFoundDevices()) {
-                        if(device.getName().equals(Config.get().getWebcamDevice())) {
-                            webcamDeviceProperty.set(device);
-                        }
-                    }
-                }
-            });
-        });
 
         VBox vBox = new VBox(20);
+        StackPane stackPane = new StackPane();
+        stackPane.getChildren().add(webcamView.getView());
+        Node wrappedView = Borders.wrap(stackPane).lineBorder().buildAll();
         vBox.getChildren().addAll(wrappedView, progressBar);
-
         dialogPane.setContent(vBox);
+
+        webcamService.openingProperty().addListener((observable, oldValue, opening) -> {
+            if(percentComplete.get() <= 0.0) {
+                Platform.runLater(() -> percentComplete.set(opening ? 0.0 : -1.0));
+            }
+        });
+
+        webcamService.openedProperty().addListener((observable, oldValue, opened) -> {
+            if(opened) {
+                Platform.runLater(() -> {
+                    try {
+                        postOpenUpdate = true;
+                        List<CaptureDevice> newDevices = new ArrayList<>(webcamService.getAvailableDevices());
+                        newDevices.removeAll(foundDevices);
+                        foundDevices.addAll(newDevices);
+                        foundDevices.removeIf(device -> !webcamService.getDevices().contains(device));
+
+                        if(webcamService.getDevice() != null) {
+                            for(CaptureDevice device : foundDevices) {
+                                if(device.equals(webcamService.getDevice())) {
+                                    webcamDeviceProperty.set(device);
+                                }
+                            }
+                        }
+
+                        updateList(availableResolutions, webcamService.getResolutions());
+                        webcamResolutionProperty.set(webcamService.getResolution());
+                    } finally {
+                        postOpenUpdate = false;
+                    }
+                });
+            } else if(webcamResolutionProperty.get() != null) {
+                webcamService.setResolution(webcamResolutionProperty.get());
+                webcamService.setDevice(webcamDeviceProperty.get());
+                Platform.runLater(() -> {
+                    if(!webcamService.isRunning()) {
+                        webcamService.reset();
+                        webcamService.start();
+                    }
+                });
+            }
+        });
 
         webcamService.resultProperty().addListener(new QRResultListener());
         webcamService.setOnFailed(failedEvent -> {
-            Throwable exception = failedEvent.getSource().getException();
-
-            Throwable nested = exception;
-            while(nested.getCause() != null) {
-                nested = nested.getCause();
-            }
-            if(org.controlsfx.tools.Platform.getCurrent() == org.controlsfx.tools.Platform.WINDOWS &&
-                    nested.getMessage().startsWith("Library 'OpenIMAJGrabber' was not loaded successfully from file")) {
-                exception = new WebcamDependencyException("Your system is missing a dependency required for the webcam. Follow the link below for more details.\n\n[https://sparrowwallet.com/docs/faq.html#your-system-is-missing-a-dependency-for-the-webcam]", exception);
-            } else if(nested.getMessage().startsWith("Cannot start native grabber") && Config.get().getWebcamDevice() != null) {
-                exception = new WebcamOpenException("Cannot open configured webcam " + Config.get().getWebcamDevice() + ", reverting to the default webcam");
-                Config.get().setWebcamDevice(null);
-            }
-
-            final Throwable result = exception;
-            Platform.runLater(() -> setResult(new Result(result)));
+            Throwable exception = Throwables.getRootCause(failedEvent.getSource().getException());
+            Platform.runLater(() -> setResult(new Result(exception)));
         });
         webcamService.start();
-        webcamResolutionProperty.addListener((observable, oldValue, newResolution) -> {
+
+        webcamResolutionProperty.addListener((observable, oldResolution, newResolution) -> {
             if(newResolution != null) {
-                setHeight(newResolution == WebcamResolution.HD ? (getHeight() - 100) : (getHeight() + 100));
+                if(newResolution.isStandardAspect() && oldResolution != null && oldResolution.isWidescreenAspect()) {
+                    setWidth(getWidth());
+                    setHeight(getHeight() + 100);
+                    dialogPane.setMaxHeight(dialogPane.getPrefHeight() + 100);
+                    dialogPane.setPrefHeight(dialogPane.getMaxHeight());
+                    dialogPane.setMinHeight(dialogPane.getMaxHeight());
+                } else if(newResolution.isWidescreenAspect() && oldResolution != null && oldResolution.isStandardAspect()) {
+                    setWidth(getWidth());
+                    setHeight(getHeight() - 100);
+                    dialogPane.setMaxHeight(dialogPane.getPrefHeight() - 100);
+                    dialogPane.setPrefHeight(dialogPane.getMaxHeight());
+                    dialogPane.setMinHeight(dialogPane.getMaxHeight());
+                }
+                EventManager.get().post(new WebcamResolutionChangedEvent(newResolution));
             }
-            webcamService.cancel();
+            if(newResolution == null || !postOpenUpdate) {
+                webcamService.cancel();
+            }
         });
         webcamDeviceProperty.addListener((observable, oldValue, newValue) -> {
             Config.get().setWebcamDevice(newValue.getName());
+            Config.get().setWebcamDeviceId(newValue.getUniqueId());
             if(!Objects.equals(webcamService.getDevice(), newValue)) {
                 webcamService.cancel();
             }
         });
 
         setOnCloseRequest(event -> {
-            boolean isHdCapture = (webcamResolutionProperty.get() == WebcamResolution.HD);
-            if(Config.get().isHdCapture() != isHdCapture) {
-                Config.get().setHdCapture(isHdCapture);
+            if(webcamResolutionProperty.get() != null) {
+                Config.get().setWebcamResolution(webcamResolutionProperty.get());
             }
-
-            Platform.runLater(() -> webcamResolutionProperty.set(null));
+            Platform.runLater(() -> {
+                webcamResolutionProperty.set(null);
+                webcamService.close();
+            });
         });
 
         final ButtonType cancelButtonType = new javafx.scene.control.ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
-        final ButtonType hdButtonType = new javafx.scene.control.ButtonType("Use HD Capture", ButtonBar.ButtonData.LEFT);
-        final ButtonType camButtonType = new javafx.scene.control.ButtonType("Default Camera", ButtonBar.ButtonData.HELP_2);
-        dialogPane.getButtonTypes().addAll(hdButtonType, camButtonType, cancelButtonType);
+        final ButtonType deviceButtonType = new javafx.scene.control.ButtonType("Default Camera", ButtonBar.ButtonData.LEFT);
+        final ButtonType resolutionButtonType = new javafx.scene.control.ButtonType("Resolution", ButtonBar.ButtonData.HELP_2);
+        dialogPane.getButtonTypes().addAll(deviceButtonType, resolutionButtonType, cancelButtonType);
         dialogPane.setPrefWidth(646);
-        dialogPane.setPrefHeight(webcamResolutionProperty.get() == WebcamResolution.HD ? 490 : 590);
+        dialogPane.setPrefHeight(webcamResolutionProperty.get().isWidescreenAspect() ? 490 : 590);
         dialogPane.setMinHeight(dialogPane.getPrefHeight());
         AppServices.moveToActiveWindowScreen(this);
 
@@ -683,72 +721,32 @@ public class QRScanDialog extends Dialog<QRScanDialog.Result> {
         }
     }
 
-    private class QRScanListener implements WebcamListener {
-        @Override
-        public void webcamOpen(WebcamEvent webcamEvent) {
-
-        }
-
-        @Override
-        public void webcamClosed(WebcamEvent webcamEvent) {
-            if(webcamResolutionProperty.get() != null) {
-                webcamService.setResolution(webcamResolutionProperty.get());
-                webcamService.setDevice(webcamDeviceProperty.get());
-                Platform.runLater(() -> {
-                    if(!webcamService.isRunning()) {
-                        webcamService.reset();
-                        webcamService.start();
-                    }
-                });
-            }
-        }
-
-        @Override
-        public void webcamDisposed(WebcamEvent webcamEvent) {
-
-        }
-
-        @Override
-        public void webcamImageObtained(WebcamEvent webcamEvent) {
-
-        }
-    }
-
     private class QRScanDialogPane extends DialogPane {
         @Override
         protected Node createButton(ButtonType buttonType) {
-            Node button = null;
+            Node button;
             if(buttonType.getButtonData() == ButtonBar.ButtonData.LEFT) {
-                ToggleButton hd = new ToggleButton(buttonType.getText());
-                hd.setSelected(webcamResolutionProperty.get() == WebcamResolution.HD);
-                hd.setGraphicTextGap(5);
-                setHdGraphic(hd, hd.isSelected());
-
-                final ButtonBar.ButtonData buttonData = buttonType.getButtonData();
-                ButtonBar.setButtonData(hd, buttonData);
-                hd.selectedProperty().addListener((observable, oldValue, newValue) -> {
-                    webcamResolutionProperty.set(newValue ? WebcamResolution.HD : WebcamResolution.VGA);
-                    setHdGraphic(hd, newValue);
-                });
-
-                button = hd;
-            } else if(buttonType.getButtonData() == ButtonBar.ButtonData.HELP_2) {
-                ComboBox<WebcamDevice> devicesCombo = new ComboBox<>(WebcamScanDriver.getFoundDevices());
+                ComboBox<CaptureDevice> devicesCombo = new ComboBox<>(foundDevices);
                 devicesCombo.setConverter(new StringConverter<>() {
                     @Override
-                    public String toString(WebcamDevice device) {
-                        return device instanceof WebcamScanDevice ? ((WebcamScanDevice)device).getDeviceName() : "Default Camera";
+                    public String toString(CaptureDevice device) {
+                        return device != null && device.getName() != null ? device.getName().replaceAll(" \\(.*\\)", "") : "Default Camera";
                     }
 
                     @Override
-                    public WebcamDevice fromString(String string) {
+                    public CaptureDevice fromString(String string) {
                         throw new UnsupportedOperationException();
                     }
                 });
                 devicesCombo.valueProperty().bindBidirectional(webcamDeviceProperty);
-                ButtonBar.setButtonData(devicesCombo, ButtonBar.ButtonData.LEFT);
-
+                final ButtonBar.ButtonData buttonData = buttonType.getButtonData();
+                ButtonBar.setButtonData(devicesCombo, buttonData);
                 button = devicesCombo;
+            } else if(buttonType.getButtonData() == ButtonBar.ButtonData.HELP_2) {
+                ComboBox<WebcamResolution> resolutionsCombo = new ComboBox<>(availableResolutions);
+                resolutionsCombo.valueProperty().bindBidirectional(webcamResolutionProperty);
+                ButtonBar.setButtonData(resolutionsCombo, ButtonBar.ButtonData.LEFT);
+                button = resolutionsCombo;
             } else {
                 button = super.createButton(buttonType);
             }
@@ -761,19 +759,39 @@ public class QRScanDialog extends Dialog<QRScanDialog.Result> {
             button.disableProperty().bind(webcamService.openingProperty());
             return button;
         }
+    }
 
-        private void setHdGraphic(ToggleButton hd, boolean isHd) {
-            if(isHd) {
-                hd.setGraphic(getGlyph(FontAwesome5.Glyph.CHECK_CIRCLE));
+    public static <T extends Comparable<T>> void updateList(List<T> targetList, Collection<T> sourceList) {
+        List<T> sortedSource = new ArrayList<>(sourceList);
+        Collections.sort(sortedSource);
+
+        ListIterator<T> targetIter = targetList.listIterator();
+        int sourceIndex = 0;
+
+        while(sourceIndex < sortedSource.size() && targetIter.hasNext()) {
+            T sourceItem = sortedSource.get(sourceIndex);
+            T targetItem = targetIter.next();
+            int comparison = sourceItem.compareTo(targetItem);
+
+            if(comparison < 0) {
+                targetIter.previous();
+                targetIter.add(sourceItem);
+                sourceIndex++;
+            } else if(comparison > 0) {
+                targetIter.remove();
             } else {
-                hd.setGraphic(getGlyph(FontAwesome5.Glyph.BAN));
+                sourceIndex++;
             }
         }
 
-        private Glyph getGlyph(FontAwesome5.Glyph glyphName) {
-            Glyph glyph = new Glyph(FontAwesome5.FONT_NAME, glyphName);
-            glyph.setFontSize(11);
-            return glyph;
+        while(sourceIndex < sortedSource.size()) {
+            targetIter.add(sortedSource.get(sourceIndex));
+            sourceIndex++;
+        }
+
+        while(targetIter.hasNext()) {
+            targetIter.next();
+            targetIter.remove();
         }
     }
 
@@ -992,9 +1010,4 @@ public class QRScanDialog extends Dialog<QRScanDialog.Result> {
         }
     }
 
-    public static class ScanDelayCalculator implements WebcamUpdater.DelayCalculator {
-        public long calculateDelay(long snapshotDuration, double deviceFps) {
-            return Math.max(SCAN_PERIOD_MILLIS - snapshotDuration, 0L);
-        }
-    }
 }

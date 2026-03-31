@@ -12,6 +12,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.stage.Window;
@@ -65,6 +66,15 @@ public class AshigaruGui extends Application {
         stage.setMinWidth(800);
         stage.setMinHeight(540);
         stage.setScene(scene);
+
+        // Set app icon
+        try {
+            Image icon = new Image(getClass().getResourceAsStream("/image/Ashigaru_Terminal_Logo_Circle.png"));
+            stage.getIcons().add(icon);
+        } catch(Exception e) {
+            log.warn("Could not load application icon", e);
+        }
+
         stage.show();
 
         // Restore recently opened wallets
@@ -115,13 +125,20 @@ public class AshigaruGui extends Application {
     // -------------------------------------------------------------------------
 
     public static void addWallet(Storage storage, Wallet wallet) {
-        if (wallet.isNested()) {
+        if (wallet.isNested() || wallet.isWhirlpoolChildWallet()) {
+            // BIP47 payment-code wallets and Whirlpool child wallets (Premix/Postmix/Badbank)
+            // all go into the master wallet's nested forms list
             String masterId = storage.getWalletId(wallet.getMasterWallet());
             WalletForm masterForm = instance.walletForms.get(masterId);
             if (masterForm != null) {
-                WalletForm childForm = new WalletForm(storage, wallet);
-                EventManager.get().register(childForm);
-                masterForm.getNestedWalletForms().add(childForm);
+                // Avoid duplicates when called multiple times
+                boolean alreadyAdded = masterForm.getNestedWalletForms().stream()
+                        .anyMatch(f -> f.getWallet().equals(wallet));
+                if (!alreadyAdded) {
+                    WalletForm childForm = new WalletForm(storage, wallet);
+                    EventManager.get().register(childForm);
+                    masterForm.getNestedWalletForms().add(childForm);
+                }
             }
         } else {
             EventManager.get().post(new WalletOpeningEvent(storage, wallet));
@@ -153,16 +170,28 @@ public class AshigaruGui extends Application {
         EventManager.get().post(new WalletOpenedEvent(storage, wallet));
     }
 
-    // -------------------------------------------------------------------------
-    // Global event subscriptions
-    // -------------------------------------------------------------------------
-
-    @Subscribe
-    public void walletOpened(WalletOpenedEvent event) {
-        if (event.getWallet().isMasterWallet()) {
-            Platform.runLater(() -> {
-                if (mainController != null) mainController.refreshWalletList();
-            });
+    public static void removeWallet(String walletId) {
+        WalletForm form = instance.walletForms.remove(walletId);
+        if (form != null) {
+            EventManager.get().unregister(form);
+            for (WalletForm nested : form.getNestedWalletForms()) {
+                EventManager.get().unregister(nested);
+            }
+            // Mirror the cleanup WalletForm.walletTabsClosed() normally performs
+            if (form.getWallet().isMasterWallet()) {
+                form.getStorage().close();
+            }
+            if (form.getWallet().isValid()) {
+                AppServices.clearTransactionHistoryCache(form.getWallet());
+            }
         }
+
+        // Sync AppServices.walletWindows — without this, getOpenWallets() returns a stale
+        // entry for the deleted wallet, breaking all subsequent commands that call it.
+        List<WalletTabData> tabDataList = instance.walletForms.values().stream()
+                .map(f -> new WalletTabData(TabData.TabType.WALLET, f))
+                .collect(Collectors.toList());
+        EventManager.get().post(new OpenWalletsEvent(DEFAULT_WINDOW, tabDataList));
     }
+
 }

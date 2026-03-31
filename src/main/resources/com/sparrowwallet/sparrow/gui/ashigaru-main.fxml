@@ -10,6 +10,10 @@
             fx:controller="com.sparrowwallet.sparrow.gui.AshigaruMainController"
             styleClass="root-pane">
 
+    <fx:define>
+        <ToggleGroup fx:id="accountToggleGroup"/>
+    </fx:define>
+
     <!-- ===== TOP HEADER ===== -->
     <top>
         <HBox styleClass="header-bar" alignment="CENTER_LEFT" spacing="12">
@@ -17,6 +21,9 @@
 
             <Label text="Ashigaru Terminal" styleClass="app-title"/>
             <Region HBox.hgrow="ALWAYS"/>
+
+            <!-- Wallet selector (visible when wallets are open) -->
+            <ComboBox fx:id="walletSelector" styleClass="wallet-selector" visible="false"/>
 
             <Label fx:id="networkLabel" text="MAINNET" styleClass="network-label mainnet"/>
             <Label fx:id="blockHeightLabel" text="Block —" styleClass="header-info"/>
@@ -28,19 +35,38 @@
     <left>
         <VBox styleClass="sidebar" minWidth="200" prefWidth="220" spacing="0">
 
-            <Label text="WALLETS" styleClass="sidebar-section-title">
-                <padding><Insets top="14" right="12" bottom="6" left="12"/></padding>
-            </Label>
+            <!-- Account buttons (Deposit, Premix, Postmix, Badbank) -->
+            <VBox fx:id="accountButtonsBox" spacing="0" VBox.vgrow="ALWAYS" visible="false" managed="false">
+                <Label text="ACCOUNTS" styleClass="sidebar-section-title">
+                    <padding><Insets top="14" right="12" bottom="6" left="12"/></padding>
+                </Label>
 
-            <ListView fx:id="walletListView" styleClass="wallet-list" VBox.vgrow="ALWAYS"/>
+                <ToggleButton fx:id="depositBtn" text="Deposit" toggleGroup="$accountToggleGroup"
+                              styleClass="account-btn" maxWidth="Infinity" maxHeight="Infinity"
+                              VBox.vgrow="ALWAYS" onAction="#onAccountSelected"/>
+                <ToggleButton fx:id="premixBtn" text="Premix" toggleGroup="$accountToggleGroup"
+                              styleClass="account-btn" maxWidth="Infinity" maxHeight="Infinity"
+                              VBox.vgrow="ALWAYS" onAction="#onAccountSelected"/>
+                <ToggleButton fx:id="postmixBtn" text="Postmix" toggleGroup="$accountToggleGroup"
+                              styleClass="account-btn" maxWidth="Infinity" maxHeight="Infinity"
+                              VBox.vgrow="ALWAYS" onAction="#onAccountSelected"/>
+                <ToggleButton fx:id="badbankBtn" text="Badbank" toggleGroup="$accountToggleGroup"
+                              styleClass="account-btn" maxWidth="Infinity" maxHeight="Infinity"
+                              VBox.vgrow="ALWAYS" onAction="#onAccountSelected"/>
+            </VBox>
 
+            <!-- Padding to push actions to bottom when accounts are shown -->
+            <Region fx:id="sidebarSpacer" VBox.vgrow="ALWAYS" visible="true"/>
+
+            <!-- Wallet actions (always visible) -->
             <Separator/>
-
             <VBox spacing="8" styleClass="sidebar-actions">
                 <padding><Insets top="10" right="12" bottom="12" left="12"/></padding>
                 <Button text="Open Wallet..." onAction="#onOpenWallet"
                         maxWidth="Infinity" styleClass="action-btn"/>
                 <Button text="Create / Restore..." onAction="#onCreateWallet"
+                        maxWidth="Infinity" styleClass="action-btn secondary-btn"/>
+                <Button text="Preferences..." onAction="#onPreferences"
                         maxWidth="Infinity" styleClass="action-btn secondary-btn"/>
             </VBox>
         </VBox>
@@ -55,8 +81,7 @@
                     <VBox alignment="CENTER" spacing="16">
                         <Label text="Ashigaru Terminal" styleClass="welcome-title"/>
                         <Label text="Open a wallet to get started." styleClass="welcome-sub"/>
-                        <Label text="Use &#8220;Open Wallet...&#8221; in the sidebar, or launch with" styleClass="welcome-hint"/>
-                        <Label text="--terminal to create or restore a wallet." styleClass="welcome-hint mono"/>
+                        <Label text="Use &#8220;Open Wallet...&#8221; or &#8220;Create / Restore...&#8221; in the sidebar." styleClass="welcome-hint"/>
                     </VBox>
                 </StackPane>
             </center>

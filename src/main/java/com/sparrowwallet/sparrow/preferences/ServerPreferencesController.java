@@ -183,14 +183,14 @@ public class ServerPreferencesController extends PreferencesDetailController {
         Platform.runLater(this::setupValidation);
 
         publicElectrumForm.managedProperty().bind(publicElectrumForm.visibleProperty());
-        coreForm.managedProperty().bind(coreForm.visibleProperty());
+        if(coreForm != null) coreForm.managedProperty().bind(coreForm.visibleProperty());
         electrumForm.managedProperty().bind(electrumForm.visibleProperty());
         serverTypeToggleGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
             if(serverTypeToggleGroup.getSelectedToggle() != null) {
                 ServerType existingType = config.getServerType();
                 ServerType serverType = (ServerType)newValue.getUserData();
                 publicElectrumForm.setVisible(serverType == ServerType.PUBLIC_ELECTRUM_SERVER);
-                coreForm.setVisible(serverType == ServerType.BITCOIN_CORE);
+                if(coreForm != null) coreForm.setVisible(serverType == ServerType.BITCOIN_CORE);
                 electrumForm.setVisible(serverType == ServerType.ELECTRUM_SERVER);
                 config.setServerType(serverType);
                 testConnection.setGraphic(getGlyph(FontAwesome5.Glyph.QUESTION_CIRCLE, ""));
@@ -202,10 +202,10 @@ public class ServerPreferencesController extends PreferencesDetailController {
                 oldValue.setSelected(true);
             }
         });
-        ServerType serverType = config.getServerType() != null ?
-                (config.getServerType() == ServerType.PUBLIC_ELECTRUM_SERVER && !PublicElectrumServer.supportedNetwork() ? ServerType.BITCOIN_CORE : config.getServerType()) :
-                    (config.getCoreServer() == null && config.getElectrumServer() != null ? ServerType.ELECTRUM_SERVER :
-                        (config.getCoreServer() != null || !PublicElectrumServer.supportedNetwork() ? ServerType.BITCOIN_CORE : ServerType.PUBLIC_ELECTRUM_SERVER));
+        ServerType serverType = config.getServerType() != null && config.getServerType() != ServerType.BITCOIN_CORE ?
+                (config.getServerType() == ServerType.PUBLIC_ELECTRUM_SERVER && !PublicElectrumServer.supportedNetwork() ? ServerType.ELECTRUM_SERVER : config.getServerType()) :
+                    (config.getElectrumServer() != null ? ServerType.ELECTRUM_SERVER :
+                        (!PublicElectrumServer.supportedNetwork() ? ServerType.ELECTRUM_SERVER : ServerType.PUBLIC_ELECTRUM_SERVER));
         if(!PublicElectrumServer.supportedNetwork()) {
             serverTypeSegmentedButton.getButtons().remove(publicElectrumToggle);
             serverTypeToggleGroup.getToggles().remove(publicElectrumToggle);
@@ -219,21 +219,21 @@ public class ServerPreferencesController extends PreferencesDetailController {
         publicProxyHost.textProperty().bindBidirectional(proxyHost.textProperty());
         publicProxyPort.textProperty().bindBidirectional(proxyPort.textProperty());
 
-        corePort.setTextFormatter(new TextFieldValidator(TextFieldValidator.ValidationModus.MAX_INTEGERS, 5).getFormatter());
+        if(corePort != null) corePort.setTextFormatter(new TextFieldValidator(TextFieldValidator.ValidationModus.MAX_INTEGERS, 5).getFormatter());
         electrumPort.setTextFormatter(new TextFieldValidator(TextFieldValidator.ValidationModus.MAX_INTEGERS, 5).getFormatter());
         proxyPort.setTextFormatter(new TextFieldValidator(TextFieldValidator.ValidationModus.MAX_INTEGERS, 5).getFormatter());
-        coreProxyPort.setTextFormatter(new TextFieldValidator(TextFieldValidator.ValidationModus.MAX_INTEGERS, 5).getFormatter());
+        if(coreProxyPort != null) coreProxyPort.setTextFormatter(new TextFieldValidator(TextFieldValidator.ValidationModus.MAX_INTEGERS, 5).getFormatter());
         publicProxyPort.setTextFormatter(new TextFieldValidator(TextFieldValidator.ValidationModus.MAX_INTEGERS, 5).getFormatter());
 
-        coreHost.textProperty().addListener(getBitcoinCoreListener(config));
-        corePort.textProperty().addListener(getBitcoinCoreListener(config));
+        if(coreHost != null) coreHost.textProperty().addListener(getBitcoinCoreListener(config));
+        if(corePort != null) corePort.textProperty().addListener(getBitcoinCoreListener(config));
 
-        coreUser.textProperty().addListener(getBitcoinAuthListener(config));
-        corePass.textProperty().addListener(getBitcoinAuthListener(config));
+        if(coreUser != null) coreUser.textProperty().addListener(getBitcoinAuthListener(config));
+        if(corePass != null) corePass.textProperty().addListener(getBitcoinAuthListener(config));
 
-        coreUseProxy.selectedProperty().bindBidirectional(useProxy.selectedProperty());
-        coreProxyHost.textProperty().bindBidirectional(proxyHost.textProperty());
-        coreProxyPort.textProperty().bindBidirectional(proxyPort.textProperty());
+        if(coreUseProxy != null) coreUseProxy.selectedProperty().bindBidirectional(useProxy.selectedProperty());
+        if(coreProxyHost != null) coreProxyHost.textProperty().bindBidirectional(proxyHost.textProperty());
+        if(coreProxyPort != null) coreProxyPort.textProperty().bindBidirectional(proxyPort.textProperty());
 
         electrumHost.textProperty().addListener(getElectrumServerListener(config));
         electrumPort.textProperty().addListener(getElectrumServerListener(config));
@@ -241,64 +241,68 @@ public class ServerPreferencesController extends PreferencesDetailController {
         proxyHost.textProperty().addListener(getProxyListener(config));
         proxyPort.textProperty().addListener(getProxyListener(config));
 
-        corePort.setPromptText("e.g. " + Network.get().getDefaultPort());
-        coreDataDirField.managedProperty().bind(coreDataDirField.visibleProperty());
-        coreUserPassField.managedProperty().bind(coreUserPassField.visibleProperty());
-        coreUserPassField.visibleProperty().bind(coreDataDirField.visibleProperty().not());
-        coreAuthToggleGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
-            if(coreAuthToggleGroup.getSelectedToggle() != null) {
-                CoreAuthType coreAuthType = (CoreAuthType)newValue.getUserData();
-                coreDataDirField.setVisible(coreAuthType == CoreAuthType.COOKIE);
-                config.setCoreAuthType(coreAuthType);
-            } else if(oldValue != null) {
-                oldValue.setSelected(true);
-            }
-        });
-        CoreAuthType coreAuthType = config.getCoreAuthType() != null ? config.getCoreAuthType() : CoreAuthType.COOKIE;
-        coreAuthToggleGroup.selectToggle(coreAuthToggleGroup.getToggles().stream().filter(toggle -> toggle.getUserData() == coreAuthType).findFirst().orElse(null));
-
-        coreDataDir.textProperty().addListener((observable, oldValue, newValue) -> {
-            File dataDir = getDirectory(newValue);
-            config.setCoreDataDir(dataDir);
-        });
-
-        coreDataDirSelect.setOnAction(event -> {
-            Stage window = new Stage();
-
-            DirectoryChooser directorChooser = new DirectoryChooser();
-            directorChooser.setTitle("Select Bitcoin Core Data Directory");
-            directorChooser.setInitialDirectory(config.getCoreDataDir() != null ? config.getCoreDataDir() : new File(System.getProperty("user.home")));
-
-            File dataDir = directorChooser.showDialog(window);
-            if(dataDir != null) {
-                coreDataDir.setText(dataDir.getAbsolutePath());
-            }
-        });
-
-        recentCoreServers.setCellFactory(value -> new ServerCell());
-        recentCoreServers.setItems(getObservableServerList(Config.get().getRecentCoreServers()));
-        recentCoreServers.prefWidthProperty().bind(coreHost.widthProperty());
-        recentCoreServers.valueProperty().addListener((observable, oldValue, newValue) -> {
-            if(newValue != null) {
-                if(newValue == MANAGE_ALIASES_SERVER) {
-                    ServerAliasDialog serverAliasDialog = new ServerAliasDialog(ServerType.BITCOIN_CORE);
-                    serverAliasDialog.initOwner(recentCoreServers.getScene().getWindow());
-                    Optional<Server> optServer = serverAliasDialog.showAndWait();
-                    recentCoreServers.setItems(getObservableServerList(Config.get().getRecentCoreServers()));
-                    Server selectedServer = optServer.orElseGet(() -> Config.get().getCoreServer());
-                    Platform.runLater(() -> recentCoreServers.setValue(selectedServer));
-                } else if(newValue.getHostAndPort() != null) {
-                    HostAndPort hostAndPort = newValue.getHostAndPort();
-                    corePort.setText(hostAndPort.hasPort() ? Integer.toString(hostAndPort.getPort()) : "");
-                    if(newValue.getAlias() != null) {
-                        coreHost.setText(newValue.getAlias());
-                    } else {
-                        coreHost.setText(hostAndPort.getHost());
-                    }
-                    coreHost.positionCaret(coreHost.getText().length());
+        if(coreForm != null) {
+            corePort.setPromptText("e.g. " + Network.get().getDefaultPort());
+            coreDataDirField.managedProperty().bind(coreDataDirField.visibleProperty());
+            coreUserPassField.managedProperty().bind(coreUserPassField.visibleProperty());
+            coreUserPassField.visibleProperty().bind(coreDataDirField.visibleProperty().not());
+            coreAuthToggleGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+                if(coreAuthToggleGroup.getSelectedToggle() != null) {
+                    CoreAuthType coreAuthType = (CoreAuthType)newValue.getUserData();
+                    coreDataDirField.setVisible(coreAuthType == CoreAuthType.COOKIE);
+                    config.setCoreAuthType(coreAuthType);
+                } else if(oldValue != null) {
+                    oldValue.setSelected(true);
                 }
-            }
-        });
+            });
+            CoreAuthType coreAuthType = config.getCoreAuthType() != null ? config.getCoreAuthType() : CoreAuthType.COOKIE;
+            coreAuthToggleGroup.selectToggle(coreAuthToggleGroup.getToggles().stream().filter(toggle -> toggle.getUserData() == coreAuthType).findFirst().orElse(null));
+
+            coreDataDir.textProperty().addListener((observable, oldValue, newValue) -> {
+                File dataDir = getDirectory(newValue);
+                config.setCoreDataDir(dataDir);
+            });
+
+            coreDataDirSelect.setOnAction(event -> {
+                Stage window = new Stage();
+
+                DirectoryChooser directorChooser = new DirectoryChooser();
+                directorChooser.setTitle("Select Bitcoin Core Data Directory");
+                directorChooser.setInitialDirectory(config.getCoreDataDir() != null ? config.getCoreDataDir() : new File(System.getProperty("user.home")));
+
+                File dataDir = directorChooser.showDialog(window);
+                if(dataDir != null) {
+                    coreDataDir.setText(dataDir.getAbsolutePath());
+                }
+            });
+        }
+
+        if(recentCoreServers != null) {
+            recentCoreServers.setCellFactory(value -> new ServerCell());
+            recentCoreServers.setItems(getObservableServerList(Config.get().getRecentCoreServers()));
+            recentCoreServers.prefWidthProperty().bind(coreHost.widthProperty());
+            recentCoreServers.valueProperty().addListener((observable, oldValue, newValue) -> {
+                if(newValue != null) {
+                    if(newValue == MANAGE_ALIASES_SERVER) {
+                        ServerAliasDialog serverAliasDialog = new ServerAliasDialog(ServerType.BITCOIN_CORE);
+                        serverAliasDialog.initOwner(recentCoreServers.getScene().getWindow());
+                        Optional<Server> optServer = serverAliasDialog.showAndWait();
+                        recentCoreServers.setItems(getObservableServerList(Config.get().getRecentCoreServers()));
+                        Server selectedServer = optServer.orElseGet(() -> Config.get().getCoreServer());
+                        Platform.runLater(() -> recentCoreServers.setValue(selectedServer));
+                    } else if(newValue.getHostAndPort() != null) {
+                        HostAndPort hostAndPort = newValue.getHostAndPort();
+                        corePort.setText(hostAndPort.hasPort() ? Integer.toString(hostAndPort.getPort()) : "");
+                        if(newValue.getAlias() != null) {
+                            coreHost.setText(newValue.getAlias());
+                        } else {
+                            coreHost.setText(hostAndPort.getHost());
+                        }
+                        coreHost.positionCaret(coreHost.getText().length());
+                    }
+                }
+            });
+        }
 
         recentElectrumServers.setCellFactory(value -> new ServerCell());
         recentElectrumServers.setItems(getObservableServerList(Config.get().getRecentElectrumServers()));
@@ -405,31 +409,33 @@ public class ServerPreferencesController extends PreferencesDetailController {
             publicElectrumServer.setValue(configPublicElectrumServer);
         }
 
-        Server coreServer = config.getCoreServer();
-        if(coreServer != null) {
-            HostAndPort hostAndPort = coreServer.getHostAndPort();
-            Server server = config.getRecentCoreServers().stream().filter(coreServer::equals).findFirst().orElse(null);
-            if(server != null) {
-                coreHost.setLeft(getGlyph(FontAwesome5.Glyph.TAG, null));
+        if(coreHost != null) {
+            Server coreServer = config.getCoreServer();
+            if(coreServer != null) {
+                HostAndPort hostAndPort = coreServer.getHostAndPort();
+                Server server = config.getRecentCoreServers().stream().filter(coreServer::equals).findFirst().orElse(null);
+                if(server != null) {
+                    coreHost.setLeft(getGlyph(FontAwesome5.Glyph.TAG, null));
+                }
+                coreHost.setText(server == null || server.getAlias() == null ? hostAndPort.getHost() : server.getAlias());
+                if(hostAndPort.hasPort()) {
+                    corePort.setText(Integer.toString(hostAndPort.getPort()));
+                }
+            } else {
+                coreHost.setText("127.0.0.1");
+                corePort.setText(String.valueOf(Network.get().getDefaultPort()));
             }
-            coreHost.setText(server == null || server.getAlias() == null ? hostAndPort.getHost() : server.getAlias());
-            if(hostAndPort.hasPort()) {
-                corePort.setText(Integer.toString(hostAndPort.getPort()));
-            }
-        } else {
-            coreHost.setText("127.0.0.1");
-            corePort.setText(String.valueOf(Network.get().getDefaultPort()));
-        }
 
-        coreDataDir.setText(config.getCoreDataDir() != null ? config.getCoreDataDir().getAbsolutePath() : getDefaultCoreDataDir().getAbsolutePath());
+            if(coreDataDir != null) coreDataDir.setText(config.getCoreDataDir() != null ? config.getCoreDataDir().getAbsolutePath() : getDefaultCoreDataDir().getAbsolutePath());
 
-        if(config.getCoreAuth() != null) {
-            String[] userPass = config.getCoreAuth().split(":");
-            if(userPass.length > 0) {
-                coreUser.setText(userPass[0]);
-            }
-            if(userPass.length > 1) {
-                corePass.setText(userPass[1]);
+            if(config.getCoreAuth() != null) {
+                String[] userPass = config.getCoreAuth().split(":");
+                if(userPass.length > 0 && coreUser != null) {
+                    coreUser.setText(userPass[0]);
+                }
+                if(userPass.length > 1 && corePass != null) {
+                    corePass.setText(userPass[1]);
+                }
             }
         }
 
@@ -520,9 +526,7 @@ public class ServerPreferencesController extends PreferencesDetailController {
             connectionService.cancel();
             useProxyOriginal = null;
             if(Config.get().addRecentServer()) {
-                if(Config.get().getServerType() == ServerType.BITCOIN_CORE) {
-                    recentCoreServers.setItems(getObservableServerList(Config.get().getRecentCoreServers()));
-                } else if(Config.get().getServerType() == ServerType.ELECTRUM_SERVER) {
+                if(Config.get().getServerType() == ServerType.ELECTRUM_SERVER) {
                     recentElectrumServers.setItems(getObservableServerList(Config.get().getRecentElectrumServers()));
                 }
             }
@@ -577,16 +581,16 @@ public class ServerPreferencesController extends PreferencesDetailController {
         publicProxyHost.setDisable(!editable);
         publicProxyPort.setDisable(!editable);
 
-        coreHost.setDisable(!editable);
-        corePort.setDisable(!editable);
-        coreAuthToggleGroup.getToggles().forEach(toggle -> ((ToggleButton)toggle).setDisable(!editable));
-        coreDataDir.setDisable(!editable);
-        coreDataDirSelect.setDisable(!editable);
-        coreUser.setDisable(!editable);
-        corePass.setDisable(!editable);
-        coreUseProxy.setDisable(!editable);
-        coreProxyHost.setDisable(!editable);
-        coreProxyPort.setDisable(!editable);
+        if(coreHost != null) coreHost.setDisable(!editable);
+        if(corePort != null) corePort.setDisable(!editable);
+        if(coreAuthToggleGroup != null) coreAuthToggleGroup.getToggles().forEach(toggle -> ((ToggleButton)toggle).setDisable(!editable));
+        if(coreDataDir != null) coreDataDir.setDisable(!editable);
+        if(coreDataDirSelect != null) coreDataDirSelect.setDisable(!editable);
+        if(coreUser != null) coreUser.setDisable(!editable);
+        if(corePass != null) corePass.setDisable(!editable);
+        if(coreUseProxy != null) coreUseProxy.setDisable(!editable);
+        if(coreProxyHost != null) coreProxyHost.setDisable(!editable);
+        if(coreProxyPort != null) coreProxyPort.setDisable(!editable);
 
         electrumHost.setDisable(!editable);
         electrumPort.setDisable(!editable);
@@ -668,23 +672,23 @@ public class ServerPreferencesController extends PreferencesDetailController {
                 (Control c, String newValue) -> ValidationResult.fromErrorIf( c, "Invalid proxy port", !newValue.isEmpty() && !isValidPort(Integer.parseInt(newValue)))
         ));
 
-        validationSupport.registerValidator(coreHost, Validator.combine(
+        if(coreHost != null) validationSupport.registerValidator(coreHost, Validator.combine(
                 (Control c, String newValue) -> ValidationResult.fromErrorIf( c, "Invalid Core host", getHost(newValue) == null)
         ));
 
-        validationSupport.registerValidator(corePort, Validator.combine(
+        if(corePort != null) validationSupport.registerValidator(corePort, Validator.combine(
                 (Control c, String newValue) -> ValidationResult.fromErrorIf( c, "Invalid Core port", !newValue.isEmpty() && !isValidPort(Integer.parseInt(newValue)))
         ));
 
-        validationSupport.registerValidator(coreDataDir, Validator.combine(
+        if(coreDataDir != null && coreAuthToggleGroup != null) validationSupport.registerValidator(coreDataDir, Validator.combine(
                 (Control c, String newValue) -> ValidationResult.fromErrorIf( c, "Core Data Dir required", coreAuthToggleGroup.getSelectedToggle().getUserData() == CoreAuthType.COOKIE && (newValue.isEmpty() || getDirectory(newValue) == null))
         ));
 
-        validationSupport.registerValidator(coreUser, Validator.combine(
+        if(coreUser != null && coreAuthToggleGroup != null) validationSupport.registerValidator(coreUser, Validator.combine(
                 (Control c, String newValue) -> ValidationResult.fromErrorIf( c, "Core user required", coreAuthToggleGroup.getSelectedToggle().getUserData() == CoreAuthType.USERPASS && newValue.isEmpty())
         ));
 
-        validationSupport.registerValidator(corePass, Validator.combine(
+        if(corePass != null && coreAuthToggleGroup != null) validationSupport.registerValidator(corePass, Validator.combine(
                 (Control c, String newValue) -> ValidationResult.fromErrorIf( c, "Core pass required", coreAuthToggleGroup.getSelectedToggle().getUserData() == CoreAuthType.USERPASS && newValue.isEmpty())
         ));
 

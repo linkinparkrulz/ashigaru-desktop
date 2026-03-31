@@ -9,17 +9,6 @@
       fx:controller="com.sparrowwallet.sparrow.gui.AshigaruWalletController"
       styleClass="wallet-panel" spacing="0">
 
-    <!-- Wallet name header -->
-    <HBox styleClass="wallet-header" alignment="CENTER_LEFT" spacing="10">
-        <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
-        <Label fx:id="walletNameLabel" text="" styleClass="wallet-name-label"/>
-        <Region HBox.hgrow="ALWAYS"/>
-        <Button text="⟳  Refresh" onAction="#onRefresh" styleClass="refresh-btn"/>
-    </HBox>
-
-    <!-- Account tabs -->
-    <TabPane fx:id="accountTabs" styleClass="account-tabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="NEVER"/>
-
     <!-- Balance row -->
     <HBox styleClass="balance-row" alignment="CENTER_LEFT" spacing="24">
         <padding><Insets top="10" right="16" bottom="10" left="16"/></padding>
@@ -38,6 +27,28 @@
             <Label text="UTXOs" styleClass="balance-caption"/>
             <Label fx:id="utxoCountLabel" text="0" styleClass="balance-value secondary"/>
         </VBox>
+
+        <Region HBox.hgrow="ALWAYS"/>
+
+        <Button fx:id="receiveBtn" text="⬇  Receive" onAction="#onReceive" styleClass="action-btn" visible="false" managed="false"/>
+        <Button text="⟳  Refresh" onAction="#onRefresh" styleClass="refresh-btn"/>
+        <Button text="✕  Delete" onAction="#onDelete" styleClass="delete-btn"/>
+    </HBox>
+
+    <!-- Badbank / doxxic-change info bar (shown only when Badbank tab is active) -->
+    <HBox fx:id="badbankInfoBar" styleClass="badbank-info-bar" alignment="CENTER_LEFT" spacing="8" visible="false" managed="false">
+        <padding><Insets top="8" right="16" bottom="8" left="16"/></padding>
+        <Label text="⚠" styleClass="badbank-warning-icon"/>
+        <Label fx:id="badbankInfoLabel"
+               text="Doxxic Change — these UTXOs were not mixed. Select them and use 'Mix Selected UTXOs' to re-enter a smaller pool, or handle them carefully as described in the guide."
+               styleClass="badbank-info-text" wrapText="true"/>
+    </HBox>
+
+    <!-- View toggle: UTXOs / Transactions -->
+    <HBox styleClass="view-toggle-bar" alignment="CENTER_LEFT" spacing="0">
+        <padding><Insets top="6" right="16" bottom="6" left="16"/></padding>
+        <ToggleButton fx:id="utxoViewBtn"  text="UTXOs"        onAction="#onViewToggle" styleClass="view-toggle-btn" selected="true"/>
+        <ToggleButton fx:id="txnViewBtn"   text="Transactions" onAction="#onViewToggle" styleClass="view-toggle-btn"/>
     </HBox>
 
     <Separator/>
@@ -55,6 +66,19 @@
         </placeholder>
     </TableView>
 
+    <!-- Transaction history table (hidden by default) -->
+    <TableView fx:id="txnTable" styleClass="utxo-table" VBox.vgrow="ALWAYS" visible="false" managed="false">
+        <columns>
+            <TableColumn fx:id="colTxnDate"   text="Date"   prefWidth="160" minWidth="120"/>
+            <TableColumn fx:id="colTxnId"     text="TxID"   prefWidth="260" minWidth="160"/>
+            <TableColumn fx:id="colTxnLabel"  text="Label"  prefWidth="160" minWidth="100"/>
+            <TableColumn fx:id="colTxnAmount" text="Amount" prefWidth="160" minWidth="120"/>
+        </columns>
+        <placeholder>
+            <Label text="No transactions" styleClass="table-placeholder"/>
+        </placeholder>
+    </TableView>
+
     <Separator/>
 
     <!-- Mix action buttons -->
@@ -65,7 +89,6 @@
         <Button fx:id="mixToBtn"      text="Mix To..."          onAction="#onMixTo"        styleClass="action-btn mix-btn"  visible="false"/>
         <Button fx:id="mixSelectedBtn" text="Mix Selected UTXOs" onAction="#onMixSelected" styleClass="action-btn mix-btn"  visible="false"/>
 
-        <!-- VBox inside wallet panel is the accountPanel anchor -->
-        <VBox fx:id="accountPanel" HBox.hgrow="ALWAYS"/>
+        <Region HBox.hgrow="ALWAYS"/>
     </HBox>
 </VBox>

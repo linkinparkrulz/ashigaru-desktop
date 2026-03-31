@@ -7,3 +7,4 @@ out
 *.log
 build-*.sh
 .DS_Store
+META-INF/

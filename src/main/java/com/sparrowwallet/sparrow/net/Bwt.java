@@ -350,6 +350,10 @@ public class Bwt {
                             log.debug("http ready at " + addr);
                         }
 
+                        public void onAccessToken(String token) {
+                            log.debug("Access token received");
+                        }
+
                         @Override
                         public void onReady() {
                             log.debug("Bwt ready");

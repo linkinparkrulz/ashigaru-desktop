@@ -14,7 +14,6 @@
 <?import org.controlsfx.glyphfont.Glyph?>
 <?import org.controlsfx.control.SegmentedButton?>
 <?import com.sparrowwallet.sparrow.net.ServerType?>
-<?import com.sparrowwallet.sparrow.net.CoreAuthType?>
 <?import com.sparrowwallet.sparrow.control.HelpLabel?>
 <?import com.sparrowwallet.sparrow.control.CopyableLabel?>
 <?import com.sparrowwallet.sparrow.control.ComboBoxTextField?>
@@ -44,14 +43,6 @@
                             </graphic>
                             <userData>
                                 <ServerType fx:constant="PUBLIC_ELECTRUM_SERVER"/>
-                            </userData>
-                        </ToggleButton>
-                        <ToggleButton text="Bitcoin Core" toggleGroup="$serverTypeToggleGroup">
-                            <graphic>
-                                <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="12" icon="TOGGLE_ON" styleClass="bitcoin-core" />
-                            </graphic>
-                            <userData>
-                                <ServerType fx:constant="BITCOIN_CORE"/>
                             </userData>
                         </ToggleButton>
                         <ToggleButton text="Private Electrum" toggleGroup="$serverTypeToggleGroup">
@@ -93,56 +84,6 @@
             <Field text="Proxy URL:">
                 <TextField fx:id="publicProxyHost" promptText="e.g. 127.0.0.1" />
                 <TextField fx:id="publicProxyPort" maxWidth="120" promptText="e.g. 9050/9150" />
-            </Field>
-        </Fieldset>
-    </Form>
-
-    <Form fx:id="coreForm" GridPane.columnIndex="0" GridPane.rowIndex="1">
-        <Fieldset inputGrow="SOMETIMES" text="Bitcoin Core RPC">
-            <Field text="URL:">
-                <StackPane>
-                    <ComboBox fx:id="recentCoreServers" />
-                    <ComboBoxTextField fx:id="coreHost" promptText="e.g. 127.0.0.1" comboProperty="$recentCoreServers" />
-                </StackPane>
-                <TextField fx:id="corePort" promptText="e.g. 8332" maxWidth="120" />
-            </Field>
-            <Field text="Authentication:">
-                <SegmentedButton>
-                    <toggleGroup>
-                        <ToggleGroup fx:id="coreAuthToggleGroup" />
-                    </toggleGroup>
-                    <buttons>
-                        <ToggleButton text="Default" toggleGroup="$coreAuthToggleGroup">
-                            <userData>
-                                <CoreAuthType fx:constant="COOKIE"/>
-                            </userData>
-                        </ToggleButton>
-                        <ToggleButton text="User / Pass" toggleGroup="$coreAuthToggleGroup">
-                            <userData>
-                                <CoreAuthType fx:constant="USERPASS"/>
-                            </userData>
-                        </ToggleButton>
-                    </buttons>
-                </SegmentedButton>
-            </Field>
-            <Field fx:id="coreDataDirField" text="Data Folder:" styleClass="label-button">
-                <TextField fx:id="coreDataDir"/>
-                <Button fx:id="coreDataDirSelect" maxWidth="35" minWidth="-Infinity" prefWidth="35">
-                    <graphic>
-                        <Glyph fontFamily="FontAwesome" icon="EDIT" fontSize="13" />
-                    </graphic>
-                </Button>
-            </Field>
-            <Field fx:id="coreUserPassField" text="User / Pass:" styleClass="label-button">
-                <TextField fx:id="coreUser"/>
-                <PasswordField fx:id="corePass"/>
-            </Field>
-            <Field text="Use Proxy:">
-                <UnlabeledToggleSwitch fx:id="coreUseProxy"/><HelpLabel helpText="Bitcoin Core RPC onion URLs, and all other non-RPC external addresses will be connected via this proxy if configured." />
-            </Field>
-            <Field text="Proxy URL:">
-                <TextField fx:id="coreProxyHost" promptText="e.g. 127.0.0.1" />
-                <TextField fx:id="coreProxyPort" maxWidth="120" promptText="e.g. 9050/9150" />
             </Field>
         </Fieldset>
     </Form>

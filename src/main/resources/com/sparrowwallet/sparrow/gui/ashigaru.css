@@ -5,22 +5,22 @@
 
 /* ── Palette ──────────────────────────────────────────────────────────────── */
 * {
-    -ag-bg:           #1a1a1a;
-    -ag-bg-mid:       #242424;
-    -ag-bg-light:     #2e2e2e;
-    -ag-bg-raised:    #363636;
-    -ag-border:       #3d3d3d;
-    -ag-text:         #e8e8e8;
-    -ag-text-dim:     #9a9a9a;
-    -ag-text-faint:   #606060;
-    -ag-accent:       #f7931a;   /* Bitcoin orange */
-    -ag-accent-dark:  #c76e10;
+    -ag-bg:           #0d0d0d;
+    -ag-bg-mid:       #161616;
+    -ag-bg-light:     #1e1e1e;
+    -ag-bg-raised:    #282828;
+    -ag-border:       #2a2a2a;
+    -ag-text:         #e0e0e0;
+    -ag-text-dim:     #888888;
+    -ag-text-faint:   #505050;
+    -ag-accent:       #cc1111;   /* Ashigaru red */
+    -ag-accent-dark:  #991010;
     -ag-green:        #4caf50;
-    -ag-red:          #e53935;
+    -ag-red:          #cc1111;
     -ag-blue:         #42a5f5;
-    -ag-testnet:      #f7931a;
+    -ag-testnet:      #e57c00;
     -ag-mainnet:      #4caf50;
-    -ag-radius:       4px;
+    -ag-radius:       3px;
 }
 
 /* ── Root / Scene ─────────────────────────────────────────────────────────── */
@@ -31,6 +31,10 @@
     -fx-text-fill:        -ag-text;
     -fx-font-family:      "RobotoMono Regular", "Monospaced", monospace;
     -fx-font-size:        13px;
+    /* Replace Modena's blue accent/focus with our red */
+    -fx-accent:           -ag-accent;
+    -fx-focus-color:      -ag-accent;
+    -fx-faint-focus-color: derive(-ag-accent, -75%);
 }
 
 .root-pane {
@@ -136,6 +140,14 @@
 
 .mix-btn { -fx-min-width: 140; }
 .refresh-btn { -fx-font-size: 11px; -fx-padding: 4 10 4 10; }
+.delete-btn {
+    -fx-background-color: derive(-ag-accent, -70%);
+    -fx-text-fill: -ag-accent;
+    -fx-border-color: -ag-accent-dark;
+    -fx-font-size: 11px;
+    -fx-padding: 4 10 4 10;
+}
+.delete-btn:hover { -fx-background-color: derive(-ag-accent, -55%); }
 
 /* ── Content area ─────────────────────────────────────────────────────────── */
 .content-area {
@@ -233,7 +245,7 @@
 }
 .utxo-table .table-row-cell:odd  { -fx-background-color: derive(-ag-bg, 5%); }
 .utxo-table .table-row-cell:hover { -fx-background-color: -ag-bg-raised; }
-.utxo-table .table-row-cell:selected { -fx-background-color: derive(-ag-accent, -65%); }
+.utxo-table .table-row-cell:selected { -fx-background-color: derive(-ag-accent, -45%); }
 .utxo-table .table-cell {
     -fx-text-fill: -ag-text;
     -fx-padding: 6 10 6 10;
@@ -310,6 +322,67 @@
     -fx-font-size: 14px;
 }
 
+/* ── Toggle buttons ───────────────────────────────────────────────────────── */
+.toggle-button {
+    -fx-background-color: -ag-bg-light;
+    -fx-text-fill: -ag-text-dim;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: -ag-radius;
+    -fx-background-radius: -ag-radius;
+    -fx-padding: 5 14 5 14;
+    -fx-cursor: hand;
+}
+.toggle-button:hover  { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
+.toggle-button:selected {
+    -fx-background-color: derive(-ag-accent, -65%);
+    -fx-text-fill: -ag-accent;
+    -fx-border-color: -ag-accent;
+}
+.toggle-button:selected:hover { -fx-background-color: derive(-ag-accent, -60%); }
+.toggle-button:disabled { -fx-opacity: 0.45; }
+
+/* ── View toggle bar (UTXOs / Transactions) ───────────────────────────────── */
+.view-toggle-bar {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: transparent;
+}
+.view-toggle-bar .toggle-button {
+    -fx-border-radius: -ag-radius;
+    -fx-background-radius: -ag-radius;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-min-width: 110;
+    -fx-background-color: transparent;
+}
+.view-toggle-bar .toggle-button:hover {
+    -fx-text-fill: -ag-text;
+    -fx-border-color: -ag-border;
+}
+.view-toggle-bar .toggle-button:selected {
+    -fx-border-color: transparent transparent -ag-accent transparent;
+    -fx-text-fill: -ag-accent;
+    -fx-background-color: transparent;
+}
+.view-toggle-bar .toggle-button:selected:hover {
+    -fx-background-color: transparent;
+}
+
+/* ── Badbank info bar ─────────────────────────────────────────────────────── */
+.badbank-info-bar {
+    -fx-background-color: derive(-ag-testnet, -75%);
+    -fx-border-color: -ag-testnet;
+    -fx-border-width: 0 0 1 0;
+}
+.badbank-warning-icon { -fx-text-fill: -ag-testnet; -fx-font-size: 14px; }
+.badbank-info-text    { -fx-text-fill: -ag-testnet; -fx-font-size: 11px; }
+
+/* ── Receive dialog ───────────────────────────────────────────────────────── */
+.address-field {
+    -fx-font-family: monospace;
+    -fx-font-size: 11px;
+    -fx-text-fill: -ag-accent;
+}
+
 /* ── Separator ────────────────────────────────────────────────────────────── */
 .separator .line { -fx-border-color: -ag-border; }
 
@@ -318,10 +391,10 @@
     -fx-background-color: -ag-bg-mid;
 }
 .scroll-bar .thumb {
-    -fx-background-color: -ag-border;
+    -fx-background-color: -ag-text-dim;
     -fx-background-radius: 4;
 }
-.scroll-bar .thumb:hover { -fx-background-color: -ag-text-faint; }
+.scroll-bar .thumb:hover { -fx-background-color: -ag-text; }
 .scroll-bar .increment-button,
 .scroll-bar .decrement-button {
     -fx-background-color: transparent;
@@ -330,4 +403,93 @@
 .scroll-bar .increment-arrow,
 .scroll-bar .decrement-arrow {
     -fx-background-color: -ag-text-faint;
+}
+
+/* ── Context menus ────────────────────────────────────────────────────────── */
+.context-menu {
+    -fx-background-color: -ag-bg-raised;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: -ag-radius;
+    -fx-background-radius: -ag-radius;
+    -fx-padding: 4 0 4 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 8, 0, 0, 2);
+}
+.menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 6 16 6 16;
+}
+.menu-item .label {
+    -fx-text-fill: -ag-text;
+    -fx-font-size: 12px;
+}
+.menu-item:hover, .menu-item:focused {
+    -fx-background-color: derive(-ag-accent, -65%);
+}
+.menu-item:hover .label, .menu-item:focused .label {
+    -fx-text-fill: -ag-accent;
+}
+
+/* ── Account buttons (sidebar) ───────────────────────────────────────────── */
+.account-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: -ag-text-dim;
+    -fx-border-color: transparent;
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
+    -fx-padding: 0 16 0 16;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER_LEFT;
+    -fx-font-size: 13px;
+}
+.account-btn:hover { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
+.account-btn:selected, .account-btn.account-selected {
+    -fx-background-color: derive(-ag-accent, -60%);
+    -fx-text-fill: -ag-accent;
+    -fx-border-color: transparent transparent transparent -ag-accent;
+    -fx-border-width: 0 0 0 3;
+}
+
+/* ── Wallet selector (header combo) ─────────────────────────────────────── */
+.wallet-selector {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border;
+    -fx-min-width: 160;
+}
+.wallet-selector:hover {
+    -fx-border-color: derive(-ag-accent, -30%);
+}
+.wallet-selector .list-cell {
+    -fx-text-fill: -ag-text;
+    -fx-font-size: 12px;
+}
+
+/* ── Preferences panel toggle buttons (use styleClass="list-item") ─────────── */
+.list-item {
+    -fx-background-color: -ag-bg-light;
+    -fx-text-fill: -ag-text-dim;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: -ag-radius;
+    -fx-background-radius: -ag-radius;
+    -fx-padding: 5 14 5 14;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER_LEFT;
+}
+.list-item:hover { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
+.list-item:selected {
+    -fx-background-color: derive(-ag-accent, -65%);
+    -fx-text-fill: -ag-accent;
+    -fx-border-color: -ag-accent;
+}
+.list-item:selected:hover { -fx-background-color: derive(-ag-accent, -60%); }
+
+/* ── ControlsFX ToggleSwitch: override blue from darktheme.css ──────────── */
+.toggle-switch .thumb-area {
+    -fx-background-color: #3a3a3a;
+    -fx-background-insets: 0;
+    -fx-background-radius: 100;
+}
+.toggle-switch:selected .thumb-area {
+    -fx-background-color: -ag-accent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 100;
 }

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<DialogPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.sparrowwallet.sparrow.gui.AshigaruReceiveController"
+            prefWidth="500" prefHeight="260"
+            styleClass="receive-pane">
+
+    <buttonTypes/><!-- handled programmatically via onNextAddress / onClose -->
+
+    <content>
+        <VBox spacing="16">
+            <padding><Insets top="16" right="20" bottom="8" left="20"/></padding>
+
+            <Label text="RECEIVE BITCOIN" styleClass="section-title"/>
+            <Separator/>
+
+            <GridPane hgap="14" vgap="12">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="140"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+
+                <Label text="Address"
+                       GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="field-label"/>
+                <HBox spacing="8" alignment="CENTER_LEFT"
+                      GridPane.rowIndex="0" GridPane.columnIndex="1">
+                    <TextField fx:id="addressField" editable="false" styleClass="address-field" HBox.hgrow="ALWAYS"/>
+                    <Button text="Copy" onAction="#onCopy" styleClass="action-btn"/>
+                </HBox>
+
+                <Label text="Derivation path"
+                       GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="field-label"/>
+                <Label fx:id="derivationLabel" text="—"
+                       GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="field-value"/>
+
+                <Label text="Status"
+                       GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="field-label"/>
+                <Label fx:id="lastUsedLabel" text="—"
+                       GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="field-value"/>
+            </GridPane>
+
+            <Separator/>
+
+            <HBox spacing="10" alignment="CENTER_RIGHT">
+                <Button fx:id="closeBtn"       text="Close"        onAction="#onClose"       styleClass="action-btn"/>
+                <Button fx:id="nextAddressBtn" text="Next Address" onAction="#onNextAddress" styleClass="primary-btn"/>
+            </HBox>
+        </VBox>
+    </content>
+</DialogPane>

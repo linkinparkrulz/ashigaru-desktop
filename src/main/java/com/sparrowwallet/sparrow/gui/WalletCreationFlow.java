@@ -1,0 +1,475 @@
+package com.sparrowwallet.sparrow.gui;
+
+import com.sparrowwallet.drongo.ExtendedKey;
+import com.sparrowwallet.drongo.KeyDerivation;
+import com.sparrowwallet.drongo.OutputDescriptor;
+import com.sparrowwallet.drongo.SecureString;
+import com.sparrowwallet.drongo.crypto.ECKey;
+import com.sparrowwallet.drongo.crypto.EncryptionType;
+import com.sparrowwallet.drongo.crypto.Key;
+import com.sparrowwallet.drongo.policy.Policy;
+import com.sparrowwallet.drongo.policy.PolicyType;
+import com.sparrowwallet.drongo.protocol.ScriptType;
+import com.sparrowwallet.drongo.wallet.*;
+import com.sparrowwallet.sparrow.AppServices;
+import com.sparrowwallet.sparrow.EventManager;
+import com.sparrowwallet.sparrow.event.StorageEvent;
+import com.sparrowwallet.sparrow.event.TimedEvent;
+import com.sparrowwallet.sparrow.io.Bip39;
+import com.sparrowwallet.sparrow.io.ImportException;
+import com.sparrowwallet.sparrow.io.Storage;
+import com.sparrowwallet.sparrow.io.StorageException;
+import com.sparrowwallet.sparrow.net.ElectrumServer;
+import com.sparrowwallet.sparrow.wallet.KeystoreController;
+import com.sparrowwallet.sparrow.wallet.WalletForm;
+import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
+import javafx.geometry.Insets;
+import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.*;
+
+
+/**
+ * Implements the wallet creation / restore flow as native JavaFX dialogs,
+ * mirroring what the TUI does in MasterActionListBox + NewWalletDialog.
+ */
+public class WalletCreationFlow {
+    private static final Logger log = LoggerFactory.getLogger(WalletCreationFlow.class);
+
+    private final Stage owner;
+
+    public WalletCreationFlow(Stage owner) {
+        this.owner = owner;
+    }
+
+    /** Entry point — call from the JavaFX UI thread. */
+    public void start() {
+        String walletName = askWalletName();
+        if (walletName == null) return;
+
+        String walletType = askWalletType();
+        if (walletType == null) return;
+
+        if ("Hot Wallet".equals(walletType)) {
+            showBip39Dialog(walletName);
+        } else {
+            showWatchOnlyDialog(walletName);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 1 – wallet name
+    // -------------------------------------------------------------------------
+
+    private String askWalletName() {
+        TextInputDialog dlg = new TextInputDialog();
+        dlg.setTitle("Create Wallet");
+        dlg.setHeaderText("Enter a name for the wallet");
+        dlg.setContentText("Name:");
+        dlg.initOwner(owner);
+
+        while (true) {
+            Optional<String> result = dlg.showAndWait();
+            if (result.isEmpty()) return null;
+            String name = result.get().trim();
+            if (name.isEmpty()) {
+                showError("Invalid Name", "Please enter a name for the wallet.");
+                dlg.getEditor().setText("");
+                continue;
+            }
+            if (Storage.walletExists(name)) {
+                showError("Wallet Exists", "A wallet named \"" + name + "\" already exists. Choose a different name.");
+                dlg.getEditor().setText("");
+                continue;
+            }
+            return name;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 2 – wallet type
+    // -------------------------------------------------------------------------
+
+    private String askWalletType() {
+        List<String> choices = List.of("Hot Wallet", "Watch Only");
+        ChoiceDialog<String> dlg = new ChoiceDialog<>("Hot Wallet", choices);
+        dlg.setTitle("Create Wallet");
+        dlg.setHeaderText("Choose the type of wallet");
+        dlg.setContentText("Type:");
+        dlg.initOwner(owner);
+        return dlg.showAndWait().orElse(null);
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 3a – BIP39 hot wallet dialog
+    // -------------------------------------------------------------------------
+
+    private void showBip39Dialog(String walletName) {
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("Create BIP39 Wallet – " + walletName);
+        dlg.initOwner(owner);
+
+        Label seedLabel = new Label("Seed words:");
+        TextArea seedArea = new TextArea();
+        seedArea.setWrapText(true);
+        seedArea.setPrefRowCount(5);
+        seedArea.setPromptText("Enter your 12/18/24 word BIP39 seed phrase, or generate a new one below.");
+
+        Label passLabel = new Label("BIP39 Passphrase (optional):");
+        PasswordField passField = new PasswordField();
+        passField.setPromptText("Leave blank for no passphrase");
+
+        Button generateBtn = new Button("Generate New Wallet");
+        generateBtn.setOnAction(e -> seedArea.setText(generateMnemonic(12)));
+
+        VBox content = new VBox(10, seedLabel, seedArea, passLabel, passField, generateBtn);
+        content.setPadding(new Insets(12));
+        content.setPrefWidth(480);
+        dlg.getDialogPane().setContent(content);
+
+        ButtonType nextType = new ButtonType("Next", ButtonBar.ButtonData.OK_DONE);
+        dlg.getDialogPane().getButtonTypes().addAll(nextType, ButtonType.CANCEL);
+
+        Button nextNode = (Button) dlg.getDialogPane().lookupButton(nextType);
+        nextNode.setDisable(true);
+
+        Bip39 importer = new Bip39();
+        seedArea.textProperty().addListener((obs, old, text) ->
+                nextNode.setDisable(!isValidSeed(importer, text, passField.getText())));
+        passField.textProperty().addListener((obs, old, text) ->
+                nextNode.setDisable(!isValidSeed(importer, seedArea.getText(), text)));
+
+        dlg.setResultConverter(bt -> bt);
+
+        Optional<ButtonType> result = dlg.showAndWait();
+        if (result.isEmpty() || result.get() != nextType) return;
+
+        List<String> words = Arrays.asList(seedArea.getText().trim().split("\\s+"));
+        String passphrase = passField.getText();
+
+        try {
+            Wallet wallet = new Wallet(walletName);
+            wallet.setPolicyType(PolicyType.SINGLE);
+            wallet.setScriptType(ScriptType.P2WPKH);
+            Keystore keystore = importer.getKeystore(ScriptType.P2WPKH.getDefaultDerivation(), words, passphrase);
+            wallet.getKeystores().add(keystore);
+            wallet.setDefaultPolicy(Policy.getPolicy(PolicyType.SINGLE, ScriptType.P2WPKH, wallet.getKeystores(), 1));
+            discoverAndSave(walletName, List.of(wallet));
+        } catch (ImportException e) {
+            showError("Invalid Seed", "Could not import wallet from seed: " + e.getMessage());
+        }
+    }
+
+    private boolean isValidSeed(Bip39 importer, String text, String passphrase) {
+        String[] words = text.trim().split("\\s+");
+        if (words.length < 12) return false;
+        try {
+            importer.getKeystore(ScriptType.P2WPKH.getDefaultDerivation(), Arrays.asList(words), passphrase);
+            return true;
+        } catch (ImportException e) {
+            return false;
+        }
+    }
+
+    private String generateMnemonic(int wordCount) {
+        int mnemonicSeedLength = wordCount * 11;
+        int entropyLength = mnemonicSeedLength - (mnemonicSeedLength / 33);
+        SecureRandom rng;
+        try {
+            rng = SecureRandom.getInstanceStrong();
+        } catch (NoSuchAlgorithmException e) {
+            rng = new SecureRandom();
+        }
+        DeterministicSeed seed = new DeterministicSeed(rng, entropyLength, "");
+        return String.join(" ", seed.getMnemonicCode());
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 3b – Watch Only wallet dialog
+    // -------------------------------------------------------------------------
+
+    private void showWatchOnlyDialog(String walletName) {
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("Create Watch Only Wallet – " + walletName);
+        dlg.initOwner(owner);
+
+        Label hint = new Label("Output descriptor or xpub\n(BIP84 Native Segwit Deposit or Postmix account)");
+        TextArea descriptorArea = new TextArea();
+        descriptorArea.setWrapText(true);
+        descriptorArea.setPrefRowCount(6);
+        descriptorArea.setPromptText("Paste your xpub or output descriptor here…");
+
+        VBox content = new VBox(10, hint, descriptorArea);
+        content.setPadding(new Insets(12));
+        content.setPrefWidth(480);
+        dlg.getDialogPane().setContent(content);
+
+        ButtonType importType = new ButtonType("Import Wallet", ButtonBar.ButtonData.OK_DONE);
+        dlg.getDialogPane().getButtonTypes().addAll(importType, ButtonType.CANCEL);
+
+        Button importNode = (Button) dlg.getDialogPane().lookupButton(importType);
+        importNode.setDisable(true);
+        descriptorArea.textProperty().addListener((obs, old, text) ->
+                importNode.setDisable(!isValidDescriptorOrXpub(text.replaceAll("\\s+", ""))));
+
+        dlg.setResultConverter(bt -> bt);
+
+        Optional<ButtonType> result = dlg.showAndWait();
+        if (result.isEmpty() || result.get() != importType) return;
+
+        String raw = descriptorArea.getText().replaceAll("\\s+", "");
+        List<Wallet> wallets = buildWatchOnlyWallets(walletName, raw);
+        if (wallets.isEmpty()) {
+            showError("Invalid Input", "Could not parse the descriptor or xpub.");
+            return;
+        }
+
+        discoverAndSave(walletName, wallets);
+    }
+
+    private boolean isValidDescriptorOrXpub(String text) {
+        if (text.isEmpty()) return false;
+        try {
+            OutputDescriptor.getOutputDescriptor(text);
+            return true;
+        } catch (Exception e1) {
+            try {
+                ExtendedKey.fromDescriptor(text);
+                return true;
+            } catch (Exception e2) {
+                return false;
+            }
+        }
+    }
+
+    private List<Wallet> buildWatchOnlyWallets(String walletName, String raw) {
+        try {
+            OutputDescriptor desc = OutputDescriptor.getOutputDescriptor(raw);
+            Wallet wallet = desc.toWallet();
+            wallet.setName(walletName);
+            return List.of(wallet);
+        } catch (Exception e1) {
+            try {
+                ExtendedKey xpub = ExtendedKey.fromDescriptor(raw);
+                Wallet wallet = new Wallet(walletName);
+                wallet.setPolicyType(PolicyType.SINGLE);
+                wallet.setScriptType(ScriptType.P2WPKH);
+                Keystore keystore = new Keystore();
+                keystore.setSource(KeystoreSource.SW_WATCH);
+                keystore.setWalletModel(WalletModel.SPARROW);
+                keystore.setKeyDerivation(new KeyDerivation(
+                        KeystoreController.DEFAULT_WATCH_ONLY_FINGERPRINT,
+                        ScriptType.P2WPKH.getDefaultDerivationPath()));
+                keystore.setExtendedPublicKey(xpub);
+                wallet.makeLabelsUnique(keystore);
+                wallet.getKeystores().add(keystore);
+                wallet.setDefaultPolicy(Policy.getPolicy(PolicyType.SINGLE, ScriptType.P2WPKH, wallet.getKeystores(), 1));
+                return List.of(wallet);
+            } catch (Exception e2) {
+                log.error("Could not build watch only wallet from: " + raw, e2);
+                return Collections.emptyList();
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Account discovery + save (mirrors TUI NewWalletDialog logic)
+    // -------------------------------------------------------------------------
+
+    private void discoverAndSave(String walletName, List<Wallet> wallets) {
+        if (wallets.isEmpty()) return;
+
+        if (AppServices.onlineProperty().get()) {
+            // Non-blocking progress dialog with a Skip button so the user is never stuck
+            Alert progress = new Alert(Alert.AlertType.INFORMATION);
+            progress.setTitle(walletName);
+            progress.setHeaderText("Discovering accounts…");
+            ButtonType skipType = new ButtonType("Skip", ButtonBar.ButtonData.CANCEL_CLOSE);
+            progress.getButtonTypes().setAll(skipType);
+            progress.initOwner(owner);
+
+            ElectrumServer.WalletDiscoveryService svc = new ElectrumServer.WalletDiscoveryService(wallets);
+
+            // If user skips, cancel the discovery service
+            progress.setOnHiding(ev -> svc.cancel());
+
+            // Helper to close dialog and continue — always called exactly once
+            Runnable finish = () -> {
+                progress.setOnHiding(null); // prevent double-cancel
+                progress.close();
+            };
+
+            svc.setOnSucceeded(e -> {
+                finish.run();
+                Optional<Wallet> found = svc.getValue();
+                Wallet wallet = found.orElseGet(() -> wallets.get(0));
+                try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }
+                saveWallet(walletName, wallet);
+            });
+            svc.setOnFailed(e -> {
+                finish.run();
+                log.error("Account discovery failed", e.getSource().getException());
+                Wallet wallet = wallets.get(0);
+                try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }
+                saveWallet(walletName, wallet);
+            });
+            svc.setOnCancelled(e -> {
+                // Dialog already closed by user; just continue with default wallet
+                Wallet wallet = wallets.get(0);
+                try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }
+                saveWallet(walletName, wallet);
+            });
+
+            svc.start();
+            progress.show(); // non-blocking — callbacks close it when done
+        } else {
+            Wallet wallet = wallets.get(0);
+            try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }
+            saveWallet(walletName, wallet);
+        }
+    }
+
+    private void addWhirlpoolAccounts(Wallet wallet) {
+        Storage tempStorage = new Storage(Storage.getWalletFile(wallet.getName()));
+        WalletForm tempForm = new WalletForm(tempStorage, wallet);
+        WhirlpoolServices.prepareWhirlpoolWallet(wallet, tempForm.getWalletId(), tempStorage);
+    }
+
+    private void saveWallet(String walletName, Wallet wallet) {
+        // Ask for optional password
+        Dialog<String> pwDlg = new Dialog<>();
+        pwDlg.setTitle("Wallet Password");
+        pwDlg.setHeaderText("Add a password to the wallet?\nLeave empty for no password.");
+        pwDlg.initOwner(owner);
+
+        ButtonType okType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
+        pwDlg.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
+
+        PasswordField pwField = new PasswordField();
+        pwField.setPromptText("Leave blank for no password");
+        VBox content = new VBox(8, new Label("Password (optional):"), pwField);
+        content.setPadding(new Insets(12));
+        pwDlg.getDialogPane().setContent(content);
+        Platform.runLater(pwField::requestFocus);
+        pwDlg.setResultConverter(bt -> bt == okType ? pwField.getText() : null);
+
+        Optional<String> pwResult = pwDlg.showAndWait();
+        if (pwResult.isEmpty()) return; // cancelled
+
+        String password = pwResult.get();
+        Storage storage = new Storage(Storage.getWalletFile(wallet.getName()));
+
+        if (password.isEmpty()) {
+            new Thread(new Task<Void>() {
+                @Override
+                protected Void call() throws Exception {
+                    storage.setEncryptionPubKey(Storage.NO_PASSWORD_KEY);
+                    storage.saveWallet(wallet);
+                    storage.restorePublicKeysFromSeed(wallet, null);
+                    for (Wallet child : wallet.getChildWallets()) {
+                        storage.saveWallet(child);
+                        storage.restorePublicKeysFromSeed(child, null);
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void succeeded() {
+                    Platform.runLater(() -> registerWallets(storage, wallet));
+                }
+
+                @Override
+                protected void failed() {
+                    log.error("Error saving wallet", getException());
+                    Platform.runLater(() -> showError("Save Error",
+                            "Could not save wallet: " + getException().getMessage()));
+                }
+            }).start();
+        } else {
+            String walletPath = Storage.getWalletFile(wallet.getName()).getAbsolutePath();
+            Storage.KeyDerivationService kds = new Storage.KeyDerivationService(storage, new SecureString(password));
+            EventManager.get().post(new StorageEvent(walletPath, TimedEvent.Action.START, "Encrypting wallet…"));
+
+            kds.setOnSucceeded(e -> {
+                ECKey encFull = kds.getValue();
+                EventManager.get().post(new StorageEvent(walletPath, TimedEvent.Action.END, "Done"));
+
+                new Thread(new Task<Void>() {
+                    @Override
+                    protected Void call() throws Exception {
+                        Key key = null;
+                        try {
+                            ECKey encPub = ECKey.fromPublicOnly(encFull);
+                            key = new Key(encFull.getPrivKeyBytes(), storage.getKeyDeriver().getSalt(),
+                                    EncryptionType.Deriver.ARGON2);
+                            wallet.encrypt(key);
+                            storage.setEncryptionPubKey(encPub);
+                            storage.saveWallet(wallet);
+                            storage.restorePublicKeysFromSeed(wallet, key);
+                            for (Wallet child : wallet.getChildWallets()) {
+                                if (!child.isNested()) child.encrypt(key);
+                                storage.saveWallet(child);
+                                storage.restorePublicKeysFromSeed(child, key);
+                            }
+                        } catch (IOException | StorageException | MnemonicException ex) {
+                            log.error("Error saving encrypted wallet", ex);
+                            throw ex;
+                        } finally {
+                            encFull.clear();
+                            if (key != null) key.clear();
+                        }
+                        return null;
+                    }
+
+                    @Override
+                    protected void succeeded() {
+                        Platform.runLater(() -> registerWallets(storage, wallet));
+                    }
+
+                    @Override
+                    protected void failed() {
+                        log.error("Error saving encrypted wallet", getException());
+                        Platform.runLater(() -> showError("Save Error",
+                                "Could not save wallet: " + getException().getMessage()));
+                    }
+                }).start();
+            });
+
+            kds.setOnFailed(e -> {
+                EventManager.get().post(new StorageEvent(walletPath, TimedEvent.Action.END, "Failed"));
+                Platform.runLater(() -> showError("Encryption Error", kds.getException().getMessage()));
+            });
+
+            kds.start();
+        }
+    }
+
+    private void registerWallets(Storage storage, Wallet masterWallet) {
+        AshigaruGui.addWallet(storage, masterWallet);
+        for (Wallet child : masterWallet.getChildWallets()) {
+            AshigaruGui.addWallet(storage, child);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private void showError(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(title);
+        alert.setContentText(message);
+        alert.initOwner(owner);
+        alert.showAndWait();
+    }
+}
