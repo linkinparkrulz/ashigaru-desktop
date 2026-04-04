@@ -9,7 +9,6 @@ import com.sparrowwallet.drongo.wallet.*;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.UnitFormat;
-import com.sparrowwallet.sparrow.control.WalletLabelDialog;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.io.Config;
@@ -463,7 +462,11 @@ public class AshigaruWalletController implements Initializable {
 
     @FXML
     private void onLabelSelected() {
-        WalletLabelDialog dialog = new WalletLabelDialog();
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Label Selection");
+        dialog.setHeaderText(null);
+        dialog.setContentText("Label:");
+        AppServices.moveToActiveWindowScreen(dialog);
         dialog.showAndWait().ifPresent(newLabel -> {
             if (utxoTable.isVisible()) {
                 utxoTable.getSelectionModel().getSelectedItems().forEach(row ->
