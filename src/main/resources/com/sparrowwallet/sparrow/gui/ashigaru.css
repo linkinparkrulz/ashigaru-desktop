@@ -376,11 +376,34 @@
 .badbank-warning-icon { -fx-text-fill: -ag-testnet; -fx-font-size: 14px; }
 .badbank-info-text    { -fx-text-fill: -ag-testnet; -fx-font-size: 11px; }
 
+/* ── Copy icon button (used in tables and receive dialog) ─────────────────── */
+.copy-icon-btn {
+    -fx-background-color: transparent;
+    -fx-padding: 1 3 1 3;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+}
+.copy-icon-btn:hover {
+    -fx-background-color: -ag-bg-raised;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+}
+.copy-icon-btn .glyph-font { -fx-fill: -ag-text-dim; }
+.copy-icon-btn:hover .glyph-font { -fx-fill: -ag-accent; }
+
 /* ── Receive dialog ───────────────────────────────────────────────────────── */
 .address-field {
     -fx-font-family: monospace;
     -fx-font-size: 11px;
     -fx-text-fill: -ag-accent;
+}
+
+/* ── QR code container ────────────────────────────────────────────────────── */
+.qr-container {
+    -fx-background-color: white;
+    -fx-background-radius: 4;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 4;
 }
 
 /* ── Separator ────────────────────────────────────────────────────────────── */

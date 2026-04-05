@@ -13,8 +13,11 @@ import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.wallet.*;
+import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.property.SimpleStringProperty;
@@ -22,9 +25,16 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
+import org.controlsfx.glyphfont.Glyph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,6 +87,24 @@ public class AshigaruWalletController implements Initializable {
 
         colDate.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().date()));
         colOutput.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().output()));
+        colOutput.setCellFactory(col -> new TableCell<UtxoRow, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null || getIndex() >= getTableView().getItems().size()) {
+                    setGraphic(null); setText(null); return;
+                }
+                UtxoRow row = getTableView().getItems().get(getIndex());
+                String fullRef = row.utxoEntry().getHashIndex().getHash().toString()
+                        + ":" + row.utxoEntry().getHashIndex().getIndex();
+                Label lbl = new Label(item);
+                lbl.setMaxWidth(Double.MAX_VALUE);
+                HBox.setHgrow(lbl, javafx.scene.layout.Priority.ALWAYS);
+                HBox hbox = new HBox(4, lbl, makeCopyButton(fullRef, this));
+                hbox.setAlignment(Pos.CENTER_LEFT);
+                setGraphic(hbox); setText(null);
+            }
+        });
         colMixes.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().mixes()));
         colValue.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().value()));
 
@@ -85,9 +113,66 @@ public class AshigaruWalletController implements Initializable {
 
         // Transaction table
         txnTable.setItems(txnRows);
+        txnTable.setEditable(true);
         colTxnDate.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().date()));
         colTxnId.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().txid()));
-        colTxnLabel.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().label()));
+        colTxnId.setCellFactory(col -> new TableCell<TxnRow, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null || getIndex() >= getTableView().getItems().size()) {
+                    setGraphic(null); setText(null); return;
+                }
+                TxnRow row = getTableView().getItems().get(getIndex());
+                String fullTxid = row.txnEntry().getBlockTransaction().getHashAsString();
+                Label lbl = new Label(item);
+                lbl.setMaxWidth(Double.MAX_VALUE);
+                HBox.setHgrow(lbl, javafx.scene.layout.Priority.ALWAYS);
+                HBox hbox = new HBox(4, lbl, makeCopyButton(fullTxid, this));
+                hbox.setAlignment(Pos.CENTER_LEFT);
+                setGraphic(hbox); setText(null);
+            }
+        });
+        colTxnLabel.setCellValueFactory(d -> d.getValue().txnEntry().labelProperty());
+        colTxnLabel.setEditable(true);
+        colTxnLabel.setOnEditCommit(event -> {
+            TxnRow row = event.getRowValue();
+            if (row != null) {
+                row.txnEntry().labelProperty().set(
+                        event.getNewValue() != null ? event.getNewValue() : "");
+            }
+        });
+        colTxnLabel.setCellFactory(col -> new TableCell<TxnRow, String>() {
+            private final TextField textField = new TextField();
+            {
+                textField.setOnAction(e -> commitEdit(textField.getText()));
+                textField.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
+                    if (wasFocused && !isFocused && isEditing()) commitEdit(textField.getText());
+                });
+                textField.setOnKeyPressed(e -> { if (e.getCode() == KeyCode.ESCAPE) cancelEdit(); });
+                setOnMouseClicked(e -> { if (!isEmpty()) getTableView().edit(getIndex(), getTableColumn()); });
+            }
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) { setText(null); setGraphic(null); }
+                else if (isEditing()) { setText(null); setGraphic(textField); }
+                else { setText(item != null ? item : ""); setGraphic(null); }
+            }
+            @Override public void startEdit() {
+                super.startEdit();
+                textField.setText(getItem() != null ? getItem() : "");
+                setText(null); setGraphic(textField);
+                textField.requestFocus(); textField.selectAll();
+            }
+            @Override public void cancelEdit() {
+                super.cancelEdit();
+                setText(getItem() != null ? getItem() : ""); setGraphic(null);
+            }
+            @Override public void commitEdit(String newValue) {
+                super.commitEdit(newValue);
+                setText(newValue != null ? newValue : ""); setGraphic(null);
+            }
+        });
         colTxnAmount.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().amount()));
 
         // View toggle group
@@ -559,6 +644,22 @@ public class AshigaruWalletController implements Initializable {
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    private static Button makeCopyButton(String textToCopy, Node owner) {
+        Glyph icon = new Glyph(FontAwesome5.FONT_NAME, FontAwesome5.Glyph.COPY);
+        icon.setFontSize(11);
+        Button btn = new Button("", icon);
+        btn.getStyleClass().add("copy-icon-btn");
+        btn.setOnAction(e -> {
+            ClipboardContent content = new ClipboardContent();
+            content.putString(textToCopy);
+            Clipboard.getSystemClipboard().setContent(content);
+            Tooltip tip = new Tooltip("Copied!");
+            tip.show(owner.getScene().getWindow());
+            new Timeline(new KeyFrame(Duration.seconds(1), ev -> tip.hide())).play();
+        });
+        return btn;
+    }
 
     private static String abbreviate(String s) {
         if (s.length() <= 12) return s;

@@ -2,12 +2,14 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
+<?import org.controlsfx.glyphfont.Glyph?>
 
 <DialogPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.sparrowwallet.sparrow.gui.AshigaruReceiveController"
-            prefWidth="500" prefHeight="260"
+            prefWidth="500" prefHeight="520"
             styleClass="receive-pane">
 
     <buttonTypes/><!-- handled programmatically via onNextAddress / onClose -->
@@ -30,7 +32,11 @@
                 <HBox spacing="8" alignment="CENTER_LEFT"
                       GridPane.rowIndex="0" GridPane.columnIndex="1">
                     <TextField fx:id="addressField" editable="false" styleClass="address-field" HBox.hgrow="ALWAYS"/>
-                    <Button text="Copy" onAction="#onCopy" styleClass="action-btn"/>
+                    <Button onAction="#onCopy" styleClass="copy-icon-btn" prefWidth="28" prefHeight="28">
+                        <graphic>
+                            <Glyph fontFamily="Font Awesome 5 Free Solid" icon="COPY" fontSize="13"/>
+                        </graphic>
+                    </Button>
                 </HBox>
 
                 <Label text="Derivation path"
@@ -43,6 +49,16 @@
                 <Label fx:id="lastUsedLabel" text="—"
                        GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="field-value"/>
             </GridPane>
+
+            <!-- QR code -->
+            <VBox alignment="CENTER" spacing="6">
+                <StackPane styleClass="qr-container" alignment="CENTER" maxWidth="216" maxHeight="216">
+                    <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                    <ImageView fx:id="qrCodeView" fitWidth="200" fitHeight="200"
+                               preserveRatio="true" smooth="false"/>
+                </StackPane>
+                <Label text="Scan to deposit" styleClass="field-label"/>
+            </VBox>
 
             <Separator/>
 
