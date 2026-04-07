@@ -205,7 +205,7 @@ jlink {
         imageName     = 'Ashigaru'
         installerName = "Ashigaru-${ashigaruTerminalVersion}"
         appVersion    = ashigaruTerminalVersion
-        resourceDir   = "src/main/deploy/package/${osName}"
+        resourceDir   = file("src/main/deploy/package/${osName}")
 
         if (os.windows) {
             icon             = 'src/main/deploy/package/windows/ashigaru.ico'
