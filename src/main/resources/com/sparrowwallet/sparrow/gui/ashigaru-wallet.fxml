@@ -54,8 +54,6 @@
         <ToggleButton fx:id="utxoViewBtn"  text="UTXOs"        onAction="#onViewToggle" styleClass="view-toggle-btn" selected="true"/>
         <ToggleButton fx:id="txnViewBtn"   text="Transactions" onAction="#onViewToggle" styleClass="view-toggle-btn"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="labelSelectedBtn" text="Label Selection" onAction="#onLabelSelected"
-                styleClass="action-btn" visible="false" managed="false"/>
         <Button fx:id="mixSelectedBtn" text="Mix Selected UTXOs" onAction="#onMixSelected"
                 styleClass="primary-btn mix-btn" visible="false" managed="false"/>
     </HBox>

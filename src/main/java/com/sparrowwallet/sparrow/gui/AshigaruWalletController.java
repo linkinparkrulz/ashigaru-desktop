@@ -79,7 +79,6 @@ public class AshigaruWalletController implements Initializable {
     @FXML private HBox mixButtonBox;
     @FXML private Button startMixBtn;
     @FXML private Button mixToBtn;
-    @FXML private Button labelSelectedBtn;
     @FXML private Button mixSelectedBtn;
     @FXML private VBox accountPanel;
 
@@ -374,7 +373,9 @@ public class AshigaruWalletController implements Initializable {
         txnRows.clear();
 
         WalletTransactionsEntry txnEntry = activeAccountForm.getWalletTransactionsEntry();
-        if (txnEntry == null || txnEntry.getChildren() == null) return;
+        if (txnEntry == null) return;
+        txnEntry.updateTransactions();
+        if (txnEntry.getChildren() == null) return;
 
         DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
         UnitFormat fmt = Config.get().getUnitFormat() == null ? UnitFormat.DOT : Config.get().getUnitFormat();
@@ -402,6 +403,7 @@ public class AshigaruWalletController implements Initializable {
         startMixBtn.setVisible(false);
         mixToBtn.setVisible(false);
         mixSelectedBtn.setVisible(false);
+        mixSelectedBtn.setManaged(false);
         mixButtonBox.setVisible(false);
 
         if (wallet.isWhirlpoolMixWallet()) {
@@ -417,13 +419,14 @@ public class AshigaruWalletController implements Initializable {
             if (wallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX) {
                 mixToBtn.setVisible(true);
                 mixSelectedBtn.setVisible(true);
+                mixSelectedBtn.setManaged(true);
                 mixSelectedBtn.setDisable(true);
                 updateMixToButton();
             }
         } else if (WhirlpoolServices.canWalletMix(wallet)) {
             // Deposit / Badbank — show Mix Selected to initiate Tx0
-            mixButtonBox.setVisible(true);
             mixSelectedBtn.setVisible(true);
+            mixSelectedBtn.setManaged(true);
             mixSelectedBtn.setText("Mix Selected UTXOs");
             mixSelectedBtn.setDisable(true);
         }
@@ -458,12 +461,6 @@ public class AshigaruWalletController implements Initializable {
 
     private void updateActionButtons() {
         boolean utxosVisible = utxoTable.isVisible();
-        boolean utxoSelected = !utxoTable.getSelectionModel().getSelectedItems().isEmpty();
-        boolean txnSelected  = !txnTable.getSelectionModel().getSelectedItems().isEmpty();
-        boolean anySelected  = utxosVisible ? utxoSelected : txnSelected;
-
-        labelSelectedBtn.setVisible(anySelected);
-        labelSelectedBtn.setManaged(anySelected);
 
         if (!utxosVisible) {
             mixSelectedBtn.setVisible(false);
@@ -471,39 +468,6 @@ public class AshigaruWalletController implements Initializable {
             mixSelectedBtn.setVisible(true);
             updateMixSelectedButton();
         }
-    }
-
-    @FXML
-    private void onLabelSelected() {
-        showLabelDialog().ifPresent(newLabel -> {
-            if (utxoTable.isVisible()) {
-                utxoTable.getSelectionModel().getSelectedItems().forEach(row ->
-                        row.utxoEntry().labelProperty().set(newLabel));
-            } else {
-                txnTable.getSelectionModel().getSelectedItems().forEach(row ->
-                        row.txnEntry().labelProperty().set(newLabel));
-            }
-        });
-    }
-
-    private java.util.Optional<String> showLabelDialog() {
-        Dialog<String> dialog = new Dialog<>();
-        dialog.setTitle("Label");
-        dialog.setHeaderText("Enter a label:");
-        DialogPane pane = dialog.getDialogPane();
-        pane.getStylesheets().add(AppServices.class.getResource("general.css").toExternalForm());
-        pane.getStylesheets().add(AppServices.class.getResource("dialog.css").toExternalForm());
-        if (Config.get().getTheme() == Theme.DARK) {
-            pane.getStylesheets().add(AppServices.class.getResource("darktheme.css").toExternalForm());
-        }
-        pane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        TextField field = new TextField();
-        field.setPromptText("Label");
-        pane.setContent(field);
-        Platform.runLater(field::requestFocus);
-        dialog.setResultConverter(bt -> bt == ButtonType.OK ? field.getText() : null);
-        AppServices.moveToActiveWindowScreen(dialog);
-        return dialog.showAndWait();
     }
 
     // -------------------------------------------------------------------------
@@ -685,6 +649,7 @@ public class AshigaruWalletController implements Initializable {
         if (activeAccountForm != null && event.getWallet().equals(activeAccountForm.getWallet())) {
             Platform.runLater(() -> {
                 activeAccountForm.getWalletUtxosEntry().updateUtxos();
+                activeAccountForm.getWalletTransactionsEntry().updateTransactions();
                 refreshAccountView();
             });
         }
