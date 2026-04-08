@@ -381,8 +381,8 @@
     -fx-border-radius: 3;
     -fx-background-radius: 3;
 }
-.copy-icon-btn .glyph-font { -fx-fill: -ag-text-dim; }
-.copy-icon-btn:hover .glyph-font { -fx-fill: -ag-text; }
+.copy-icon-btn .glyph-font { -fx-opacity: 0.6; }
+.copy-icon-btn:hover .glyph-font { -fx-opacity: 1.0; }
 
 /* ── Splash screen ────────────────────────────────────────────────────────── */
 .splash-pane {
