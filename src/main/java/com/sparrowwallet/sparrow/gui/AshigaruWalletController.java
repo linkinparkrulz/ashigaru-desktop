@@ -15,9 +15,8 @@ import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.wallet.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
+import org.controlsfx.glyphfont.Glyph;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -702,11 +701,8 @@ public class AshigaruWalletController implements Initializable {
     // -------------------------------------------------------------------------
 
     private static Button makeCopyButton(String textToCopy, Node owner) {
-        ImageView icon = new ImageView(
-                new Image(AshigaruWalletController.class.getResourceAsStream("/image/click-to-copy-small.png")));
-        icon.setFitWidth(14);
-        icon.setFitHeight(14);
-        icon.setPreserveRatio(true);
+        Glyph icon = new Glyph(FontAwesome5.FONT_NAME, FontAwesome5.Glyph.COPY);
+        icon.setFontSize(11);
         Button btn = new Button("", icon);
         btn.getStyleClass().add("copy-icon-btn");
         btn.setOnAction(e -> {

@@ -315,13 +315,6 @@
 .combo-box-popup .list-cell:hover { -fx-background-color: -ag-bg-raised; }
 .combo-box-popup .list-cell:selected { -fx-background-color: derive(-ag-accent, -60%); -fx-text-fill: -ag-accent; }
 
-.scode-field {
-    -fx-text-fill: -ag-accent;
-    -fx-font-family: monospace;
-    -fx-font-weight: bold;
-    -fx-font-size: 14px;
-}
-
 /* ── Toggle buttons ───────────────────────────────────────────────────────── */
 .toggle-button {
     -fx-background-color: -ag-bg-light;
@@ -388,8 +381,8 @@
     -fx-border-radius: 3;
     -fx-background-radius: 3;
 }
-.copy-icon-btn .image-view { -fx-opacity: 0.65; }
-.copy-icon-btn:hover .image-view { -fx-opacity: 1.0; }
+.copy-icon-btn .glyph-font { -fx-fill: -ag-text-dim; }
+.copy-icon-btn:hover .glyph-font { -fx-fill: -ag-text; }
 
 /* ── Splash screen ────────────────────────────────────────────────────────── */
 .splash-pane {
