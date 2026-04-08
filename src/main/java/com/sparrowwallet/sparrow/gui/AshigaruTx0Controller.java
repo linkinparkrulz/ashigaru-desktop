@@ -51,8 +51,8 @@ public class AshigaruTx0Controller implements Initializable {
     @FXML private Label unmixedChangeValue;
     @FXML private Label minerFeeValue;
     @FXML private Label totalFeesValue;
-    @FXML private Button broadcastBtn;
-    @FXML private Button cancelBtn;
+    @FXML private ButtonType broadcastBtnType;
+    private Button broadcastBtn;   // resolved in show() after setDialogPane()
 
     // Set by show() before the dialog is displayed
     private String walletId;
@@ -65,8 +65,6 @@ public class AshigaruTx0Controller implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        broadcastBtn.setDisable(true);
-
         poolCombo.setItems(FXCollections.observableArrayList());
         poolCombo.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
             if (sel != null && sel.pool() != null) {
@@ -108,6 +106,9 @@ public class AshigaruTx0Controller implements Initializable {
         Dialog<Pool> dialog = new Dialog<>();
         dialog.setTitle(walletForm.getWallet().getFullDisplayName() + " — Transaction Zero");
         dialog.setDialogPane(pane);
+        // Resolve the actual Button node now that the DialogPane is wired up
+        ctrl.broadcastBtn = (Button) pane.lookupButton(ctrl.broadcastBtnType);
+        ctrl.broadcastBtn.setDisable(true);
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.initOwner(AshigaruGui.get().getMainStage());
         ctrl.dialogStage = (Stage) dialog.getDialogPane().getScene().getWindow();
@@ -274,18 +275,6 @@ public class AshigaruTx0Controller implements Initializable {
     // -------------------------------------------------------------------------
     // Button handlers
     // -------------------------------------------------------------------------
-
-    @FXML
-    private void onBroadcast() {
-        // selectedPool is already set by applyPreview(); dialog result converter will pick it up
-        dialogStage.close();
-    }
-
-    @FXML
-    private void onCancel() {
-        selectedPool = null;
-        dialogStage.close();
-    }
 
     // -------------------------------------------------------------------------
     // Inner display wrapper
