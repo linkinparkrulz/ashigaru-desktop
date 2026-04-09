@@ -54,6 +54,7 @@ public class AshigaruWalletController implements Initializable {
 
     @FXML private Label walletNameLabel;
     @FXML private Label accountNameLabel;
+    @FXML private Button refreshBtn;
     @FXML private Button receiveBtn;
     @FXML private Button receiveCta;
     @FXML private TabPane accountTabs;
@@ -659,6 +660,31 @@ public class AshigaruWalletController implements Initializable {
                 refreshAccountView();
             });
         }
+    }
+
+    @Subscribe
+    public void walletHistoryStarted(WalletHistoryStartedEvent event) {
+        if (activeAccountForm != null && event.getWallet().equals(activeAccountForm.getWallet())) {
+            Platform.runLater(() -> {
+                refreshBtn.setDisable(true);
+                refreshBtn.setText("⟳  Syncing…");
+            });
+        }
+    }
+
+    @Subscribe
+    public void walletHistoryFinished(WalletHistoryFinishedEvent event) {
+        if (activeAccountForm != null && event.getWallet().equals(activeAccountForm.getWallet())) {
+            Platform.runLater(() -> {
+                refreshBtn.setDisable(false);
+                refreshBtn.setText("⟳  Refresh");
+            });
+        }
+    }
+
+    @Subscribe
+    public void walletHistoryFailed(WalletHistoryFailedEvent event) {
+        walletHistoryFinished(new WalletHistoryFinishedEvent(event.getWallet()));
     }
 
     @Subscribe

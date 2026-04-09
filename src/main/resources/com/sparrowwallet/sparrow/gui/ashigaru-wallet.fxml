@@ -16,7 +16,7 @@
         <Region HBox.hgrow="ALWAYS"/>
         <Button fx:id="receiveBtn" text="⬇  Receive" onAction="#onReceive"
                 styleClass="action-btn" visible="false" managed="false"/>
-        <Button text="⟳  Refresh" onAction="#onRefresh" styleClass="refresh-btn"/>
+        <Button fx:id="refreshBtn" text="⟳  Refresh" onAction="#onRefresh" styleClass="refresh-btn"/>
     </HBox>
 
     <!-- ② Balance row: numbers only -->

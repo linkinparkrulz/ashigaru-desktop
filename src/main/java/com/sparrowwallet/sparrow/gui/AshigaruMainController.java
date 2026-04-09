@@ -396,6 +396,25 @@ public class AshigaruMainController implements Initializable {
     }
 
     @Subscribe
+    public void walletHistoryStarted(WalletHistoryStartedEvent event) {
+        if (event.getWallet().isMasterWallet()) {
+            Platform.runLater(() -> statusLabel.setText("Syncing " + event.getWallet().getDisplayName() + "…"));
+        }
+    }
+
+    @Subscribe
+    public void walletHistoryFinished(WalletHistoryFinishedEvent event) {
+        if (event.getWallet().isMasterWallet()) {
+            Platform.runLater(() -> statusLabel.setText("Ready"));
+        }
+    }
+
+    @Subscribe
+    public void walletHistoryFailed(WalletHistoryFailedEvent event) {
+        walletHistoryFinished(new WalletHistoryFinishedEvent(event.getWallet()));
+    }
+
+    @Subscribe
     public void walletOpened(WalletOpenedEvent event) {
         if (event.getWallet().isMasterWallet()) {
             Platform.runLater(this::refreshWalletList);
