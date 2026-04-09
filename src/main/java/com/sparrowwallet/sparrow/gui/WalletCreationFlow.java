@@ -4,6 +4,7 @@ import com.sparrowwallet.drongo.ExtendedKey;
 import com.sparrowwallet.drongo.KeyDerivation;
 import com.sparrowwallet.drongo.OutputDescriptor;
 import com.sparrowwallet.drongo.SecureString;
+import com.sparrowwallet.drongo.Utils;
 import com.sparrowwallet.drongo.crypto.ECKey;
 import com.sparrowwallet.drongo.crypto.EncryptionType;
 import com.sparrowwallet.drongo.crypto.Key;
@@ -13,6 +14,9 @@ import com.sparrowwallet.drongo.protocol.ScriptType;
 import com.sparrowwallet.drongo.wallet.*;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.EventManager;
+import com.sparrowwallet.sparrow.control.HelpLabel;
+import com.sparrowwallet.sparrow.control.LifeHashIcon;
+import com.sparrowwallet.sparrow.control.ViewPasswordField;
 import com.sparrowwallet.sparrow.event.StorageEvent;
 import com.sparrowwallet.sparrow.event.TimedEvent;
 import com.sparrowwallet.sparrow.io.Bip39;
@@ -24,10 +28,14 @@ import com.sparrowwallet.sparrow.wallet.KeystoreController;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import javafx.application.Platform;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.concurrent.Task;
 import javafx.event.Event;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -128,13 +136,33 @@ public class WalletCreationFlow {
         seedArea.setPromptText("Enter your 12/18/24 word BIP39 seed phrase, or generate a new one below.");
 
         Label passLabel = new Label("BIP39 Passphrase (optional):");
-        PasswordField passField = new PasswordField();
+        ViewPasswordField passField = new ViewPasswordField();
         passField.setPromptText("Leave blank for no passphrase");
+
+        ObjectProperty<byte[]> masterFingerprint = new SimpleObjectProperty<>();
+
+        HBox fingerprintBox = new HBox(10);
+        fingerprintBox.setAlignment(Pos.CENTER_LEFT);
+        Label fingerprintLabel = new Label("Master fingerprint:");
+        TextField fingerprintHex = new TextField();
+        fingerprintHex.setDisable(true);
+        fingerprintHex.setMaxWidth(80);
+        fingerprintHex.getStyleClass().add("fixed-width");
+        fingerprintHex.setStyle("-fx-opacity: 0.6");
+        masterFingerprint.addListener((obs, oldVal, newVal) ->
+                fingerprintHex.setText(newVal != null ? Utils.bytesToHex(newVal) : ""));
+        LifeHashIcon lifeHashIcon = new LifeHashIcon();
+        lifeHashIcon.dataProperty().bind(masterFingerprint);
+        HelpLabel helpLabel = new HelpLabel();
+        helpLabel.setHelpText("All passphrases create valid wallets." +
+                "\nThe master fingerprint identifies the keystore and changes as the passphrase changes." +
+                "\nMake sure you recognise it before proceeding.");
+        fingerprintBox.getChildren().addAll(fingerprintLabel, fingerprintHex, lifeHashIcon, helpLabel);
 
         Button generateBtn = new Button("Generate New Wallet");
         generateBtn.setOnAction(e -> seedArea.setText(generateMnemonic(12)));
 
-        VBox content = new VBox(10, seedLabel, seedArea, passLabel, passField, generateBtn);
+        VBox content = new VBox(10, seedLabel, seedArea, passLabel, passField, fingerprintBox, generateBtn);
         content.setPadding(new Insets(12));
         content.setPrefWidth(480);
         dlg.getDialogPane().setContent(content);
@@ -146,10 +174,14 @@ public class WalletCreationFlow {
         nextNode.setDisable(true);
 
         Bip39 importer = new Bip39();
-        seedArea.textProperty().addListener((obs, old, text) ->
-                nextNode.setDisable(!isValidSeed(importer, text, passField.getText())));
-        passField.textProperty().addListener((obs, old, text) ->
-                nextNode.setDisable(!isValidSeed(importer, seedArea.getText(), text)));
+        seedArea.textProperty().addListener((obs, old, text) -> {
+            nextNode.setDisable(!isValidSeed(importer, text, passField.getText()));
+            masterFingerprint.set(computeFingerprint(importer, text, passField.getText()));
+        });
+        passField.textProperty().addListener((obs, old, text) -> {
+            nextNode.setDisable(!isValidSeed(importer, seedArea.getText(), text));
+            masterFingerprint.set(computeFingerprint(importer, seedArea.getText(), text));
+        });
 
         dlg.setResultConverter(bt -> bt);
 
@@ -180,6 +212,17 @@ public class WalletCreationFlow {
             return true;
         } catch (ImportException e) {
             return false;
+        }
+    }
+
+    private byte[] computeFingerprint(Bip39 importer, String seedText, String passphrase) {
+        String[] words = seedText.trim().split("\\s+");
+        if (words.length < 12) return null;
+        try {
+            Keystore ks = importer.getKeystore(ScriptType.P2WPKH.getDefaultDerivation(), Arrays.asList(words), passphrase);
+            return ks.getExtendedMasterPrivateKey().getKey().getFingerprint();
+        } catch (Exception e) {
+            return null;
         }
     }
 
