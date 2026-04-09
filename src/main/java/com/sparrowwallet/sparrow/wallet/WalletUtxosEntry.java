@@ -40,7 +40,12 @@ public class WalletUtxosEntry extends Entry {
 
         for(Entry entry : getChildren()) {
             UtxoEntry utxoEntry = (UtxoEntry)entry;
-            String address = utxoEntry.getAddress().toString();
+            String address;
+            try {
+                address = utxoEntry.getAddress().toString();
+            } catch(Exception e) {
+                continue;
+            }
 
             UtxoEntry duplicate = addressMap.get(address);
             if(duplicate != null) {
