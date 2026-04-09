@@ -26,19 +26,15 @@
             <Label text="WHIRLPOOL TRANSACTION ZERO" styleClass="section-title"/>
             <Separator/>
 
-            <!-- SCODE -->
+            <!-- Fee rate -->
             <GridPane hgap="12" vgap="8">
                 <columnConstraints>
                     <ColumnConstraints minWidth="180" maxWidth="180"/>
                     <ColumnConstraints hgrow="ALWAYS"/>
                 </columnConstraints>
 
-                <Label text="SCODE (optional)" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="field-label"/>
-                <TextField fx:id="scodeField" promptText="Enter SCODE"
-                           GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="scode-field"/>
-
-                <Label text="Premix fee rate" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="field-label"/>
-                <Label fx:id="feeRateLabel" text="—" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="field-value"/>
+                <Label text="Premix fee rate" GridPane.columnIndex="0" styleClass="field-label"/>
+                <Label fx:id="feeRateLabel" text="—" GridPane.columnIndex="1" styleClass="field-value"/>
             </GridPane>
 
             <Separator/>

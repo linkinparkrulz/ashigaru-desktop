@@ -680,7 +680,7 @@ public class DbPersistence implements Persistence {
     }
 
     private String getUrl(File walletFile, String password) {
-        return "jdbc:h2:" + walletFile.getAbsolutePath().replace("." + getType().getExtension(), "") + ";INIT=SET TRACE_LEVEL_FILE=4;TRACE_LEVEL_FILE=4;DEFRAG_ALWAYS=true;MAX_COMPACT_TIME=5000;DATABASE_TO_UPPER=false" + (password == null ? "" : ";CIPHER=AES");
+        return "jdbc:h2:" + walletFile.getAbsolutePath().replace("." + getType().getExtension(), "") + ";DATABASE_TO_UPPER=false;DB_CLOSE_ON_EXIT=FALSE" + (password == null ? "" : ";CIPHER=AES");
     }
 
     private boolean persistsFor(Wallet wallet) {

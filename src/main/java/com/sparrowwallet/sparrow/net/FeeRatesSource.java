@@ -39,22 +39,6 @@ public enum FeeRatesSource {
 
             return blockTargetFeeRates;
         }
-    },
-    OXT_ME("oxt.me") {
-        @Override
-        public Map<Integer, Double> getBlockTargetFeeRates(Map<Integer, Double> defaultblockTargetFeeRates) {
-            String url = AppServices.isUsingProxy() ? "http://oxtwshnfyktikbflierkwcxxksbonl6v73l5so5zky7ur72w52tktkid.onion/stats/global/mempool" : "https://api.oxt.me/stats/global/mempool";
-            return getThreeTierFeeRates(this, defaultblockTargetFeeRates, url);
-        }
-
-        @Override
-        protected ThreeTierRates getThreeTierRates(String url, HttpClientService httpClientService) throws Exception {
-            OxtRates oxtRates = httpClientService.requestJson(url, OxtRates.class, null);
-            if(oxtRates.data == null || oxtRates.data.length < 1) {
-                throw new Exception("Invalid response from " + url);
-            }
-            return oxtRates.data[0].getThreeTierRates();
-        }
     };
 
     private static final Logger log = LoggerFactory.getLogger(FeeRatesSource.class);
@@ -127,12 +111,4 @@ public enum FeeRatesSource {
     }
 
     private record ThreeTierRates(Double fastestFee, Double halfHourFee, Double hourFee, Double minimumFee) {}
-
-    private record OxtRates(OxtRatesData[] data) {}
-
-    private record OxtRatesData(Double recommended_fee_099, Double recommended_fee_090, Double recommended_fee_050) {
-        public ThreeTierRates getThreeTierRates() {
-            return new ThreeTierRates(recommended_fee_099/1000, recommended_fee_090/1000, recommended_fee_050/1000, null);
-        }
-    }
 }

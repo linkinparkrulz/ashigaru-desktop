@@ -8,9 +8,7 @@ import com.samourai.whirlpool.client.whirlpool.beans.Pool;
 import com.sparrowwallet.drongo.BitcoinUnit;
 import com.sparrowwallet.drongo.wallet.MixConfig;
 import com.sparrowwallet.sparrow.AppServices;
-import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.UnitFormat;
-import com.sparrowwallet.sparrow.event.WalletMasterMixConfigChangedEvent;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.wallet.Entry;
 import com.sparrowwallet.sparrow.wallet.UtxoEntry;
@@ -30,18 +28,16 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URL;
 import java.util.List;
-import java.util.Locale;
 import java.util.OptionalLong;
 import java.util.ResourceBundle;
 
 /**
  * Controller for the Tx0 (Transaction Zero) dialog.
- * Covers: SCODE input, pool selection, fee preview, broadcast.
+ * Covers: pool selection, fee preview, broadcast.
  */
 public class AshigaruTx0Controller implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(AshigaruTx0Controller.class);
 
-    @FXML private TextField scodeField;
     @FXML private Label feeRateLabel;
     @FXML private ComboBox<DisplayPool> poolCombo;
     @FXML private Label poolFeeLabel;
@@ -51,8 +47,8 @@ public class AshigaruTx0Controller implements Initializable {
     @FXML private Label unmixedChangeValue;
     @FXML private Label minerFeeValue;
     @FXML private Label totalFeesValue;
-    @FXML private Button broadcastBtn;
-    @FXML private Button cancelBtn;
+    @FXML private ButtonType broadcastBtnType;
+    private Button broadcastBtn;   // resolved in show() after setDialogPane()
 
     // Set by show() before the dialog is displayed
     private String walletId;
@@ -65,8 +61,6 @@ public class AshigaruTx0Controller implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        broadcastBtn.setDisable(true);
-
         poolCombo.setItems(FXCollections.observableArrayList());
         poolCombo.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
             if (sel != null && sel.pool() != null) {
@@ -78,13 +72,6 @@ public class AshigaruTx0Controller implements Initializable {
         int feeRate = SparrowMinerFeeSupplier.getFee(
                 Integer.parseInt(Tx0FeeTarget.BLOCKS_2.getFeeTarget().getValue()));
         feeRateLabel.setText(Math.max(2, feeRate) + " sats/vB  (High priority)");
-
-        // SCODE listener — upper-case and propagate immediately
-        scodeField.textProperty().addListener((obs, old, nw) -> {
-            if (!nw.equals(nw.toUpperCase(Locale.ROOT))) {
-                scodeField.setText(nw.toUpperCase(Locale.ROOT));
-            }
-        });
     }
 
     // -------------------------------------------------------------------------
@@ -99,15 +86,12 @@ public class AshigaruTx0Controller implements Initializable {
         ctrl.walletForm = walletForm;
         ctrl.utxoEntries = utxoEntries;
 
-        // Pre-fill SCODE from wallet's MixConfig
-        MixConfig mixConfig = walletForm.getWallet().getMasterMixConfig();
-        if (mixConfig.getScode() != null) {
-            ctrl.scodeField.setText(mixConfig.getScode());
-        }
-
         Dialog<Pool> dialog = new Dialog<>();
         dialog.setTitle(walletForm.getWallet().getFullDisplayName() + " — Transaction Zero");
         dialog.setDialogPane(pane);
+        // Resolve the actual Button node now that the DialogPane is wired up
+        ctrl.broadcastBtn = (Button) pane.lookupButton(ctrl.broadcastBtnType);
+        ctrl.broadcastBtn.setDisable(true);
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.initOwner(AshigaruGui.get().getMainStage());
         ctrl.dialogStage = (Stage) dialog.getDialogPane().getScene().getWindow();
@@ -191,14 +175,7 @@ public class AshigaruTx0Controller implements Initializable {
 
     private void fetchTx0Preview(Pool pool) {
         MixConfig mixConfig = walletForm.getWallet().getMasterMixConfig();
-        if (mixConfig.getScode() == null) {
-            mixConfig.setScode(scodeField.getText().trim().toUpperCase(Locale.ROOT));
-        }
-
-        // Persist SCODE changes
-        String currentScode = scodeField.getText().trim().toUpperCase(Locale.ROOT);
-        mixConfig.setScode(currentScode);
-        EventManager.get().post(new WalletMasterMixConfigChangedEvent(walletForm.getWallet()));
+        String currentScode = mixConfig.getScode() != null ? mixConfig.getScode() : "";
 
         Whirlpool wp = AppServices.getWhirlpoolServices().getWhirlpool(walletId);
 
@@ -269,22 +246,6 @@ public class AshigaruTx0Controller implements Initializable {
 
         selectedPool = pool;
         broadcastBtn.setDisable(false);
-    }
-
-    // -------------------------------------------------------------------------
-    // Button handlers
-    // -------------------------------------------------------------------------
-
-    @FXML
-    private void onBroadcast() {
-        // selectedPool is already set by applyPreview(); dialog result converter will pick it up
-        dialogStage.close();
-    }
-
-    @FXML
-    private void onCancel() {
-        selectedPool = null;
-        dialogStage.close();
     }
 
     // -------------------------------------------------------------------------

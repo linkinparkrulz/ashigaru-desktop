@@ -18,16 +18,7 @@
     <top>
         <HBox styleClass="header-bar" alignment="CENTER_LEFT" spacing="12">
             <padding><Insets top="10" right="16" bottom="10" left="16"/></padding>
-
-            <Label text="Ashigaru Terminal" styleClass="app-title"/>
-            <Region HBox.hgrow="ALWAYS"/>
-
-            <!-- Wallet selector (visible when wallets are open) -->
-            <ComboBox fx:id="walletSelector" styleClass="wallet-selector" visible="false"/>
-
-            <Label fx:id="networkLabel" text="MAINNET" styleClass="network-label mainnet"/>
-            <Label fx:id="blockHeightLabel" text="Block —" styleClass="header-info"/>
-            <Label fx:id="connectionLabel" text="○ Disconnected" styleClass="header-info disconnected"/>
+            <Label text="Ashigaru" styleClass="app-title"/>
         </HBox>
     </top>
 
@@ -35,40 +26,51 @@
     <left>
         <VBox styleClass="sidebar" minWidth="200" prefWidth="220" spacing="0">
 
-            <!-- Account buttons (Deposit, Premix, Postmix, Badbank) -->
-            <VBox fx:id="accountButtonsBox" spacing="0" VBox.vgrow="ALWAYS" visible="false" managed="false">
-                <Label text="ACCOUNTS" styleClass="sidebar-section-title">
+            <!-- ── WALLET SECTION (always visible) ──────────────────── -->
+            <VBox styleClass="sidebar-wallet-section" spacing="6">
+                <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+                <Label text="CURRENT WALLET" styleClass="sidebar-section-title"/>
+                <ComboBox fx:id="walletSelector" styleClass="wallet-selector" maxWidth="Infinity"/>
+                <Button text="Open Wallet…" onAction="#onOpenWallet"
+                        maxWidth="Infinity" styleClass="action-btn"/>
+                <Button text="+ New / Restore…" onAction="#onCreateWallet"
+                        maxWidth="Infinity" styleClass="action-btn secondary-btn"/>
+                <Button fx:id="deleteWalletBtn" text="✕  Delete Wallet…" onAction="#onDeleteWallet"
+                        maxWidth="Infinity" styleClass="delete-btn" visible="false" managed="false"/>
+            </VBox>
+
+            <Separator/>
+
+            <!-- ── ACCOUNTS SECTION (shown when a wallet is open) ────── -->
+            <VBox fx:id="accountButtonsBox" spacing="0" visible="false" managed="false">
+                <Label text="WALLET ACCOUNTS" styleClass="sidebar-section-title">
                     <padding><Insets top="14" right="12" bottom="6" left="12"/></padding>
                 </Label>
-
-                <ToggleButton fx:id="depositBtn" text="Deposit" toggleGroup="$accountToggleGroup"
+                <ToggleButton fx:id="depositBtn"  text="Deposit"  toggleGroup="$accountToggleGroup"
                               styleClass="account-btn" maxWidth="Infinity" maxHeight="Infinity"
                               VBox.vgrow="ALWAYS" onAction="#onAccountSelected"/>
-                <ToggleButton fx:id="premixBtn" text="Premix" toggleGroup="$accountToggleGroup"
+                <ToggleButton fx:id="premixBtn"   text="Premix"   toggleGroup="$accountToggleGroup"
                               styleClass="account-btn" maxWidth="Infinity" maxHeight="Infinity"
                               VBox.vgrow="ALWAYS" onAction="#onAccountSelected"/>
-                <ToggleButton fx:id="postmixBtn" text="Postmix" toggleGroup="$accountToggleGroup"
+                <ToggleButton fx:id="postmixBtn"  text="Postmix"  toggleGroup="$accountToggleGroup"
                               styleClass="account-btn" maxWidth="Infinity" maxHeight="Infinity"
                               VBox.vgrow="ALWAYS" onAction="#onAccountSelected"/>
-                <ToggleButton fx:id="badbankBtn" text="Badbank" toggleGroup="$accountToggleGroup"
+                <ToggleButton fx:id="badbankBtn"  text="Badbank"  toggleGroup="$accountToggleGroup"
                               styleClass="account-btn" maxWidth="Infinity" maxHeight="Infinity"
                               VBox.vgrow="ALWAYS" onAction="#onAccountSelected"/>
             </VBox>
 
-            <!-- Padding to push actions to bottom when accounts are shown -->
-            <Region fx:id="sidebarSpacer" VBox.vgrow="ALWAYS" visible="true"/>
+            <!-- Spacer fills remaining height -->
+            <Region VBox.vgrow="ALWAYS"/>
 
-            <!-- Wallet actions (always visible) -->
+            <!-- ── PREFERENCES (always visible, bottom) ─────────────── -->
             <Separator/>
             <VBox spacing="8" styleClass="sidebar-actions">
                 <padding><Insets top="10" right="12" bottom="12" left="12"/></padding>
-                <Button text="Open Wallet..." onAction="#onOpenWallet"
-                        maxWidth="Infinity" styleClass="action-btn"/>
-                <Button text="Create / Restore..." onAction="#onCreateWallet"
-                        maxWidth="Infinity" styleClass="action-btn secondary-btn"/>
-                <Button text="Preferences..." onAction="#onPreferences"
+                <Button text="Preferences…" onAction="#onPreferences"
                         maxWidth="Infinity" styleClass="action-btn secondary-btn"/>
             </VBox>
+
         </VBox>
     </left>
 
@@ -79,9 +81,9 @@
                 <!-- Welcome placeholder shown before any wallet is opened -->
                 <StackPane fx:id="welcomePane" styleClass="welcome-pane">
                     <VBox alignment="CENTER" spacing="16">
-                        <Label text="Ashigaru Terminal" styleClass="welcome-title"/>
+                        <Label text="Ashigaru" styleClass="welcome-title"/>
                         <Label text="Open a wallet to get started." styleClass="welcome-sub"/>
-                        <Label text="Use &#8220;Open Wallet...&#8221; or &#8220;Create / Restore...&#8221; in the sidebar." styleClass="welcome-hint"/>
+                        <Label text="Use &#8220;Open Wallet…&#8221; or &#8220;+ New / Restore…&#8221; in the sidebar." styleClass="welcome-hint"/>
                     </VBox>
                 </StackPane>
             </center>
@@ -90,9 +92,16 @@
 
     <!-- ===== BOTTOM STATUS BAR ===== -->
     <bottom>
-        <HBox styleClass="status-bar" alignment="CENTER_LEFT">
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" spacing="8">
             <padding><Insets top="5" right="12" bottom="5" left="12"/></padding>
             <Label fx:id="statusLabel" text="Ready" styleClass="status-label"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="networkLabel" text="MAINNET" styleClass="network-label mainnet"/>
+            <Label text="|" styleClass="status-separator"/>
+            <Label fx:id="blockHeightLabel" text="Block —" styleClass="status-label"/>
+            <Label text="|" styleClass="status-separator"/>
+            <Label fx:id="connectionLabel" text="○ Disconnected" styleClass="status-label disconnected"/>
         </HBox>
     </bottom>
+
 </BorderPane>

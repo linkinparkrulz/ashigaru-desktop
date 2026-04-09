@@ -4,6 +4,7 @@ import com.sparrowwallet.drongo.ExtendedKey;
 import com.sparrowwallet.drongo.KeyDerivation;
 import com.sparrowwallet.drongo.OutputDescriptor;
 import com.sparrowwallet.drongo.SecureString;
+import com.sparrowwallet.drongo.Utils;
 import com.sparrowwallet.drongo.crypto.ECKey;
 import com.sparrowwallet.drongo.crypto.EncryptionType;
 import com.sparrowwallet.drongo.crypto.Key;
@@ -13,6 +14,9 @@ import com.sparrowwallet.drongo.protocol.ScriptType;
 import com.sparrowwallet.drongo.wallet.*;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.EventManager;
+import com.sparrowwallet.sparrow.control.HelpLabel;
+import com.sparrowwallet.sparrow.control.LifeHashIcon;
+import com.sparrowwallet.sparrow.control.ViewPasswordField;
 import com.sparrowwallet.sparrow.event.StorageEvent;
 import com.sparrowwallet.sparrow.event.TimedEvent;
 import com.sparrowwallet.sparrow.io.Bip39;
@@ -24,11 +28,18 @@ import com.sparrowwallet.sparrow.wallet.KeystoreController;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import javafx.application.Platform;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.concurrent.Task;
+import javafx.event.Event;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -125,13 +136,33 @@ public class WalletCreationFlow {
         seedArea.setPromptText("Enter your 12/18/24 word BIP39 seed phrase, or generate a new one below.");
 
         Label passLabel = new Label("BIP39 Passphrase (optional):");
-        PasswordField passField = new PasswordField();
+        ViewPasswordField passField = new ViewPasswordField();
         passField.setPromptText("Leave blank for no passphrase");
+
+        ObjectProperty<byte[]> masterFingerprint = new SimpleObjectProperty<>();
+
+        HBox fingerprintBox = new HBox(10);
+        fingerprintBox.setAlignment(Pos.CENTER_LEFT);
+        Label fingerprintLabel = new Label("Master fingerprint:");
+        TextField fingerprintHex = new TextField();
+        fingerprintHex.setDisable(true);
+        fingerprintHex.setMaxWidth(80);
+        fingerprintHex.getStyleClass().add("fixed-width");
+        fingerprintHex.setStyle("-fx-opacity: 0.6");
+        masterFingerprint.addListener((obs, oldVal, newVal) ->
+                fingerprintHex.setText(newVal != null ? Utils.bytesToHex(newVal) : ""));
+        LifeHashIcon lifeHashIcon = new LifeHashIcon();
+        lifeHashIcon.dataProperty().bind(masterFingerprint);
+        HelpLabel helpLabel = new HelpLabel();
+        helpLabel.setHelpText("All passphrases create valid wallets." +
+                "\nThe master fingerprint identifies the keystore and changes as the passphrase changes." +
+                "\nMake sure you recognise it before proceeding.");
+        fingerprintBox.getChildren().addAll(fingerprintLabel, fingerprintHex, lifeHashIcon, helpLabel);
 
         Button generateBtn = new Button("Generate New Wallet");
         generateBtn.setOnAction(e -> seedArea.setText(generateMnemonic(12)));
 
-        VBox content = new VBox(10, seedLabel, seedArea, passLabel, passField, generateBtn);
+        VBox content = new VBox(10, seedLabel, seedArea, passLabel, passField, fingerprintBox, generateBtn);
         content.setPadding(new Insets(12));
         content.setPrefWidth(480);
         dlg.getDialogPane().setContent(content);
@@ -143,10 +174,14 @@ public class WalletCreationFlow {
         nextNode.setDisable(true);
 
         Bip39 importer = new Bip39();
-        seedArea.textProperty().addListener((obs, old, text) ->
-                nextNode.setDisable(!isValidSeed(importer, text, passField.getText())));
-        passField.textProperty().addListener((obs, old, text) ->
-                nextNode.setDisable(!isValidSeed(importer, seedArea.getText(), text)));
+        seedArea.textProperty().addListener((obs, old, text) -> {
+            nextNode.setDisable(!isValidSeed(importer, text, passField.getText()));
+            masterFingerprint.set(computeFingerprint(importer, text, passField.getText()));
+        });
+        passField.textProperty().addListener((obs, old, text) -> {
+            nextNode.setDisable(!isValidSeed(importer, seedArea.getText(), text));
+            masterFingerprint.set(computeFingerprint(importer, seedArea.getText(), text));
+        });
 
         dlg.setResultConverter(bt -> bt);
 
@@ -177,6 +212,17 @@ public class WalletCreationFlow {
             return true;
         } catch (ImportException e) {
             return false;
+        }
+    }
+
+    private byte[] computeFingerprint(Bip39 importer, String seedText, String passphrase) {
+        String[] words = seedText.trim().split("\\s+");
+        if (words.length < 12) return null;
+        try {
+            Keystore ks = importer.getKeystore(ScriptType.P2WPKH.getDefaultDerivation(), Arrays.asList(words), passphrase);
+            return ks.getExtendedMasterPrivateKey().getKey().getFingerprint();
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -289,48 +335,49 @@ public class WalletCreationFlow {
         if (wallets.isEmpty()) return;
 
         if (AppServices.onlineProperty().get()) {
-            // Non-blocking progress dialog with a Skip button so the user is never stuck
-            Alert progress = new Alert(Alert.AlertType.INFORMATION);
-            progress.setTitle(walletName);
-            progress.setHeaderText("Discovering accounts…");
-            ButtonType skipType = new ButtonType("Skip", ButtonBar.ButtonData.CANCEL_CLOSE);
-            progress.getButtonTypes().setAll(skipType);
-            progress.initOwner(owner);
-
             ElectrumServer.WalletDiscoveryService svc = new ElectrumServer.WalletDiscoveryService(wallets);
 
-            // If user skips, cancel the discovery service
-            progress.setOnHiding(ev -> svc.cancel());
+            Dialog<Void> progress = new Dialog<>();
+            progress.setTitle(walletName);
+            progress.setHeaderText("Discovering accounts…");
+            progress.initOwner(owner);
+            progress.initModality(Modality.APPLICATION_MODAL);
+            // No button types — dialog closes programmatically only
+
+            Label descLabel = new Label("Looking for previous transactions on the blockchain.");
+            descLabel.setWrapText(true);
+
+            Label statusLabel = new Label();
+            statusLabel.textProperty().bind(svc.messageProperty());
+            statusLabel.setOpacity(0.65);
+
+            ProgressBar bar = new ProgressBar();
+            bar.setPrefWidth(320);
+            bar.progressProperty().bind(svc.progressProperty());
+
+            VBox content = new VBox(10, descLabel, bar, statusLabel);
+            progress.getDialogPane().setContent(content);
 
             // Helper to close dialog and continue — always called exactly once
             Runnable finish = () -> {
-                progress.setOnHiding(null); // prevent double-cancel
+                progress.setOnHiding(null);
                 progress.close();
             };
 
-            svc.setOnSucceeded(e -> {
-                finish.run();
-                Optional<Wallet> found = svc.getValue();
-                Wallet wallet = found.orElseGet(() -> wallets.get(0));
+            Consumer<Wallet> proceed = wallet -> {
                 try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }
                 saveWallet(walletName, wallet);
-            });
-            svc.setOnFailed(e -> {
-                finish.run();
-                log.error("Account discovery failed", e.getSource().getException());
-                Wallet wallet = wallets.get(0);
-                try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }
-                saveWallet(walletName, wallet);
-            });
-            svc.setOnCancelled(e -> {
-                // Dialog already closed by user; just continue with default wallet
-                Wallet wallet = wallets.get(0);
-                try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }
-                saveWallet(walletName, wallet);
-            });
+            };
+
+            svc.setOnSucceeded(e -> { finish.run(); proceed.accept(svc.getValue().orElseGet(() -> wallets.get(0))); });
+            svc.setOnFailed(e -> { finish.run(); log.error("Account discovery failed", e.getSource().getException()); proceed.accept(wallets.get(0)); });
+            svc.setOnCancelled(e -> { finish.run(); proceed.accept(wallets.get(0)); });
 
             svc.start();
             progress.show(); // non-blocking — callbacks close it when done
+
+            // Prevent the window X-button from closing the dialog while discovery runs
+            ((Stage) progress.getDialogPane().getScene().getWindow()).setOnCloseRequest(Event::consume);
         } else {
             Wallet wallet = wallets.get(0);
             try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }

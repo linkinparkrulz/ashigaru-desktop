@@ -5,14 +5,14 @@
 
 /* ── Palette ──────────────────────────────────────────────────────────────── */
 * {
-    -ag-bg:           #0d0d0d;
-    -ag-bg-mid:       #161616;
-    -ag-bg-light:     #1e1e1e;
-    -ag-bg-raised:    #282828;
-    -ag-border:       #2a2a2a;
+    -ag-bg:           #121212;
+    -ag-bg-mid:       #1A1B20;
+    -ag-bg-light:     #242429;
+    -ag-bg-raised:    #2E2F36;
+    -ag-border:       #333340;
     -ag-text:         #e0e0e0;
-    -ag-text-dim:     #888888;
-    -ag-text-faint:   #505050;
+    -ag-text-dim:     #A0A0A0;
+    -ag-text-faint:   #808080;
     -ag-accent:       #cc1111;   /* Ashigaru red */
     -ag-accent-dark:  #991010;
     -ag-green:        #4caf50;
@@ -79,7 +79,7 @@
 }
 
 .sidebar-section-title {
-    -fx-text-fill: -ag-text-faint;
+    -fx-text-fill: -ag-text-dim;
     -fx-font-size: 10px;
     -fx-font-weight: bold;
 }
@@ -218,7 +218,7 @@
     -fx-font-size: 10px;
     -fx-font-weight: bold;
 }
-.balance-value          { -fx-text-fill: -ag-text;     -fx-font-size: 14px; -fx-font-weight: bold; }
+.balance-value          { -fx-text-fill: -ag-text;     -fx-font-size: 18px; -fx-font-weight: bold; }
 .balance-value.secondary { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
 
 /* ── UTXO table ───────────────────────────────────────────────────────────── */
@@ -315,13 +315,6 @@
 .combo-box-popup .list-cell:hover { -fx-background-color: -ag-bg-raised; }
 .combo-box-popup .list-cell:selected { -fx-background-color: derive(-ag-accent, -60%); -fx-text-fill: -ag-accent; }
 
-.scode-field {
-    -fx-text-fill: -ag-accent;
-    -fx-font-family: monospace;
-    -fx-font-weight: bold;
-    -fx-font-size: 14px;
-}
-
 /* ── Toggle buttons ───────────────────────────────────────────────────────── */
 .toggle-button {
     -fx-background-color: -ag-bg-light;
@@ -376,11 +369,57 @@
 .badbank-warning-icon { -fx-text-fill: -ag-testnet; -fx-font-size: 14px; }
 .badbank-info-text    { -fx-text-fill: -ag-testnet; -fx-font-size: 11px; }
 
+/* ── Copy icon button (used in tables and receive dialog) ─────────────────── */
+.copy-icon-btn {
+    -fx-background-color: transparent;
+    -fx-padding: 1 3 1 3;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+}
+.copy-icon-btn:hover {
+    -fx-background-color: -ag-bg-raised;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+}
+.copy-icon-btn .glyph-font { -fx-opacity: 0.6; }
+.copy-icon-btn:hover .glyph-font { -fx-opacity: 1.0; }
+
+/* ── Splash screen ────────────────────────────────────────────────────────── */
+.splash-pane {
+    -fx-background-color: -ag-bg;
+}
+.splash-title {
+    -fx-text-fill: -ag-accent;
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+}
+.splash-status {
+    -fx-text-fill: -ag-text-dim;
+    -fx-font-size: 13px;
+}
+.splash-progress .track {
+    -fx-background-color: -ag-bg-raised;
+    -fx-background-radius: 3;
+}
+.splash-progress .bar {
+    -fx-background-color: -ag-accent;
+    -fx-background-radius: 3;
+    -fx-background-insets: 0;
+}
+
 /* ── Receive dialog ───────────────────────────────────────────────────────── */
 .address-field {
     -fx-font-family: monospace;
     -fx-font-size: 11px;
     -fx-text-fill: -ag-accent;
+}
+
+/* ── QR code container ────────────────────────────────────────────────────── */
+.qr-container {
+    -fx-background-color: white;
+    -fx-background-radius: 4;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 4;
 }
 
 /* ── Separator ────────────────────────────────────────────────────────────── */
@@ -443,7 +482,7 @@
 }
 .account-btn:hover { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
 .account-btn:selected, .account-btn.account-selected {
-    -fx-background-color: derive(-ag-accent, -60%);
+    -fx-background-color: -ag-bg-raised;
     -fx-text-fill: -ag-accent;
     -fx-border-color: transparent transparent transparent -ag-accent;
     -fx-border-width: 0 0 0 3;
@@ -481,6 +520,30 @@
     -fx-border-color: -ag-accent;
 }
 .list-item:selected:hover { -fx-background-color: derive(-ag-accent, -60%); }
+
+/* ── Account header row (top of wallet panel) ──────────────────────────── */
+.account-header-row {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 0 0 1 0;
+}
+.account-name-label {
+    -fx-text-fill: -ag-text;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+/* ── Sidebar wallet section ─────────────────────────────────────────────── */
+.sidebar-wallet-section {
+    -fx-background-color: -ag-bg-mid;
+}
+
+/* ── Empty state (UTXO table placeholder) ───────────────────────────────── */
+.empty-state-icon    { -fx-font-size: 28px; -fx-text-fill: -ag-text-faint; }
+.empty-state-message { -fx-font-size: 14px; -fx-text-fill: -ag-text-dim; }
+
+/* ── Footer separator glyph ─────────────────────────────────────────────── */
+.status-separator { -fx-text-fill: -ag-border; -fx-padding: 0 4 0 4; }
 
 /* ── ControlsFX ToggleSwitch: override blue from darktheme.css ──────────── */
 .toggle-switch .thumb-area {

@@ -62,18 +62,13 @@
     <Form fx:id="publicElectrumForm" GridPane.columnIndex="0" GridPane.rowIndex="1">
         <Fieldset inputGrow="SOMETIMES" text="Public Server">
             <Field text="">
-                <Label alignment="CENTER" translateY="-1">
-                    <graphic>
-                        <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="12" icon="EXCLAMATION_TRIANGLE" styleClass="public-warning" />
-                    </graphic>
-                    <padding>
-                        <Insets right="5" />
-                    </padding>
-                </Label>
-                <CopyableLabel text="Warning!" />
-            </Field>
-            <Field text="">
-                <CopyableLabel text="Using a public server means it can see your transactions."/>
+                <VBox styleClass="warning-box" spacing="5" maxWidth="Infinity">
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="EXCLAMATION_TRIANGLE" styleClass="public-warning" />
+                        <Label text="Warning!" styleClass="warning-title" />
+                    </HBox>
+                    <Label text="Using a public server means it can see your transactions." wrapText="true" styleClass="warning-body" />
+                </VBox>
             </Field>
             <Field text="URL:">
                 <ComboBox fx:id="publicElectrumServer" />
@@ -131,11 +126,12 @@
         </Button>
     </StackPane>
 
-    <StackPane GridPane.columnIndex="0" GridPane.rowIndex="3">
+    <VBox GridPane.columnIndex="0" GridPane.rowIndex="3" spacing="5">
         <padding>
-            <Insets top="10.0" bottom="20.0"/>
+            <Insets top="10" bottom="20"/>
         </padding>
-        <TextArea fx:id="testResults" editable="false" wrapText="true"/>
-    </StackPane>
+        <Label text="CONNECTION TEST OUTPUT" styleClass="test-output-header" />
+        <TextArea fx:id="testResults" editable="false" wrapText="true" />
+    </VBox>
 
 </GridPane>

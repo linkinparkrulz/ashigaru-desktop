@@ -50,7 +50,7 @@ public class AshigaruMainController implements Initializable {
 
     // Account sidebar controls
     @FXML private VBox accountButtonsBox;
-    @FXML private Region sidebarSpacer;
+    @FXML private Button deleteWalletBtn;
     @FXML private ToggleGroup accountToggleGroup;
     @FXML private ToggleButton depositBtn;
     @FXML private ToggleButton premixBtn;
@@ -105,11 +105,11 @@ public class AshigaruMainController implements Initializable {
     private void showWelcome() {
         maybeReconnectOnLeavingPrefs();
         contentPane.setCenter(welcomePane);
-        walletSelector.setVisible(false);
+        // walletSelector stays visible in the sidebar at all times
         accountButtonsBox.setVisible(false);
         accountButtonsBox.setManaged(false);
-        sidebarSpacer.setVisible(true);
-        sidebarSpacer.setManaged(true);
+        deleteWalletBtn.setVisible(false);
+        deleteWalletBtn.setManaged(false);
     }
 
     private void selectWallet(String walletId) {
@@ -119,12 +119,11 @@ public class AshigaruMainController implements Initializable {
         currentWalletForm = walletForm;
         selectedAccount = StandardAccount.ACCOUNT_0; // Default to Deposit
 
-        // Show account sidebar and wallet selector; hide spacer so buttons fill the height
-        walletSelector.setVisible(true);
+        // Show account section and delete button (wallet selector is always visible)
         accountButtonsBox.setVisible(true);
         accountButtonsBox.setManaged(true);
-        sidebarSpacer.setVisible(false);
-        sidebarSpacer.setManaged(false);
+        deleteWalletBtn.setVisible(true);
+        deleteWalletBtn.setManaged(true);
 
         // Select Deposit by default
         depositBtn.setSelected(true);
@@ -231,6 +230,12 @@ public class AshigaruMainController implements Initializable {
     @FXML
     private void onCreateWallet() {
         new WalletCreationFlow(AshigaruGui.get().getMainStage()).start();
+    }
+
+    @FXML
+    private void onDeleteWallet() {
+        WalletListItem selected = walletSelector.getSelectionModel().getSelectedItem();
+        if (selected != null) deleteWallet(selected);
     }
 
     void deleteWallet(String walletId) {
@@ -365,6 +370,15 @@ public class AshigaruMainController implements Initializable {
     // -------------------------------------------------------------------------
 
     @Subscribe
+    public void childWalletsAdded(ChildWalletsAddedEvent event) {
+        if (!event.getChildWallets().isEmpty()) {
+            for (Wallet childWallet : event.getChildWallets()) {
+                AshigaruGui.addWallet(event.getStorage(), childWallet);
+            }
+        }
+    }
+
+    @Subscribe
     public void connectionEvent(ConnectionEvent event) {
         Platform.runLater(() -> {
             updateConnectionLabel(true);
@@ -391,6 +405,25 @@ public class AshigaruMainController implements Initializable {
     }
 
     @Subscribe
+    public void walletHistoryStarted(WalletHistoryStartedEvent event) {
+        if (event.getWallet().isMasterWallet()) {
+            Platform.runLater(() -> statusLabel.setText("Syncing " + event.getWallet().getDisplayName() + "…"));
+        }
+    }
+
+    @Subscribe
+    public void walletHistoryFinished(WalletHistoryFinishedEvent event) {
+        if (event.getWallet().isMasterWallet()) {
+            Platform.runLater(() -> statusLabel.setText("Ready"));
+        }
+    }
+
+    @Subscribe
+    public void walletHistoryFailed(WalletHistoryFailedEvent event) {
+        walletHistoryFinished(new WalletHistoryFinishedEvent(event.getWallet()));
+    }
+
+    @Subscribe
     public void walletOpened(WalletOpenedEvent event) {
         if (event.getWallet().isMasterWallet()) {
             Platform.runLater(this::refreshWalletList);
@@ -404,7 +437,10 @@ public class AshigaruMainController implements Initializable {
         walletItems.clear();
         for (WalletForm form : AshigaruGui.get().getWalletForms().values()) {
             if (form.getWallet().isMasterWallet()) {
-                walletItems.add(new WalletListItem(form.getWalletId(), form.getWallet().getFullDisplayName()));
+                String name = form.getWallet().getFullDisplayName();
+                int dash = name.lastIndexOf(" - ");
+                if (dash > 0) name = name.substring(0, dash);
+                walletItems.add(new WalletListItem(form.getWalletId(), name));
             }
         }
 

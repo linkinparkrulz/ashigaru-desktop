@@ -1702,6 +1702,7 @@ public class ElectrumServer {
 
                     for(int i = 0; i < wallets.size(); i++) {
                         Wallet wallet = wallets.get(i);
+                        updateMessage("Checking " + wallet.getScriptType().getName() + "…");
                         updateProgress(i, wallets.size() + StandardAccount.DISCOVERY_ACCOUNTS.size());
                         Map<WalletNode, Set<BlockTransactionHash>> nodeTransactionMap = new TreeMap<>();
                         electrumServer.getReferences(wallet, wallet.getNode(KeyPurpose.RECEIVE).getChildren(), nodeTransactionMap, 0);
@@ -1711,6 +1712,7 @@ public class ElectrumServer {
                             Set<StandardAccount> foundAccounts = new LinkedHashSet<>();
                             for(int j = 0; j < searchAccounts.size(); j++) {
                                 StandardAccount standardAccount = searchAccounts.get(j);
+                                updateMessage("Checking " + standardAccount.getName() + "…");
                                 Wallet childWallet = masterWalletCopy.addChildWallet(standardAccount);
                                 Map<WalletNode, Set<BlockTransactionHash>> childTransactionMap = new TreeMap<>();
                                 electrumServer.getReferences(childWallet, childWallet.getNode(KeyPurpose.RECEIVE).getChildren(), childTransactionMap, 0);
@@ -1732,6 +1734,7 @@ public class ElectrumServer {
                         }
                     }
 
+                    updateMessage("No existing accounts found.");
                     return Optional.empty();
                 }
             };

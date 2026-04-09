@@ -7,6 +7,7 @@ import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -15,12 +16,15 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.stage.Window;
+import javafx.util.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class AshigaruGui extends Application {
@@ -62,7 +66,7 @@ public class AshigaruGui extends Application {
         Scene scene = new Scene(root, 1100, 720);
         scene.getStylesheets().add(getClass().getResource("ashigaru.css").toExternalForm());
 
-        stage.setTitle("Ashigaru Terminal " + AshigaruTerminal.APP_VERSION);
+        stage.setTitle("Ashigaru " + AshigaruTerminal.APP_VERSION);
         stage.setMinWidth(800);
         stage.setMinHeight(540);
         stage.setScene(scene);
@@ -75,9 +79,66 @@ public class AshigaruGui extends Application {
             log.warn("Could not load application icon", e);
         }
 
-        stage.show();
+        // Show splash and hold main window until connected (or timeout)
+        Stage splashStage = showSplash();
+        AtomicBoolean shown = new AtomicBoolean(false);
 
-        // Restore recently opened wallets
+        Runnable revealMain = () -> {
+            if (shown.compareAndSet(false, true)) {
+                Platform.runLater(() -> showMainWindow(splashStage, stage));
+            }
+        };
+
+        AppServices.get().start();
+
+        if (Config.get().getMode() != Mode.ONLINE) {
+            PauseTransition offlineDelay = new PauseTransition(Duration.seconds(3));
+            offlineDelay.setOnFinished(e -> revealMain.run());
+            offlineDelay.play();
+        } else {
+            PauseTransition timeout = new PauseTransition(Duration.seconds(30));
+            timeout.setOnFinished(e -> revealMain.run());
+
+            AppServices.onlineProperty().addListener((obs, wasOnline, isOnline) -> {
+                if (isOnline) {
+                    timeout.stop();
+                    revealMain.run();
+                }
+            });
+
+            timeout.play();
+        }
+    }
+
+    private Stage showSplash() {
+        try {
+            FXMLLoader splashLoader = new FXMLLoader(getClass().getResource("ashigaru-splash.fxml"));
+            Parent splashRoot = splashLoader.load();
+            AshigaruSplashController splashCtrl = splashLoader.getController();
+
+            Stage splashStage = new Stage();
+            splashStage.initStyle(StageStyle.UNDECORATED);
+            Scene splashScene = new Scene(splashRoot, 600, 400);
+            splashScene.getStylesheets().add(getClass().getResource("ashigaru.css").toExternalForm());
+            splashStage.setScene(splashScene);
+            splashStage.setUserData(splashCtrl);
+            splashStage.show();
+            return splashStage;
+        } catch (Exception e) {
+            log.warn("Could not load splash screen", e);
+            return null;
+        }
+    }
+
+    private void showMainWindow(Stage splashStage, Stage mainStage) {
+        if (splashStage != null) {
+            Object userData = splashStage.getUserData();
+            if (userData instanceof AshigaruSplashController ctrl) ctrl.stop();
+            splashStage.close();
+        }
+
+        mainStage.show();
+
         List<File> recentWalletFiles = Config.get().getRecentWalletFiles();
         if (recentWalletFiles != null) {
             for (File walletFile : recentWalletFiles) {
@@ -86,8 +147,6 @@ public class AshigaruGui extends Application {
                 }
             }
         }
-
-        AppServices.get().start();
     }
 
     @Override
@@ -138,6 +197,9 @@ public class AshigaruGui extends Application {
                     WalletForm childForm = new WalletForm(storage, wallet);
                     EventManager.get().register(childForm);
                     masterForm.getNestedWalletForms().add(childForm);
+                    if (wallet.isValid()) {
+                        Platform.runLater(() -> childForm.refreshHistory(AppServices.getCurrentBlockHeight()));
+                    }
                 }
             }
         } else {

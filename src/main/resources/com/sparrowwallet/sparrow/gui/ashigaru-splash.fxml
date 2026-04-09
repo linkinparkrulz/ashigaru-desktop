@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<StackPane xmlns="http://javafx.com/javafx"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.sparrowwallet.sparrow.gui.AshigaruSplashController"
+           styleClass="splash-pane" prefWidth="600" prefHeight="400">
+    <VBox alignment="CENTER" spacing="20">
+        <ImageView fitWidth="120" fitHeight="120" preserveRatio="true">
+            <image>
+                <Image url="@/image/Ashigaru_Terminal_Logo_Circle.png"/>
+            </image>
+        </ImageView>
+        <Label text="Ashigaru" styleClass="splash-title"/>
+        <Label fx:id="statusLabel" text="Initializing…" styleClass="splash-status"/>
+        <ProgressBar fx:id="progressBar" prefWidth="240" progress="-1" styleClass="splash-progress"/>
+    </VBox>
+</StackPane>

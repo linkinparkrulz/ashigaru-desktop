@@ -3,6 +3,7 @@ plugins {
     id 'application'
     id 'extra-java-module-info'
     id 'org-openjfx-javafxplugin'
+    id 'org.beryx.jlink'
 }
 
 def ashigaruTerminalVersion = '1.0.0'
@@ -185,7 +186,7 @@ application {
                                  "--add-reads=kotlin.stdlib=kotlinx.coroutines.core"]
 
     if(os.macOsX) {
-        applicationDefaultJvmArgs += ["-Dprism.lcdtext=false", "-Xdock:name=Ashigaru-terminal", "-Xdock:icon=/Users/scy/git/sparrow/src/main/resources/sparrow-large.png",
+        applicationDefaultJvmArgs += ["-Dprism.lcdtext=false", "-Xdock:name=Ashigaru",
                                       "--add-opens=javafx.graphics/com.sun.glass.ui.mac=centerdevice.nsmenufx"]
     }
     if(headless) {
@@ -193,8 +194,51 @@ application {
     }
 }
 
-// jlink plugin removed (requires Gradle plugin portal which is not accessible in this environment)
-// jlink/jpackage tasks disabled - use ./gradlew run for development
+jlink {
+    options = ['--strip-debug', '--no-header-files', '--no-man-pages',
+               '--ignore-signing-information', '--compress=1']
+    launcher {
+        name = 'Ashigaru'
+        noConsole = os.windows
+    }
+    jpackage {
+        imageName     = 'Ashigaru'
+        installerName = "Ashigaru-${ashigaruTerminalVersion}"
+        appVersion    = ashigaruTerminalVersion
+        resourceDir   = file("src/main/deploy/package/${osName}")
+
+        if (os.windows) {
+            icon             = 'src/main/deploy/package/windows/ashigaru.ico'
+            installerType    = 'exe'
+            installerOptions = ['--win-dir-chooser', '--win-menu', '--win-shortcut']
+        }
+        if (os.linux) {
+            icon             = 'src/main/deploy/package/linux/Ashigaru.png'
+            installerType    = 'deb'
+            installerOptions = ['--linux-shortcut']
+        }
+        if (os.macOsX) {
+            icon             = 'src/main/deploy/package/osx/ashigaru.icns'
+            installerType    = 'dmg'
+            installerOptions = ['--mac-package-name', 'Ashigaru']
+        }
+    }
+}
+
+task packageZipDistribution(type: Zip, dependsOn: jpackageImage) {
+    archiveFileName      = "Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
+    destinationDirectory = file("${buildDir}/distributions")
+    from("${buildDir}/jpackage/Ashigaru")
+    into('Ashigaru')
+}
+
+task packageTarDistribution(type: Tar, dependsOn: jpackageImage) {
+    archiveFileName      = "Ashigaru-${ashigaruTerminalVersion}-${releaseArch}.tar.gz"
+    destinationDirectory = file("${buildDir}/distributions")
+    compression          = Compression.GZIP
+    from("${buildDir}/jpackage/Ashigaru")
+    into('Ashigaru')
+}
 
 extraJavaModuleInfo {
     module('jackson-core-2.13.2.jar', 'com.fasterxml.jackson.core', '2.13.2') {

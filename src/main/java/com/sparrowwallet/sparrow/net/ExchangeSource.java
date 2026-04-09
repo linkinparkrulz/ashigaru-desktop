@@ -126,6 +126,12 @@ public enum ExchangeSource {
         }
     },
     COINGECKO("Coingecko") {
+        // CoinGecko's public v3 API returns 403 for requests without browser-like headers
+        private final Map<String, String> GECKO_HEADERS = Map.of(
+            "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept",     "application/json"
+        );
+
         @Override
         public List<Currency> getSupportedCurrencies() {
             return getRates().rates.entrySet().stream().filter(rate -> "fiat".equals(rate.getValue().type) && isValidISO4217Code(rate.getKey().toUpperCase(Locale.ROOT)))
@@ -157,7 +163,7 @@ public enum ExchangeSource {
 
             HttpClientService httpClientService = AppServices.getHttpClientService();
             try {
-                return httpClientService.requestJson(url, CoinGeckoRates.class, null);
+                return httpClientService.requestJson(url, CoinGeckoRates.class, GECKO_HEADERS);
             } catch(Exception e) {
                 if(log.isDebugEnabled()) {
                     log.warn("Error retrieving currency rates", e);
@@ -182,7 +188,7 @@ public enum ExchangeSource {
             Map<Date, Double> historicalRates = new TreeMap<>();
             HttpClientService httpClientService = AppServices.getHttpClientService();
             try {
-                CoinGeckoHistoricalRates coinGeckoHistoricalRates = httpClientService.requestJson(url, CoinGeckoHistoricalRates.class, null);
+                CoinGeckoHistoricalRates coinGeckoHistoricalRates = httpClientService.requestJson(url, CoinGeckoHistoricalRates.class, GECKO_HEADERS);
                 for(List<Number> historicalRate : coinGeckoHistoricalRates.prices) {
                     Date date = new Date(historicalRate.get(0).longValue());
                     historicalRates.put(DateUtils.truncate(date, Calendar.DAY_OF_MONTH), historicalRate.get(1).doubleValue());

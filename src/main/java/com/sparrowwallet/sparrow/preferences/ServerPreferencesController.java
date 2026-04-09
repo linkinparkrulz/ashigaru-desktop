@@ -525,6 +525,14 @@ public class ServerPreferencesController extends PreferencesDetailController {
             Config.get().setMode(Mode.ONLINE);
             connectionService.cancel();
             useProxyOriginal = null;
+            setFieldsEditable(false);
+            testConnection.setVisible(false);
+            editConnection.setVisible(true);
+            Platform.runLater(() -> {
+                if(!(AppServices.isConnecting() || AppServices.isConnected())) {
+                    EventManager.get().post(new RequestConnectEvent());
+                }
+            });
             if(Config.get().addRecentServer()) {
                 if(Config.get().getServerType() == ServerType.ELECTRUM_SERVER) {
                     recentElectrumServers.setItems(getObservableServerList(Config.get().getRecentElectrumServers()));
@@ -613,6 +621,7 @@ public class ServerPreferencesController extends PreferencesDetailController {
         if(serverBanner != null) {
             testResults.setText(testResults.getText() + "\nServer Banner: " + serverBanner);
         }
+        testResults.appendText("\n\nSettings saved. Establishing connection in the background...");
     }
 
     private void showConnectionFailure(Throwable exception) {

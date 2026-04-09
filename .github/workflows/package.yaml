@@ -33,10 +33,10 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Sparrow Build - ${{ runner.os }}
+          name: Ashigaru Build - ${{ runner.os }}
           path: |
             build/jpackage/*
-            !build/jpackage/Sparrow/
+            !build/jpackage/Ashigaru/
       - name: Headless build with Gradle
         if: ${{ runner.os == 'Linux' }}
         run: ./gradlew -Djava.awt.headless=true clean jpackage
@@ -45,12 +45,12 @@ jobs:
         run: ./gradlew -Djava.awt.headless=true packageTarDistribution
       - name: Rename Headless Artifacts
         if: ${{ runner.os == 'Linux' }}
-        run: for f in build/jpackage/sparrow*; do mv -v "$f" "${f/sparrow/sparrow-server}"; done;
+        run: for f in build/jpackage/ashigaru*; do mv -v "$f" "${f/ashigaru/ashigaru-server}"; done;
       - name: Upload Headless Artifact
         if: ${{ runner.os == 'Linux' }}
         uses: actions/upload-artifact@v4
         with:
-          name: Sparrow Build - ${{ runner.os }} Headless
+          name: Ashigaru Build - ${{ runner.os }} Headless
           path: |
             build/jpackage/*
-            !build/jpackage/Sparrow/
+            !build/jpackage/Ashigaru/
