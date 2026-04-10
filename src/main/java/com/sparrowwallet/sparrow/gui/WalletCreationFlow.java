@@ -27,6 +27,7 @@ import com.sparrowwallet.sparrow.net.ElectrumServer;
 import com.sparrowwallet.sparrow.wallet.KeystoreController;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -39,6 +40,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -342,7 +344,10 @@ public class WalletCreationFlow {
             progress.setHeaderText("Discovering accounts…");
             progress.initOwner(owner);
             progress.initModality(Modality.APPLICATION_MODAL);
-            // No button types — dialog closes programmatically only
+
+            // Cancel button — gives user an immediate escape hatch
+            ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+            progress.getDialogPane().getButtonTypes().add(cancelType);
 
             Label descLabel = new Label("Looking for previous transactions on the blockchain.");
             descLabel.setWrapText(true);
@@ -358,8 +363,15 @@ public class WalletCreationFlow {
             VBox content = new VBox(10, descLabel, bar, statusLabel);
             progress.getDialogPane().setContent(content);
 
+            // 2-minute auto-timeout — cancel and proceed if Tor/Electrum stalls
+            PauseTransition timeout = new PauseTransition(Duration.seconds(120));
+            timeout.setOnFinished(e -> {
+                if(svc.isRunning()) svc.cancel();
+            });
+
             // Helper to close dialog and continue — always called exactly once
             Runnable finish = () -> {
+                timeout.stop();
                 progress.setOnHiding(null);
                 progress.close();
             };
@@ -373,7 +385,12 @@ public class WalletCreationFlow {
             svc.setOnFailed(e -> { finish.run(); log.error("Account discovery failed", e.getSource().getException()); proceed.accept(wallets.get(0)); });
             svc.setOnCancelled(e -> { finish.run(); proceed.accept(wallets.get(0)); });
 
+            // Wire the Cancel button to cancel the service
+            Button cancelBtn = (Button) progress.getDialogPane().lookupButton(cancelType);
+            cancelBtn.setOnAction(e -> { e.consume(); svc.cancel(); });
+
             svc.start();
+            timeout.play();
             progress.show(); // non-blocking — callbacks close it when done
 
             // Prevent the window X-button from closing the dialog while discovery runs

@@ -12,6 +12,8 @@ import javafx.scene.Node;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.StackPane;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URL;
@@ -19,6 +21,8 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 
 public class PreferencesController implements Initializable {
+    private static final Logger log = LoggerFactory.getLogger(PreferencesController.class);
+
     private Config config;
 
     @FXML
@@ -76,19 +80,20 @@ public class PreferencesController implements Initializable {
     }
 
     FXMLLoader setPreferencePane(String fxmlName) {
-        preferencesPane.getChildren().removeAll(preferencesPane.getChildren());
+        preferencesPane.getChildren().clear();
 
         try {
             FXMLLoader preferencesDetailLoader = new FXMLLoader(AppServices.class.getResource("preferences/" + fxmlName + ".fxml"));
             Node preferenceGroupNode = preferencesDetailLoader.load();
             PreferencesDetailController controller = preferencesDetailLoader.getController();
             controller.setMasterController(this);
-            controller.initializeView(config);
             preferencesPane.getChildren().add(preferenceGroupNode);
+            controller.initializeView(config);
 
             return preferencesDetailLoader;
-        } catch (IOException e) {
-            throw new IllegalStateException("Can't find pane", e);
+        } catch (Exception e) {
+            log.error("Could not load preferences pane: " + fxmlName, e);
+            throw new IllegalStateException("Can't find pane: " + fxmlName, e);
         }
     }
 }
