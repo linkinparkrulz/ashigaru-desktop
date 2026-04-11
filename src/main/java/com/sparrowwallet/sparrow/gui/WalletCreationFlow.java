@@ -41,6 +41,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -363,31 +364,33 @@ public class WalletCreationFlow {
             VBox content = new VBox(10, descLabel, bar, statusLabel);
             progress.getDialogPane().setContent(content);
 
-            // 2-minute auto-timeout — cancel and proceed if Tor/Electrum stalls
-            PauseTransition timeout = new PauseTransition(Duration.seconds(120));
-            timeout.setOnFinished(e -> {
-                if(svc.isRunning()) svc.cancel();
-            });
+            // Guard — wallet is saved exactly once regardless of which path fires first
+            AtomicBoolean proceeded = new AtomicBoolean(false);
+            Consumer<Wallet> proceed = wallet -> {
+                if (!proceeded.compareAndSet(false, true)) return;
+                try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }
+                // Platform.runLater lets the discovery dialog fully close before the save dialog opens
+                Platform.runLater(() -> saveWallet(walletName, wallet));
+            };
 
-            // Helper to close dialog and continue — always called exactly once
+            // Helper to close dialog and stop the timeout — always called exactly once
             Runnable finish = () -> {
-                timeout.stop();
                 progress.setOnHiding(null);
                 progress.close();
             };
 
-            Consumer<Wallet> proceed = wallet -> {
-                try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }
-                saveWallet(walletName, wallet);
-            };
+            // 2-minute auto-timeout: close dialog + proceed directly, don't wait for onCancelled
+            // (the blocking Electrum socket may not respond to thread interruption)
+            PauseTransition timeout = new PauseTransition(Duration.seconds(120));
+            timeout.setOnFinished(e -> { finish.run(); svc.cancel(); proceed.accept(wallets.get(0)); });
 
-            svc.setOnSucceeded(e -> { finish.run(); proceed.accept(svc.getValue().orElseGet(() -> wallets.get(0))); });
-            svc.setOnFailed(e -> { finish.run(); log.error("Account discovery failed", e.getSource().getException()); proceed.accept(wallets.get(0)); });
-            svc.setOnCancelled(e -> { finish.run(); proceed.accept(wallets.get(0)); });
+            svc.setOnSucceeded(e -> { timeout.stop(); finish.run(); proceed.accept(svc.getValue().orElseGet(() -> wallets.get(0))); });
+            svc.setOnFailed(e -> { timeout.stop(); finish.run(); log.error("Account discovery failed", e.getSource().getException()); proceed.accept(wallets.get(0)); });
+            svc.setOnCancelled(e -> { timeout.stop(); finish.run(); proceed.accept(wallets.get(0)); });
 
-            // Wire the Cancel button to cancel the service
+            // Cancel button: same as timeout — close + proceed immediately
             Button cancelBtn = (Button) progress.getDialogPane().lookupButton(cancelType);
-            cancelBtn.setOnAction(e -> { e.consume(); svc.cancel(); });
+            cancelBtn.setOnAction(e -> { e.consume(); finish.run(); svc.cancel(); proceed.accept(wallets.get(0)); });
 
             svc.start();
             timeout.play();

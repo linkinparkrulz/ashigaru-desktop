@@ -143,7 +143,7 @@ public class AshigaruGui extends Application {
         if (recentWalletFiles != null) {
             for (File walletFile : recentWalletFiles) {
                 if (walletFile.exists()) {
-                    mainController.openWalletFile(walletFile);
+                    mainController.addRecentWalletFile(walletFile);
                 }
             }
         }
