@@ -164,7 +164,7 @@ public class AshigaruMainController implements Initializable {
             contentPane.setCenter(walletPanel);
         } catch (Exception e) {
             log.error("Error loading wallet panel", e);
-            AppServices.showErrorDialog("Error", "Could not load wallet view: " + e.getMessage());
+            showError("Error", "Could not load wallet view: " + e.getMessage());
         }
     }
 
@@ -277,7 +277,7 @@ public class AshigaruMainController implements Initializable {
             });
             svc.setOnFailed(e -> {
                 svc.cancel();
-                AppServices.showErrorDialog("Delete Failed", svc.getException().getMessage());
+                showError("Delete Failed", svc.getException().getMessage());
             });
             svc.start();
         });
@@ -297,7 +297,7 @@ public class AshigaruMainController implements Initializable {
             prefsController.selectGroup(PreferenceGroup.GENERAL);
         } catch (IOException e) {
             log.error("Error loading preferences panel", e);
-            AppServices.showErrorDialog("Error", "Could not load preferences: " + e.getMessage());
+            showError("Error", "Could not load preferences: " + e.getMessage());
         }
     }
 
@@ -391,7 +391,7 @@ public class AshigaruMainController implements Initializable {
                 }
             } catch (Exception ex) {
                 log.error("Error opening wallet", ex);
-                AppServices.showErrorDialog("Error Opening Wallet", ex.getMessage());
+                showError("Error Opening Wallet", ex.getMessage());
             } finally {
                 wak.clear();
             }
@@ -399,7 +399,7 @@ public class AshigaruMainController implements Initializable {
         svc.setOnFailed(e -> {
             Throwable ex = svc.getException();
             if (ex instanceof InvalidPasswordException) {
-                Optional<ButtonType> retry = AppServices.showErrorDialog(
+                Optional<ButtonType> retry = showError(
                         "Invalid Password", "The wallet password was incorrect. Try again?",
                         ButtonType.CANCEL, ButtonType.OK);
                 if (retry.isPresent() && retry.get() == ButtonType.OK) {
@@ -409,7 +409,7 @@ public class AshigaruMainController implements Initializable {
                     });
                 }
             } else if (ex instanceof StorageException) {
-                AppServices.showErrorDialog("Error Opening Wallet", ex.getMessage());
+                showError("Error Opening Wallet", ex.getMessage());
             }
         });
         svc.start();
@@ -541,6 +541,15 @@ public class AshigaruMainController implements Initializable {
         } else {
             walletSelector.getSelectionModel().select(PLACEHOLDER);
         }
+    }
+
+    private Optional<ButtonType> showError(String title, String message, ButtonType... buttons) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, message,
+                buttons.length > 0 ? buttons : new ButtonType[]{ButtonType.OK});
+        alert.setTitle(title);
+        alert.setHeaderText(title);
+        alert.initOwner(AshigaruGui.get().getMainStage());
+        return alert.showAndWait();
     }
 
     private static String deriveWalletName(File file) {
