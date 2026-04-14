@@ -37,6 +37,7 @@ jobs:
           path: |
             build/jpackage/*
             !build/jpackage/Ashigaru/
+            build/distributions/*
       - name: Headless build with Gradle
         if: ${{ runner.os == 'Linux' }}
         run: ./gradlew -Djava.awt.headless=true clean jpackage
@@ -54,3 +55,4 @@ jobs:
           path: |
             build/jpackage/*
             !build/jpackage/Ashigaru/
+            build/distributions/*
