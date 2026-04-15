@@ -242,7 +242,7 @@ task packageZipDistribution(type: Zip, dependsOn: jpackageImage) {
     }
 }
 
-task packageTarDistribution(type: Tar, dependsOn: jlink) {
+task packageTarDistribution(type: Tar, dependsOn: jpackageImage) {
     archiveFileName      = "Ashigaru-${ashigaruTerminalVersion}-${releaseArch}.tar.gz"
     destinationDirectory = file("${buildDir}/distributions")
     compression          = Compression.GZIP
