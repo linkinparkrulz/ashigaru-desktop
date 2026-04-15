@@ -232,13 +232,18 @@ jlink {
     }
 }
 
-task packageZipDistribution(type: Zip, dependsOn: jpackageImage) {
-    archiveFileName      = "Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
-    destinationDirectory = file("${buildDir}/distributions")
-    if (os.macOsX) {
-        from("${buildDir}/jpackage/Ashigaru.app")
-        into('Ashigaru.app')
-    } else {
+if (os.macOsX) {
+    task packageZipDistribution(type: Exec, dependsOn: jpackageImage) {
+        def outputDir  = file("${buildDir}/distributions")
+        def zipFile    = "${outputDir}/Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
+        doFirst { outputDir.mkdirs() }
+        commandLine 'ditto', '-c', '-k', '--sequesterRsrc', '--keepParent',
+                    "${buildDir}/jpackage/Ashigaru.app", zipFile
+    }
+} else {
+    task packageZipDistribution(type: Zip, dependsOn: jpackageImage) {
+        archiveFileName      = "Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
+        destinationDirectory = file("${buildDir}/distributions")
         from("${buildDir}/jpackage/Ashigaru")
         into('Ashigaru')
     }
