@@ -185,7 +185,8 @@ application {
                                  "--add-opens=java.base/java.io=com.google.gson",
                                  "--add-opens=java.smartcardio/sun.security.smartcardio=com.sparrowwallet.sparrow",
                                  "--add-reads=kotlin.stdlib=kotlinx.coroutines.core",
-                                 "--add-reads=com.sparrowwallet.merged.module=org.slf4j"]
+                                 "--add-reads=com.sparrowwallet.merged.module=org.slf4j",
+                                 "--add-reads=com.sparrowwallet.merged.module=com.sparrowwallet.sparrow"]
 
     if(os.macOsX) {
         applicationDefaultJvmArgs += ["-Dprism.lcdtext=false", "-Xdock:name=Ashigaru",
