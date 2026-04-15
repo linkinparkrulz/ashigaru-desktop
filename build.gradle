@@ -184,7 +184,8 @@ application {
                                  "--add-opens=java.base/java.net=com.sparrowwallet.sparrow",
                                  "--add-opens=java.base/java.io=com.google.gson",
                                  "--add-opens=java.smartcardio/sun.security.smartcardio=com.sparrowwallet.sparrow",
-                                 "--add-reads=kotlin.stdlib=kotlinx.coroutines.core"]
+                                 "--add-reads=kotlin.stdlib=kotlinx.coroutines.core",
+                                 "--add-reads=com.sparrowwallet.merged.module=org.slf4j"]
 
     if(os.macOsX) {
         applicationDefaultJvmArgs += ["-Dprism.lcdtext=false", "-Xdock:name=Ashigaru",
@@ -196,14 +197,10 @@ application {
 }
 
 jlink {
-    mergedModule {
-        requires 'org.slf4j'
-    }
     addExtraDependencies('jackson-core', 'jackson-annotations', 'jackson-databind',
                          'protobuf-java', 'jcommander',
                          'javafx-base', 'javafx-graphics', 'javafx-controls',
-                         'javafx-fxml', 'javafx-swing', 'javax.servlet-api',
-                         'slf4j-api')
+                         'javafx-fxml', 'javafx-swing', 'javax.servlet-api')
     options = ['--strip-debug', '--no-header-files', '--no-man-pages',
                '--ignore-signing-information', '--compress=1']
     launcher {
