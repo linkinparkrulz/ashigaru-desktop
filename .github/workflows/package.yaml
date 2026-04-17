@@ -21,7 +21,7 @@ jobs:
             artifact-name: Linux
           - os: macos-14
             artifact-name: macOS-arm64
-          - os: macos-13
+          - os: macos-15-intel
             artifact-name: macOS-x64
 
     steps:
