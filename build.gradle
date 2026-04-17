@@ -234,11 +234,16 @@ jlink {
 
 if (os.macOsX) {
     task packageZipDistribution(type: Exec, dependsOn: jpackageImage) {
-        def outputDir  = file("${buildDir}/distributions")
-        def zipFile    = "${outputDir}/Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
+        def outputDir = file("${buildDir}/distributions")
+        def zipFile   = "${outputDir}/Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
         doFirst { outputDir.mkdirs() }
-        commandLine 'ditto', '-c', '-k', '--sequesterRsrc', '--keepParent',
-                    "${buildDir}/jpackage/Ashigaru.app", zipFile
+        commandLine 'sh', '-c',
+            "rm -rf '${buildDir}/tmp-zip' && " +
+            "mkdir -p '${buildDir}/tmp-zip/Ashigaru' && " +
+            "cp -R '${buildDir}/image/.' '${buildDir}/tmp-zip/Ashigaru/' && " +
+            "cd '${buildDir}/tmp-zip' && " +
+            "ditto -c -k --keepParent Ashigaru '${zipFile}' && " +
+            "rm -rf '${buildDir}/tmp-zip'"
     }
 } else {
     task packageZipDistribution(type: Zip, dependsOn: jpackageImage) {

@@ -58,6 +58,10 @@ jobs:
         shell: pwsh
         run: .\gradlew.bat packageZipDistribution
 
+      - name: Package zip distribution (macOS)
+        if: ${{ runner.os == 'macOS' }}
+        run: ./gradlew packageZipDistribution
+
       - name: Package tar distribution (Linux)
         if: ${{ runner.os == 'Linux' }}
         run: ./gradlew packageTarDistribution
