@@ -50,19 +50,9 @@ jobs:
         shell: pwsh
         run: .\gradlew.bat packageZipDistribution
 
-      - name: Package zip distribution (macOS)
-        if: ${{ runner.os == 'macOS' }}
-        run: ./gradlew packageZipDistribution
-
       - name: Package tar distribution (Linux)
         if: ${{ runner.os == 'Linux' }}
         run: ./gradlew packageTarDistribution
-
-      - name: Prepare macOS distributables
-        if: ${{ runner.os == 'macOS' }}
-        run: |
-          cd build/jpackage
-          ditto -c -k --sequesterRsrc --keepParent Ashigaru.app Ashigaru.app.zip
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -71,12 +61,10 @@ jobs:
           path: |
             build/distributions/*
             build/jpackage/*.dmg
-            build/jpackage/*.pkg
             build/jpackage/*.msi
             build/jpackage/*.exe
             build/jpackage/*.deb
             build/jpackage/*.rpm
-            build/jpackage/*.app.zip
 
       - name: Headless build with Gradle
         if: ${{ runner.os == 'Linux' }}
