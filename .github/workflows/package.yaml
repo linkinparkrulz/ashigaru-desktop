@@ -19,7 +19,7 @@ jobs:
             artifact-name: Windows
           - os: ubuntu-22.04
             artifact-name: Linux
-          - os: macos-14
+          - os: macos-latest
             artifact-name: macOS-arm64
           - os: macos-15-intel
             artifact-name: macOS-x64
