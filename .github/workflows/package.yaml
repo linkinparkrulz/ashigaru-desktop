@@ -14,7 +14,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-2022, ubuntu-22.04, macos-14]
+        include:
+          - os: windows-2022
+            artifact-name: Windows
+          - os: ubuntu-22.04
+            artifact-name: Linux
+          - os: macos-14
+            artifact-name: macOS-arm64
+          - os: macos-13
+            artifact-name: macOS-x64
 
     steps:
       - uses: actions/checkout@v4
@@ -57,7 +65,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Ashigaru Build - ${{ runner.os }}
+          name: Ashigaru Build - ${{ matrix.artifact-name }}
           path: |
             build/distributions/*
             build/jpackage/*.dmg
@@ -82,7 +90,7 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
         uses: actions/upload-artifact@v4
         with:
-          name: Ashigaru Build - ${{ runner.os }} Headless
+          name: Ashigaru Build - ${{ matrix.artifact-name }} Headless
           path: |
             build/jpackage/*
             !build/jpackage/Ashigaru/
