@@ -57,7 +57,12 @@ public class AshigaruMainController implements Initializable {
     @FXML private ToggleButton postmixBtn;
     @FXML private ToggleButton badbankBtn;
 
+    private static final WalletListItem PLACEHOLDER = new WalletListItem(null, "Select a wallet\u2026", null);
+
     private final ObservableList<WalletListItem> walletItems = FXCollections.observableArrayList();
+    private final LinkedHashSet<File> unloadedWalletFiles = new LinkedHashSet<>();
+    private File pendingSelectFile;
+
     private AshigaruWalletController currentWalletController;
     private WalletForm currentWalletForm;
 
@@ -71,8 +76,13 @@ public class AshigaruMainController implements Initializable {
         walletSelector.setCellFactory(lv -> new WalletListCell());
         walletSelector.setButtonCell(new WalletListCell());
         walletSelector.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
-            if (selected != null) {
+            if (selected == null || selected.isPlaceholder()) {
+                showWelcome();
+            } else if (selected.isLoaded()) {
                 selectWallet(selected.walletId());
+            } else {
+                // Locked wallet — prompt for passphrase
+                unlockWallet(selected);
             }
         });
 
@@ -83,6 +93,8 @@ public class AshigaruMainController implements Initializable {
             }
         });
 
+        walletItems.add(PLACEHOLDER);
+        walletSelector.getSelectionModel().select(PLACEHOLDER);
         showWelcome();
         EventManager.get().register(this);
         updateNetworkLabel();
@@ -152,7 +164,7 @@ public class AshigaruMainController implements Initializable {
             contentPane.setCenter(walletPanel);
         } catch (Exception e) {
             log.error("Error loading wallet panel", e);
-            AppServices.showErrorDialog("Error", "Could not load wallet view: " + e.getMessage());
+            showError("Error", "Could not load wallet view: " + e.getMessage());
         }
     }
 
@@ -265,7 +277,7 @@ public class AshigaruMainController implements Initializable {
             });
             svc.setOnFailed(e -> {
                 svc.cancel();
-                AppServices.showErrorDialog("Delete Failed", svc.getException().getMessage());
+                showError("Delete Failed", svc.getException().getMessage());
             });
             svc.start();
         });
@@ -285,7 +297,7 @@ public class AshigaruMainController implements Initializable {
             prefsController.selectGroup(PreferenceGroup.GENERAL);
         } catch (IOException e) {
             log.error("Error loading preferences panel", e);
-            AppServices.showErrorDialog("Error", "Could not load preferences: " + e.getMessage());
+            showError("Error", "Could not load preferences: " + e.getMessage());
         }
     }
 
@@ -302,6 +314,44 @@ public class AshigaruMainController implements Initializable {
         } catch (IOException e) {
             log.error("Could not check if wallet is encrypted", e);
         }
+    }
+
+    /**
+     * Called on startup for each recent wallet file — does NOT prompt for a password.
+     * Unencrypted wallets load immediately; encrypted wallets appear in the dropdown
+     * with a lock icon and are only decrypted when the user explicitly selects them.
+     */
+    public void addRecentWalletFile(File file) {
+        try {
+            Storage storage = new Storage(file);
+            if (!storage.isEncrypted()) {
+                Platform.runLater(() -> runLoadService(storage, null));
+                return;
+            }
+        } catch (IOException e) {
+            log.warn("Could not determine encryption status, treating as encrypted: " + file, e);
+        }
+        // Either confirmed encrypted, or couldn't tell — show as locked in dropdown
+        unloadedWalletFiles.add(file);
+        Platform.runLater(this::refreshWalletList);
+    }
+
+    /**
+     * Called when the user selects a locked wallet from the dropdown.
+     * Shows a passphrase dialog; on cancel resets selection to PLACEHOLDER.
+     */
+    private void unlockWallet(WalletListItem item) {
+        Storage storage = new Storage(item.walletFile());
+        String walletName = item.displayName().replaceFirst("^\uD83D\uDD12\\s*", "");
+        Dialog<String> pwDialog = buildPasswordDialog(walletName);
+        Optional<String> result = pwDialog.showAndWait();
+        if (result.isEmpty() || result.get() == null) {
+            // Cancelled — reset to placeholder without triggering another prompt
+            Platform.runLater(() -> walletSelector.getSelectionModel().select(PLACEHOLDER));
+            return;
+        }
+        pendingSelectFile = item.walletFile();
+        runLoadService(storage, new SecureString(result.get()));
     }
 
     private Dialog<String> buildPasswordDialog(String walletName) {
@@ -341,7 +391,7 @@ public class AshigaruMainController implements Initializable {
                 }
             } catch (Exception ex) {
                 log.error("Error opening wallet", ex);
-                AppServices.showErrorDialog("Error Opening Wallet", ex.getMessage());
+                showError("Error Opening Wallet", ex.getMessage());
             } finally {
                 wak.clear();
             }
@@ -349,7 +399,7 @@ public class AshigaruMainController implements Initializable {
         svc.setOnFailed(e -> {
             Throwable ex = svc.getException();
             if (ex instanceof InvalidPasswordException) {
-                Optional<ButtonType> retry = AppServices.showErrorDialog(
+                Optional<ButtonType> retry = showError(
                         "Invalid Password", "The wallet password was incorrect. Try again?",
                         ButtonType.CANCEL, ButtonType.OK);
                 if (retry.isPresent() && retry.get() == ButtonType.OK) {
@@ -359,7 +409,7 @@ public class AshigaruMainController implements Initializable {
                     });
                 }
             } else if (ex instanceof StorageException) {
-                AppServices.showErrorDialog("Error Opening Wallet", ex.getMessage());
+                showError("Error Opening Wallet", ex.getMessage());
             }
         });
         svc.start();
@@ -426,21 +476,38 @@ public class AshigaruMainController implements Initializable {
     @Subscribe
     public void walletOpened(WalletOpenedEvent event) {
         if (event.getWallet().isMasterWallet()) {
-            Platform.runLater(this::refreshWalletList);
+            Platform.runLater(() -> {
+                unloadedWalletFiles.remove(event.getStorage().getWalletFile());
+                refreshWalletList();
+            });
         }
     }
 
     public void refreshWalletList() {
-        String currentSelection = walletSelector.getSelectionModel().getSelectedItem() != null
-                ? walletSelector.getSelectionModel().getSelectedItem().walletId() : null;
+        WalletListItem currentSelection = walletSelector.getSelectionModel().getSelectedItem();
 
         walletItems.clear();
+
+        // PLACEHOLDER is always first
+        walletItems.add(PLACEHOLDER);
+
+        // Collect the files of all loaded wallets so we can skip them in the unloaded set
+        Set<File> loadedFiles = new HashSet<>();
         for (WalletForm form : AshigaruGui.get().getWalletForms().values()) {
             if (form.getWallet().isMasterWallet()) {
                 String name = form.getWallet().getFullDisplayName();
                 int dash = name.lastIndexOf(" - ");
                 if (dash > 0) name = name.substring(0, dash);
-                walletItems.add(new WalletListItem(form.getWalletId(), name));
+                walletItems.add(new WalletListItem(form.getWalletId(), name, form.getStorage().getWalletFile()));
+                loadedFiles.add(form.getStorage().getWalletFile());
+            }
+        }
+
+        // Locked (unloaded) wallets — show with a lock prefix so the user knows they need unlocking
+        for (File f : unloadedWalletFiles) {
+            if (!loadedFiles.contains(f)) {
+                String displayName = "\uD83D\uDD12 " + deriveWalletName(f);
+                walletItems.add(new WalletListItem(null, displayName, f));
             }
         }
 
@@ -449,21 +516,58 @@ public class AshigaruMainController implements Initializable {
             return;
         }
 
-        if (currentSelection != null) {
-            walletItems.stream()
-                    .filter(item -> item.walletId().equals(currentSelection))
-                    .findFirst()
-                    .ifPresent(item -> walletSelector.getSelectionModel().select(item));
-        } else if (!walletItems.isEmpty()) {
-            walletSelector.getSelectionModel().selectFirst();
+        // After a successful unlock, auto-select the just-loaded wallet
+        if (pendingSelectFile != null) {
+            File toSelect = pendingSelectFile;
+            pendingSelectFile = null;
+            Optional<WalletListItem> autoSelect = walletItems.stream()
+                    .filter(item -> item.isLoaded() && toSelect.equals(item.walletFile()))
+                    .findFirst();
+            if (autoSelect.isPresent()) {
+                walletSelector.getSelectionModel().select(autoSelect.get());
+                return;
+            }
+            // Wallet not loaded (unlock failed?) — fall through to normal selection restoration
         }
+
+        // Restore prior selection by walletId, or fall back to PLACEHOLDER
+        if (currentSelection != null && currentSelection.isLoaded()) {
+            walletItems.stream()
+                    .filter(item -> item.isLoaded() && item.walletId().equals(currentSelection.walletId()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            item -> walletSelector.getSelectionModel().select(item),
+                            () -> walletSelector.getSelectionModel().select(PLACEHOLDER));
+        } else {
+            walletSelector.getSelectionModel().select(PLACEHOLDER);
+        }
+    }
+
+    private Optional<ButtonType> showError(String title, String message, ButtonType... buttons) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, message,
+                buttons.length > 0 ? buttons : new ButtonType[]{ButtonType.OK});
+        alert.setTitle(title);
+        alert.setHeaderText(title);
+        alert.initOwner(AshigaruGui.get().getMainStage());
+        return alert.showAndWait();
+    }
+
+    private static String deriveWalletName(File file) {
+        String name = file.getName();
+        if (name.endsWith(".mv.db")) return name.substring(0, name.length() - 6);
+        if (name.endsWith(".json"))  return name.substring(0, name.length() - 5);
+        return name;
     }
 
     // -------------------------------------------------------------------------
     // Inner types
     // -------------------------------------------------------------------------
 
-    record WalletListItem(String walletId, String displayName) {
+    record WalletListItem(String walletId, String displayName, File walletFile) {
+        /** True when this item represents a fully-loaded wallet. */
+        boolean isLoaded() { return walletId != null; }
+        /** True for the "Select a wallet…" sentinel row. */
+        boolean isPlaceholder() { return walletId == null && walletFile == null; }
         @Override
         public String toString() { return displayName; }
     }
@@ -472,10 +576,14 @@ public class AshigaruMainController implements Initializable {
         @Override
         protected void updateItem(WalletListItem item, boolean empty) {
             super.updateItem(item, empty);
+            getStyleClass().remove("wallet-selector-placeholder");
             if (empty || item == null) {
                 setText(null);
             } else {
                 setText(item.displayName());
+                if (item.isPlaceholder()) {
+                    getStyleClass().add("wallet-selector-placeholder");
+                }
             }
         }
     }

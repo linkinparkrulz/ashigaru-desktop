@@ -131,6 +131,7 @@ dependencies {
     implementation('com.github.hervegirod:fxsvgimage:1.0b2')
     implementation('com.sparrowwallet:toucan:0.9.0')
     implementation('com.jcraft:jzlib:1.1.3')
+    implementation('javax.servlet:javax.servlet-api:4.0.1')
     testImplementation('org.junit.jupiter:junit-jupiter-api:5.10.0')
     testRuntimeOnly('org.junit.jupiter:junit-jupiter-engine:5.10.0')
     testRuntimeOnly('org.junit.platform:junit-platform-launcher')
@@ -183,7 +184,9 @@ application {
                                  "--add-opens=java.base/java.net=com.sparrowwallet.sparrow",
                                  "--add-opens=java.base/java.io=com.google.gson",
                                  "--add-opens=java.smartcardio/sun.security.smartcardio=com.sparrowwallet.sparrow",
-                                 "--add-reads=kotlin.stdlib=kotlinx.coroutines.core"]
+                                 "--add-reads=kotlin.stdlib=kotlinx.coroutines.core",
+                                 "--add-reads=com.sparrowwallet.merged.module=org.slf4j",
+                                 "--add-reads=com.sparrowwallet.merged.module=com.sparrowwallet.sparrow"]
 
     if(os.macOsX) {
         applicationDefaultJvmArgs += ["-Dprism.lcdtext=false", "-Xdock:name=Ashigaru",
@@ -195,6 +198,10 @@ application {
 }
 
 jlink {
+    addExtraDependencies('jackson-core', 'jackson-annotations', 'jackson-databind',
+                         'protobuf-java', 'jcommander',
+                         'javafx-base', 'javafx-graphics', 'javafx-controls',
+                         'javafx-fxml', 'javafx-swing', 'javax.servlet-api')
     options = ['--strip-debug', '--no-header-files', '--no-man-pages',
                '--ignore-signing-information', '--compress=1']
     launcher {
@@ -203,7 +210,7 @@ jlink {
     }
     jpackage {
         imageName     = 'Ashigaru'
-        installerName = "Ashigaru-${ashigaruTerminalVersion}"
+        installerName = 'Ashigaru'
         appVersion    = ashigaruTerminalVersion
         resourceDir   = file("src/main/deploy/package/${osName}")
 
@@ -225,18 +232,33 @@ jlink {
     }
 }
 
-task packageZipDistribution(type: Zip, dependsOn: jpackageImage) {
-    archiveFileName      = "Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
-    destinationDirectory = file("${buildDir}/distributions")
-    from("${buildDir}/jpackage/Ashigaru")
-    into('Ashigaru')
+if (os.macOsX) {
+    task packageZipDistribution(type: Exec, dependsOn: jpackageImage) {
+        def outputDir = file("${buildDir}/distributions")
+        def zipFile   = "${outputDir}/Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
+        doFirst { outputDir.mkdirs() }
+        commandLine 'sh', '-c',
+            "rm -rf '${buildDir}/tmp-zip' && " +
+            "mkdir -p '${buildDir}/tmp-zip/Ashigaru' && " +
+            "cp -R '${buildDir}/image/.' '${buildDir}/tmp-zip/Ashigaru/' && " +
+            "cd '${buildDir}/tmp-zip' && " +
+            "ditto -c -k --keepParent Ashigaru '${zipFile}' && " +
+            "rm -rf '${buildDir}/tmp-zip'"
+    }
+} else {
+    task packageZipDistribution(type: Zip, dependsOn: jpackageImage) {
+        archiveFileName      = "Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
+        destinationDirectory = file("${buildDir}/distributions")
+        from("${buildDir}/jpackage/Ashigaru")
+        into('Ashigaru')
+    }
 }
 
 task packageTarDistribution(type: Tar, dependsOn: jpackageImage) {
     archiveFileName      = "Ashigaru-${ashigaruTerminalVersion}-${releaseArch}.tar.gz"
     destinationDirectory = file("${buildDir}/distributions")
     compression          = Compression.GZIP
-    from("${buildDir}/jpackage/Ashigaru")
+    from("${buildDir}/image")
     into('Ashigaru')
 }
 
@@ -640,6 +662,12 @@ extraJavaModuleInfo {
     }
     module('jzlib-1.1.3.jar', 'com.jcraft.jzlib', '1.1.3') {
         exports('com.jcraft.jzlib')
+    }
+    module('javax.servlet-api-4.0.1.jar', 'java.servlet', '4.0.1') {
+        exports('javax.servlet')
+        exports('javax.servlet.annotation')
+        exports('javax.servlet.descriptor')
+        exports('javax.servlet.http')
     }
     module('bwt-jni-0.1.8.jar', 'dev.bwt.jni', '0.1.8') {
         exports('dev.bwt.libbwt.daemon')

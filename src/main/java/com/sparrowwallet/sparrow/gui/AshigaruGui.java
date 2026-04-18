@@ -139,14 +139,32 @@ public class AshigaruGui extends Application {
 
         mainStage.show();
 
+        // Collect wallet files: recent list (preserves order) + full wallets-dir scan
+        // so wallets appear in the dropdown even if never explicitly "opened" before.
+        LinkedHashSet<File> toLoad = new LinkedHashSet<>();
+
         List<File> recentWalletFiles = Config.get().getRecentWalletFiles();
         if (recentWalletFiles != null) {
-            for (File walletFile : recentWalletFiles) {
-                if (walletFile.exists()) {
-                    mainController.openWalletFile(walletFile);
-                }
-            }
+            recentWalletFiles.stream().filter(File::exists).forEach(toLoad::add);
         }
+
+        File walletsDir = Storage.getWalletsDir();
+        File[] dirFiles = walletsDir.listFiles();
+        if (dirFiles != null) {
+            Arrays.stream(dirFiles)
+                    .filter(f -> f.isFile() && isWalletFile(f))
+                    .sorted(Comparator.comparing(File::getName))
+                    .forEach(toLoad::add);
+        }
+
+        for (File walletFile : toLoad) {
+            mainController.addRecentWalletFile(walletFile);
+        }
+    }
+
+    private static boolean isWalletFile(File file) {
+        String name = file.getName();
+        return name.endsWith(".mv.db") || name.endsWith(".json");
     }
 
     @Override

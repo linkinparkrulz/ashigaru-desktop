@@ -501,6 +501,10 @@
     -fx-text-fill: -ag-text;
     -fx-font-size: 12px;
 }
+.wallet-selector .wallet-selector-placeholder {
+    -fx-text-fill: -ag-text-faint;
+    -fx-font-style: italic;
+}
 
 /* ── Preferences panel toggle buttons (use styleClass="list-item") ─────────── */
 .list-item {
