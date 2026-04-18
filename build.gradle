@@ -201,7 +201,9 @@ jlink {
     addExtraDependencies('jackson-core', 'jackson-annotations', 'jackson-databind',
                          'protobuf-java', 'jcommander',
                          'javafx-base', 'javafx-graphics', 'javafx-controls',
-                         'javafx-fxml', 'javafx-swing', 'javax.servlet-api')
+                         'javafx-fxml', 'javafx-swing', 'javax.servlet-api',
+                         'slf4j-api', 'gson', 'kotlin-stdlib', 'annotations',
+                         'kotlinx-coroutines-core')
     options = ['--strip-debug', '--no-header-files', '--no-man-pages',
                '--ignore-signing-information', '--compress=1']
     launcher {
