@@ -97,6 +97,22 @@ public class AshigaruWalletController implements Initializable {
 
         colDate.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().date()));
         colOutput.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().output()));
+        colOutput.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null || item.isEmpty()) {
+                    setText(null); setGraphic(null);
+                } else {
+                    Label lbl = new Label(item);
+                    lbl.setMaxWidth(Double.MAX_VALUE);
+                    HBox.setHgrow(lbl, javafx.scene.layout.Priority.ALWAYS);
+                    HBox box = new HBox(4, lbl, makeCopyButton(item, this));
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    setText(null); setGraphic(box);
+                }
+            }
+        });
         colAddress.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().address()));
         colMixes.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().mixes()));
         colValue.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().value()));
@@ -141,12 +157,10 @@ public class AshigaruWalletController implements Initializable {
                 if (empty || item == null || getIndex() >= getTableView().getItems().size()) {
                     setGraphic(null); setText(null); return;
                 }
-                TxnRow row = getTableView().getItems().get(getIndex());
-                String fullTxid = row.txnEntry().getBlockTransaction().getHashAsString();
                 Label lbl = new Label(item);
                 lbl.setMaxWidth(Double.MAX_VALUE);
                 HBox.setHgrow(lbl, javafx.scene.layout.Priority.ALWAYS);
-                HBox hbox = new HBox(4, lbl, makeCopyButton(fullTxid, this));
+                HBox hbox = new HBox(4, lbl, makeCopyButton(item, this));
                 hbox.setAlignment(Pos.CENTER_LEFT);
                 setGraphic(hbox); setText(null);
             }
@@ -358,7 +372,7 @@ public class AshigaruWalletController implements Initializable {
             BlockTransactionHashIndex hashIndex = utxoEntry.getHashIndex();
 
             String date    = hashIndex.getDate() != null ? df.format(hashIndex.getDate()) : "Unconfirmed";
-            String output  = abbreviate(hashIndex.getHash().toString()) + ":" + hashIndex.getIndex();
+            String output  = hashIndex.getHash().toString() + ":" + hashIndex.getIndex();
             String address;
             try {
                 Address addr = utxoEntry.getAddress();
@@ -396,7 +410,7 @@ public class AshigaruWalletController implements Initializable {
             BlockTransaction blockTx = txEntry.getBlockTransaction();
 
             String date = blockTx.getDate() != null ? df.format(blockTx.getDate()) : "Unconfirmed";
-            String txid = abbreviate(blockTx.getHashAsString());
+            String txid = blockTx.getHashAsString();
             String label = blockTx.getLabel() != null ? blockTx.getLabel() : "";
             long net = txEntry.getValue();
             String amount = (net >= 0 ? "+" : "") + fmt.formatBtcValue(net) + " BTC";
@@ -748,11 +762,6 @@ public class AshigaruWalletController implements Initializable {
             new Timeline(new KeyFrame(Duration.seconds(1), ev -> tip.hide())).play();
         });
         return btn;
-    }
-
-    private static String abbreviate(String s) {
-        if (s.length() <= 12) return s;
-        return s.substring(0, 6) + "..." + s.substring(s.length() - 4);
     }
 
     // -------------------------------------------------------------------------
