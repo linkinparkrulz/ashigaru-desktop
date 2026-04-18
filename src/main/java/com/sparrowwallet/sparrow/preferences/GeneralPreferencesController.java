@@ -9,22 +9,17 @@ import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Server;
 import com.sparrowwallet.sparrow.net.BlockExplorer;
-import com.sparrowwallet.sparrow.net.ExchangeSource;
 import com.sparrowwallet.sparrow.net.FeeRatesSource;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
 import javafx.util.StringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
-import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -39,15 +34,6 @@ public class GeneralPreferencesController extends PreferencesDetailController {
 
     @FXML
     private ComboBox<Server> blockExplorers;
-
-    @FXML
-    private ComboBox<Currency> fiatCurrency;
-
-    @FXML
-    private ComboBox<ExchangeSource> exchangeSource;
-
-    @FXML
-    private Label currenciesLoadWarning;
 
     @FXML
     private UnlabeledToggleSwitch loadRecentWallets;
@@ -67,16 +53,6 @@ public class GeneralPreferencesController extends PreferencesDetailController {
     @FXML
     private UnlabeledToggleSwitch checkNewVersions;
 
-    private final ChangeListener<Currency> fiatCurrencyListener = new ChangeListener<Currency>() {
-        @Override
-        public void changed(ObservableValue<? extends Currency> observable, Currency oldValue, Currency newValue) {
-            if (newValue != null) {
-                Config.get().setFiatCurrency(newValue);
-                EventManager.get().post(new FiatCurrencySelectedEvent(exchangeSource.getValue(), newValue));
-            }
-        }
-    };
-
     @Override
     public void initializeView(Config config) {
         if(config.getFeeRatesSource() != null) {
@@ -90,9 +66,6 @@ public class GeneralPreferencesController extends PreferencesDetailController {
             config.setFeeRatesSource(newValue);
             EventManager.get().post(new FeeRatesSourceChangedEvent(newValue));
         });
-
-        currenciesLoadWarning.managedProperty().bind(currenciesLoadWarning.visibleProperty());
-        currenciesLoadWarning.setVisible(false);
 
         blockExplorers.setItems(getBlockExplorerList());
         blockExplorers.setConverter(new StringConverter<>() {
@@ -151,20 +124,6 @@ public class GeneralPreferencesController extends PreferencesDetailController {
             blockExplorers.getSelectionModel().select(0);
         }
 
-        if(config.getExchangeSource() != null) {
-            exchangeSource.setValue(config.getExchangeSource());
-        } else {
-            exchangeSource.getSelectionModel().select(2);
-            config.setExchangeSource(exchangeSource.getValue());
-        }
-
-        exchangeSource.valueProperty().addListener((observable, oldValue, source) -> {
-            config.setExchangeSource(source);
-            updateCurrencies(source);
-        });
-
-        updateCurrencies(exchangeSource.getSelectionModel().getSelectedItem());
-
         loadRecentWallets.setSelected(config.isLoadRecentWallets());
         loadRecentWallets.selectedProperty().addListener((observableValue, oldValue, newValue) -> {
             config.setLoadRecentWallets(newValue);
@@ -217,40 +176,4 @@ public class GeneralPreferencesController extends PreferencesDetailController {
         return FXCollections.observableList(servers);
     }
 
-    private void updateCurrencies(ExchangeSource exchangeSource) {
-        ExchangeSource.CurrenciesService currenciesService = new ExchangeSource.CurrenciesService(exchangeSource);
-        currenciesService.setOnSucceeded(event -> {
-            updateCurrencies(currenciesService.getValue());
-        });
-        currenciesService.setOnFailed(event -> {
-            log.error("Error retrieving currencies", event.getSource().getException());
-        });
-        currenciesService.start();
-    }
-
-    private void updateCurrencies(List<Currency> currencies) {
-        fiatCurrency.valueProperty().removeListener(fiatCurrencyListener);
-
-        fiatCurrency.getItems().clear();
-        fiatCurrency.getItems().addAll(currencies);
-
-        Currency configCurrency = Config.get().getFiatCurrency();
-        if(configCurrency != null && currencies.contains(configCurrency)) {
-            fiatCurrency.setDisable(false);
-            fiatCurrency.setValue(configCurrency);
-        } else if(!currencies.isEmpty()) {
-            fiatCurrency.setDisable(false);
-            fiatCurrency.getSelectionModel().select(0);
-            Config.get().setFiatCurrency(fiatCurrency.getValue());
-        } else {
-            fiatCurrency.setDisable(true);
-        }
-
-        currenciesLoadWarning.setVisible(exchangeSource.getValue() != ExchangeSource.NONE && currencies.isEmpty());
-
-        //Always fire event regardless of previous selection to update rates
-        EventManager.get().post(new FiatCurrencySelectedEvent(exchangeSource.getValue(), fiatCurrency.getValue()));
-
-        fiatCurrency.valueProperty().addListener(fiatCurrencyListener);
-    }
 }

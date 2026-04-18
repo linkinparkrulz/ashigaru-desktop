@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 public enum PublicElectrumServer {
 
     FOUNDATION_DEVICES("Foundation TOR (mainnet)", "tcp://mocmguuik7rws4bclpcoz2ldfzesjolatrzggaxfl37hjpreap777yqd.onion:50001", Network.MAINNET),
-    BLOCKSTREAM("Blockstream TOR (mainnet)", "tcp://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:110", Network.MAINNET),
+    SETH_FOR_PRIVACY("SethForPrivacy TOR (mainnet)", "ssl://iuo6acfdicxhrovyqrekefh4rg2b7vgmzeeohc5cbwegawwhqpdxkgad.onion:50002", Network.MAINNET),
     KITTY("Kitty TOR (mainnet)", "tcp://kittycp2gatrqhlwpmbczk5rblw62enrpo2rzwtkfrrr27hq435d4vid.onion:50001", Network.MAINNET),
     GREY_PW("Grey-pw TOR (mainnet)", "tcp://fulcrum3li3ab37a5d4ew6yd2n4aepkebchddbpfn4ozvx57jcts2tqd.onion:50001", Network.MAINNET),
     TESTNET4_MEMPOOL_SPACE("Mempool Space CLEARNET (testnet4)", "ssl://mempool.space:40002", Network.TESTNET4),

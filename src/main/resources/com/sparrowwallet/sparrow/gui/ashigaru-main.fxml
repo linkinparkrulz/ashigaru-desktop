@@ -37,6 +37,8 @@
                         maxWidth="Infinity" styleClass="action-btn secondary-btn"/>
                 <Button fx:id="deleteWalletBtn" text="✕  Delete Wallet…" onAction="#onDeleteWallet"
                         maxWidth="Infinity" styleClass="delete-btn" visible="false" managed="false"/>
+                <Button fx:id="viewSeedBtn" text="View Seed Words…" onAction="#onViewSeed"
+                        maxWidth="Infinity" styleClass="action-btn secondary-btn" visible="false" managed="false"/>
             </VBox>
 
             <Separator/>
