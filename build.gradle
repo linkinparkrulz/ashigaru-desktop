@@ -235,7 +235,7 @@ jlink {
 if (os.macOsX) {
     task packageZipDistribution(type: Exec, dependsOn: jpackageImage) {
         def outputDir = file("${buildDir}/distributions")
-        def zipFile   = "${outputDir}/Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
+        def zipFile   = "${outputDir}/Ashigaru-${ashigaruTerminalVersion}-${osName}-${releaseArch}.zip"
         doFirst { outputDir.mkdirs() }
         commandLine 'sh', '-c',
             "rm -rf '${buildDir}/tmp-zip' && " +
