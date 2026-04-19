@@ -63,6 +63,7 @@
     <!-- UTXO table -->
     <TableView fx:id="utxoTable" styleClass="utxo-table" VBox.vgrow="ALWAYS">
         <columns>
+            <TableColumn fx:id="colCheck"   text=""        prefWidth="40"  minWidth="40" resizable="false" sortable="false"/>
             <TableColumn fx:id="colDate"    text="Date"    prefWidth="160" minWidth="120"/>
             <TableColumn fx:id="colOutput"  text="Output"  prefWidth="220" minWidth="160"/>
             <TableColumn fx:id="colAddress" text="Address" prefWidth="240" minWidth="160"/>
