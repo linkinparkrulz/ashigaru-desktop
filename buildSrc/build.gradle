@@ -5,7 +5,7 @@ plugins {
 dependencies {
     implementation 'com.google.gradle:osdetector-gradle-plugin:1.7.3'
     implementation 'org.ow2.asm:asm:9.6'
-    implementation 'org.beryx:badass-jlink-plugin:2.26.0'
+    implementation 'org.beryx:badass-jlink-plugin:3.2.1'
 }
 
 repositories {

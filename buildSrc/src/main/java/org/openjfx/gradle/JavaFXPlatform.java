@@ -40,15 +40,10 @@ import java.util.stream.Collectors;
 public enum JavaFXPlatform {
 
     LINUX("linux", "linux-x86_64"),
-    LINUX_MONOCLE("linux-monocle", "linux-x86_64-monocle"),
     LINUX_AARCH64("linux-aarch64", "linux-aarch_64"),
-    LINUX_AARCH64_MONOCLE("linux-aarch64-monocle", "linux-aarch_64-monocle"),
     WINDOWS("win", "windows-x86_64"),
-    WINDOWS_MONOCLE("win-monocle", "windows-x86_64-monocle"),
     OSX("mac", "osx-x86_64"),
-    OSX_MONOCLE("mac-monocle", "osx-x86_64-monocle"),
-    OSX_AARCH64("mac-aarch64", "osx-aarch_64"),
-    OSX_AARCH64_MONOCLE("mac-aarch64-monocle", "osx-aarch_64-monocle");
+    OSX_AARCH64("mac-aarch64", "osx-aarch_64");
 
     private final String classifier;
     private final String osDetectorClassifier;
@@ -65,10 +60,6 @@ public enum JavaFXPlatform {
     public static JavaFXPlatform detect(Project project) {
 
         String osClassifier = project.getExtensions().getByType(OsDetector.class).getClassifier();
-
-        if("true".equals(System.getProperty("java.awt.headless"))) {
-            osClassifier += "-monocle";
-        }
 
         for ( JavaFXPlatform platform: values()) {
             if ( platform.osDetectorClassifier.equals(osClassifier)) {

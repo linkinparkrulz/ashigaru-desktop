@@ -53,7 +53,7 @@ tasks.withType(AbstractArchiveTask) {
 }
 
 javafx {
-    version = "18"
+    version = "21"
     modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.swing', 'javafx.graphics' ]
 }
 
@@ -201,7 +201,9 @@ jlink {
     addExtraDependencies('jackson-core', 'jackson-annotations', 'jackson-databind',
                          'protobuf-java', 'jcommander',
                          'javafx-base', 'javafx-graphics', 'javafx-controls',
-                         'javafx-fxml', 'javafx-swing', 'javax.servlet-api')
+                         'javafx-fxml', 'javafx-swing', 'javax.servlet-api',
+                         'slf4j-api', 'gson', 'kotlin-stdlib', 'annotations',
+                         'kotlinx-coroutines-core')
     options = ['--strip-debug', '--no-header-files', '--no-man-pages',
                '--ignore-signing-information', '--compress=1']
     launcher {
@@ -235,7 +237,7 @@ jlink {
 if (os.macOsX) {
     task packageZipDistribution(type: Exec, dependsOn: jpackageImage) {
         def outputDir = file("${buildDir}/distributions")
-        def zipFile   = "${outputDir}/Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
+        def zipFile   = "${outputDir}/Ashigaru-${ashigaruTerminalVersion}-${osName}-${releaseArch}.zip"
         doFirst { outputDir.mkdirs() }
         commandLine 'sh', '-c',
             "rm -rf '${buildDir}/tmp-zip' && " +

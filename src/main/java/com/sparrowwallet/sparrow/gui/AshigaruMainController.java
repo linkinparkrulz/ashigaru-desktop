@@ -6,8 +6,11 @@ import com.sparrowwallet.drongo.SecureString;
 import com.sparrowwallet.drongo.crypto.InvalidPasswordException;
 import com.sparrowwallet.drongo.wallet.StandardAccount;
 import com.sparrowwallet.drongo.wallet.Wallet;
+import com.sparrowwallet.drongo.wallet.Keystore;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.EventManager;
+import com.sparrowwallet.sparrow.control.SeedDisplayDialog;
+import com.sparrowwallet.sparrow.control.WalletPasswordDialog;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.preferences.PreferencesController;
 import com.sparrowwallet.sparrow.preferences.PreferenceGroup;
@@ -51,6 +54,7 @@ public class AshigaruMainController implements Initializable {
     // Account sidebar controls
     @FXML private VBox accountButtonsBox;
     @FXML private Button deleteWalletBtn;
+    @FXML private Button viewSeedBtn;
     @FXML private ToggleGroup accountToggleGroup;
     @FXML private ToggleButton depositBtn;
     @FXML private ToggleButton premixBtn;
@@ -122,6 +126,8 @@ public class AshigaruMainController implements Initializable {
         accountButtonsBox.setManaged(false);
         deleteWalletBtn.setVisible(false);
         deleteWalletBtn.setManaged(false);
+        viewSeedBtn.setVisible(false);
+        viewSeedBtn.setManaged(false);
     }
 
     private void selectWallet(String walletId) {
@@ -136,6 +142,8 @@ public class AshigaruMainController implements Initializable {
         accountButtonsBox.setManaged(true);
         deleteWalletBtn.setVisible(true);
         deleteWalletBtn.setManaged(true);
+        viewSeedBtn.setVisible(true);
+        viewSeedBtn.setManaged(true);
 
         // Select Deposit by default
         depositBtn.setSelected(true);
@@ -281,6 +289,41 @@ public class AshigaruMainController implements Initializable {
             });
             svc.start();
         });
+    }
+
+    @FXML
+    private void onViewSeed() {
+        if (currentWalletForm == null) return;
+        Wallet wallet = currentWalletForm.getWallet();
+        if (wallet.getKeystores().isEmpty() || !wallet.getKeystores().get(0).hasSeed()) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("No Seed Available");
+            alert.setHeaderText("No seed words available");
+            alert.setContentText("This wallet does not have seed words stored (e.g. it may be a watch-only wallet).");
+            alert.initOwner(AshigaruGui.get().getMainStage());
+            alert.showAndWait();
+            return;
+        }
+        Wallet copy = wallet.copy();
+        if (copy.isEncrypted()) {
+            WalletPasswordDialog dlg = new WalletPasswordDialog(copy.getMasterName(), WalletPasswordDialog.PasswordRequirement.LOAD);
+            dlg.initOwner(AshigaruGui.get().getMainStage());
+            Optional<SecureString> password = dlg.showAndWait();
+            if (password.isPresent()) {
+                Storage.DecryptWalletService svc = new Storage.DecryptWalletService(copy, password.get());
+                svc.setOnSucceeded(e -> showSeedDialog(svc.getValue().getKeystores().get(0)));
+                svc.setOnFailed(e -> AppServices.showErrorDialog("Incorrect Password", svc.getException().getMessage()));
+                svc.start();
+            }
+        } else {
+            showSeedDialog(wallet.getKeystores().get(0));
+        }
+    }
+
+    private void showSeedDialog(Keystore keystore) {
+        SeedDisplayDialog dlg = new SeedDisplayDialog(keystore);
+        dlg.initOwner(AshigaruGui.get().getMainStage());
+        dlg.showAndWait();
     }
 
     @FXML

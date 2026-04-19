@@ -138,9 +138,13 @@ public class WalletCreationFlow {
         seedArea.setPrefRowCount(5);
         seedArea.setPromptText("Enter your 12/18/24 word BIP39 seed phrase, or generate a new one below.");
 
-        Label passLabel = new Label("BIP39 Passphrase (optional):");
+        Label passLabel = new Label("BIP39 Passphrase:");
         ViewPasswordField passField = new ViewPasswordField();
-        passField.setPromptText("Leave blank for no passphrase");
+        passField.setPromptText("Enter passphrase");
+
+        Label passConfirmLabel = new Label("Confirm Passphrase:");
+        ViewPasswordField passConfirmField = new ViewPasswordField();
+        passConfirmField.setPromptText("Re-enter passphrase");
 
         ObjectProperty<byte[]> masterFingerprint = new SimpleObjectProperty<>();
 
@@ -165,7 +169,7 @@ public class WalletCreationFlow {
         Button generateBtn = new Button("Generate New Wallet");
         generateBtn.setOnAction(e -> seedArea.setText(generateMnemonic(12)));
 
-        VBox content = new VBox(10, seedLabel, seedArea, passLabel, passField, fingerprintBox, generateBtn);
+        VBox content = new VBox(10, seedLabel, seedArea, passLabel, passField, passConfirmLabel, passConfirmField, fingerprintBox, generateBtn);
         content.setPadding(new Insets(12));
         content.setPrefWidth(480);
         dlg.getDialogPane().setContent(content);
@@ -177,14 +181,16 @@ public class WalletCreationFlow {
         nextNode.setDisable(true);
 
         Bip39 importer = new Bip39();
-        seedArea.textProperty().addListener((obs, old, text) -> {
-            nextNode.setDisable(!isValidSeed(importer, text, passField.getText()));
-            masterFingerprint.set(computeFingerprint(importer, text, passField.getText()));
-        });
-        passField.textProperty().addListener((obs, old, text) -> {
-            nextNode.setDisable(!isValidSeed(importer, seedArea.getText(), text));
-            masterFingerprint.set(computeFingerprint(importer, seedArea.getText(), text));
-        });
+        Runnable updateNext = () -> {
+            boolean valid = isValidSeed(importer, seedArea.getText(), passField.getText())
+                    && !passField.getText().isEmpty()
+                    && passField.getText().equals(passConfirmField.getText());
+            nextNode.setDisable(!valid);
+            masterFingerprint.set(computeFingerprint(importer, seedArea.getText(), passField.getText()));
+        };
+        seedArea.textProperty().addListener((obs, old, text) -> updateNext.run());
+        passField.textProperty().addListener((obs, old, text) -> updateNext.run());
+        passConfirmField.textProperty().addListener((obs, old, text) -> updateNext.run());
 
         dlg.setResultConverter(bt -> bt);
 
