@@ -715,7 +715,7 @@ public class AshigaruWalletController implements Initializable {
                         .findFirst()
                         .ifPresent(row -> {
                             if (event.getMixProgress() != null) {
-                                row.utxoEntry().setMixProgress(event.getMixProgress());
+                                row.utxoEntry.setMixProgress(event.getMixProgress());
                             }
                             // Force table refresh
                             utxoTable.refresh();
@@ -761,7 +761,7 @@ public class AshigaruWalletController implements Initializable {
             ClipboardContent content = new ClipboardContent();
             content.putString(textToCopy);
             Clipboard.getSystemClipboard().setContent(content);
-            Glyph check = new Glyph(FontAwesome5.FONT_NAME, FontAwesome5.Glyph.CHECK);
+            Glyph check = new Glyph(FontAwesome5.FONT_NAME, FontAwesome5.Glyph.CHECK_CIRCLE);
             check.setFontSize(11);
             check.setStyle("-fx-fill: #4CAF50;");
             btn.setGraphic(check);
