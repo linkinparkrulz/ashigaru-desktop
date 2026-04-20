@@ -32,7 +32,7 @@
                 <HBox spacing="8" alignment="CENTER_LEFT"
                       GridPane.rowIndex="0" GridPane.columnIndex="1">
                     <TextField fx:id="addressField" editable="false" styleClass="address-field" HBox.hgrow="ALWAYS"/>
-                    <Button onAction="#onCopy" styleClass="copy-icon-btn" prefWidth="28" prefHeight="28">
+                    <Button fx:id="copyBtn" onAction="#onCopy" styleClass="copy-icon-btn" prefWidth="28" prefHeight="28">
                         <graphic>
                             <Glyph fontFamily="Font Awesome 5 Free Solid" icon="COPY" fontSize="13"/>
                         </graphic>

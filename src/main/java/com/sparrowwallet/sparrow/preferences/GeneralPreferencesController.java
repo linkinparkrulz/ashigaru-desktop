@@ -50,9 +50,6 @@ public class GeneralPreferencesController extends PreferencesDetailController {
     @FXML
     private UnlabeledToggleSwitch notifyNewTransactions;
 
-    @FXML
-    private UnlabeledToggleSwitch checkNewVersions;
-
     @Override
     public void initializeView(Config config) {
         if(config.getFeeRatesSource() != null) {
@@ -150,12 +147,6 @@ public class GeneralPreferencesController extends PreferencesDetailController {
         notifyNewTransactions.setSelected(config.isNotifyNewTransactions());
         notifyNewTransactions.selectedProperty().addListener((observableValue, oldValue, newValue) -> {
             config.setNotifyNewTransactions(newValue);
-        });
-
-        checkNewVersions.setSelected(config.isCheckNewVersions());
-        checkNewVersions.selectedProperty().addListener((observableValue, oldValue, newValue) -> {
-            config.setCheckNewVersions(newValue);
-            EventManager.get().post(new VersionCheckStatusEvent(newValue));
         });
     }
 

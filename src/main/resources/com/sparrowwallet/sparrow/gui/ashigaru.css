@@ -410,8 +410,8 @@
 /* ── Receive dialog ───────────────────────────────────────────────────────── */
 .address-field {
     -fx-font-family: monospace;
-    -fx-font-size: 11px;
-    -fx-text-fill: -ag-accent;
+    -fx-font-size: 14px;
+    -fx-text-fill: -ag-text;
 }
 
 /* ── QR code container ────────────────────────────────────────────────────── */

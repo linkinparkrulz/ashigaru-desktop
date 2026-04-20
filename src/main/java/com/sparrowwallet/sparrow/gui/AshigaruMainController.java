@@ -26,12 +26,16 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +59,7 @@ public class AshigaruMainController implements Initializable {
     @FXML private VBox accountButtonsBox;
     @FXML private Button deleteWalletBtn;
     @FXML private Button viewSeedBtn;
+    @FXML private Button lockWalletBtn;
     @FXML private ToggleGroup accountToggleGroup;
     @FXML private ToggleButton depositBtn;
     @FXML private ToggleButton premixBtn;
@@ -110,12 +115,7 @@ public class AshigaruMainController implements Initializable {
     // -------------------------------------------------------------------------
 
     private void maybeReconnectOnLeavingPrefs() {
-        if (contentPane.getUserData() instanceof PreferencesController prefsCtrl) {
-            if (prefsCtrl.isReconnectOnClosing() && !(AppServices.isConnecting() || AppServices.isConnected())) {
-                EventManager.get().post(new RequestConnectEvent());
-            }
-            contentPane.setUserData(null);
-        }
+        // Reconnect is now handled by the preferences stage's onHidden handler
     }
 
     private void showWelcome() {
@@ -128,6 +128,8 @@ public class AshigaruMainController implements Initializable {
         deleteWalletBtn.setManaged(false);
         viewSeedBtn.setVisible(false);
         viewSeedBtn.setManaged(false);
+        lockWalletBtn.setVisible(false);
+        lockWalletBtn.setManaged(false);
     }
 
     private void selectWallet(String walletId) {
@@ -144,6 +146,11 @@ public class AshigaruMainController implements Initializable {
         deleteWalletBtn.setManaged(true);
         viewSeedBtn.setVisible(true);
         viewSeedBtn.setManaged(true);
+
+        boolean encrypted = false;
+        try { encrypted = walletForm.getStorage().isEncrypted(); } catch (IOException ignored) {}
+        lockWalletBtn.setVisible(encrypted);
+        lockWalletBtn.setManaged(encrypted);
 
         // Select Deposit by default
         depositBtn.setSelected(true);
@@ -269,26 +276,68 @@ public class AshigaruMainController implements Initializable {
         WalletForm form = AshigaruGui.get().getWalletForms().get(item.walletId());
         if (form == null) return;
 
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Delete Wallet");
-        confirm.setHeaderText("Delete \"" + item.displayName() + "\"?");
-        confirm.setContentText("This will permanently delete the wallet file. This cannot be undone.");
-        confirm.initOwner(AshigaruGui.get().getMainStage());
-        confirm.showAndWait().ifPresent(btn -> {
-            if (btn != ButtonType.OK) return;
-            Storage.DeleteWalletService svc = new Storage.DeleteWalletService(form.getStorage(), false);
-            svc.setOnSucceeded(e -> {
-                svc.cancel();
-                AshigaruGui.removeWallet(item.walletId());
-                refreshWalletList();
-                showWelcome();
+        boolean encrypted = false;
+        try { encrypted = form.getStorage().isEncrypted(); } catch (IOException ignored) {}
+
+        if (encrypted && item.walletFile() != null) {
+            Dialog<String> pwDialog = buildPasswordDialog(item.displayName());
+            pwDialog.setHeaderText("Enter wallet password to confirm permanent deletion");
+            Optional<String> pwResult = pwDialog.showAndWait();
+            if (pwResult.isEmpty() || pwResult.get() == null) return;
+
+            Storage verifyStor = new Storage(item.walletFile());
+            Storage.LoadWalletService verifySvc = new Storage.LoadWalletService(verifyStor, new SecureString(pwResult.get()));
+            verifySvc.setOnSucceeded(e -> { verifySvc.getValue().clear(); Platform.runLater(() -> doDelete(item, form)); });
+            verifySvc.setOnFailed(e -> {
+                Throwable ex = verifySvc.getException();
+                if (ex instanceof InvalidPasswordException) {
+                    showError("Wrong Password", "Incorrect password — wallet not deleted.");
+                } else {
+                    showError("Verification Failed", "Could not verify password: " + ex.getMessage());
+                }
             });
-            svc.setOnFailed(e -> {
-                svc.cancel();
-                showError("Delete Failed", svc.getException().getMessage());
+            verifySvc.start();
+        } else {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Delete Wallet");
+            confirm.setHeaderText("Delete \"" + item.displayName() + "\"?");
+            confirm.setContentText("This will permanently delete the wallet file. This cannot be undone.");
+            confirm.initOwner(AshigaruGui.get().getMainStage());
+            confirm.showAndWait().ifPresent(btn -> {
+                if (btn != ButtonType.OK) return;
+                doDelete(item, form);
             });
-            svc.start();
+        }
+    }
+
+    private void doDelete(WalletListItem item, WalletForm form) {
+        Storage.DeleteWalletService svc = new Storage.DeleteWalletService(form.getStorage(), false);
+        svc.setOnSucceeded(e -> {
+            svc.cancel();
+            AshigaruGui.removeWallet(item.walletId());
+            refreshWalletList();
+            showWelcome();
         });
+        svc.setOnFailed(e -> {
+            svc.cancel();
+            showError("Delete Failed", svc.getException().getMessage());
+        });
+        svc.start();
+    }
+
+    @FXML
+    private void onLockWallet() {
+        if (currentWalletForm == null) return;
+        File walletFile = currentWalletForm.getStorage().getWalletFile();
+        // Remove nested wallet forms from the registry (master removal won't clean these)
+        for (WalletForm nested : currentWalletForm.getNestedWalletForms()) {
+            AshigaruGui.get().getWalletForms().remove(nested.getWalletId());
+        }
+        AshigaruGui.removeWallet(currentWalletForm.getWalletId());
+        currentWalletForm = null;
+        unloadedWalletFiles.add(walletFile);
+        refreshWalletList();
+        showWelcome();
     }
 
     @FXML
@@ -328,16 +377,29 @@ public class AshigaruMainController implements Initializable {
 
     @FXML
     private void onPreferences() {
-        walletSelector.getSelectionModel().clearSelection();
         try {
             FXMLLoader loader = new FXMLLoader(AppServices.class.getResource("preferences/preferences.fxml"));
-            Node prefsPanel = loader.load();
+            Parent prefsPanel = loader.load();
             PreferencesController prefsController = loader.getController();
             prefsController.initializeView(Config.get());
             prefsController.reconnectOnClosingProperty().set(AppServices.isConnecting() || AppServices.isConnected());
-            contentPane.setCenter(prefsPanel);
-            contentPane.setUserData(prefsController);
             prefsController.selectGroup(PreferenceGroup.GENERAL);
+
+            Scene prefsScene = new Scene(prefsPanel);
+            prefsScene.getStylesheets().add(getClass().getResource("ashigaru.css").toExternalForm());
+            Stage prefsStage = new Stage();
+            prefsStage.setTitle("Preferences");
+            prefsStage.setScene(prefsScene);
+            prefsStage.setMinWidth(640);
+            prefsStage.setMinHeight(480);
+            prefsStage.initOwner(AshigaruGui.get().getMainStage());
+            prefsStage.initModality(Modality.APPLICATION_MODAL);
+            prefsStage.setOnHidden(e -> {
+                if (prefsController.isReconnectOnClosing() && !(AppServices.isConnecting() || AppServices.isConnected())) {
+                    EventManager.get().post(new RequestConnectEvent());
+                }
+            });
+            prefsStage.show();
         } catch (IOException e) {
             log.error("Error loading preferences panel", e);
             showError("Error", "Could not load preferences: " + e.getMessage());
@@ -552,11 +614,6 @@ public class AshigaruMainController implements Initializable {
                 String displayName = "\uD83D\uDD12 " + deriveWalletName(f);
                 walletItems.add(new WalletListItem(null, displayName, f));
             }
-        }
-
-        // Don't auto-navigate when preferences is open
-        if (contentPane.getUserData() instanceof PreferencesController) {
-            return;
         }
 
         // After a successful unlock, auto-select the just-loaded wallet

@@ -128,7 +128,10 @@ public class AshigaruWalletController implements Initializable {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    HBox box = new HBox(4, new Label(item), makeCopyButton(item));
+                    Label lbl = new Label(item);
+                    lbl.setMaxWidth(Double.MAX_VALUE);
+                    HBox.setHgrow(lbl, javafx.scene.layout.Priority.ALWAYS);
+                    HBox box = new HBox(4, lbl, makeCopyButton(item));
                     box.setAlignment(Pos.CENTER_LEFT);
                     setText(null);
                     setGraphic(box);
@@ -757,6 +760,7 @@ public class AshigaruWalletController implements Initializable {
         copyIcon.setStyle("-fx-fill: #A0A0A0;");
         Button btn = new Button("", copyIcon);
         btn.getStyleClass().add("copy-icon-btn");
+        btn.setPrefSize(28, 28);
         btn.setOnAction(e -> {
             ClipboardContent content = new ClipboardContent();
             content.putString(textToCopy);

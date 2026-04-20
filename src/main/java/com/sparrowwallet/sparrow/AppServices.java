@@ -212,14 +212,6 @@ public class AppServices {
             restartService(connectionService);
         }
 
-        if(config.isFetchRates()) {
-            restartService(ratesService);
-        }
-
-        if(config.isCheckNewVersions() && Network.get() == Network.MAINNET && Interface.get() == Interface.DESKTOP) {
-            restartService(versionCheckService);
-        }
-
         if(config.isPreventSleep()) {
             restartService(preventSleepService);
         }

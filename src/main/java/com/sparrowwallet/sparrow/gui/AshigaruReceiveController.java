@@ -11,10 +11,10 @@ import com.sparrowwallet.drongo.KeyPurpose;
 import com.sparrowwallet.drongo.wallet.BlockTransactionHashIndex;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.drongo.wallet.WalletNode;
+import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.wallet.NodeEntry;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
+import javafx.animation.PauseTransition;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -25,6 +25,7 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.stage.Modality;
 import javafx.util.Duration;
+import org.controlsfx.glyphfont.Glyph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +46,7 @@ public class AshigaruReceiveController implements Initializable {
     private static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
     @FXML private TextField addressField;
+    @FXML private Button copyBtn;
     @FXML private ImageView qrCodeView;
     @FXML private Label derivationLabel;
     @FXML private Label lastUsedLabel;
@@ -76,6 +78,8 @@ public class AshigaruReceiveController implements Initializable {
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.initOwner(AshigaruGui.get().getMainStage());
         dialog.setResultConverter(btn -> null);
+        dialog.setOnShown(e ->
+            dialog.getDialogPane().getScene().getWindow().setOnCloseRequest(ev -> dialog.close()));
 
         dialog.showAndWait();
     }
@@ -149,9 +153,14 @@ public class AshigaruReceiveController implements Initializable {
         ClipboardContent content = new ClipboardContent();
         content.putString(currentEntry.getAddress().toString());
         Clipboard.getSystemClipboard().setContent(content);
-        Tooltip tip = new Tooltip("Copied!");
-        tip.show(addressField.getScene().getWindow());
-        new Timeline(new KeyFrame(Duration.seconds(1), e -> tip.hide())).play();
+        Glyph original = (Glyph) copyBtn.getGraphic();
+        Glyph check = new Glyph(FontAwesome5.FONT_NAME, FontAwesome5.Glyph.CHECK_CIRCLE);
+        check.setFontSize(13);
+        check.setStyle("-fx-fill: #4CAF50;");
+        copyBtn.setGraphic(check);
+        PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
+        pause.setOnFinished(e -> copyBtn.setGraphic(original));
+        pause.play();
     }
 
     @FXML
