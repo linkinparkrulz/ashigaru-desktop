@@ -375,6 +375,11 @@
     -fx-padding: 1 3 1 3;
     -fx-cursor: hand;
     -fx-border-color: transparent;
+    -fx-font-family: "System";
+    -fx-font-size: 14px;
+    -fx-text-overrun: clip;
+    -fx-alignment: center;
+    -fx-content-display: center;
 }
 .copy-icon-btn:hover {
     -fx-background-color: -ag-bg-raised;

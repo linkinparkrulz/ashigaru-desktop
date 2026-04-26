@@ -121,7 +121,7 @@ public class AshigaruReceiveController implements Initializable {
             BufferedImage qr = MatrixToImageWriter.toBufferedImage(matrix, config);
 
             // Overlay Ashigaru logo in center (~22% of QR width)
-            try (InputStream logoIn = getClass().getResourceAsStream("/image/Ashigaru_Terminal_Logo_Circle.png")) {
+            try (InputStream logoIn = getClass().getResourceAsStream("/image/Ashigaru_Terminal_Logo_Square.png")) {
                 if (logoIn != null) {
                     BufferedImage logo = ImageIO.read(logoIn);
                     int logoSize = Math.round(size * 0.22f);
