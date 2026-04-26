@@ -4,7 +4,6 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
-<?import org.controlsfx.glyphfont.Glyph?>
 
 <DialogPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
@@ -32,11 +31,7 @@
                 <HBox spacing="8" alignment="CENTER_LEFT"
                       GridPane.rowIndex="0" GridPane.columnIndex="1">
                     <TextField fx:id="addressField" editable="false" styleClass="address-field" HBox.hgrow="ALWAYS"/>
-                    <Button fx:id="copyBtn" onAction="#onCopy" styleClass="copy-icon-btn" prefWidth="28" prefHeight="28">
-                        <graphic>
-                            <Glyph fontFamily="Font Awesome 5 Free Solid" icon="COPY" fontSize="13"/>
-                        </graphic>
-                    </Button>
+                    <Button fx:id="copyBtn" text="⎘" onAction="#onCopy" styleClass="copy-icon-btn" prefWidth="28" prefHeight="28" style="-fx-text-fill: #A0A0A0;"/>
                 </HBox>
 
                 <Label text="Derivation path"

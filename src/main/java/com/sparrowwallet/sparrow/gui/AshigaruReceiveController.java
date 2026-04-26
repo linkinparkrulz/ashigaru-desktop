@@ -6,12 +6,12 @@ import com.google.zxing.client.j2se.MatrixToImageConfig;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import com.sparrowwallet.drongo.KeyDerivation;
 import com.sparrowwallet.drongo.KeyPurpose;
 import com.sparrowwallet.drongo.wallet.BlockTransactionHashIndex;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.drongo.wallet.WalletNode;
-import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.wallet.NodeEntry;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
 import javafx.animation.PauseTransition;
@@ -25,15 +25,20 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.stage.Modality;
 import javafx.util.Duration;
-import org.controlsfx.glyphfont.Glyph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.imageio.ImageIO;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.ResourceBundle;
 
@@ -104,11 +109,37 @@ public class AshigaruReceiveController implements Initializable {
 
     private Image generateQrCode(String content, int size) {
         try {
+            Map<EncodeHintType, Object> hints = new HashMap<>();
+            hints.put(EncodeHintType.MARGIN, 1);
+            hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
+
             QRCodeWriter writer = new QRCodeWriter();
-            BitMatrix matrix = writer.encode(content, BarcodeFormat.QR_CODE, size, size,
-                    Map.of(EncodeHintType.MARGIN, "1"));
+            BitMatrix matrix = writer.encode(content, BarcodeFormat.QR_CODE, size, size, hints);
+
+            // Muted palette: dark foreground on soft off-white
+            MatrixToImageConfig config = new MatrixToImageConfig(0xFF1A1B20, 0xFFD8D8D8);
+            BufferedImage qr = MatrixToImageWriter.toBufferedImage(matrix, config);
+
+            // Overlay Ashigaru logo in center (~22% of QR width)
+            try (InputStream logoIn = getClass().getResourceAsStream("/image/Ashigaru_Terminal_Logo_Circle.png")) {
+                if (logoIn != null) {
+                    BufferedImage logo = ImageIO.read(logoIn);
+                    int logoSize = Math.round(size * 0.22f);
+                    int x = (size - logoSize) / 2;
+                    int y = (size - logoSize) / 2;
+                    Graphics2D g = qr.createGraphics();
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    // Background patch so logo stays legible
+                    g.setColor(new java.awt.Color(0xD8, 0xD8, 0xD8));
+                    g.fillRoundRect(x - 4, y - 4, logoSize + 8, logoSize + 8, 8, 8);
+                    g.drawImage(logo, x, y, logoSize, logoSize, null);
+                    g.dispose();
+                }
+            }
+
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            MatrixToImageWriter.writeToStream(matrix, "PNG", baos, new MatrixToImageConfig());
+            ImageIO.write(qr, "PNG", baos);
             return new Image(new ByteArrayInputStream(baos.toByteArray()));
         } catch (Exception e) {
             log.error("Error generating QR code", e);
@@ -153,13 +184,10 @@ public class AshigaruReceiveController implements Initializable {
         ClipboardContent content = new ClipboardContent();
         content.putString(currentEntry.getAddress().toString());
         Clipboard.getSystemClipboard().setContent(content);
-        Glyph original = (Glyph) copyBtn.getGraphic();
-        Glyph check = new Glyph(FontAwesome5.FONT_NAME, FontAwesome5.Glyph.CHECK_CIRCLE);
-        check.setFontSize(13);
-        check.setStyle("-fx-fill: #4CAF50;");
-        copyBtn.setGraphic(check);
+        copyBtn.setText("✓");
+        copyBtn.setStyle("-fx-text-fill: #4CAF50;");
         PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
-        pause.setOnFinished(e -> copyBtn.setGraphic(original));
+        pause.setOnFinished(e -> { copyBtn.setText("⎘"); copyBtn.setStyle("-fx-text-fill: #A0A0A0;"); });
         pause.play();
     }
 

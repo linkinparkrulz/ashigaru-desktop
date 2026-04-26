@@ -416,7 +416,7 @@
 
 /* ── QR code container ────────────────────────────────────────────────────── */
 .qr-container {
-    -fx-background-color: white;
+    -fx-background-color: #D8D8D8;
     -fx-background-radius: 4;
     -fx-border-color: -ag-border;
     -fx-border-radius: 4;

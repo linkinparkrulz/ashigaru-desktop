@@ -26,16 +26,12 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,7 +111,12 @@ public class AshigaruMainController implements Initializable {
     // -------------------------------------------------------------------------
 
     private void maybeReconnectOnLeavingPrefs() {
-        // Reconnect is now handled by the preferences stage's onHidden handler
+        if (contentPane.getUserData() instanceof PreferencesController prefsController) {
+            contentPane.setUserData(null);
+            if (prefsController.isReconnectOnClosing() && !(AppServices.isConnecting() || AppServices.isConnected())) {
+                EventManager.get().post(new RequestConnectEvent());
+            }
+        }
     }
 
     private void showWelcome() {
@@ -377,29 +378,17 @@ public class AshigaruMainController implements Initializable {
 
     @FXML
     private void onPreferences() {
+        walletSelector.getSelectionModel().clearSelection();
         try {
             FXMLLoader loader = new FXMLLoader(AppServices.class.getResource("preferences/preferences.fxml"));
-            Parent prefsPanel = loader.load();
+            Node prefsPanel = loader.load();
             PreferencesController prefsController = loader.getController();
             prefsController.initializeView(Config.get());
             prefsController.reconnectOnClosingProperty().set(AppServices.isConnecting() || AppServices.isConnected());
             prefsController.selectGroup(PreferenceGroup.GENERAL);
 
-            Scene prefsScene = new Scene(prefsPanel);
-            prefsScene.getStylesheets().add(getClass().getResource("ashigaru.css").toExternalForm());
-            Stage prefsStage = new Stage();
-            prefsStage.setTitle("Preferences");
-            prefsStage.setScene(prefsScene);
-            prefsStage.setMinWidth(640);
-            prefsStage.setMinHeight(480);
-            prefsStage.initOwner(AshigaruGui.get().getMainStage());
-            prefsStage.initModality(Modality.APPLICATION_MODAL);
-            prefsStage.setOnHidden(e -> {
-                if (prefsController.isReconnectOnClosing() && !(AppServices.isConnecting() || AppServices.isConnected())) {
-                    EventManager.get().post(new RequestConnectEvent());
-                }
-            });
-            prefsStage.show();
+            contentPane.setCenter(prefsPanel);
+            contentPane.setUserData(prefsController);
         } catch (IOException e) {
             log.error("Error loading preferences panel", e);
             showError("Error", "Could not load preferences: " + e.getMessage());
@@ -589,6 +578,7 @@ public class AshigaruMainController implements Initializable {
     }
 
     public void refreshWalletList() {
+        if (contentPane.getUserData() instanceof PreferencesController) return;
         WalletListItem currentSelection = walletSelector.getSelectionModel().getSelectedItem();
 
         walletItems.clear();

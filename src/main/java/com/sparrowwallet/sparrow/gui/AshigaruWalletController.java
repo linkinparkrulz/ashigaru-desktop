@@ -12,12 +12,10 @@ import com.sparrowwallet.sparrow.Theme;
 import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.UnitFormat;
 import com.sparrowwallet.sparrow.event.*;
-import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.wallet.*;
 import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
-import org.controlsfx.glyphfont.Glyph;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -755,22 +753,18 @@ public class AshigaruWalletController implements Initializable {
     // -------------------------------------------------------------------------
 
     private static Button makeCopyButton(String textToCopy) {
-        Glyph copyIcon = new Glyph(FontAwesome5.FONT_NAME, FontAwesome5.Glyph.COPY);
-        copyIcon.setFontSize(11);
-        copyIcon.setStyle("-fx-fill: #A0A0A0;");
-        Button btn = new Button("", copyIcon);
+        Button btn = new Button("⎘");
         btn.getStyleClass().add("copy-icon-btn");
         btn.setPrefSize(28, 28);
+        btn.setStyle("-fx-text-fill: #A0A0A0;");
         btn.setOnAction(e -> {
             ClipboardContent content = new ClipboardContent();
             content.putString(textToCopy);
             Clipboard.getSystemClipboard().setContent(content);
-            Glyph check = new Glyph(FontAwesome5.FONT_NAME, FontAwesome5.Glyph.CHECK_CIRCLE);
-            check.setFontSize(11);
-            check.setStyle("-fx-fill: #4CAF50;");
-            btn.setGraphic(check);
+            btn.setText("✓");
+            btn.setStyle("-fx-text-fill: #4CAF50;");
             PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
-            pause.setOnFinished(ev -> btn.setGraphic(copyIcon));
+            pause.setOnFinished(ev -> { btn.setText("⎘"); btn.setStyle("-fx-text-fill: #A0A0A0;"); });
             pause.play();
         });
         return btn;
