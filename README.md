@@ -1,16 +1,21 @@
-# Ashigaru Terminal
+# Ashigaru Desktop
 
-A graphical Bitcoin wallet and desktop GUI front-end for [Ashigaru Terminal](https://ashigarubtc.com) hardware, providing a full Whirlpool coinjoin experience alongside everyday wallet features.
+A graphical Bitcoin wallet and desktop GUI front-end for [Ashigaru Terminal](https://ashigaru.rs) hardware, providing a full Whirlpool coinjoin experience.
 
 ---
 
 ### Features
 
-- **Whirlpool coinjoin** — Tx0, mixing, Premix/Postmix/Badbank account management
-- **BIP47 PayNym contacts** — private payment codes for reusable addresses
-- **Hardware wallets** — Coldcard, Trezor, Ledger, BitBox02, Jade (air-gapped PSBT signing)
+- **Whirlpool coinjoin** — Tx0, zeroleak coinjoin, Premix/Postmix/Badbank account management
 - **Tor** — built-in Tor support for network privacy
-- **Offline signing** — full PSBT workflow for cold-storage setups
+- **Mix To** — Set to mix to an offline or different wallet
+- **Receive Only** — Decreases attack surface (spend is done on mobile)
+
+### Future Features
+
+- **Eigenwallet Integration** — Post bad bank funds for atomic swap into XMR
+- **AmIExposed or BitHypha UTXO analysis** — Do analysis on your own UTXO's 
+- **Dojo Integration** — Get all the benefits of Dojo such as Nextblock estimates, personal electrum server detail and more
 
 ---
 
@@ -54,10 +59,10 @@ Compare the output against the `SHA256(SHA256SUMS): ...` line inside `MESSAGE.tx
 
 **Step 3 — Verify the Bitcoin message signature**
 
-Open `RELEASE-BIP47-SIGNATURE.txt`. The file contains the signed statement and a base64 signature. Verify using any Bitcoin message verifier (Sparrow wallet, Electrum, or a command-line tool) with:
+Open `RELEASE-BIP47-SIGNATURE.txt`. The file contains the signed statement and a base64 signature. Verify using any Bitcoin message verifier (Ashigaru, https://paymentcode.io/lab, https://pajasevi.github.io/bip47-verifier/) with:
 
+- **Payment Code**: the payment code that is the supposed identity
 - **Message**: the content of `MESSAGE.txt` (verbatim, no trailing newline changes)
-- **Address**: the notification address above
 - **Signature**: the base64 value from `RELEASE-BIP47-SIGNATURE.txt`
 
 ---
