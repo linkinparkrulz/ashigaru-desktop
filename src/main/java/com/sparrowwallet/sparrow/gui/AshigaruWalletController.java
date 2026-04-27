@@ -753,18 +753,22 @@ public class AshigaruWalletController implements Initializable {
     // -------------------------------------------------------------------------
 
     private static Button makeCopyButton(String textToCopy) {
+        final String defaultStyle = "-fx-text-fill: #A0A0A0; -fx-font-family: System; -fx-font-size: 14px; -fx-text-overrun: clip;";
+        final String successStyle = "-fx-text-fill: #4CAF50; -fx-font-family: System; -fx-font-size: 14px; -fx-text-overrun: clip;";
         Button btn = new Button("⎘");
         btn.getStyleClass().add("copy-icon-btn");
+        btn.setMinSize(28, 28);
         btn.setPrefSize(28, 28);
-        btn.setStyle("-fx-text-fill: #A0A0A0;");
+        btn.setMaxSize(28, 28);
+        btn.setStyle(defaultStyle);
         btn.setOnAction(e -> {
             ClipboardContent content = new ClipboardContent();
             content.putString(textToCopy);
             Clipboard.getSystemClipboard().setContent(content);
             btn.setText("✓");
-            btn.setStyle("-fx-text-fill: #4CAF50;");
+            btn.setStyle(successStyle);
             PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
-            pause.setOnFinished(ev -> { btn.setText("⎘"); btn.setStyle("-fx-text-fill: #A0A0A0;"); });
+            pause.setOnFinished(ev -> { btn.setText("⎘"); btn.setStyle(defaultStyle); });
             pause.play();
         });
         return btn;

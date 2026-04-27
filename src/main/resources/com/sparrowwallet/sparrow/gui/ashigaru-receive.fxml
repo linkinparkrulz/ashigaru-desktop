@@ -31,7 +31,9 @@
                 <HBox spacing="8" alignment="CENTER_LEFT"
                       GridPane.rowIndex="0" GridPane.columnIndex="1">
                     <TextField fx:id="addressField" editable="false" styleClass="address-field" HBox.hgrow="ALWAYS"/>
-                    <Button fx:id="copyBtn" text="⎘" onAction="#onCopy" styleClass="copy-icon-btn" prefWidth="28" prefHeight="28" style="-fx-text-fill: #A0A0A0;"/>
+                    <Button fx:id="copyBtn" text="⎘" onAction="#onCopy" styleClass="copy-icon-btn"
+                            prefWidth="28" prefHeight="28" minWidth="28" minHeight="28" maxWidth="28" maxHeight="28"
+                            style="-fx-text-fill: #A0A0A0; -fx-font-family: System; -fx-font-size: 14px; -fx-text-overrun: clip;"/>
                 </HBox>
 
                 <Label text="Derivation path"

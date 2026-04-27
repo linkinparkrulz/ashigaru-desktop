@@ -184,10 +184,11 @@ public class AshigaruReceiveController implements Initializable {
         ClipboardContent content = new ClipboardContent();
         content.putString(currentEntry.getAddress().toString());
         Clipboard.getSystemClipboard().setContent(content);
+        final String defaultStyle = "-fx-text-fill: #A0A0A0; -fx-font-family: System; -fx-font-size: 14px; -fx-text-overrun: clip;";
         copyBtn.setText("✓");
-        copyBtn.setStyle("-fx-text-fill: #4CAF50;");
+        copyBtn.setStyle("-fx-text-fill: #4CAF50; -fx-font-family: System; -fx-font-size: 14px; -fx-text-overrun: clip;");
         PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
-        pause.setOnFinished(e -> { copyBtn.setText("⎘"); copyBtn.setStyle("-fx-text-fill: #A0A0A0;"); });
+        pause.setOnFinished(e -> { copyBtn.setText("⎘"); copyBtn.setStyle(defaultStyle); });
         pause.play();
     }
 
