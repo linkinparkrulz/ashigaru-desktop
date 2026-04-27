@@ -1,0 +1,150 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-2022
+            artifact-name: Windows
+          - os: ubuntu-22.04
+            artifact-name: Linux
+          - os: macos-latest
+            artifact-name: macOS-arm64
+          - os: macos-15-intel
+            artifact-name: macOS-x64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up JDK 21.0.7
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21.0.7
+
+      - name: Extract version (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          "VERSION=$($env:GITHUB_REF_NAME -replace '^v','')" | Out-File -Append $env:GITHUB_ENV
+
+      - name: Extract version (Linux/macOS)
+        if: ${{ runner.os != 'Windows' }}
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Build with Gradle (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: .\gradlew.bat jpackage
+
+      - name: Build with Gradle (Linux/macOS)
+        if: ${{ runner.os != 'Windows' }}
+        run: ./gradlew jpackage
+
+      - name: Package zip distribution (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: .\gradlew.bat packageZipDistribution
+
+      - name: Package zip distribution (macOS)
+        if: ${{ runner.os == 'macOS' }}
+        run: ./gradlew packageZipDistribution
+
+      - name: Package tar distribution (Linux)
+        if: ${{ runner.os == 'Linux' }}
+        run: ./gradlew packageTarDistribution
+
+      - name: Rename macOS DMG (arm64)
+        if: ${{ matrix.artifact-name == 'macOS-arm64' }}
+        run: mv build/jpackage/*.dmg build/jpackage/Ashigaru-${VERSION}-aarch64.dmg
+
+      - name: Rename macOS DMG (x64)
+        if: ${{ matrix.artifact-name == 'macOS-x64' }}
+        run: mv build/jpackage/*.dmg build/jpackage/Ashigaru-${VERSION}-x86_64.dmg
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.artifact-name }}
+          path: |
+            build/distributions/*
+            build/jpackage/*.dmg
+            build/jpackage/*.msi
+            build/jpackage/*.exe
+            build/jpackage/*.deb
+            build/jpackage/*.rpm
+
+      - name: Headless build with Gradle
+        if: ${{ runner.os == 'Linux' }}
+        run: ./gradlew -Djava.awt.headless=true clean jpackage
+
+      - name: Package headless tar distribution
+        if: ${{ runner.os == 'Linux' }}
+        run: ./gradlew -Djava.awt.headless=true packageTarDistribution
+
+      - name: Rename headless artifacts
+        if: ${{ runner.os == 'Linux' }}
+        run: for f in build/jpackage/ashigaru*; do mv -v "$f" "${f/ashigaru/ashigaru-server}"; done
+
+      - name: Upload headless artifacts
+        if: ${{ runner.os == 'Linux' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.artifact-name }}-Headless
+          path: |
+            build/jpackage/*
+            !build/jpackage/Ashigaru/
+            build/distributions/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Extract version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd release-assets
+          find . -maxdepth 1 -type f | sort | xargs sha256sum > SHA256SUMS
+
+      - name: Generate MESSAGE.txt
+        run: |
+          cd release-assets
+          SUMS_HASH=$(sha256sum SHA256SUMS | awk '{print $1}')
+          printf '%s\n' \
+            "Ashigaru release attestation" \
+            "Repo: github.com/linkinparkrulz/ashigaru-desktop" \
+            "Tag: ${GITHUB_REF_NAME}" \
+            "Commit: ${GITHUB_SHA}" \
+            "SHA256(SHA256SUMS): ${SUMS_HASH}" \
+            > MESSAGE.txt
+
+      - name: Create draft GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Ashigaru ${{ env.VERSION }}
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+          files: release-assets/**
