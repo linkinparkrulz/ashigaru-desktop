@@ -28,6 +28,8 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -255,9 +257,13 @@ public class AshigaruMainController implements Initializable {
         }
     }
 
+    public void setPendingSelectFile(File file) {
+        this.pendingSelectFile = file;
+    }
+
     @FXML
     private void onCreateWallet() {
-        new WalletCreationFlow(AshigaruGui.get().getMainStage()).start();
+        new WalletCreationFlow(AshigaruGui.get().getMainStage(), this).start();
     }
 
     @FXML
@@ -387,11 +393,34 @@ public class AshigaruMainController implements Initializable {
             prefsController.reconnectOnClosingProperty().set(AppServices.isConnecting() || AppServices.isConnected());
             prefsController.selectGroup(PreferenceGroup.GENERAL);
 
-            contentPane.setCenter(prefsPanel);
+            Button backBtn = new Button("← Back");
+            backBtn.setOnAction(e -> closePreferences());
+            HBox header = new HBox(backBtn);
+            header.getStyleClass().add("prefs-back-bar");
+            VBox.setVgrow(prefsPanel, Priority.ALWAYS);
+            VBox wrapper = new VBox(header, prefsPanel);
+
+            contentPane.setCenter(wrapper);
             contentPane.setUserData(prefsController);
         } catch (IOException e) {
             log.error("Error loading preferences panel", e);
             showError("Error", "Could not load preferences: " + e.getMessage());
+        }
+    }
+
+    private void closePreferences() {
+        maybeReconnectOnLeavingPrefs();
+        if (currentWalletForm != null) {
+            String wid = currentWalletForm.getWalletId();
+            refreshWalletList();
+            walletItems.stream()
+                    .filter(item -> item.isLoaded() && wid.equals(item.walletId()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            item -> walletSelector.getSelectionModel().select(item),
+                            this::showWelcome);
+        } else {
+            walletSelector.getSelectionModel().select(PLACEHOLDER);
         }
     }
 

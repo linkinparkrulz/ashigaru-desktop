@@ -235,6 +235,17 @@ jlink {
 }
 
 if (os.macOsX) {
+    // Ad-hoc sign the app bundle so Gatekeeper shows "unidentified developer"
+    // rather than "damaged and can't be opened", which is required on Apple Silicon.
+    task adhocSignApp(type: Exec, dependsOn: jpackageImage) {
+        commandLine 'codesign', '--sign', '-', '--deep', '--force',
+                    '--entitlements', 'src/main/deploy/package/osx/Ashigaru.entitlements',
+                    "${buildDir}/jpackage/Ashigaru.app"
+    }
+    jpackage.dependsOn adhocSignApp
+}
+
+if (os.macOsX) {
     task packageZipDistribution(type: Exec, dependsOn: jpackageImage) {
         def outputDir = file("${buildDir}/distributions")
         def zipFile   = "${outputDir}/Ashigaru-${ashigaruTerminalVersion}-${osName}-${releaseArch}.zip"

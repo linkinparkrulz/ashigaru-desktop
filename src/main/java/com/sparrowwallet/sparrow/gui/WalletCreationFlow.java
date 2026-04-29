@@ -62,9 +62,11 @@ public class WalletCreationFlow {
     private static final Logger log = LoggerFactory.getLogger(WalletCreationFlow.class);
 
     private final Stage owner;
+    private final AshigaruMainController mainController;
 
-    public WalletCreationFlow(Stage owner) {
+    public WalletCreationFlow(Stage owner, AshigaruMainController mainController) {
         this.owner = owner;
+        this.mainController = mainController;
     }
 
     /** Entry point — call from the JavaFX UI thread. */
@@ -543,6 +545,9 @@ public class WalletCreationFlow {
     }
 
     private void registerWallets(Storage storage, Wallet masterWallet) {
+        if (mainController != null) {
+            mainController.setPendingSelectFile(storage.getWalletFile());
+        }
         AshigaruGui.addWallet(storage, masterWallet);
         for (Wallet child : masterWallet.getChildWallets()) {
             AshigaruGui.addWallet(storage, child);

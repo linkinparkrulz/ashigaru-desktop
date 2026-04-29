@@ -33,6 +33,12 @@ Pre-built binaries for every platform are published on the [Releases](../../rele
 
 Each release also includes `SHA256SUMS`, `MESSAGE.txt`, and `RELEASE-BIP47-SIGNATURE.txt` for verification.
 
+**macOS note:** The app is ad-hoc signed but not notarized. On first launch, right-click the `.app` in Finder and choose **Open**, then confirm in the security dialog. If you see "damaged and can't be opened", run the following in Terminal after mounting the DMG:
+
+```
+xattr -rd com.apple.quarantine /Applications/Ashigaru.app
+```
+
 ---
 
 ### Verifying a release
