@@ -251,13 +251,10 @@ if (os.macOsX) {
         def outputDir = file("${buildDir}/distributions")
         def zipFile   = "${outputDir}/Ashigaru-${ashigaruTerminalVersion}-${osName}-${releaseArch}.zip"
         doFirst { outputDir.mkdirs() }
+        // Package the .app bundle (not the raw jlink image) so the ZIP is a valid Mac app
         commandLine 'sh', '-c',
-            "rm -rf '${buildDir}/tmp-zip' && " +
-            "mkdir -p '${buildDir}/tmp-zip/Ashigaru' && " +
-            "cp -R '${buildDir}/image/.' '${buildDir}/tmp-zip/Ashigaru/' && " +
-            "cd '${buildDir}/tmp-zip' && " +
-            "ditto -c -k --keepParent Ashigaru '${zipFile}' && " +
-            "rm -rf '${buildDir}/tmp-zip'"
+            "cd '${buildDir}/jpackage' && " +
+            "ditto -c -k --keepParent Ashigaru.app '${zipFile}'"
     }
 } else {
     task packageZipDistribution(type: Zip, dependsOn: jpackageImage) {

@@ -33,9 +33,23 @@ Pre-built binaries for every platform are published on the [Releases](../../rele
 
 Each release also includes `SHA256SUMS`, `MESSAGE.txt`, and `RELEASE-BIP47-SIGNATURE.txt` for verification.
 
-**macOS note:** The app is ad-hoc signed but not notarized. On first launch, right-click the `.app` in Finder and choose **Open**, then confirm in the security dialog. If you see "damaged and can't be opened", run the following in Terminal after mounting the DMG:
+**macOS — "damaged and can't be opened"**
 
+The app is not notarized. macOS quarantines anything downloaded from the internet, which triggers this error. Remove the quarantine attribute before opening:
+
+1. Mount the DMG (double-click it)
+2. Open Terminal and run:
+
+```sh
+xattr -rd com.apple.quarantine /Volumes/Ashigaru/Ashigaru.app
 ```
+
+3. Drag `Ashigaru.app` from the DMG to `/Applications` as normal
+4. Open it — no further warnings
+
+If you already copied it to Applications before seeing this:
+
+```sh
 xattr -rd com.apple.quarantine /Applications/Ashigaru.app
 ```
 
