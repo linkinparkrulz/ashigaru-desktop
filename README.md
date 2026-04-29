@@ -33,25 +33,34 @@ Pre-built binaries for every platform are published on the [Releases](../../rele
 
 Each release also includes `SHA256SUMS`, `MESSAGE.txt`, and `RELEASE-BIP47-SIGNATURE.txt` for verification.
 
-**macOS — "damaged and can't be opened"**
+**macOS installation**
 
-The app is not notarized. macOS quarantines anything downloaded from the internet, which triggers this error. Remove the quarantine attribute before opening:
+Releases are not yet notarized. On macOS Ventura and later, Gatekeeper is stricter for quarantined, non-notarized apps downloaded from the internet — ad-hoc signing alone does not satisfy trust requirements, and you may see "damaged and can't be opened" or a blocked launch. This can also indicate a bad signature or packaging issue, so verify the file hash first (see *Verifying a release* below).
 
-1. Mount the DMG (double-click it)
+If the hash checks out, two options:
+
+**Option A — Remove quarantine (recommended):**
+
+1. Mount the DMG
 2. Open Terminal and run:
 
 ```sh
 xattr -rd com.apple.quarantine /Volumes/Ashigaru/Ashigaru.app
 ```
 
-3. Drag `Ashigaru.app` from the DMG to `/Applications` as normal
-4. Open it — no further warnings
+3. Drag `Ashigaru.app` to `/Applications`, then open normally
 
-If you already copied it to Applications before seeing this:
+If you already copied it to Applications:
 
 ```sh
 xattr -rd com.apple.quarantine /Applications/Ashigaru.app
 ```
+
+**Option B — Open Anyway via System Settings:**
+
+After a blocked launch attempt, go to **System Settings → Privacy & Security** and click **Open Anyway** next to the Ashigaru entry.
+
+> **Stable releases** will ship Developer ID signed and notarized, which removes this friction entirely.
 
 ---
 
