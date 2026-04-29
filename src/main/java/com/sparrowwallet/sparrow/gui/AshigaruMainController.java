@@ -27,6 +27,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -395,10 +397,18 @@ public class AshigaruMainController implements Initializable {
 
             Button backBtn = new Button("← Back");
             backBtn.setOnAction(e -> closePreferences());
-            HBox header = new HBox(backBtn);
-            header.getStyleClass().add("prefs-back-bar");
+            backBtn.getStyleClass().add("prefs-back-btn");
+
+            Label pageTitle = new Label("Preferences");
+            pageTitle.getStyleClass().add("prefs-page-title");
+
+            HBox pageHeader = new HBox(16, backBtn, pageTitle);
+            pageHeader.setAlignment(Pos.CENTER_LEFT);
+            pageHeader.getStyleClass().add("prefs-page-header");
+            pageHeader.setPadding(new Insets(8, 16, 8, 16));
+
             VBox.setVgrow(prefsPanel, Priority.ALWAYS);
-            VBox wrapper = new VBox(header, prefsPanel);
+            VBox wrapper = new VBox(pageHeader, prefsPanel);
 
             contentPane.setCenter(wrapper);
             contentPane.setUserData(prefsController);
