@@ -23,32 +23,33 @@ A graphical Bitcoin wallet and desktop GUI front-end for [Ashigaru Terminal](htt
 
 Pre-built binaries for every platform are published on the [Releases](../../releases) page.
 
-| Platform | Package |
-|---|---|
-| Windows | `.exe` installer, `.msi` |
-| macOS (Apple Silicon) | `Ashigaru-X.Y.Z-aarch64.dmg` |
-| macOS (Intel) | `Ashigaru-X.Y.Z-x86_64.dmg` |
-| Linux (desktop) | `.deb`, `.rpm`, `.tar.gz` |
-| Linux (headless / server) | `ashigaru-server` `.deb`, `.rpm` |
+| Platform | Package | Min OS | Notarized |
+|---|---|---|---|
+| Windows | `.exe` installer, `.msi` | Windows 10 | — |
+| macOS (Apple Silicon) | `Ashigaru-X.Y.Z-aarch64.dmg` | macOS 11.0 | nightly: no · stable: yes |
+| macOS (Intel) | `Ashigaru-X.Y.Z-x86_64.dmg` | macOS 11.0 | nightly: no · stable: yes |
+| Linux (desktop) | `.deb`, `.rpm`, `.tar.gz` | — | — |
+| Linux (headless / server) | `ashigaru-server` `.deb`, `.rpm` | — | — |
 
 Each release also includes `SHA256SUMS`, `MESSAGE.txt`, and `RELEASE-BIP47-SIGNATURE.txt` for verification.
 
 **macOS installation**
 
-Releases are not yet notarized. On macOS Ventura and later, Gatekeeper is stricter for quarantined, non-notarized apps downloaded from the internet — ad-hoc signing alone does not satisfy trust requirements, and you may see "damaged and can't be opened" or a blocked launch. This can also indicate a bad signature or packaging issue, so verify the file hash first (see *Verifying a release* below).
+Requires macOS 11.0 (Big Sur) or later. Nightly/dev builds are not notarized. On macOS Ventura and later, Gatekeeper is stricter for quarantined, non-notarized apps downloaded from the internet — ad-hoc signing alone does not satisfy trust requirements, and you may see "damaged and can't be opened" or a blocked launch. This can also indicate a bad signature or packaging issue, so verify the file hash first (see *Verifying a release* below).
 
 If the hash checks out, two options:
 
-**Option A — Remove quarantine (recommended):**
+**Option A — Remove quarantine (recommended for nightly builds):**
 
 1. Mount the DMG
-2. Open Terminal and run:
+2. Copy `Ashigaru.app` to `/Applications`
+3. Open Terminal and run:
 
 ```sh
-xattr -rd com.apple.quarantine /Volumes/Ashigaru/Ashigaru.app
+xattr -rd com.apple.quarantine /Applications/Ashigaru.app
 ```
 
-3. Drag `Ashigaru.app` to `/Applications`, then open normally
+4. Open normally
 
 If you already copied it to Applications:
 

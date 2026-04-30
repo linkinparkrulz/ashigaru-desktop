@@ -3,43 +3,42 @@
 <plist version="1.0">
  <dict>
   <key>LSMinimumSystemVersion</key>
-  <string>10.9</string>
+  <string>11.0</string>
   <key>CFBundleDevelopmentRegion</key>
   <string>English</string>
   <key>CFBundleAllowMixedLocalizations</key>
   <true/>
   <key>CFBundleExecutable</key>
-  <string>Ashigaru-terminal</string>
+  <string>Ashigaru</string>
   <key>CFBundleIconFile</key>
-  <string>Ashigaru-terminal</string>
+  <string>ashigaru</string>
   <key>CFBundleIdentifier</key>
   <string>com.ashigaru.terminal</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
-  <string>Ashigaru-terminal</string>
+  <string>Ashigaru</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
   <string>1.0.0</string>
   <key>CFBundleSignature</key>
   <string>????</string>
-  <!-- See https://developer.apple.com/app-store/categories/ for list of AppStore categories -->
   <key>LSApplicationCategoryType</key>
-  <string>Unknown</string>
+  <string>public.app-category.finance</string>
   <key>CFBundleVersion</key>
   <string>100</string>
   <key>NSHumanReadableCopyright</key>
-  <string>Copyright (C) 2021</string>
+  <string>Copyright (C) 2024 Ashigaru Project</string>
   <key>NSHighResolutionCapable</key>
   <string>true</string>
   <key>NSCameraUsageDescription</key>
-  <string>Ashigaru-terminal requires access to the camera in order to scan QR codes</string>
+  <string>Ashigaru requires access to the camera in order to scan QR codes</string>
   <key>CFBundleURLTypes</key>
   <array>
       <dict>
           <key>CFBundleURLName</key>
-          <string>com.sparrowwallet.sparrow.bitcoin</string>
+          <string>com.ashigaru.terminal.bitcoin</string>
           <key>CFBundleURLSchemes</key>
           <array>
             <string>bitcoin</string>
@@ -47,7 +46,7 @@
       </dict>
       <dict>
           <key>CFBundleURLName</key>
-          <string>com.sparrowwallet.sparrow.auth47</string>
+          <string>com.ashigaru.terminal.auth47</string>
           <key>CFBundleURLSchemes</key>
           <array>
             <string>auth47</string>
@@ -55,7 +54,7 @@
       </dict>
       <dict>
           <key>CFBundleURLName</key>
-          <string>com.sparrowwallet.sparrow.lightning</string>
+          <string>com.ashigaru.terminal.lightning</string>
           <key>CFBundleURLSchemes</key>
           <array>
             <string>lightning</string>
@@ -96,7 +95,7 @@
       </dict>
       <dict>
           <key>UTTypeIdentifier</key>
-          <string>com.sparrowwallet.asc</string>
+          <string>com.ashigaru.asc</string>
           <key>UTTypeTagSpecification</key>
           <dict>
               <key>public.filename-extension</key>

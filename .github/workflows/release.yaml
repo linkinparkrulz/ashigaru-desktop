@@ -110,8 +110,69 @@ jobs:
             !build/jpackage/Ashigaru/
             build/distributions/*
 
-  release:
+  validate-macos:
     needs: build
+    runs-on: macos-latest
+
+    steps:
+      - name: Extract version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-macOS-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Validate DMG bundle structure
+        run: |
+          set -euo pipefail
+          validate_app() {
+            local app="$1" label="$2"
+            local plist="$app/Contents/Info.plist"
+            echo "=== $label ==="
+            [ -f "$plist" ] || { echo "FAIL: Info.plist missing"; exit 1; }
+            EXEC=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$plist")
+            echo "  CFBundleExecutable: $EXEC"
+            [ -f "$app/Contents/MacOS/$EXEC" ] \
+              || { echo "FAIL: Contents/MacOS/$EXEC not found"; exit 1; }
+            MIN=$(/usr/libexec/PlistBuddy -c "Print LSMinimumSystemVersion" "$plist")
+            echo "  LSMinimumSystemVersion: $MIN"
+            [ "$MIN" = "11.0" ] || { echo "FAIL: expected 11.0, got $MIN"; exit 1; }
+            codesign --verify --deep --strict --verbose=2 "$app" \
+              || { echo "FAIL: codesign verify failed"; exit 1; }
+            echo "  PASS"
+          }
+          for dmg in artifacts/Ashigaru-*.dmg; do
+            [ -f "$dmg" ] || continue
+            mnt="/Volumes/AshigaruCheck-$(basename "$dmg" .dmg)"
+            hdiutil attach "$dmg" -mountpoint "$mnt" -nobrowse -quiet
+            validate_app "$mnt/Ashigaru.app" "$(basename "$dmg")"
+            hdiutil detach "$mnt" -quiet
+          done
+
+      - name: Validate ZIP bundle structure
+        run: |
+          set -euo pipefail
+          for zip in artifacts/Ashigaru-*-osx-*.zip; do
+            [ -f "$zip" ] || continue
+            echo "=== $(basename "$zip") ==="
+            unzip -l "$zip" | grep -q "Ashigaru\.app/" \
+              || { echo "FAIL: no Ashigaru.app/ in ZIP"; exit 1; }
+            tmp=$(mktemp -d)
+            unzip -q "$zip" -d "$tmp"
+            plist="$tmp/Ashigaru.app/Contents/Info.plist"
+            [ -f "$plist" ] || { echo "FAIL: Info.plist missing in ZIP"; exit 1; }
+            EXEC=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$plist")
+            [ -f "$tmp/Ashigaru.app/Contents/MacOS/$EXEC" ] \
+              || { echo "FAIL: Contents/MacOS/$EXEC missing in ZIP"; exit 1; }
+            rm -rf "$tmp"
+            echo "  PASS"
+          done
+
+  release:
+    needs: [build, validate-macos]
     runs-on: ubuntu-22.04
 
     steps:
