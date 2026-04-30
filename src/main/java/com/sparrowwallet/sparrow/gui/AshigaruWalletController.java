@@ -342,11 +342,14 @@ public class AshigaruWalletController implements Initializable {
                 };
         accountNameLabel.setText(acctName);
 
-        // Receive button — only for Deposit (master wallet)
+        // Receive button and empty-state CTA — only for Deposit (master wallet).
+        // Premix/Postmix/Badbank wallets have no extendedPublicKey and will NPE if receive is attempted.
         boolean isDeposit = wallet.isMasterWallet() || wallet.getStandardAccountType() == null
                 || wallet.getStandardAccountType() == StandardAccount.ACCOUNT_0;
         receiveBtn.setVisible(isDeposit);
         receiveBtn.setManaged(isDeposit);
+        receiveCta.setVisible(isDeposit);
+        receiveCta.setManaged(isDeposit);
 
         // Badbank info bar
         boolean isBadbank = wallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_BADBANK;

@@ -182,6 +182,9 @@ public class AshigaruMainController implements Initializable {
             currentWalletController = loader.getController();
             currentWalletController.setWalletForm(activeForm, currentWalletForm);
             contentPane.setCenter(walletPanel);
+            // Controller is now registered for events — kick off a fresh history fetch so
+            // UTXOs/transactions appear immediately without requiring a restart
+            Platform.runLater(() -> currentWalletForm.refreshHistory(AppServices.getCurrentBlockHeight()));
         } catch (Exception e) {
             log.error("Error loading wallet panel", e);
             showError("Error", "Could not load wallet view: " + e.getMessage());
@@ -420,7 +423,12 @@ public class AshigaruMainController implements Initializable {
 
     private void closePreferences() {
         maybeReconnectOnLeavingPrefs();
-        if (currentWalletForm != null) {
+        if (pendingSelectFile != null) {
+            // A wallet was created/restored while in prefs — refreshWalletList will consume
+            // pendingSelectFile and auto-select the new wallet
+            refreshWalletList();
+        } else if (currentWalletForm != null) {
+            // Return to whichever wallet was open before entering prefs
             String wid = currentWalletForm.getWalletId();
             refreshWalletList();
             walletItems.stream()
@@ -611,7 +619,12 @@ public class AshigaruMainController implements Initializable {
         if (event.getWallet().isMasterWallet()) {
             Platform.runLater(() -> {
                 unloadedWalletFiles.remove(event.getStorage().getWalletFile());
-                refreshWalletList();
+                if (contentPane.getUserData() instanceof PreferencesController && pendingSelectFile != null) {
+                    // Wallet created/restored while in preferences — leave prefs and go to the new wallet
+                    closePreferences();
+                } else {
+                    refreshWalletList();
+                }
             });
         }
     }
