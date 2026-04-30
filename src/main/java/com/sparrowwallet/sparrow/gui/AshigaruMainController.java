@@ -182,9 +182,16 @@ public class AshigaruMainController implements Initializable {
             currentWalletController = loader.getController();
             currentWalletController.setWalletForm(activeForm, currentWalletForm);
             contentPane.setCenter(walletPanel);
-            // Controller is now registered for events — kick off a fresh history fetch so
-            // UTXOs/transactions appear immediately without requiring a restart
-            Platform.runLater(() -> currentWalletForm.refreshHistory(AppServices.getCurrentBlockHeight()));
+            // Kick off a fresh history fetch so UTXOs/transactions appear immediately.
+            // For non-Deposit accounts, also refresh the child form — master history
+            // service does not fetch Premix/Postmix/Badbank address history.
+            WalletForm childForm = activeForm != currentWalletForm ? activeForm : null;
+            Platform.runLater(() -> {
+                currentWalletForm.refreshHistory(AppServices.getCurrentBlockHeight());
+                if (childForm != null) {
+                    childForm.refreshHistory(AppServices.getCurrentBlockHeight());
+                }
+            });
         } catch (Exception e) {
             log.error("Error loading wallet panel", e);
             showError("Error", "Could not load wallet view: " + e.getMessage());
@@ -310,16 +317,34 @@ public class AshigaruMainController implements Initializable {
             });
             verifySvc.start();
         } else {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.setTitle("Delete Wallet");
-            confirm.setHeaderText("Delete \"" + item.displayName() + "\"?");
-            confirm.setContentText("This will permanently delete the wallet file. This cannot be undone.");
-            confirm.initOwner(AshigaruGui.get().getMainStage());
-            confirm.showAndWait().ifPresent(btn -> {
-                if (btn != ButtonType.OK) return;
-                doDelete(item, form);
-            });
+            Dialog<String> confirmDialog = buildNameConfirmDialog(item.displayName());
+            Optional<String> confirmResult = confirmDialog.showAndWait();
+            if (confirmResult.isEmpty() || confirmResult.get() == null) return;
+            if (!confirmResult.get().equals(item.displayName())) {
+                showError("Incorrect Name", "The wallet name did not match. Wallet not deleted.");
+                return;
+            }
+            doDelete(item, form);
         }
+    }
+
+    private Dialog<String> buildNameConfirmDialog(String walletName) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Delete Wallet");
+        dialog.setHeaderText("Type the wallet name to confirm permanent deletion");
+        dialog.initOwner(AshigaruGui.get().getMainStage());
+
+        ButtonType deleteBtn = new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(deleteBtn, ButtonType.CANCEL);
+
+        Label instructions = new Label("Type \"" + walletName + "\" to confirm:");
+        TextField tf = new TextField();
+        tf.setPromptText(walletName);
+        VBox vbox = new VBox(6, instructions, tf);
+        dialog.getDialogPane().setContent(vbox);
+        Platform.runLater(tf::requestFocus);
+        dialog.setResultConverter(btn -> btn == deleteBtn ? tf.getText() : null);
+        return dialog;
     }
 
     private void doDelete(WalletListItem item, WalletForm form) {

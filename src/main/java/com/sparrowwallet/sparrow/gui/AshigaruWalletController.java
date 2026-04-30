@@ -657,7 +657,12 @@ public class AshigaruWalletController implements Initializable {
 
     @FXML
     private void onRefresh() {
-        if (activeAccountForm != null) {
+        if (currentWalletForm != null) {
+            currentWalletForm.refreshHistory(AppServices.getCurrentBlockHeight());
+        }
+        // For Premix/Postmix/Badbank views, the master history service does not
+        // fetch child account addresses — refresh the child form separately.
+        if (activeAccountForm != null && activeAccountForm != currentWalletForm) {
             activeAccountForm.refreshHistory(AppServices.getCurrentBlockHeight());
         }
     }
@@ -700,6 +705,10 @@ public class AshigaruWalletController implements Initializable {
             Platform.runLater(() -> {
                 refreshBtn.setDisable(false);
                 refreshBtn.setText("⟳  Refresh");
+                // Always refresh the view when a sync finishes — ensures UTXOs are shown
+                // even when the history was already current (no WalletHistoryChangedEvent fired).
+                activeAccountForm.getWalletUtxosEntry().updateUtxos();
+                refreshAccountView();
             });
         }
     }
