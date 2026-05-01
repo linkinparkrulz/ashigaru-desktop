@@ -1,12 +1,14 @@
 package com.sparrowwallet.sparrow.gui;
 
 import com.google.common.eventbus.Subscribe;
+import com.sparrowwallet.drongo.ExtendedKey;
 import com.sparrowwallet.drongo.Network;
 import com.sparrowwallet.drongo.SecureString;
 import com.sparrowwallet.drongo.crypto.InvalidPasswordException;
+import com.sparrowwallet.drongo.wallet.DeterministicSeed;
+import com.sparrowwallet.drongo.wallet.Keystore;
 import com.sparrowwallet.drongo.wallet.StandardAccount;
 import com.sparrowwallet.drongo.wallet.Wallet;
-import com.sparrowwallet.drongo.wallet.Keystore;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.control.SeedDisplayDialog;
@@ -317,34 +319,64 @@ public class AshigaruMainController implements Initializable {
             });
             verifySvc.start();
         } else {
-            Dialog<String> confirmDialog = buildNameConfirmDialog(item.displayName());
-            Optional<String> confirmResult = confirmDialog.showAndWait();
-            if (confirmResult.isEmpty() || confirmResult.get() == null) return;
-            if (!confirmResult.get().equals(item.displayName())) {
-                showError("Incorrect Name", "The wallet name did not match. Wallet not deleted.");
+            // Unencrypted wallet — verify BIP39 passphrase before deleting.
+            Dialog<String> ppDialog = buildPassphraseDialog(item.displayName());
+            Optional<String> ppResult = ppDialog.showAndWait();
+            if (ppResult.isEmpty() || ppResult.get() == null) return;
+            if (!verifyWalletPassphrase(form.getWallet(), ppResult.get())) {
+                showError("Incorrect Passphrase", "The passphrase did not match. Wallet not deleted.");
                 return;
             }
             doDelete(item, form);
         }
     }
 
-    private Dialog<String> buildNameConfirmDialog(String walletName) {
+    private Dialog<String> buildPassphraseDialog(String walletName) {
         Dialog<String> dialog = new Dialog<>();
         dialog.setTitle("Delete Wallet");
-        dialog.setHeaderText("Type the wallet name to confirm permanent deletion");
+        dialog.setHeaderText("Enter passphrase to permanently delete \"" + walletName + "\"");
         dialog.initOwner(AshigaruGui.get().getMainStage());
 
         ButtonType deleteBtn = new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(deleteBtn, ButtonType.CANCEL);
 
-        Label instructions = new Label("Type \"" + walletName + "\" to confirm:");
-        TextField tf = new TextField();
-        tf.setPromptText(walletName);
-        VBox vbox = new VBox(6, instructions, tf);
+        Label hint = new Label("Enter your BIP39 passphrase (leave empty if none):");
+        PasswordField pf = new PasswordField();
+        pf.setPromptText("Passphrase");
+        VBox vbox = new VBox(6, hint, pf);
         dialog.getDialogPane().setContent(vbox);
-        Platform.runLater(tf::requestFocus);
-        dialog.setResultConverter(btn -> btn == deleteBtn ? tf.getText() : null);
+        Platform.runLater(pf::requestFocus);
+        dialog.setResultConverter(btn -> btn == deleteBtn ? pf.getText() : null);
         return dialog;
+    }
+
+    /**
+     * Re-derives the account extended key from the stored mnemonic + entered passphrase,
+     * then compares the resulting public key against the keystore's stored xpub.
+     * Returns true if they match (or if the wallet has no verifiable seed, e.g. hardware wallet).
+     */
+    private boolean verifyWalletPassphrase(Wallet wallet, String enteredPassphrase) {
+        for (Keystore keystore : wallet.getKeystores()) {
+            DeterministicSeed seed = keystore.getSeed();
+            if (seed == null || seed.isEncrypted() || seed.getMnemonicCode() == null) {
+                continue; // hardware wallet / watch-only — skip
+            }
+            SecureString savedPassphrase = seed.getPassphrase();
+            try {
+                seed.setPassphrase(enteredPassphrase);
+                ExtendedKey derivedXprv = keystore.getExtendedPrivateKey();
+                byte[] derivedPub = derivedXprv.getKey().dropPrivateBytes().getPubKey();
+                byte[] storedPub  = keystore.getExtendedPublicKey().getKey().getPubKey();
+                if (!Arrays.equals(derivedPub, storedPub)) {
+                    return false;
+                }
+            } catch (Exception e) {
+                return false;
+            } finally {
+                seed.setPassphrase(savedPassphrase);
+            }
+        }
+        return true;
     }
 
     private void doDelete(WalletListItem item, WalletForm form) {
