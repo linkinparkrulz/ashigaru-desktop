@@ -672,6 +672,9 @@ public class DbPersistence implements Persistence {
                 throw new StorageException("Wallet file may already be in use. Make sure the application is not running elsewhere.", e);
             } else if(e.getMessage() != null && (e.getMessage().contains("Wrong user name or password") || e.getMessage().contains("Encryption error in file"))) {
                 throw new InvalidPasswordException("Incorrect password for wallet file " + walletFile.getAbsolutePath(), e);
+            } else if(e.getMessage() != null && e.getMessage().contains("90030")) {
+                log.error("Wallet file is in an incompatible database format (created by Sparrow or Ashigaru Terminal)", e);
+                throw new StorageException("This wallet was created by Sparrow Desktop or Ashigaru Terminal, which uses a newer database format that cannot be opened here.\n\nWorkaround: open the wallet in its original app, export it as a JSON file (File → Export Wallet), then open that JSON file in Ashigaru.", e);
             } else {
                 log.error("Failed to open database file", e);
                 throw new StorageException("Failed to open database file.\n" + e.getMessage(), e);

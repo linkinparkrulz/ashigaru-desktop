@@ -240,13 +240,16 @@ public class WhirlpoolServices {
 
             Whirlpool mixFromWhirlpool = whirlpoolMap.entrySet().stream()
                     .filter(entry -> {
-                        MixConfig mixConfig = AppServices.get().getWallet(entry.getKey()).getMasterMixConfig();
+                        Wallet w = AppServices.get().getWallet(entry.getKey());
+                        if (w == null) return false;
+                        MixConfig mixConfig = w.getMasterMixConfig();
                         return event.getStorage().getWalletFile().equals(mixConfig.getMixToWalletFile()) && event.getWallet().getName().equals(mixConfig.getMixToWalletName());
                     })
                     .map(Map.Entry::getValue).findFirst().orElse(null);
 
             if (mixFromWhirlpool != null) {
-                mixFromWhirlpool.setMixToWallet(walletId, AppServices.get().getWallet(mixFromWhirlpool.getWalletId()).getMasterMixConfig().getMinMixes());
+                Wallet mixFromWallet = AppServices.get().getWallet(mixFromWhirlpool.getWalletId());
+                mixFromWhirlpool.setMixToWallet(walletId, mixFromWallet != null ? mixFromWallet.getMasterMixConfig().getMinMixes() : 0);
                 if (mixFromWhirlpool.isStarted()) {
                     //Will automatically restart
                     stopWhirlpool(mixFromWhirlpool, false);
