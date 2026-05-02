@@ -71,10 +71,21 @@ public class AshigaruGui extends Application {
         stage.setMinHeight(540);
         stage.setScene(scene);
 
-        // Set app icon
+        // Set app icon (window + macOS Dock)
         try {
             Image icon = new Image(getClass().getResourceAsStream("/image/Ashigaru_Terminal_Logo_Circle.png"));
             stage.getIcons().add(icon);
+            try {
+                if (java.awt.Taskbar.isTaskbarSupported()) {
+                    java.awt.Taskbar taskbar = java.awt.Taskbar.getTaskbar();
+                    if (taskbar.isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)) {
+                        java.awt.image.BufferedImage awtIcon = javafx.embed.swing.SwingFXUtils.fromFXImage(icon, null);
+                        taskbar.setIconImage(awtIcon);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Could not set taskbar icon", e);
+            }
         } catch(Exception e) {
             log.warn("Could not load application icon", e);
         }

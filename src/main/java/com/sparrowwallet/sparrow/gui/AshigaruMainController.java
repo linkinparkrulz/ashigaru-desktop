@@ -520,16 +520,6 @@ public class AshigaruMainController implements Initializable {
      * with a lock icon and are only decrypted when the user explicitly selects them.
      */
     public void addRecentWalletFile(File file) {
-        try {
-            Storage storage = new Storage(file);
-            if (!storage.isEncrypted()) {
-                Platform.runLater(() -> runLoadService(storage, null));
-                return;
-            }
-        } catch (IOException e) {
-            log.warn("Could not determine encryption status, treating as encrypted: " + file, e);
-        }
-        // Either confirmed encrypted, or couldn't tell — show as locked in dropdown
         unloadedWalletFiles.add(file);
         Platform.runLater(this::refreshWalletList);
     }
@@ -540,11 +530,19 @@ public class AshigaruMainController implements Initializable {
      */
     private void unlockWallet(WalletListItem item) {
         Storage storage = new Storage(item.walletFile());
+        try {
+            if (!storage.isEncrypted()) {
+                pendingSelectFile = item.walletFile();
+                Platform.runLater(() -> runLoadService(storage, null));
+                return;
+            }
+        } catch (IOException e) {
+            log.warn("Could not check encryption status: " + item.walletFile(), e);
+        }
         String walletName = item.displayName().replaceFirst("^\uD83D\uDD12\\s*", "");
         Dialog<String> pwDialog = buildPasswordDialog(walletName);
         Optional<String> result = pwDialog.showAndWait();
         if (result.isEmpty() || result.get() == null) {
-            // Cancelled — reset to placeholder without triggering another prompt
             Platform.runLater(() -> walletSelector.getSelectionModel().select(PLACEHOLDER));
             return;
         }
