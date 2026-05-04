@@ -1,6 +1,6 @@
 package com.sparrowwallet.sparrow.io;
 
-import com.google.gson.Gson;
+import com.google.gson.*;
 import com.sparrowwallet.drongo.KeyPurpose;
 import com.sparrowwallet.drongo.OutputDescriptor;
 import com.sparrowwallet.drongo.wallet.*;
@@ -14,7 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class WalletLabels implements WalletImport, WalletExport {
@@ -55,37 +58,60 @@ public class WalletLabels implements WalletImport, WalletExport {
 
             for(Keystore keystore : exportWallet.getKeystores()) {
                 if(keystore.getLabel() != null && !keystore.getLabel().isEmpty()) {
-                    labels.add(new Label(Type.xpub, keystore.getExtendedPublicKey().toString(), keystore.getLabel(), null, null));
+                    labels.add(new Label(LabelType.xpub, keystore.getExtendedPublicKey().toString(), keystore.getLabel(), null, null, null, null, null, null));
                 }
             }
 
+            Integer currentHeight = AppServices.getCurrentBlockHeight();
+
             for(BlockTransaction blkTx : exportWallet.getWalletTransactions().values()) {
                 if(blkTx.getLabel() != null && !blkTx.getLabel().isEmpty()) {
-                    labels.add(new Label(Type.tx, blkTx.getHashAsString(), blkTx.getLabel(), origin, null));
+                    Long height = null;
+                    String time = null;
+                    if(blkTx.getHeight() > 0) {
+                        // Only include height once the tx has at least 6 confirmations
+                        if(currentHeight != null && currentHeight > 0 && (currentHeight - blkTx.getHeight() + 1) >= 6) {
+                            height = (long) blkTx.getHeight();
+                        }
+                        if(blkTx.getDate() != null) {
+                            time = DateTimeFormatter.ISO_INSTANT.format(blkTx.getDate().toInstant().atOffset(ZoneOffset.UTC));
+                        }
+                    }
+                    labels.add(new Label(LabelType.tx, blkTx.getHashAsString(), blkTx.getLabel(), origin, null, height, time, null, null));
                 }
             }
 
             for(WalletNode addressNode : exportWallet.getWalletAddresses().values()) {
                 if(addressNode.getLabel() != null && !addressNode.getLabel().isEmpty()) {
-                    labels.add(new Label(Type.addr, addressNode.getAddress().toString(), addressNode.getLabel(), null, null));
+                    String keypath = addressNode.getDerivationPath();
+                    labels.add(new Label(LabelType.addr, addressNode.getAddress().toString(), addressNode.getLabel(), null, null, null, null, keypath, null));
                 }
             }
 
             for(BlockTransactionHashIndex txo : exportWallet.getWalletTxos().keySet()) {
-                String spendable = (txo.isSpent() ? null : txo.getStatus() == Status.FROZEN ? "false" : "true");
+                Boolean spendable = txo.isSpent() ? null : txo.getStatus() == Status.FROZEN ? Boolean.FALSE : Boolean.TRUE;
+                Long value = txo.getValue();
                 if(txo.getLabel() != null && !txo.getLabel().isEmpty()) {
-                    labels.add(new Label(Type.output, txo.toString(), txo.getLabel(), null, spendable));
+                    labels.add(new Label(LabelType.output, txo.toString(), txo.getLabel(), null, spendable, null, null, null, value));
                 } else if(!txo.isSpent()) {
-                    labels.add(new Label(Type.output, txo.toString(), null, null, spendable));
+                    labels.add(new Label(LabelType.output, txo.toString(), null, null, spendable, null, null, null, value));
                 }
 
                 if(txo.isSpent() && txo.getSpentBy().getLabel() != null && !txo.getSpentBy().getLabel().isEmpty()) {
-                    labels.add(new Label(Type.input, txo.getSpentBy().toString(), txo.getSpentBy().getLabel(), null, null));
+                    labels.add(new Label(LabelType.input, txo.getSpentBy().toString(), txo.getSpentBy().getLabel(), null, null, null, null, null, null));
                 }
+            }
+
+            // Include detached labels (labels for entries not yet seen in the wallet)
+            for(Map.Entry<String, String> detached : exportWallet.getDetachedLabels().entrySet()) {
+                if(detached.getValue() == null || detached.getValue().isEmpty()) continue;
+                LabelType detachedType = detached.getKey().matches("[0-9a-fA-F]{64}") ? LabelType.tx : LabelType.addr;
+                labels.add(new Label(detachedType, detached.getKey(), detached.getValue(), origin, null, null, null, null, null));
             }
         }
 
         try {
+            // new Gson() omits null fields by default — intentional to keep JSONL output clean
             Gson gson = new Gson();
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
 
@@ -131,7 +157,11 @@ public class WalletLabels implements WalletImport, WalletExport {
             throw new IllegalStateException("No wallets to import labels for");
         }
 
-        Gson gson = new Gson();
+        // Custom deserializer handles spendable as either boolean (spec-compliant) or
+        // string "true"/"false" (old Sparrow exports) for backward compatibility
+        Gson gson = new GsonBuilder()
+                .registerTypeAdapter(Label.class, new LabelDeserializer())
+                .create();
         List<Label> labels = new ArrayList<>();
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
@@ -148,12 +178,18 @@ public class WalletLabels implements WalletImport, WalletExport {
                     continue;
                 }
 
-                if(label.type == Type.output) {
+                if(label.type == LabelType.output) {
                     if((label.label == null || label.label.isEmpty()) && label.spendable == null) {
                         continue;
                     }
                 } else if(label.label == null || label.label.isEmpty()) {
                     continue;
+                }
+
+                // Warn and truncate labels exceeding the 255-char DB column limit
+                if(label.label != null && label.label.length() > 255) {
+                    log.warn("Label for {} exceeds 255 characters and will be truncated", label.ref);
+                    label.label = label.label.substring(0, 255);
                 }
 
                 labels.add(label);
@@ -186,7 +222,7 @@ public class WalletLabels implements WalletImport, WalletExport {
                     continue;
                 }
 
-                if(label.type == Type.xpub) {
+                if(label.type == LabelType.xpub) {
                     for(Keystore keystore : wallet.getKeystores()) {
                         if(keystore.getExtendedPublicKey().toString().equals(label.ref)) {
                             keystore.setLabel(label.label);
@@ -196,7 +232,7 @@ public class WalletLabels implements WalletImport, WalletExport {
                     }
                 }
 
-                if(label.type == Type.tx) {
+                if(label.type == LabelType.tx) {
                     for(Entry entry : transactionEntries) {
                         if(entry instanceof TransactionEntry transactionEntry) {
                             BlockTransaction blkTx = transactionEntry.getBlockTransaction();
@@ -209,7 +245,7 @@ public class WalletLabels implements WalletImport, WalletExport {
                     }
                 }
 
-                if(label.type == Type.addr) {
+                if(label.type == LabelType.addr) {
                     for(Entry addressEntry : addressEntries) {
                         if(addressEntry instanceof NodeEntry nodeEntry) {
                             WalletNode addressNode = nodeEntry.getNode();
@@ -222,24 +258,24 @@ public class WalletLabels implements WalletImport, WalletExport {
                     }
                 }
 
-                if(label.type == Type.output || label.type == Type.input) {
+                if(label.type == LabelType.output || label.type == LabelType.input) {
                     for(Entry entry : transactionEntries) {
                         for(Entry hashIndexEntry : entry.getChildren()) {
                             if(hashIndexEntry instanceof TransactionHashIndexEntry txioEntry) {
                                 BlockTransactionHashIndex reference = txioEntry.getHashIndex();
-                                if((label.type == Type.output && txioEntry.getType() == HashIndexEntry.Type.OUTPUT && reference.toString().equals(label.ref))
-                                        || (label.type == Type.input && txioEntry.getType() == HashIndexEntry.Type.INPUT && reference.toString().equals(label.ref))) {
+                                if((label.type == LabelType.output && txioEntry.getType() == HashIndexEntry.Type.OUTPUT && reference.toString().equals(label.ref))
+                                        || (label.type == LabelType.input && txioEntry.getType() == HashIndexEntry.Type.INPUT && reference.toString().equals(label.ref))) {
                                     if(label.label != null && !label.label.isEmpty()) {
                                         reference.setLabel(label.label);
                                         txioEntry.labelProperty().set(label.label);
                                         addChangedEntry(changedWalletEntries, txioEntry);
                                     }
 
-                                    if(label.type == Type.output && !reference.isSpent()) {
-                                        if("false".equalsIgnoreCase(label.spendable) && reference.getStatus() != Status.FROZEN) {
+                                    if(label.type == LabelType.output && !reference.isSpent()) {
+                                        if(Boolean.FALSE.equals(label.spendable) && reference.getStatus() != Status.FROZEN) {
                                             reference.setStatus(Status.FROZEN);
                                             addChangedUtxo(changedWalletUtxoStatuses, txioEntry);
-                                        } else if("true".equalsIgnoreCase(label.spendable) && reference.getStatus() == Status.FROZEN) {
+                                        } else if(Boolean.TRUE.equals(label.spendable) && reference.getStatus() == Status.FROZEN) {
                                             reference.setStatus(null);
                                             addChangedUtxo(changedWalletUtxoStatuses, txioEntry);
                                         }
@@ -283,8 +319,8 @@ public class WalletLabels implements WalletImport, WalletExport {
     private static void updateHashIndexEntryLabel(Label label, Entry entry) {
         if(entry instanceof HashIndexEntry hashIndexEntry) {
             BlockTransactionHashIndex reference = hashIndexEntry.getHashIndex();
-            if((label.type == Type.output && hashIndexEntry.getType() == HashIndexEntry.Type.OUTPUT && reference.toString().equals(label.ref))
-                    || (label.type == Type.input && hashIndexEntry.getType() == HashIndexEntry.Type.INPUT && reference.toString().equals(label.ref))) {
+            if((label.type == LabelType.output && hashIndexEntry.getType() == HashIndexEntry.Type.OUTPUT && reference.toString().equals(label.ref))
+                    || (label.type == LabelType.input && hashIndexEntry.getType() == HashIndexEntry.Type.INPUT && reference.toString().equals(label.ref))) {
                 if(label.label != null && !label.label.isEmpty()) {
                     hashIndexEntry.labelProperty().set(label.label);
                 }
@@ -312,23 +348,77 @@ public class WalletLabels implements WalletImport, WalletExport {
         return true;
     }
 
-    private enum Type {
+    private enum LabelType {
         tx, addr, pubkey, input, output, xpub
     }
 
     private static class Label {
-        public Label(Type type, String ref, String label, String origin, String spendable) {
+        public Label(LabelType type, String ref, String label, String origin, Boolean spendable,
+                     Long height, String time, String keypath, Long value) {
             this.type = type;
             this.ref = ref;
             this.label = label;
             this.origin = origin;
             this.spendable = spendable;
+            this.height = height;
+            this.time = time;
+            this.keypath = keypath;
+            this.value = value;
         }
 
-        Type type;
+        LabelType type;
         String ref;
         String label;
         String origin;
-        String spendable;
+        Boolean spendable;  // BIP-329 requires JSON boolean (not string)
+        Long height;        // block height; omitted if < 6 confirmations
+        String time;        // ISO-8601 timestamp
+        String keypath;     // BIP32 derivation path for addr records
+        Long value;         // satoshis for output records
+    }
+
+    /** Deserializes a Label from JSONL, accepting spendable as boolean or legacy string form. */
+    private static class LabelDeserializer implements JsonDeserializer<Label> {
+        @Override
+        public Label deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            JsonObject obj = json.getAsJsonObject();
+
+            LabelType type = null;
+            if(obj.has("type") && !obj.get("type").isJsonNull()) {
+                try { type = LabelType.valueOf(obj.get("type").getAsString()); } catch(Exception ignored) {}
+            }
+
+            String ref = obj.has("ref") && !obj.get("ref").isJsonNull() ? obj.get("ref").getAsString() : null;
+            String label = obj.has("label") && !obj.get("label").isJsonNull() ? obj.get("label").getAsString() : null;
+            String origin = obj.has("origin") && !obj.get("origin").isJsonNull() ? obj.get("origin").getAsString() : null;
+            String keypath = obj.has("keypath") && !obj.get("keypath").isJsonNull() ? obj.get("keypath").getAsString() : null;
+            String time = obj.has("time") && !obj.get("time").isJsonNull() ? obj.get("time").getAsString() : null;
+
+            Long height = null;
+            if(obj.has("height") && !obj.get("height").isJsonNull()) {
+                try { height = obj.get("height").getAsLong(); } catch(Exception ignored) {}
+            }
+
+            Long value = null;
+            if(obj.has("value") && !obj.get("value").isJsonNull()) {
+                try { value = obj.get("value").getAsLong(); } catch(Exception ignored) {}
+            }
+
+            // Accept spendable as boolean (spec) or string (old Sparrow exports)
+            Boolean spendable = null;
+            if(obj.has("spendable") && !obj.get("spendable").isJsonNull()) {
+                JsonElement sp = obj.get("spendable");
+                if(sp.isJsonPrimitive()) {
+                    JsonPrimitive prim = sp.getAsJsonPrimitive();
+                    if(prim.isBoolean()) {
+                        spendable = prim.getAsBoolean();
+                    } else {
+                        spendable = Boolean.parseBoolean(prim.getAsString());
+                    }
+                }
+            }
+
+            return new Label(type, ref, label, origin, spendable, height, time, keypath, value);
+        }
     }
 }
