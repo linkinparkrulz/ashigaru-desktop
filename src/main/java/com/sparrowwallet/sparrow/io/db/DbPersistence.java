@@ -20,8 +20,6 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.api.exception.FlywayValidateException;
 import org.h2.tools.ChangeFileEncryption;
-import org.h2.tools.RunScript;
-import org.h2.tools.Script;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.h2.H2DatabasePlugin;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
@@ -721,9 +719,16 @@ public class DbPersistence implements Persistence {
         String newBase = fileBase + "_new";
         File newMvDb = new File(newBase + "." + getType().getExtension());
         try {
-            Script.execute(readOnlyUrl, H2_USER, h2Password, tempSql.getAbsolutePath());
+            String escapedPath = tempSql.getAbsolutePath().replace("'", "''");
+            try(java.sql.Connection conn = java.sql.DriverManager.getConnection(readOnlyUrl, H2_USER, h2Password);
+                java.sql.Statement stmt = conn.createStatement()) {
+                stmt.execute("SCRIPT TO '" + escapedPath + "'");
+            }
             String newUrl = "jdbc:h2:" + newBase + ";DATABASE_TO_UPPER=false;DB_CLOSE_ON_EXIT=FALSE" + cipherSuffix;
-            RunScript.execute(newUrl, H2_USER, h2Password, tempSql.getAbsolutePath(), StandardCharsets.UTF_8, false);
+            try(java.sql.Connection conn = java.sql.DriverManager.getConnection(newUrl, H2_USER, h2Password);
+                java.sql.Statement stmt = conn.createStatement()) {
+                stmt.execute("RUNSCRIPT FROM '" + escapedPath + "'");
+            }
             File backup = new File(walletFile.getAbsolutePath() + ".bak");
             Files.move(walletFile.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING);
             Files.move(newMvDb.toPath(), walletFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
