@@ -39,6 +39,10 @@
                         maxWidth="Infinity" styleClass="delete-btn" visible="false" managed="false"/>
                 <Button fx:id="viewSeedBtn" text="View Seed Words…" onAction="#onViewSeed"
                         maxWidth="Infinity" styleClass="action-btn secondary-btn" visible="false" managed="false"/>
+                <Button fx:id="exportLabelsBtn" text="⬆  Export Labels…" onAction="#onExportLabels"
+                        maxWidth="Infinity" styleClass="action-btn secondary-btn" visible="false" managed="false"/>
+                <Button fx:id="importLabelsBtn" text="⬇  Import Labels…" onAction="#onImportLabels"
+                        maxWidth="Infinity" styleClass="action-btn secondary-btn" visible="false" managed="false"/>
                 <Button fx:id="lockWalletBtn" text="🔒  Lock Wallet" onAction="#onLockWallet"
                         maxWidth="Infinity" styleClass="action-btn secondary-btn" visible="false" managed="false"/>
             </VBox>

@@ -20,6 +20,7 @@ import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.io.StorageException;
 import com.sparrowwallet.sparrow.io.WalletAndKey;
+import com.sparrowwallet.sparrow.io.WalletLabels;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -41,10 +42,10 @@ import javafx.stage.FileChooser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.URL;
 import java.util.*;
+import javafx.concurrent.Task;
 
 public class AshigaruMainController implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(AshigaruMainController.class);
@@ -61,6 +62,8 @@ public class AshigaruMainController implements Initializable {
     @FXML private VBox accountButtonsBox;
     @FXML private Button deleteWalletBtn;
     @FXML private Button viewSeedBtn;
+    @FXML private Button exportLabelsBtn;
+    @FXML private Button importLabelsBtn;
     @FXML private Button lockWalletBtn;
     @FXML private ToggleGroup accountToggleGroup;
     @FXML private ToggleButton depositBtn;
@@ -135,6 +138,10 @@ public class AshigaruMainController implements Initializable {
         deleteWalletBtn.setManaged(false);
         viewSeedBtn.setVisible(false);
         viewSeedBtn.setManaged(false);
+        exportLabelsBtn.setVisible(false);
+        exportLabelsBtn.setManaged(false);
+        importLabelsBtn.setVisible(false);
+        importLabelsBtn.setManaged(false);
         lockWalletBtn.setVisible(false);
         lockWalletBtn.setManaged(false);
     }
@@ -153,6 +160,10 @@ public class AshigaruMainController implements Initializable {
         deleteWalletBtn.setManaged(true);
         viewSeedBtn.setVisible(true);
         viewSeedBtn.setManaged(true);
+        exportLabelsBtn.setVisible(true);
+        exportLabelsBtn.setManaged(true);
+        importLabelsBtn.setVisible(true);
+        importLabelsBtn.setManaged(true);
 
         boolean encrypted = false;
         try { encrypted = walletForm.getStorage().isEncrypted(); } catch (IOException ignored) {}
@@ -392,6 +403,70 @@ public class AshigaruMainController implements Initializable {
             showError("Delete Failed", svc.getException().getMessage());
         });
         svc.start();
+    }
+
+    @FXML
+    private void onExportLabels() {
+        if(currentWalletForm == null) return;
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export Labels");
+        fc.setInitialFileName(currentWalletForm.getWallet().getDisplayName() + "-labels.jsonl");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("BIP329 Labels (*.jsonl)", "*.jsonl"));
+        File file = fc.showSaveDialog(AshigaruGui.get().getMainStage());
+        if(file == null) return;
+
+        WalletForm form = currentWalletForm;
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                try(FileOutputStream fos = new FileOutputStream(file)) {
+                    new WalletLabels().exportWallet(form.getWallet(), fos, null);
+                }
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> showInfo("Labels Exported", "Labels saved to " + file.getName()));
+        task.setOnFailed(e -> showError("Export Failed", task.getException().getMessage()));
+        new Thread(task, "labels-export").start();
+    }
+
+    @FXML
+    private void onImportLabels() {
+        if(currentWalletForm == null) return;
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Import Labels");
+        fc.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("BIP329 Labels (*.jsonl)", "*.jsonl"),
+                new FileChooser.ExtensionFilter("All Files", "*.*"));
+        File file = fc.showOpenDialog(AshigaruGui.get().getMainStage());
+        if(file == null) return;
+
+        List<WalletForm> forms = new ArrayList<>();
+        forms.add(currentWalletForm);
+        forms.addAll(currentWalletForm.getNestedWalletForms());
+        WalletLabels importer = new WalletLabels(forms);
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                try(FileInputStream fis = new FileInputStream(file)) {
+                    importer.importWallet(fis, null);
+                }
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> showInfo("Labels Imported", "Labels imported from " + file.getName()));
+        task.setOnFailed(e -> showError("Import Failed", task.getException().getMessage()));
+        new Thread(task, "labels-import").start();
+    }
+
+    private void showInfo(String title, String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION, message, ButtonType.OK);
+            alert.setTitle(title);
+            alert.setHeaderText(title);
+            alert.initOwner(AshigaruGui.get().getMainStage());
+            alert.show();
+        });
     }
 
     @FXML
