@@ -791,7 +791,7 @@ public class AshigaruWalletController implements Initializable {
     // Inner types
     // -------------------------------------------------------------------------
 
-    static class UtxoRow {
+    public static class UtxoRow {
         final String date, output, address, label, value;
         final UtxoEntry utxoEntry;
         final BooleanProperty selected = new SimpleBooleanProperty(false);
