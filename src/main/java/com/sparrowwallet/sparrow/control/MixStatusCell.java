@@ -149,13 +149,13 @@ public class MixStatusCell extends TreeTableCell<Entry, UtxoEntry.MixStatus> {
         return progressIndicator;
     }
 
-    private static Glyph getMixGlyph() {
+    public static Glyph getMixGlyph() {
         Glyph copyGlyph = new Glyph(FontAwesome5.FONT_NAME, FontAwesome5.Glyph.RANDOM);
         copyGlyph.setFontSize(12);
         return copyGlyph;
     }
 
-    private static Glyph getStopGlyph() {
+    public static Glyph getStopGlyph() {
         Glyph copyGlyph = new Glyph(FontAwesome5.FONT_NAME, FontAwesome5.Glyph.STOP_CIRCLE);
         copyGlyph.setFontSize(12);
         return copyGlyph;
