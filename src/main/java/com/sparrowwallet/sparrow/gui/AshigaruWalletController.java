@@ -386,6 +386,7 @@ public class AshigaruWalletController implements Initializable {
                 Address addr = utxoEntry.getAddress();
                 address = addr != null ? addr.toString() : "";
             } catch(Exception e) {
+                log.debug("Could not derive address for UTXO {} in wallet {}: {}", hashIndex, utxoEntry.getWallet().getFullDisplayName(), e.getMessage());
                 address = "";
             }
             String label   = utxoEntry.getLabel() != null ? utxoEntry.getLabel() : "";
