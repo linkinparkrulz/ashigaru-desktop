@@ -1398,7 +1398,7 @@ public class ElectrumServer {
 
                     boolean historyFetched = getTransactionHistory(mainWallet);
                     for(Wallet childWallet : new ArrayList<>(mainWallet.getChildWallets())) {
-                        if(childWallet.isNested()) {
+                        if(childWallet.isNested() || childWallet.isWhirlpoolChildWallet()) {
                             historyFetched |= getTransactionHistory(childWallet);
                         }
                     }

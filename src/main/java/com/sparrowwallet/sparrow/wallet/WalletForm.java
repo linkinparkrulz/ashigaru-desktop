@@ -220,7 +220,7 @@ public class WalletForm {
     private void updateWallets(Integer blockHeight, Wallet previousWallet) {
         List<WalletNode> nestedHistoryChangedNodes = new ArrayList<>();
         for(Wallet childWallet : new ArrayList<>(wallet.getChildWallets())) {
-            if(childWallet.isNested()) {
+            if(childWallet.isNested() || childWallet.isWhirlpoolChildWallet()) {
                 Wallet previousChildWallet = previousWallet.getChildWallet(childWallet.getName());
                 if(previousChildWallet != null) {
                     nestedHistoryChangedNodes.addAll(updateWallet(blockHeight, childWallet, previousChildWallet, Collections.emptyList()));
@@ -678,9 +678,11 @@ public class WalletForm {
     @Subscribe
     public void childWalletsAdded(ChildWalletsAddedEvent event) {
         if(event.getWallet() == wallet) {
-            List<Wallet> nestedWallets = event.getChildWallets().stream().filter(Wallet::isNested).collect(Collectors.toList());
-            if(!nestedWallets.isEmpty()) {
-                Platform.runLater(() -> refreshHistory(AppServices.getCurrentBlockHeight(), nestedWallets, null));
+            List<Wallet> childWalletsToSync = event.getChildWallets().stream()
+                    .filter(w -> w.isNested() || w.isWhirlpoolChildWallet())
+                    .collect(Collectors.toList());
+            if(!childWalletsToSync.isEmpty()) {
+                Platform.runLater(() -> refreshHistory(AppServices.getCurrentBlockHeight(), childWalletsToSync, null));
             }
         }
     }
