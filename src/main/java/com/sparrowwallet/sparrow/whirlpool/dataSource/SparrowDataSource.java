@@ -230,19 +230,36 @@ public class SparrowDataSource extends WalletResponseDataSource {
     }
 
     static Wallet getWallet(String zpub) {
-        return AppServices.get().getOpenWallets().keySet().stream()
-                .filter(wallet -> {
-                    try {
-                        List<ExtendedKey.Header> headers = ExtendedKey.Header.getHeaders(Network.get());
-                        ExtendedKey.Header header = headers.stream().filter(head -> head.getDefaultScriptType().equals(wallet.getScriptType()) && !head.isPrivateKey()).findFirst().orElse(ExtendedKey.Header.xpub);
-                        ExtendedKey extPubKey = wallet.getKeystores().get(0).getExtendedPublicKey();
-                        return extPubKey.toString(header).equals(zpub);
-                    } catch(Exception e) {
-                        return false;
-                    }
-                })
-                .findFirst()
-                .orElse(null);
+        // Ashigaru Desktop registers Whirlpool child wallets as nested forms under the master,
+        // so they don't appear in AppServices.getOpenWallets(). Walk the master's child wallets too.
+        for(Wallet openWallet : AppServices.get().getOpenWallets().keySet()) {
+            if(matchesZpub(openWallet, zpub)) {
+                return openWallet;
+            }
+            for(Wallet childWallet : openWallet.getChildWallets()) {
+                if(matchesZpub(childWallet, zpub)) {
+                    return childWallet;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean matchesZpub(Wallet wallet, String zpub) {
+        try {
+            if(wallet.getKeystores().isEmpty()) {
+                return false;
+            }
+            ExtendedKey extPubKey = wallet.getKeystores().get(0).getExtendedPublicKey();
+            if(extPubKey == null) {
+                return false;
+            }
+            List<ExtendedKey.Header> headers = ExtendedKey.Header.getHeaders(Network.get());
+            ExtendedKey.Header header = headers.stream().filter(head -> head.getDefaultScriptType().equals(wallet.getScriptType()) && !head.isPrivateKey()).findFirst().orElse(ExtendedKey.Header.xpub);
+            return extPubKey.toString(header).equals(zpub);
+        } catch(Exception e) {
+            return false;
+        }
     }
 
     @Subscribe
