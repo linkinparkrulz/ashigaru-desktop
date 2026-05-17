@@ -110,7 +110,12 @@ public interface WalletDao {
 
         List<WalletNode> walletNodes = createWalletNodeDao().getForWalletId(wallet.getScriptType().ordinal(), wallet.getId());
         wallet.getPurposeNodes().addAll(walletNodes.stream().filter(walletNode -> walletNode.getDerivation().size() == 1).collect(Collectors.toList()));
-        wallet.getPurposeNodes().forEach(walletNode -> walletNode.setWallet(wallet));
+        wallet.getPurposeNodes().forEach(purposeNode -> {
+            purposeNode.setWallet(wallet);
+            for(WalletNode addressNode : purposeNode.getChildren()) {
+                addressNode.setWallet(wallet);
+            }
+        });
 
         Map<Sha256Hash, BlockTransaction> blockTransactions = createBlockTransactionDao().getForWalletId(wallet.getId());
         wallet.updateTransactions(blockTransactions);
