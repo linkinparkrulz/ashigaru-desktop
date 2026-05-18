@@ -16,6 +16,7 @@ import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.wallet.*;
 import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
+import com.sparrowwallet.sparrow.whirlpool.WhirlpoolException;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -591,13 +592,32 @@ public class AshigaruWalletController implements Initializable {
                 .collect(Collectors.toList());
         if (selectedEntries.isEmpty()) return;
 
+        Wallet activeWallet = activeAccountForm.getWallet();
+        if (activeWallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX) {
+            Whirlpool wp = AppServices.getWhirlpoolServices().getWhirlpool(activeAccountForm.getMasterWalletId());
+            if (wp == null) {
+                AppServices.showErrorDialog("Mix error", "Whirlpool service not available for this wallet");
+                return;
+            }
+            int queued = 0;
+            for (UtxoEntry entry : selectedEntries) {
+                try {
+                    wp.mix(entry.getHashIndex());
+                    queued++;
+                } catch (WhirlpoolException e) {
+                    log.error("Could not queue remix for " + entry.getHashIndex(), e);
+                }
+            }
+            log.info("Queued " + queued + " of " + selectedEntries.size() + " Postmix UTXO(s) for remix");
+            return;
+        }
+
         try {
             Pool pool = AshigaruTx0Controller.show(
                     activeAccountForm.getMasterWalletId(), activeAccountForm, selectedEntries);
             if (pool != null) {
-                Wallet wallet = activeAccountForm.getWallet();
-                if (wallet.isMasterWallet() && !wallet.isWhirlpoolMasterWallet()) {
-                    addAccountIfNeeded(wallet, StandardAccount.WHIRLPOOL_PREMIX,
+                if (activeWallet.isMasterWallet() && !activeWallet.isWhirlpoolMasterWallet()) {
+                    addAccountIfNeeded(activeWallet, StandardAccount.WHIRLPOOL_PREMIX,
                             () -> broadcastPremix(pool, selectedEntries));
                 } else {
                     Platform.runLater(() -> broadcastPremix(pool, selectedEntries));
