@@ -228,8 +228,12 @@ jlink {
         installerName = 'Ashigaru'
         appVersion    = ashigaruTerminalVersion
         resourceDir   = file("src/main/deploy/package/${osName}")
-        // Keep the packaged launcher's heap bounded the same way as ./gradlew run (see above).
-        jvmArgs       = ['-Xms256m', '-Xmx1g']
+        //Do NOT set jvmArgs here. The jlink plugin REPLACES applicationDefaultJvmArgs with whatever
+        //this is set to rather than adding to it, so naming only the heap flags drops all 22
+        //--add-opens/--add-reads with them. main() calls com.sun.javafx.application.LauncherImpl,
+        //which is reachable only because of the --add-opens for that package (--add-opens implies
+        //--add-exports), so the packaged app died at startup with IllegalAccessError. The heap cap
+        //lives in applicationDefaultJvmArgs above and reaches the launcher through the default.
 
         if (os.windows) {
             icon             = 'src/main/deploy/package/windows/ashigaru.ico'
