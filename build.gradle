@@ -358,7 +358,16 @@ if (os.linux) {
         }
         from('src/main/deploy/package/linux/Ashigaru.desktop') {
             into('.')
-            filter { line -> line.startsWith('Exec=') ? 'Exec=Ashigaru %U' : line }
+            //Both keys mean something different inside an AppDir than in an installed package. Exec
+            //resolves against the AppDir, and appimagetool reads Icon as a bare name it appends an
+            //extension to and looks up in the AppDir root - an absolute path sends it hunting for
+            //Ashigaru.png.png and it exits non-zero. The source file keeps the absolute path, which
+            //is what .deb and .rpm need to show an icon at all.
+            filter { line ->
+                if(line.startsWith('Exec=')) return 'Exec=Ashigaru %U'
+                if(line.startsWith('Icon=')) return 'Icon=Ashigaru'
+                return line
+            }
         }
         from('src/main/deploy/package/linux/Ashigaru.png') {
             into('.')
