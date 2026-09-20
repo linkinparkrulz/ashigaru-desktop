@@ -1060,6 +1060,30 @@
     -fx-line-spacing: 2;
 }
 
+/* Tooltips render in their own popup window against the Modena user-agent stylesheet, which nothing
+   here was overriding: the background stayed light while the text fill was inherited from whatever
+   node the tooltip is anchored to - near-white on white, which reads as a blank white box.
+   Both have to be stated.
+
+   Literal colours rather than -ag-* lookups, for the same reason #tourPopover re-declares its
+   tokens below: a popup's root reports the anchored node as its styleable parent, so a lookup
+   resolves through whichever subtree it happens to be shown from and the tooltip would change
+   appearance depending on which control raised it. */
+.tooltip {
+    -fx-background-color: #1E2026;
+    -fx-background-radius: 6px;
+    -fx-border-color: #2E3038;
+    -fx-border-radius: 6px;
+    -fx-text-fill: #ECECEC;
+    -fx-font-size: 12px;
+    -fx-padding: 7 10 7 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 12, 0.1, 0, 3);
+}
+/* The skin renders the text in a child Label, which does not pick up the fill above on its own. */
+.tooltip .label {
+    -fx-text-fill: #ECECEC;
+}
+
 /* Live coach-mark popovers — dark app card with an accent edge so they catch the eye. */
 .popover {
     -fx-background-color: transparent;
