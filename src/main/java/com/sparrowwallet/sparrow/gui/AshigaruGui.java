@@ -15,6 +15,7 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -31,6 +32,8 @@ import java.util.stream.Collectors;
 
 public class AshigaruGui extends Application {
     private static final Logger log = LoggerFactory.getLogger(AshigaruGui.class);
+    /** -ag-bg in ashigaru.css. */
+    private static final Color APP_BACKGROUND = Color.web("#0E0F12");
     private static AshigaruGui instance;
 
     private Stage mainStage;
@@ -79,6 +82,9 @@ public class AshigaruGui extends Application {
         Rectangle2D visualBounds = Screen.getPrimary().getVisualBounds();
         Scene scene = new Scene(root, Math.min(1100, visualBounds.getWidth()), Math.min(800, visualBounds.getHeight()));
         AppServices.addAshigaruStylesheets(scene.getStylesheets());
+        //The scene fill also becomes the native window background, which is what shows in the area a
+        //resize exposes before the next layout pass. Left at the default white it flashes on every drag.
+        scene.setFill(APP_BACKGROUND);
 
         stage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION);
         stage.setMinWidth(Math.min(720, visualBounds.getWidth()));
@@ -155,6 +161,7 @@ public class AshigaruGui extends Application {
             splashStage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION);
             Scene splashScene = new Scene(splashRoot, 600, 400);
             AppServices.addAshigaruStylesheets(splashScene.getStylesheets());
+            splashScene.setFill(APP_BACKGROUND);
             splashStage.setScene(splashScene);
             splashStage.setUserData(splashCtrl);
             splashStage.show();
