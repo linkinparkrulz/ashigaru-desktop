@@ -285,8 +285,11 @@ public class WalletCreationFlow {
         if (seedResult.isEmpty() || seedResult.get() == null) return;
         List<String> words = seedResult.get();
 
-        // Step 3: BIP39 passphrase — guided, dice-first flow (dice wizard or typed dialog).
-        String passphrase = askPassphrase(walletName, words);
+        // Step 3: BIP39 passphrase. A freshly generated seed gets the guided, dice-first flow; a typed-in
+        // seed is a restore, whose passphrase (if any) already exists and must be accepted as it is.
+        String passphrase = seedDialog.isGenerated()
+                ? askPassphrase(walletName, words)
+                : askBip39Passphrase(walletName, words, true);
         if (passphrase == null) return;
 
         try {
@@ -329,17 +332,23 @@ public class WalletCreationFlow {
         return dlg.showAndWait().orElse(null);
     }
 
-    private String askBip39Passphrase(String walletName, List<String> words) {
+    /**
+     * Typed passphrase dialog. For a new wallet the passphrase is required and hand-typed input gets a
+     * weakness hint; for a restore the user enters whatever passphrase the wallet was made with, so any
+     * value is accepted, including none.
+     */
+    private String askBip39Passphrase(String walletName, List<String> words, boolean restore) {
         Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("Create BIP39 Wallet – " + walletName);
+        dlg.setTitle((restore ? "Restore BIP39 Wallet – " : "Create BIP39 Wallet – ") + walletName);
         dlg.initOwner(owner);
-        styleWizardDialog(dlg, "NEW / RESTORE WALLET", "BIP39 passphrase",
-                "Add a passphrase. It becomes part of your wallet — you'll need it every time you open it.");
+        styleWizardDialog(dlg, "NEW / RESTORE WALLET", "BIP39 passphrase", restore
+                ? "Enter the passphrase this wallet was created with. Leave it blank if it has none."
+                : "Add a passphrase. It becomes part of your wallet — you'll need it every time you open it.");
 
         Label passLabel = new Label("BIP39 Passphrase:");
         passLabel.getStyleClass().add("field-label");
         ViewPasswordField passField = new ViewPasswordField();
-        passField.setPromptText("Enter passphrase");
+        passField.setPromptText(restore ? "Leave blank for none" : "Enter passphrase");
 
         Label passConfirmLabel = new Label("Confirm Passphrase:");
         passConfirmLabel.getStyleClass().add("field-label");
@@ -352,11 +361,13 @@ public class WalletCreationFlow {
         bindWrap(weaknessLabel);
         weaknessLabel.managedProperty().bind(weaknessLabel.visibleProperty());
         weaknessLabel.setVisible(false);
-        passField.textProperty().addListener((obs, old, text) -> {
-            Optional<String> weakness = DicewareWordList.passphraseWeakness(text);
-            weaknessLabel.setText(weakness.orElse(""));
-            weaknessLabel.setVisible(weakness.isPresent());
-        });
+        if (!restore) {
+            passField.textProperty().addListener((obs, old, text) -> {
+                Optional<String> weakness = DicewareWordList.passphraseWeakness(text);
+                weaknessLabel.setText(weakness.orElse(""));
+                weaknessLabel.setVisible(weakness.isPresent());
+            });
+        }
 
         ObjectProperty<byte[]> masterFingerprint = new SimpleObjectProperty<>();
 
@@ -398,7 +409,7 @@ public class WalletCreationFlow {
         dlg.getDialogPane().setContent(content);
         dlg.getDialogPane().setPrefWidth(WIZARD_DIALOG_WIDTH);
 
-        ButtonType createType = new ButtonType("Create Wallet", ButtonBar.ButtonData.OK_DONE);
+        ButtonType createType = new ButtonType(restore ? "Restore Wallet" : "Create Wallet", ButtonBar.ButtonData.OK_DONE);
         dlg.getDialogPane().getButtonTypes().addAll(createType, ButtonType.CANCEL);
         Button createNode = (Button) dlg.getDialogPane().lookupButton(createType);
         createNode.setDisable(true);
@@ -407,7 +418,7 @@ public class WalletCreationFlow {
         Bip39 importer = new Bip39();
         String seedText = String.join(" ", words);
         Runnable update = () -> {
-            boolean valid = !passField.getText().isEmpty()
+            boolean valid = (restore || !passField.getText().isEmpty())
                     && passField.getText().equals(passConfirmField.getText());
             createNode.setDisable(!valid);
             masterFingerprint.set(computeFingerprint(importer, seedText, passField.getText()));
@@ -468,7 +479,7 @@ public class WalletCreationFlow {
         }
         Boolean continueWithout = askNoDice(walletName);
         if (continueWithout == null || !continueWithout) return null; // "wait" => cancel creation
-        return askBip39Passphrase(walletName, words);
+        return askBip39Passphrase(walletName, words, false);
     }
 
     /** "A passphrase, not a password" intro + "Do you have dice?" choice. */

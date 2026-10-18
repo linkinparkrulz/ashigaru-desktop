@@ -38,6 +38,7 @@ public class Bip39Dialog extends NewWalletDialog {
     private final TextBox seedWords;
     private final TextBox passphrase;
     private final Button createWallet;
+    private List<String> generatedWords;
 
     public Bip39Dialog(String walletName) {
         super("Create BIP39 Wallet - " + walletName, walletName);
@@ -105,7 +106,8 @@ public class Bip39Dialog extends NewWalletDialog {
     }
 
     private void checkBeforeCreate() {
-        if (passphrase.getText().isEmpty()) {
+        //Only a freshly generated seed must get a passphrase; a restored seed keeps whatever it was made with, including none
+        if (passphrase.getText().isEmpty() && getWords().stream().filter(word -> !word.isEmpty()).toList().equals(generatedWords)) {
             Platform.runLater(() -> showErrorDialog("Empty passphrase", "Passphrase can not be empty."));
         } else {
             createWallet();
@@ -129,6 +131,7 @@ public class Bip39Dialog extends NewWalletDialog {
 
             DeterministicSeed deterministicSeed = new DeterministicSeed(secureRandom, entropyLength, "");
             List<String> words = deterministicSeed.getMnemonicCode();
+            generatedWords = words;
             setWords(words);
         }
     }
