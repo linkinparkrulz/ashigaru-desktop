@@ -34,26 +34,30 @@ git clone --recursive https://github.com/linkinparkrulz/ashigaru-desktop.git
 cd ashigaru-desktop
 git checkout v1.4.5   # the tag you are reproducing
 
-./gradlew clean jpackage packageTarDistribution
+./gradlew clean packageAppImage
 ```
 
 Note that the build downloads its dependencies from Maven Central and several other configured
 repositories at build time; network access is required and the resolved artifacts must match those
 used for the official build (see `build.gradle` `repositories`).
 
-## Check the hash
+## Compare against the release
+
+The AppImage wraps the application in a squashfs image whose metadata is not byte-for-byte
+reproducible, so compare the application it contains rather than the AppImage file itself. Download
+the official `Ashigaru-1.4.5-x86_64.AppImage`, check it against `SHA256SUMS`, then:
 
 ```bash
-sha256sum build/distributions/Ashigaru-1.4.5-x86_64.tar.gz
+chmod +x Ashigaru-1.4.5-x86_64.AppImage
+./Ashigaru-1.4.5-x86_64.AppImage --appimage-extract   # unpacks to squashfs-root/
+diff -r squashfs-root/usr build/jpackage/Ashigaru && echo "Reproduced"
 ```
 
-Compare the output against the `Ashigaru-1.4.5-x86_64.tar.gz` line in the official `SHA256SUMS`.
-They must match byte-for-byte.
+`diff` must report no differences.
 
 ## Notes
 
-- The `.exe`/`.msi` (Windows), `.dmg` (macOS) and `.deb`/`.rpm` (Linux) installers embed
-  platform-packager metadata; reproduce those on the matching OS using the same workflow commands
+- The `.exe` (Windows) and `.dmg` (macOS) installers embed platform-packager metadata; reproduce those on the matching OS using the same workflow commands
   shown in `.github/workflows/release.yaml`.
 - The AppImage build downloads `appimagetool` at build time. Pin its checksum with
   `-PappImageToolSha256=...` (recorded per release) so the tool itself is verified.

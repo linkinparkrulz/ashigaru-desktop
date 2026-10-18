@@ -44,29 +44,16 @@ jobs:
         if: ${{ runner.os != 'Windows' }}
         run: ./gradlew -v
 
-      - name: Build with Gradle (Windows)
+      - name: Build installer (Windows)
         if: ${{ runner.os == 'Windows' }}
         shell: pwsh
         run: .\gradlew.bat jpackage
 
-      - name: Build with Gradle (Linux/macOS)
-        if: ${{ runner.os != 'Windows' }}
+      - name: Build DMG (macOS)
+        if: ${{ runner.os == 'macOS' }}
         run: ./gradlew jpackage
 
-      - name: Package zip distribution (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        shell: pwsh
-        run: .\gradlew.bat packageZipDistribution
-
-      - name: Package zip distribution (macOS)
-        if: ${{ runner.os == 'macOS' }}
-        run: ./gradlew packageZipDistribution
-
-      - name: Package tar distribution (Linux)
-        if: ${{ runner.os == 'Linux' }}
-        run: ./gradlew packageTarDistribution
-
-      - name: Package AppImage distribution (Linux)
+      - name: Build AppImage (Linux)
         if: ${{ runner.os == 'Linux' }}
         run: ./gradlew packageAppImage
 
@@ -74,32 +61,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Ashigaru Build - ${{ matrix.artifact-name }}
+          if-no-files-found: error
           path: |
-            build/distributions/*
-            build/jpackage/*.dmg
-            build/jpackage/*.msi
             build/jpackage/*.exe
-            build/jpackage/*.deb
-            build/jpackage/*.rpm
-
-      - name: Headless build with Gradle
-        if: ${{ runner.os == 'Linux' }}
-        run: ./gradlew -Djava.awt.headless=true clean jpackage
-
-      - name: Package headless tar distribution
-        if: ${{ runner.os == 'Linux' }}
-        run: ./gradlew -Djava.awt.headless=true packageTarDistribution
-
-      - name: Rename Headless Artifacts
-        if: ${{ runner.os == 'Linux' }}
-        run: for f in build/jpackage/ashigaru*; do mv -v "$f" "${f/ashigaru/ashigaru-server}"; done
-
-      - name: Upload Headless Artifact
-        if: ${{ runner.os == 'Linux' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: Ashigaru Build - ${{ matrix.artifact-name }} Headless
-          path: |
-            build/jpackage/*
-            !build/jpackage/Ashigaru/
-            build/distributions/*
+            build/jpackage/*.dmg
+            build/distributions/*.AppImage

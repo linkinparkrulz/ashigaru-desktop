@@ -356,8 +356,8 @@ public class UpdatePreferencesController extends PreferencesDetailController {
     }
 
     /**
-     * Windows and macOS hand the verified file to the OS; Linux only reveals it, because .deb and
-     * .rpm need root and which of them applies varies by distribution.
+     * Windows and macOS hand the verified file to the OS; Linux only reveals it, because the new
+     * AppImage replaces the old one wherever the user keeps it, which the app cannot know.
      */
     private static boolean launchesInstaller() {
         return ReleaseArtifactSelector.currentFamily() == ReleaseArtifactSelector.Family.WINDOWS

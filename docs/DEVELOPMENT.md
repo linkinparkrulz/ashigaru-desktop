@@ -36,8 +36,8 @@ The application plugin runs main class `com.sparrowwallet.sparrow.AshigaruTermin
 With `./gradlew run`, pass flags as `./gradlew run --args="--network testnet --level DEBUG"`.
 
 **Headless/server:** setting `-Djava.awt.headless=true` at build/run time switches JavaFX to
-Monocle software rendering (`build.gradle` `headless` conditional) — this is how the
-`ashigaru-server` packages are produced.
+Monocle software rendering (`build.gradle` `headless` conditional). Releases no longer ship a
+headless package; build one locally with `./gradlew -Djava.awt.headless=true jpackage` if needed.
 
 **Build quirks:**
 

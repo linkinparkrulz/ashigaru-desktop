@@ -265,66 +265,6 @@ if (os.macOsX) {
     }
 }
 
-if (os.macOsX) {
-    task packageZipDistribution(type: Exec, dependsOn: jpackageImage) {
-        def outputDir = file("${buildDir}/distributions")
-        def zipFile   = "${outputDir}/Ashigaru-${ashigaruTerminalVersion}-${osName}-${releaseArch}.zip"
-        doFirst { outputDir.mkdirs() }
-        // Package the .app bundle (not the raw jlink image) so the ZIP is a valid Mac app
-        commandLine 'sh', '-c',
-            "cd '${buildDir}/jpackage' && " +
-            "ditto -c -k --keepParent Ashigaru.app '${zipFile}'"
-    }
-} else {
-    task packageZipDistribution(type: Zip, dependsOn: jpackageImage) {
-        archiveFileName      = "Ashigaru-${ashigaruTerminalVersion}-${osName}.zip"
-        destinationDirectory = file("${buildDir}/distributions")
-        from("${buildDir}/jpackage/Ashigaru")
-        into('Ashigaru')
-    }
-}
-
-// jpackage emits a single installer type per invocation, and the jpackage {} block above can only
-// name one. The secondary formats are produced by a second invocation against the app image that
-// jpackageImage has already built, which is why these are plain Exec tasks rather than plugin config.
-def jpackageTool = "${System.getProperty('java.home')}/bin/jpackage"
-
-if (os.linux) {
-    task packageRpmDistribution(type: Exec, dependsOn: jpackageImage) {
-        commandLine jpackageTool,
-            '--type', 'rpm',
-            '--name', 'Ashigaru',
-            '--app-version', ashigaruTerminalVersion,
-            '--app-image', "${buildDir}/jpackage/Ashigaru",
-            '--dest', "${buildDir}/jpackage",
-            '--icon', 'src/main/deploy/package/linux/Ashigaru.png',
-            '--resource-dir', 'src/main/deploy/package/linux',
-            '--linux-shortcut'
-    }
-}
-
-if (os.windows) {
-    task packageMsiDistribution(type: Exec, dependsOn: jpackageImage) {
-        commandLine jpackageTool,
-            '--type', 'msi',
-            '--name', 'Ashigaru',
-            '--app-version', ashigaruTerminalVersion,
-            '--app-image', "${buildDir}/jpackage/Ashigaru",
-            '--dest', "${buildDir}/jpackage",
-            '--icon', 'src/main/deploy/package/windows/ashigaru.ico',
-            '--resource-dir', 'src/main/deploy/package/windows',
-            '--win-dir-chooser', '--win-menu', '--win-shortcut'
-    }
-}
-
-task packageTarDistribution(type: Tar, dependsOn: jpackageImage) {
-    archiveFileName      = "Ashigaru-${ashigaruTerminalVersion}-${releaseArch}.tar.gz"
-    destinationDirectory = file("${buildDir}/distributions")
-    compression          = Compression.GZIP
-    from("${buildDir}/image")
-    into('Ashigaru')
-}
-
 if (os.linux) {
     def appImageArch = releaseArch == 'aarch64' ? 'aarch64' : 'x86_64'
     def appImageTool = file("${buildDir}/tools/appimagetool-${appImageArch}.AppImage")

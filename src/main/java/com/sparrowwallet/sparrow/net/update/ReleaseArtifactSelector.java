@@ -1,20 +1,15 @@
 package com.sparrowwallet.sparrow.net.update;
 
-import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * Picks the release asset that most likely matches how this copy of Ashigaru was installed.
+ * Picks the release asset for this platform.
  *
- * <p>The app cannot know for certain: jpackage leaves no marker saying whether it arrived as a .deb,
- * an .rpm, a tarball or an AppImage, and nothing records the installer that ran on Windows. So this
- * makes the best inference available and the UI presents every candidate with that one preselected,
- * leaving the user to correct it. A wrong guess is then a visible dropdown, not a wrong download.
+ * <p>Each release ships one package per platform: the Windows .exe installer, a macOS .dmg per
+ * architecture, and the Linux AppImage. The UI still presents every installable candidate with the
+ * match preselected, so a release carrying anything extra stays a visible choice, not a wrong download.
  */
 public class ReleaseArtifactSelector {
     /** A downloadable asset from the release, and whether it is the inferred match. */
@@ -27,10 +22,10 @@ public class ReleaseArtifactSelector {
      * Attestation files are excluded - they are downloaded separately, not offered as the payload.
      */
     public static List<Candidate> select(List<ReleaseAsset> assets) {
-        return select(assets, currentFamily(), System.getProperty("os.arch"), new Environment());
+        return select(assets, currentFamily(), System.getProperty("os.arch"));
     }
 
-    static List<Candidate> select(List<ReleaseAsset> assets, Family family, String osArch, Environment env) {
+    static List<Candidate> select(List<ReleaseAsset> assets, Family family, String osArch) {
         List<ReleaseAsset> installable = new ArrayList<>();
         for(ReleaseAsset asset : assets) {
             if(!isAttestation(asset.name()) && matchesFamily(asset.name(), family)) {
@@ -38,7 +33,7 @@ public class ReleaseArtifactSelector {
             }
         }
 
-        String suggested = suggestName(installable, family, osArch, env);
+        String suggested = suggestName(installable, family, osArch);
         List<Candidate> candidates = new ArrayList<>();
         for(ReleaseAsset asset : installable) {
             candidates.add(new Candidate(asset.name(), asset.url(), asset.size(), asset.name().equals(suggested)));
@@ -57,21 +52,18 @@ public class ReleaseArtifactSelector {
     private static boolean matchesFamily(String name, Family family) {
         String lower = name.toLowerCase(Locale.ROOT);
         return switch(family) {
-            //-windows.zip is the portable build; the macOS zips are named -osx-* and must not match here
-            case WINDOWS -> lower.endsWith(".exe") || lower.endsWith(".msi") || lower.endsWith("-windows.zip");
-            case MACOS -> lower.endsWith(".dmg") || lower.endsWith("-osx-x86_64.zip") || lower.endsWith("-osx-aarch64.zip");
-            case LINUX -> lower.endsWith(".deb") || lower.endsWith(".rpm")
-                    || lower.endsWith(".appimage") || lower.endsWith(".tar.gz");
+            case WINDOWS -> lower.endsWith(".exe");
+            case MACOS -> lower.endsWith(".dmg");
+            case LINUX -> lower.endsWith(".appimage");
             case UNKNOWN -> true;
         };
     }
 
-    private static String suggestName(List<ReleaseAsset> assets, Family family, String osArch, Environment env) {
+    private static String suggestName(List<ReleaseAsset> assets, Family family, String osArch) {
         return switch(family) {
-            //The .exe is the installer the download table leads with; .msi is the alternative.
             case WINDOWS -> firstEndingWith(assets, ".exe");
             case MACOS -> firstEndingWith(assets, macArchSuffix(osArch) + ".dmg");
-            case LINUX -> suggestLinux(assets, env);
+            case LINUX -> firstEndingWith(assets, ".AppImage");
             case UNKNOWN -> null;
         };
     }
@@ -82,65 +74,14 @@ public class ReleaseArtifactSelector {
         return arch.contains("aarch64") || arch.contains("arm") ? "-aarch64" : "-x86_64";
     }
 
-    /**
-     * An AppImage announces itself through the APPIMAGE variable it sets for the running process.
-     * Failing that, os-release distinguishes the Debian family from the RPM ones. Anything else
-     * falls back to the portable tarball, which works everywhere.
-     */
-    private static String suggestLinux(List<ReleaseAsset> assets, Environment env) {
-        if(env.getenv("APPIMAGE") != null) {
-            String appImage = firstEndingWith(assets, ".AppImage");
-            if(appImage != null) {
-                return appImage;
-            }
-        }
-
-        String osRelease = env.readOsRelease();
-        if(osRelease != null) {
-            String ids = idFields(osRelease);
-            if(ids.contains("debian") || ids.contains("ubuntu") || ids.contains("mint")) {
-                String deb = firstEndingWith(assets, ".deb");
-                if(deb != null) {
-                    return deb;
-                }
-            }
-            if(ids.contains("fedora") || ids.contains("rhel") || ids.contains("centos")
-                    || ids.contains("suse") || ids.contains("mandriva")) {
-                String rpm = firstEndingWith(assets, ".rpm");
-                if(rpm != null) {
-                    return rpm;
-                }
-            }
-        }
-
-        return firstEndingWith(assets, ".tar.gz");
-    }
-
-    /** Collects the ID and ID_LIKE values from an os-release file into one lowercase string. */
-    private static String idFields(String osRelease) {
-        StringBuilder ids = new StringBuilder();
-        for(String line : osRelease.split("\\R")) {
-            String trimmed = line.trim();
-            if(trimmed.startsWith("ID=") || trimmed.startsWith("ID_LIKE=")) {
-                ids.append(trimmed.substring(trimmed.indexOf('=') + 1).replace("\"", "").toLowerCase(Locale.ROOT)).append(' ');
-            }
-        }
-        return ids.toString();
-    }
-
     private static String firstEndingWith(List<ReleaseAsset> assets, String suffix) {
         String lowerSuffix = suffix.toLowerCase(Locale.ROOT);
         for(ReleaseAsset asset : assets) {
-            //The desktop build is preferred over the headless server package of the same format
-            if(asset.name().toLowerCase(Locale.ROOT).endsWith(lowerSuffix) && !isHeadless(asset.name())) {
+            if(asset.name().toLowerCase(Locale.ROOT).endsWith(lowerSuffix)) {
                 return asset.name();
             }
         }
         return null;
-    }
-
-    private static boolean isHeadless(String name) {
-        return name.toLowerCase(Locale.ROOT).contains("ashigaru-server");
     }
 
     public static Family currentFamily() {
@@ -160,27 +101,6 @@ public class ReleaseArtifactSelector {
             return Family.LINUX;
         }
         return Family.UNKNOWN;
-    }
-
-    /** Seam for the two pieces of ambient Linux state, so selection can be tested. */
-    static class Environment {
-        String getenv(String name) {
-            return System.getenv(name);
-        }
-
-        String readOsRelease() {
-            for(String path : new String[] {"/etc/os-release", "/usr/lib/os-release"}) {
-                try {
-                    Path file = new File(path).toPath();
-                    if(Files.isReadable(file)) {
-                        return new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
-                    }
-                } catch(Exception e) {
-                    //unreadable, try the next
-                }
-            }
-            return null;
-        }
     }
 
     private ReleaseArtifactSelector() {}

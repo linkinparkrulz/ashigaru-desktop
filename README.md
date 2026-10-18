@@ -36,11 +36,10 @@ Pre-built binaries for every platform are published on the [Releases](../../rele
 
 | Platform | Package | Min OS | Notarized |
 |---|---|---|---|
-| Windows | `.exe` installer, `.msi`, portable `.zip` | Windows 10 | — |
-| macOS (Apple Silicon) | `Ashigaru-X.Y.Z-aarch64.dmg`, `-osx-aarch64.zip` | macOS 11.0 | No, ad-hoc signed |
-| macOS (Intel) | `Ashigaru-X.Y.Z-x86_64.dmg`, `-osx-x86_64.zip` | macOS 11.0 | No, ad-hoc signed |
-| Linux (desktop) | `.deb`, `.rpm`, `.tar.gz`, `.AppImage` | — | — |
-| Linux (headless / server) | `ashigaru-server` `.deb`, `.rpm`, `.tar.gz` | — | — |
+| Windows | `Ashigaru-X.Y.Z.exe` installer | Windows 10 | — |
+| macOS (Apple Silicon) | `Ashigaru-X.Y.Z-aarch64.dmg` | macOS 11.0 | No, ad-hoc signed |
+| macOS (Intel) | `Ashigaru-X.Y.Z-x86_64.dmg` | macOS 11.0 | No, ad-hoc signed |
+| Linux | `Ashigaru-X.Y.Z-x86_64.AppImage` | — | — |
 
 Each release also includes `SHA256SUMS`, `MESSAGE.txt`, and `RELEASE-BIP47-SIGNATURE.txt` for verification.
 
@@ -139,23 +138,10 @@ cd ashigaru-desktop
 
 The packaged application is written to `build/jpackage/`.
 
-Additional distribution archives can be built with:
-
-```bash
-./gradlew packageZipDistribution packageTarDistribution
-```
-
-On Linux, an AppImage and an RPM can be built with:
+On Linux, `./gradlew jpackage` builds a `.deb`; the AppImage that releases ship is built with:
 
 ```bash
 ./gradlew packageAppImage
-./gradlew packageRpmDistribution   # needs rpmbuild on PATH
-```
-
-On Windows, an MSI can be built alongside the `.exe` installer with:
-
-```bash
-.\gradlew.bat packageMsiDistribution
 ```
 
 The AppImage task downloads `appimagetool` from the official AppImageKit continuous release and writes the package to `build/distributions/`.
