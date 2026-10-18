@@ -91,8 +91,9 @@ public class PreferencesController implements Initializable {
             //Wrap the detail in a scroll pane so its (tall) content scrolls rather than inflating the
             //root layout's minimum height and pushing the bottom status bar off-screen on short windows.
             ScrollPane scrollPane = new ScrollPane(preferenceGroupNode);
+            //fitToWidth wraps the content while the pane is wide enough; past its minimum width it scrolls
+            //sideways rather than cutting off the controls at the right edge
             scrollPane.setFitToWidth(true);
-            scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
             scrollPane.getStyleClass().add("preferences-scroll");
             preferencesPane.getChildren().add(scrollPane);
             controller.initializeView(config);

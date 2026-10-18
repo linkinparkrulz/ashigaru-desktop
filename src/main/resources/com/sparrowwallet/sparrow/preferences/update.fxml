@@ -34,7 +34,7 @@
             </Field>
             <Field text="Latest release:">
                 <Label fx:id="latestVersionLabel" text="Not checked yet" styleClass="field-value" />
-                <Button fx:id="checkNowBtn" text="Check now" onAction="#onCheckNow" styleClass="secondary-btn" />
+                <Button minWidth="-Infinity" fx:id="checkNowBtn" text="Check now" onAction="#onCheckNow" styleClass="secondary-btn" />
             </Field>
         </Fieldset>
     </Form>
@@ -53,8 +53,8 @@
             </HBox>
 
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <Button fx:id="downloadBtn" text="Download and verify" onAction="#onDownload" styleClass="primary-btn" />
-                <Button fx:id="cancelBtn" text="Cancel" onAction="#onCancel" styleClass="secondary-btn" visible="false" managed="false" />
+                <Button minWidth="-Infinity" fx:id="downloadBtn" text="Download and verify" onAction="#onDownload" styleClass="primary-btn" />
+                <Button minWidth="-Infinity" fx:id="cancelBtn" text="Cancel" onAction="#onCancel" styleClass="secondary-btn" visible="false" managed="false" />
                 <Hyperlink text="Open the releases page instead" onAction="#onOpenReleasePage" />
             </HBox>
 
@@ -78,8 +78,8 @@
             </VBox>
 
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <Button fx:id="installBtn" text="Install" onAction="#onInstall" styleClass="primary-btn" visible="false" managed="false" />
-                <Button fx:id="revealBtn" text="Show the file" onAction="#onReveal" styleClass="secondary-btn" visible="false" managed="false" />
+                <Button minWidth="-Infinity" fx:id="installBtn" text="Install" onAction="#onInstall" styleClass="primary-btn" visible="false" managed="false" />
+                <Button minWidth="-Infinity" fx:id="revealBtn" text="Show the file" onAction="#onReveal" styleClass="secondary-btn" visible="false" managed="false" />
             </HBox>
         </VBox>
     </VBox>
