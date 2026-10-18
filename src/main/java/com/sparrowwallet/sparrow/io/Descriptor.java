@@ -55,7 +55,7 @@ public class Descriptor implements WalletImport, WalletExport {
 
     @Override
     public String getWalletExportDescription() {
-        return "The output descriptor is a standardized description of the wallet compatible with Bitcoin Core, and can be used to create a watch-only copy using the Edit button on the Settings tab of a new Sparrow wallet.";
+        return "The output descriptor is a standardized description of the wallet compatible with Bitcoin Core, and can be used to create a watch-only copy using the Edit button on the Settings tab of a new wallet.";
     }
 
     @Override

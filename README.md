@@ -131,7 +131,7 @@ The verifier derives the notification address from the payment code and checks t
 Requires JDK 21 (Temurin recommended).
 
 ```bash
-git clone --recursive https://github.com/linkinparkrulz/ashigaru-desktop.git
+git clone https://github.com/linkinparkrulz/ashigaru-desktop.git
 cd ashigaru-desktop
 ./gradlew jpackage
 ```

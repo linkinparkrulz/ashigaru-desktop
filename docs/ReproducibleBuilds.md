@@ -30,7 +30,7 @@ Inside the container (or copy a checked-out source tree in with `docker cp`):
 
 ```bash
 apt update && apt install -y git
-git clone --recursive https://github.com/linkinparkrulz/ashigaru-desktop.git
+git clone https://github.com/linkinparkrulz/ashigaru-desktop.git
 cd ashigaru-desktop
 git checkout v1.4.5   # the tag you are reproducing
 

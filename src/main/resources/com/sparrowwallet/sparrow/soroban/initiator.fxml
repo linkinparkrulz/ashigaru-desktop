@@ -34,7 +34,7 @@
                     </graphic>
                 </Label>
                 <Label text="Add a mix partner to your transaction using the Samourai Soroban service, breaking the common input ownership heuristic and obfuscating payment amounts." wrapText="true" styleClass="content-text"/>
-                <Label text="Ask your partner for their PayNym, or use their payment code found in their Sparrow Tools menu → Find Mix Partner. They will need a Native Segwit software wallet like this one." wrapText="true" styleClass="content-text" />
+                <Label text="Ask your partner for their PayNym, or use their payment code found in their wallet's Tools menu → Find Mix Partner. They will need a Native Segwit software wallet like this one." wrapText="true" styleClass="content-text" />
                 <BorderPane>
                     <padding>
                         <Insets top="15" right="70" />
@@ -77,7 +77,7 @@
                     <ProgressTimer fx:id="step2Timer" seconds="60" />
                 </HBox>
                 <HBox spacing="5">
-                    <Label fx:id="step2Desc" text="Ask your mix partner to select Find Mix Partner in the Sparrow Tools menu or Receive Online Cahoots in the Samourai Receive menu." wrapText="true" styleClass="content-text" />
+                    <Label fx:id="step2Desc" text="Ask your mix partner to select Find Mix Partner in the Tools menu or Receive Online Cahoots in the Samourai Receive menu." wrapText="true" styleClass="content-text" />
                     <Hyperlink fx:id="meetingFail" text="Try again?" styleClass="content-text"/>
                 </HBox>
                 <HBox>

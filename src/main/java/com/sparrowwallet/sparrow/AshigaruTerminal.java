@@ -22,7 +22,7 @@ import java.util.Locale;
 
 public class AshigaruTerminal {
     public static final String APP_ID = "com.sparrowwallet.sparrow";
-    public static final String APP_NAME = "Sparrow";
+    public static final String APP_NAME = "Ashigaru";
     public static final String APP_VERSION = "1.4.5";
     public static final String APP_VERSION_SUFFIX = "";
     public static final String APP_HOME_PROPERTY = "sparrow.home";
@@ -40,7 +40,7 @@ public class AshigaruTerminal {
         }
 
         if(args.version) {
-            System.out.println("Sparrow Wallet " + APP_VERSION);
+            System.out.println("Ashigaru Desktop " + APP_VERSION);
             System.exit(0);
         }
 
@@ -50,7 +50,7 @@ public class AshigaruTerminal {
 
         if(args.dir != null) {
             System.setProperty(APP_HOME_PROPERTY, args.dir);
-            getLogger().info("Using configured Sparrow home folder of " + args.dir);
+            getLogger().info("Using configured Ashigaru home folder of " + args.dir);
         }
 
         if(args.network != null) {

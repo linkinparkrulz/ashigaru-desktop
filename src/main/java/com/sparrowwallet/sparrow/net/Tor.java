@@ -61,7 +61,7 @@ public class Tor {
                 installer = PlatformInstaller.linuxX64(installOption);
             }
         } else {
-            throw new UnsupportedOperationException("Sparrow's bundled Tor is not supported on " + platform + " " + arch);
+            throw new UnsupportedOperationException("Ashigaru's bundled Tor is not supported on " + platform + " " + arch);
         }
 
         TorConfigProviderJvm torConfigProviderJvm = new TorConfigProviderJvm() {

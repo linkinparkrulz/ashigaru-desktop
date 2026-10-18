@@ -172,9 +172,9 @@ public class MasterActionListBox extends Panel {
 
     private static String getAppName() {
         if (System.getProperty("os.name").toLowerCase().contains("win")) {
-            return "sparrow.bat";
+            return "Ashigaru.bat";
         }
-        return "sparrow";
+        return "Ashigaru";
     }
 
     private static void openLoadedWallet(Storage storage, Wallet wallet) {

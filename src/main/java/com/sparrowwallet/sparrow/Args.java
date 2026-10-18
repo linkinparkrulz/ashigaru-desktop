@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Args {
-    @Parameter(names = { "--dir", "-d" }, description = "Path to Sparrow home folder")
+    @Parameter(names = { "--dir", "-d" }, description = "Path to Ashigaru home folder")
     public String dir;
 
     @Parameter(names = { "--network", "-n" }, description = "Network to use")
