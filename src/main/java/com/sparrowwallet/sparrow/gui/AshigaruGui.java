@@ -11,10 +11,12 @@ import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.text.Font;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
@@ -70,14 +72,17 @@ public class AshigaruGui extends Application {
         Parent root = loader.load();
         mainController = loader.getController();
 
-        Scene scene = new Scene(root, 1100, 800);
+        //Size to the usable screen area (excluding panels/docks). Window managers pass the minimum size
+        //on as a hint, and one larger than the usable area greys out maximize, refuses tiling and lets
+        //the panel cover the bottom of the window, so neither the minimum nor the initial size may
+        //exceed it. The sidebar scrolls instead of setting the minimum height.
+        Rectangle2D visualBounds = Screen.getPrimary().getVisualBounds();
+        Scene scene = new Scene(root, Math.min(1100, visualBounds.getWidth()), Math.min(800, visualBounds.getHeight()));
         AppServices.addAshigaruStylesheets(scene.getStylesheets());
 
         stage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION);
-        stage.setMinWidth(800);
-        // Fits the header + full sidebar (wallet management + account buttons + Tools/Settings) + status bar,
-        // so the bottom status bar can never be clipped by shrinking the window.
-        stage.setMinHeight(760);
+        stage.setMinWidth(Math.min(720, visualBounds.getWidth()));
+        stage.setMinHeight(Math.min(520, visualBounds.getHeight()));
         stage.setScene(scene);
 
         // Set app icon (window + macOS Dock). Use the padded variant: the full-bleed circle logo

@@ -30,6 +30,11 @@
 
     <!-- ===== LEFT SIDEBAR ===== -->
     <left>
+        <!-- Scrolls rather than clips when the window is shorter than the sidebar, so the window's
+             minimum height never has to cover it (a minimum taller than the usable screen stops
+             window managers from maximizing or tiling the window). -->
+        <ScrollPane styleClass="sidebar-scroll" fitToWidth="true" fitToHeight="true"
+                    hbarPolicy="NEVER" vbarPolicy="AS_NEEDED">
         <VBox styleClass="sidebar" minWidth="216" prefWidth="236" spacing="0">
 
             <!-- ── WALLET SECTION (always visible) ──────────────────── -->
@@ -93,6 +98,7 @@
             </VBox>
 
         </VBox>
+        </ScrollPane>
     </left>
 
     <!-- ===== CENTER CONTENT ===== -->
