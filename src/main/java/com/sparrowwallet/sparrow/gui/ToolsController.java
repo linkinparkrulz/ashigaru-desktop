@@ -6,6 +6,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
@@ -60,7 +61,13 @@ public class ToolsController implements Initializable {
         try {
             FXMLLoader toolLoader = new FXMLLoader(AppServices.class.getResource("gui/" + fxmlName));
             Node toolNode = toolLoader.load();
-            toolsPane.getChildren().add(toolNode);
+            //Scroll rather than clip: a tool narrower or shorter than its content otherwise loses
+            //whatever lies past the edge. fitToHeight still lets the Logs text area fill the height.
+            ScrollPane scrollPane = new ScrollPane(toolNode);
+            scrollPane.setFitToWidth(true);
+            scrollPane.setFitToHeight(true);
+            scrollPane.getStyleClass().add("preferences-scroll");
+            toolsPane.getChildren().add(scrollPane);
         } catch(Exception e) {
             log.error("Could not load tool pane: " + fxmlName, e);
             throw new IllegalStateException("Can't find tool pane: " + fxmlName, e);

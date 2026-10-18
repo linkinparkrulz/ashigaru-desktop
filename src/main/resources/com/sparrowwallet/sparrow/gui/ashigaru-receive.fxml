@@ -60,8 +60,8 @@
             <Separator/>
 
             <HBox spacing="10" alignment="CENTER_RIGHT">
-                <Button fx:id="closeBtn"       text="Close"        onAction="#onClose"       styleClass="action-btn"/>
-                <Button fx:id="nextAddressBtn" text="Next Address" onAction="#onNextAddress" styleClass="primary-btn"/>
+                <Button minWidth="-Infinity" fx:id="closeBtn"       text="Close"        onAction="#onClose"       styleClass="action-btn"/>
+                <Button minWidth="-Infinity" fx:id="nextAddressBtn" text="Next Address" onAction="#onNextAddress" styleClass="primary-btn"/>
             </HBox>
         </VBox>
     </content>

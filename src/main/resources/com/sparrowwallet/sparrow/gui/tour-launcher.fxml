@@ -23,7 +23,7 @@
                 </StackPane>
                 <VBox spacing="3" HBox.hgrow="ALWAYS">
                     <Label text="Guided Tour" styleClass="verifier-hero-title"/>
-                    <Label text="A quick walkthrough of Ashigaru — wallets, accounts, receiving funds and CoinJoin mixing."
+                    <Label minHeight="-Infinity" text="A quick walkthrough of Ashigaru — wallets, accounts, receiving funds and CoinJoin mixing."
                            wrapText="true" styleClass="verifier-hero-sub"/>
                 </VBox>
             </HBox>
@@ -31,10 +31,10 @@
             <!-- Body -->
             <VBox spacing="14" styleClass="ag-card">
                 <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                <Label styleClass="tour-step-body" wrapText="true"
+                <Label minHeight="-Infinity" styleClass="tour-step-body" wrapText="true"
                        text="The tour starts with a short intro, then highlights the real controls on screen. If you haven't opened a wallet yet, it continues automatically once you do."/>
                 <HBox>
-                    <Button fx:id="startTourBtn" text="Start guided tour" onAction="#onStart" styleClass="primary-btn"/>
+                    <Button minWidth="-Infinity" fx:id="startTourBtn" text="Start guided tour" onAction="#onStart" styleClass="primary-btn"/>
                 </HBox>
             </VBox>
         </VBox>

@@ -211,7 +211,14 @@ public class AshigaruMainController implements Initializable {
             Node walletPanel = loader.load();
             currentWalletController = loader.getController();
             currentWalletController.setWalletForm(activeForm, currentWalletForm);
-            contentPane.setCenter(walletPanel);
+            //Scroll sideways rather than clip when the window is narrower than the header and toggle
+            //rows, whose buttons keep their full labels instead of shrinking to "…"
+            ScrollPane walletScroll = new ScrollPane(walletPanel);
+            walletScroll.setFitToWidth(true);
+            walletScroll.setFitToHeight(true);
+            walletScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+            walletScroll.getStyleClass().add("content-scroll");
+            contentPane.setCenter(walletScroll);
             // Kick off a fresh history fetch so UTXOs/transactions appear immediately.
             // For non-Deposit accounts, also refresh the child form — master history
             // service does not fetch Premix/Postmix/Badbank address history.

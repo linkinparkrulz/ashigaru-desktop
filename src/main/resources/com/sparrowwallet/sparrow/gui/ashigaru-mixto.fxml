@@ -45,8 +45,8 @@
             <Separator/>
 
             <HBox spacing="10" alignment="CENTER_RIGHT">
-                <Button fx:id="cancelBtn" text="Cancel"   onAction="#onCancel" styleClass="action-btn"/>
-                <Button fx:id="applyBtn"  text="Apply"    onAction="#onApply"  styleClass="primary-btn"/>
+                <Button minWidth="-Infinity" fx:id="cancelBtn" text="Cancel"   onAction="#onCancel" styleClass="action-btn"/>
+                <Button minWidth="-Infinity" fx:id="applyBtn"  text="Apply"    onAction="#onApply"  styleClass="primary-btn"/>
             </HBox>
         </VBox>
     </content>

@@ -21,32 +21,33 @@
         </StackPane>
         <VBox spacing="3" HBox.hgrow="ALWAYS">
             <Label text="Application Logs" styleClass="verifier-hero-title"/>
-            <Label text="Recent activity from ashigaru.log. Addresses, keys and wallet names are redacted — copy or save this when reporting a problem to the developers."
+            <Label minHeight="-Infinity" text="Recent activity from ashigaru.log. Addresses, keys and wallet names are redacted — copy or save this when reporting a problem to the developers."
                    wrapText="true" styleClass="verifier-hero-sub"/>
         </VBox>
     </HBox>
 
-    <!-- Controls -->
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <HBox styleClass="view-toggle-bar">
+    <!-- Controls: wrap onto further rows as the window narrows rather than squeezing labels into "…" -->
+    <FlowPane hgap="10" vgap="10" alignment="CENTER_LEFT">
+        <HBox styleClass="view-toggle-bar" minWidth="-Infinity">
             <fx:define><ToggleGroup fx:id="levelGroup"/></fx:define>
-            <ToggleButton fx:id="allToggle" text="All" selected="true" toggleGroup="$levelGroup" styleClass="view-toggle"/>
-            <ToggleButton fx:id="warnToggle" text="Warnings" toggleGroup="$levelGroup" styleClass="view-toggle"/>
-            <ToggleButton fx:id="errorToggle" text="Errors" toggleGroup="$levelGroup" styleClass="view-toggle"/>
+            <ToggleButton fx:id="allToggle" text="All" selected="true" toggleGroup="$levelGroup" styleClass="view-toggle" minWidth="-Infinity"/>
+            <ToggleButton fx:id="warnToggle" text="Warnings" toggleGroup="$levelGroup" styleClass="view-toggle" minWidth="-Infinity"/>
+            <ToggleButton fx:id="errorToggle" text="Errors" toggleGroup="$levelGroup" styleClass="view-toggle" minWidth="-Infinity"/>
         </HBox>
         <TextField fx:id="searchField" promptText="Search…" prefWidth="220"/>
-        <CheckBox fx:id="rawCheck" text="Show raw log"/>
-        <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="refreshBtn" text="Refresh" onAction="#onRefresh" styleClass="secondary-btn"/>
-        <Button text="Copy" onAction="#onCopy" styleClass="secondary-btn"/>
-        <Button text="Save…" onAction="#onSave" styleClass="secondary-btn"/>
-        <Button text="Open Folder" onAction="#onOpenFolder" styleClass="secondary-btn"/>
-    </HBox>
+        <CheckBox fx:id="rawCheck" text="Show raw log" minWidth="-Infinity"/>
+    </FlowPane>
+    <FlowPane hgap="10" vgap="10" alignment="CENTER_LEFT">
+        <Button fx:id="refreshBtn" text="Refresh" onAction="#onRefresh" styleClass="secondary-btn" minWidth="-Infinity"/>
+        <Button text="Copy" onAction="#onCopy" styleClass="secondary-btn" minWidth="-Infinity"/>
+        <Button text="Save…" onAction="#onSave" styleClass="secondary-btn" minWidth="-Infinity"/>
+        <Button text="Open Folder" onAction="#onOpenFolder" styleClass="secondary-btn" minWidth="-Infinity"/>
+    </FlowPane>
 
-    <Label fx:id="warningLabel" visible="false" managed="false" wrapText="true" styleClass="field-label"
+    <Label fx:id="warningLabel" visible="false" managed="false" wrapText="true" minHeight="-Infinity" styleClass="field-label"
            text="Raw mode is on: this log may contain your addresses, extended public keys and wallet names. Review it before sharing."/>
 
-    <Label fx:id="statusLabel" visible="false" managed="false" wrapText="true" styleClass="field-label"/>
+    <Label fx:id="statusLabel" visible="false" managed="false" wrapText="true" minHeight="-Infinity" styleClass="field-label"/>
 
     <TextArea fx:id="logArea" editable="false" wrapText="false" styleClass="mono-area" VBox.vgrow="ALWAYS" minHeight="320"/>
 </VBox>

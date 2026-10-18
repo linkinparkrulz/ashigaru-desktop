@@ -23,7 +23,7 @@
                 </StackPane>
                 <VBox spacing="3" HBox.hgrow="ALWAYS">
                     <Label text="Verify BIP47 Message" styleClass="verifier-hero-title"/>
-                    <Label text="Confirm a Bitcoin message signature matches the notification address derived from a BIP47 payment code."
+                    <Label minHeight="-Infinity" text="Confirm a Bitcoin message signature matches the notification address derived from a BIP47 payment code."
                            wrapText="true" styleClass="verifier-hero-sub"/>
                 </VBox>
             </HBox>
@@ -35,16 +35,16 @@
                     <Label text="1" styleClass="ag-chip accent step-chip"/>
                     <Label text="BIP47 Payment Code" styleClass="step-title"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Button fx:id="releaseCodeBtn" text="Use Release Signing Code"
+                    <Button minWidth="-Infinity" fx:id="releaseCodeBtn" text="Use Release Signing Code"
                             onAction="#onUseReleaseCode" styleClass="secondary-btn"/>
                 </HBox>
                 <TextField fx:id="paymentCodeField" promptText="PM8T..." styleClass="address-field"/>
                 <HBox alignment="CENTER_LEFT" spacing="8">
                     <TextField fx:id="payNymHandleField" promptText="+handle" HBox.hgrow="ALWAYS"/>
-                    <Button fx:id="payNymLookupBtn" text="Look up" onAction="#onLookupPayNym"
+                    <Button minWidth="-Infinity" fx:id="payNymLookupBtn" text="Look up" onAction="#onLookupPayNym"
                             styleClass="secondary-btn"/>
                 </HBox>
-                <Label fx:id="payNymLookupStatus" wrapText="true" styleClass="field-label"
+                <Label minHeight="-Infinity" fx:id="payNymLookupStatus" wrapText="true" styleClass="field-label"
                        visible="false" managed="false"/>
             </VBox>
 
@@ -56,12 +56,12 @@
                     <Label text="Signed Message Block" styleClass="step-title"/>
                     <Label text="optional" styleClass="step-optional"/>
                 </HBox>
-                <Label text="Paste a full Bitcoin signed message block, or skip this and fill in the Message and Signature below."
+                <Label minHeight="-Infinity" text="Paste a full Bitcoin signed message block, or skip this and fill in the Message and Signature below."
                        wrapText="true" styleClass="field-label"/>
                 <TextArea fx:id="signedBlockArea" prefRowCount="6" wrapText="false"
                           promptText="-----BEGIN BITCOIN SIGNED MESSAGE-----" styleClass="mono-area"/>
                 <HBox alignment="CENTER_LEFT">
-                    <Button text="Parse Signed Block" onAction="#onParseSignedBlock" styleClass="secondary-btn"/>
+                    <Button minWidth="-Infinity" text="Parse Signed Block" onAction="#onParseSignedBlock" styleClass="secondary-btn"/>
                 </HBox>
             </VBox>
 
@@ -83,12 +83,12 @@
             <!-- Result -->
             <VBox fx:id="resultBox" spacing="6" visible="false" managed="false" styleClass="verifier-result-box">
                 <Label fx:id="resultTitleLabel" styleClass="verifier-result-title"/>
-                <Label fx:id="notificationAddressLabel" wrapText="true" styleClass="field-value"/>
-                <Label fx:id="signerAddressLabel" wrapText="true" styleClass="field-value"/>
+                <Label minHeight="-Infinity" fx:id="notificationAddressLabel" wrapText="true" styleClass="field-value"/>
+                <Label minHeight="-Infinity" fx:id="signerAddressLabel" wrapText="true" styleClass="field-value"/>
             </VBox>
 
             <!-- Action -->
-            <Button text="Verify Message" onAction="#onVerify" styleClass="primary-btn verify-btn" maxWidth="Infinity"/>
+            <Button minWidth="-Infinity" text="Verify Message" onAction="#onVerify" styleClass="primary-btn verify-btn" maxWidth="Infinity"/>
         </VBox>
     </content>
 </ScrollPane>

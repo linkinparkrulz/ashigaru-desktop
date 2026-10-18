@@ -25,14 +25,14 @@
                 </StackPane>
                 <VBox spacing="3" HBox.hgrow="ALWAYS">
                     <Label text="Whirlpool Statistics" styleClass="verifier-hero-title"/>
-                    <Label text="Live pool sizes and mixing activity from whirlpoolstats.xyz."
+                    <Label minHeight="-Infinity" text="Live pool sizes and mixing activity from whirlpoolstats.xyz."
                            wrapText="true" styleClass="verifier-hero-sub"/>
                 </VBox>
-                <Button fx:id="refreshBtn" text="Refresh" onAction="#onRefresh" styleClass="secondary-btn"/>
+                <Button minWidth="-Infinity" fx:id="refreshBtn" text="Refresh" onAction="#onRefresh" styleClass="secondary-btn"/>
             </HBox>
 
             <!-- Loading / error status -->
-            <Label fx:id="statusLabel" visible="false" managed="false" wrapText="true" styleClass="field-label"/>
+            <Label minHeight="-Infinity" fx:id="statusLabel" visible="false" managed="false" wrapText="true" styleClass="field-label"/>
 
             <!-- Summary cards -->
             <HBox spacing="12" alignment="CENTER_LEFT">
@@ -90,9 +90,9 @@
                     <Region HBox.hgrow="ALWAYS"/>
                     <HBox styleClass="view-toggle-bar">
                         <fx:define><ToggleGroup fx:id="chartMetricGroup"/></fx:define>
-                        <ToggleButton fx:id="capacityToggle" text="Capacity" selected="true" toggleGroup="$chartMetricGroup" styleClass="view-toggle"/>
-                        <ToggleButton fx:id="enteredToggle" text="Entered" toggleGroup="$chartMetricGroup" styleClass="view-toggle"/>
-                        <ToggleButton fx:id="utxosToggle" text="UTXOs" toggleGroup="$chartMetricGroup" styleClass="view-toggle"/>
+                        <ToggleButton minWidth="-Infinity" fx:id="capacityToggle" text="Capacity" selected="true" toggleGroup="$chartMetricGroup" styleClass="view-toggle"/>
+                        <ToggleButton minWidth="-Infinity" fx:id="enteredToggle" text="Entered" toggleGroup="$chartMetricGroup" styleClass="view-toggle"/>
+                        <ToggleButton minWidth="-Infinity" fx:id="utxosToggle" text="UTXOs" toggleGroup="$chartMetricGroup" styleClass="view-toggle"/>
                     </HBox>
                 </HBox>
                 <LineChart fx:id="poolChart" styleClass="stats-chart" animated="false" createSymbols="false" prefHeight="320" minHeight="280">

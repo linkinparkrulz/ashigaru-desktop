@@ -14,9 +14,9 @@
         <padding><Insets top="14" right="20" bottom="14" left="20"/></padding>
         <Label fx:id="accountNameLabel" text="Deposit" styleClass="account-name-label"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="receiveBtn" text="⬇  Receive" onAction="#onReceive"
+        <Button minWidth="-Infinity" fx:id="receiveBtn" text="⬇  Receive" onAction="#onReceive"
                 styleClass="primary-btn" visible="false" managed="false"/>
-        <Button fx:id="refreshBtn" text="⟳  Refresh" onAction="#onRefresh" styleClass="action-btn refresh-btn"/>
+        <Button minWidth="-Infinity" fx:id="refreshBtn" text="⟳  Refresh" onAction="#onRefresh" styleClass="action-btn refresh-btn"/>
     </HBox>
 
     <!-- ② Balance row: cards -->
@@ -65,12 +65,12 @@
     <!-- ③ View toggle: UTXOs / Transactions + Mix Selected (right-aligned) -->
     <HBox styleClass="view-toggle-bar" alignment="CENTER_LEFT" spacing="0">
         <padding><Insets top="8" right="20" bottom="8" left="20"/></padding>
-        <ToggleButton fx:id="utxoViewBtn"  text="UTXOs"        onAction="#onViewToggle" styleClass="view-toggle-btn" selected="true"/>
-        <ToggleButton fx:id="txnViewBtn"   text="Transactions" onAction="#onViewToggle" styleClass="view-toggle-btn"/>
+        <ToggleButton minWidth="-Infinity" fx:id="utxoViewBtn"  text="UTXOs"        onAction="#onViewToggle" styleClass="view-toggle-btn" selected="true"/>
+        <ToggleButton minWidth="-Infinity" fx:id="txnViewBtn"   text="Transactions" onAction="#onViewToggle" styleClass="view-toggle-btn"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="selectAllUtxosBtn" text="Select All UTXOs" onAction="#onSelectAllUtxos"
+        <Button minWidth="-Infinity" fx:id="selectAllUtxosBtn" text="Select All UTXOs" onAction="#onSelectAllUtxos"
                 styleClass="action-btn" visible="false" managed="false"/>
-        <Button fx:id="mixSelectedBtn" text="Mix Selected UTXOs" onAction="#onMixSelected"
+        <Button minWidth="-Infinity" fx:id="mixSelectedBtn" text="Mix Selected UTXOs" onAction="#onMixSelected"
                 styleClass="primary-btn mix-btn" visible="false" managed="false"/>
     </HBox>
 
@@ -82,7 +82,7 @@
             <VBox alignment="CENTER" spacing="14" styleClass="empty-state">
                 <Label text="▼" styleClass="empty-state-icon"/>
                 <Label text="You don't have any UTXOs yet" styleClass="empty-state-message"/>
-                <Button fx:id="receiveCta" text="Receive Funds" onAction="#onReceiveCta"
+                <Button minWidth="-Infinity" fx:id="receiveCta" text="Receive Funds" onAction="#onReceiveCta"
                         styleClass="primary-btn"/>
             </VBox>
         </placeholder>
@@ -101,8 +101,8 @@
     <HBox fx:id="mixButtonBox" styleClass="mix-button-row" alignment="CENTER_LEFT" spacing="10" visible="false">
         <padding><Insets top="14" right="20" bottom="14" left="20"/></padding>
 
-        <Button fx:id="startMixBtn"  text="Start Mixing" onAction="#onStartMix"  styleClass="primary-btn mix-btn" visible="false"/>
-        <Button fx:id="mixToBtn"     text="Mix To…"      onAction="#onMixTo"      styleClass="action-btn mix-btn"  visible="false"/>
+        <Button minWidth="-Infinity" fx:id="startMixBtn"  text="Start Mixing" onAction="#onStartMix"  styleClass="primary-btn mix-btn" visible="false"/>
+        <Button minWidth="-Infinity" fx:id="mixToBtn"     text="Mix To…"      onAction="#onMixTo"      styleClass="action-btn mix-btn"  visible="false"/>
 
         <Region HBox.hgrow="ALWAYS"/>
     </HBox>
