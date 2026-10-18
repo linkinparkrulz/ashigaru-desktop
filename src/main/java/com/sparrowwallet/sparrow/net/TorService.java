@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -23,6 +24,19 @@ public class TorService extends ScheduledService<Tor> {
     private final ReentrantLock startupLock = new ReentrantLock();
     private final Condition startupCondition = startupLock.newCondition();
 
+    //The daemon between being launched and becoming Tor.getDefault(). Kept so a retry or a restart can
+    //shut it down: otherwise it runs on unseen, holding the data directory the next daemon needs.
+    private volatile Tor bootingTor;
+
+    /**
+     * Hands over a daemon that was launched but never finished starting, for the caller to destroy.
+     */
+    public Tor takeBootingTor() {
+        Tor tor = bootingTor;
+        bootingTor = null;
+        return tor;
+    }
+
     @Override
     protected Task<Tor> createTask() {
         return new Task<>() {
@@ -32,7 +46,9 @@ public class TorService extends ScheduledService<Tor> {
             protected Tor call() throws Exception {
                 Tor tor = Tor.getDefault();
                 if(tor == null) {
+                    destroyBootingTor();
                     tor = new Tor();
+                    bootingTor = tor;
                     CallbackTorManager callbackTorManager = tor.getTorManager();
                     callbackTorManager.addListener(new TorManagerEvent.Listener() {
                         @Override
@@ -76,10 +92,23 @@ public class TorService extends ScheduledService<Tor> {
                     } finally {
                         startupLock.unlock();
                     }
+                    bootingTor = null;
                 }
 
                 return tor;
             }
         };
+    }
+
+    /** Stops the daemon left by an attempt that failed, waiting briefly so the next one can start cleanly. */
+    private void destroyBootingTor() throws InterruptedException {
+        Tor previous = takeBootingTor();
+        if(previous != null) {
+            CountDownLatch destroyed = new CountDownLatch(1);
+            previous.getTorManager().destroy(true, success -> destroyed.countDown());
+            if(!destroyed.await(15, TimeUnit.SECONDS)) {
+                log.warn("Previous Tor daemon did not stop within 15 seconds");
+            }
+        }
     }
 }

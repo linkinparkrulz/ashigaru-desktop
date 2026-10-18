@@ -28,6 +28,7 @@ import com.sparrowwallet.sparrow.net.update.UpdateCheckService;
 import com.sparrowwallet.sparrow.net.dojo.DojoNodeDiscovery;
 import com.sparrowwallet.sparrow.soroban.SorobanServices;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
@@ -268,6 +269,54 @@ public class AppServices {
         if(Tor.getDefault() != null) {
             Tor.getDefault().getTorManager().destroy(true, success -> {});
         }
+    }
+
+    /**
+     * Shuts down the bundled Tor daemon and boots a fresh one, then reconnects. Restarting the
+     * TorService alone never touches the daemon (it hands back the running instance), so a wedged
+     * Tor otherwise stays wedged until the app is restarted.
+     *
+     * @return false when Tor is external or not in use, so there is nothing here to restart
+     */
+    public boolean restartTor() {
+        if(!Config.get().requiresInternalTor()) {
+            return false;
+        }
+
+        //Disconnect first: the DisconnectionEvent stops Whirlpool, and nothing keeps using the old proxy
+        connectionService.cancel();
+        ratesService.cancel();
+        updateCheckService.cancel();
+        if(torService.isRunning()) {
+            torService.cancel();
+        }
+
+        //Before it has finished booting, the daemon is held by the TorService rather than the default
+        Tor tor = Tor.getDefault() != null ? Tor.getDefault() : torService.takeBootingTor();
+        Tor.setDefault(null);
+        if(tor == null) {
+            startFreshTor();
+            return true;
+        }
+
+        AtomicBoolean started = new AtomicBoolean(false);
+        Runnable startOnce = () -> {
+            if(started.compareAndSet(false, true)) {
+                startFreshTor();
+            }
+        };
+        tor.getTorManager().destroy(true, success -> Platform.runLater(startOnce));
+        //A wedged daemon may never report that it stopped, and that is exactly when a restart is wanted
+        PauseTransition fallback = new PauseTransition(Duration.seconds(15));
+        fallback.setOnFinished(event -> startOnce.run());
+        fallback.play();
+        return true;
+    }
+
+    private void startFreshTor() {
+        //Restarting Tor is a request to get back online, so reconnect once it is up
+        Config.get().setMode(Mode.ONLINE);
+        restartService(torService);
     }
 
     private ElectrumServer.ConnectionService createConnectionService() {

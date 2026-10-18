@@ -37,12 +37,12 @@
     <Form GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="preferences-form">
         <Fieldset inputGrow="SOMETIMES" text="Server">
             <Field text="Type:">
-                <SegmentedButton fx:id="serverTypeSegmentedButton">
+                <SegmentedButton minWidth="-Infinity" fx:id="serverTypeSegmentedButton">
                     <toggleGroup>
                         <ToggleGroup fx:id="serverTypeToggleGroup" />
                     </toggleGroup>
                     <buttons>
-                        <ToggleButton fx:id="publicElectrumToggle" text="Public Server" toggleGroup="$serverTypeToggleGroup">
+                        <ToggleButton minWidth="-Infinity" fx:id="publicElectrumToggle" text="Public Server" toggleGroup="$serverTypeToggleGroup">
                             <graphic>
                                 <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="12" icon="TOGGLE_ON" styleClass="public-electrum" />
                             </graphic>
@@ -50,7 +50,7 @@
                                 <ServerType fx:constant="PUBLIC_ELECTRUM_SERVER"/>
                             </userData>
                         </ToggleButton>
-                        <ToggleButton text="Private Electrum" toggleGroup="$serverTypeToggleGroup">
+                        <ToggleButton minWidth="-Infinity" text="Private Electrum" toggleGroup="$serverTypeToggleGroup">
                             <graphic>
                                 <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="12" icon="TOGGLE_ON" styleClass="private-electrum" />
                             </graphic>
@@ -126,18 +126,23 @@
         </Fieldset>
     </Form>
 
-    <StackPane GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="preferences-actions">
-        <Button fx:id="testConnection" graphicTextGap="5" text="Test Connection">
+    <HBox GridPane.columnIndex="0" GridPane.rowIndex="3" spacing="10" styleClass="preferences-actions">
+        <Button fx:id="testConnection" graphicTextGap="5" text="Test Connection" minWidth="-Infinity">
             <graphic>
                 <Glyph fontFamily="FontAwesome" icon="QUESTION_CIRCLE" prefWidth="13" />
             </graphic>
         </Button>
-        <Button fx:id="editConnection" graphicTextGap="5" text="Edit Existing Connection">
+        <Button fx:id="editConnection" graphicTextGap="5" text="Edit Existing Connection" minWidth="-Infinity">
             <graphic>
                 <Glyph fontFamily="FontAwesome" icon="EDIT" prefWidth="15" />
             </graphic>
         </Button>
-    </StackPane>
+        <Button fx:id="restartTor" graphicTextGap="5" text="Restart Tor" minWidth="-Infinity">
+            <graphic>
+                <Glyph fontFamily="FontAwesome" icon="REFRESH" prefWidth="13" />
+            </graphic>
+        </Button>
+    </HBox>
 
     <VBox GridPane.columnIndex="0" GridPane.rowIndex="4" spacing="5">
         <padding>

@@ -22,6 +22,7 @@ import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.io.StorageException;
 import com.sparrowwallet.sparrow.io.WalletAndKey;
 import com.sparrowwallet.sparrow.io.WalletLabels;
+import com.sparrowwallet.sparrow.net.TorUtils;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -121,6 +122,7 @@ public class AshigaruMainController implements Initializable {
         } else {
             setConnState(ConnState.DISCONNECTED);
         }
+        connectionLabel.setContextMenu(createTorMenu());
     }
 
     // -------------------------------------------------------------------------
@@ -293,18 +295,47 @@ public class AshigaruMainController implements Initializable {
             case CONNECTED -> {
                 connectionLabel.setText("● Connected");
                 connectionLabel.getStyleClass().add("connected");
-                connectionLabel.setTooltip(new Tooltip("Click to disconnect"));
+                connectionLabel.setTooltip(new Tooltip("Click to disconnect · right-click for Tor options"));
             }
             case CONNECTING -> {
                 connectionLabel.setText("◍ Connecting…");
                 connectionLabel.getStyleClass().add("connecting");
-                connectionLabel.setTooltip(new Tooltip("Connecting…"));
+                connectionLabel.setTooltip(new Tooltip("Connecting… · right-click for Tor options"));
             }
             case DISCONNECTED -> {
                 connectionLabel.setText("○ Disconnected");
                 connectionLabel.getStyleClass().add("disconnected");
-                connectionLabel.setTooltip(new Tooltip("Click to connect"));
+                connectionLabel.setTooltip(new Tooltip("Click to connect · right-click for Tor options"));
             }
+        }
+    }
+
+    /**
+     * Right-click menu on the connection status. Left-click stays the connect/disconnect toggle;
+     * these are the recovery steps when the bundled Tor stops getting anywhere.
+     */
+    private ContextMenu createTorMenu() {
+        MenuItem newIdentity = new MenuItem("New Tor Identity");
+        newIdentity.setOnAction(event -> {
+            TorUtils.changeIdentity(AppServices.getTorProxy());
+            statusLabel.setText("Requested new Tor circuits");
+        });
+        MenuItem restartTor = new MenuItem("Restart Tor");
+        restartTor.setOnAction(event -> restartTor());
+
+        ContextMenu menu = new ContextMenu(newIdentity, restartTor);
+        menu.setOnShowing(event -> {
+            boolean internalTor = Config.get().requiresInternalTor();
+            newIdentity.setDisable(!AppServices.isTorRunning());
+            restartTor.setDisable(!internalTor);
+        });
+        return menu;
+    }
+
+    void restartTor() {
+        if(AppServices.get().restartTor()) {
+            setConnState(ConnState.CONNECTING);
+            statusLabel.setText("Restarting Tor…");
         }
     }
 
@@ -1037,6 +1068,19 @@ public class AshigaruMainController implements Initializable {
     @Subscribe
     public void torBootStatusEvent(TorBootStatusEvent event) {
         Platform.runLater(() -> setConnState(ConnState.CONNECTING));
+    }
+
+    @Subscribe
+    public void torReadyStatusEvent(TorReadyStatusEvent event) {
+        Platform.runLater(() -> statusLabel.setText("Tor is running"));
+    }
+
+    @Subscribe
+    public void torFailedStatusEvent(TorFailedStatusEvent event) {
+        Platform.runLater(() -> {
+            setConnState(ConnState.DISCONNECTED);
+            statusLabel.setText("Tor failed to start — right-click the connection status to restart it");
+        });
     }
 
     @Subscribe

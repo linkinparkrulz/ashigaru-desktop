@@ -182,6 +182,11 @@ public class ServerPreferencesController extends PreferencesDetailController {
     private Button editConnection;
 
     @FXML
+    private Button restartTor;
+
+    private boolean restartingTor;
+
+    @FXML
     private TextArea testResults;
 
     private final ValidationSupport validationSupport = new ValidationSupport();
@@ -462,6 +467,15 @@ public class ServerPreferencesController extends PreferencesDetailController {
             setFieldsEditable(true);
             editConnection.setVisible(false);
             testConnection.setVisible(true);
+        });
+
+        restartTor.managedProperty().bind(restartTor.visibleProperty());
+        restartTor.setVisible(config.requiresInternalTor());
+        restartTor.setOnAction(event -> {
+            if(AppServices.get().restartTor()) {
+                restartingTor = true;
+                testResults.setText("Restarting Tor...");
+            }
         });
 
         Server configPublicElectrumServer = config.getPublicElectrumServer();
@@ -1085,8 +1099,15 @@ public class ServerPreferencesController extends PreferencesDetailController {
     @Subscribe
     public void torStatus(TorStatusEvent event) {
         Platform.runLater(() -> {
-            if(torService != null && torService.isRunning()) {
+            if((torService != null && torService.isRunning()) || restartingTor) {
                 testResults.appendText("\n" + event.getStatus());
+            }
+            if(restartingTor && event instanceof TorReadyStatusEvent) {
+                restartingTor = false;
+                testResults.appendText("\nTor restarted, reconnecting...");
+            } else if(restartingTor && event instanceof TorFailedStatusEvent) {
+                restartingTor = false;
+                testResults.appendText("\nTor failed to restart");
             }
         });
     }
