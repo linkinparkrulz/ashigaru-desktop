@@ -1,3 +1,63 @@
+# Ashigaru Desktop 1.5.0
+
+*Released 2026-10-23*
+
+Fixes for the window on Linux desktops, restoring wallets made with a short passphrase or none, a
+way to restart Tor without restarting the app, and a much shorter list of downloads.
+
+## Window and layout
+
+- **The window can be maximized and tiled again.** Its minimum height was 760 pixels. On screens
+  where a panel takes up part of that height, window managers greyed out maximize, refused to tile
+  the window and let the panel cover its bottom edge. The window's minimum and starting sizes now
+  never exceed the usable screen area. The sidebar scrolls instead of holding the window open.
+- **Narrow windows scroll instead of cutting content off.** Tools, the wallet view and Settings
+  used to lose whatever lay past the right edge. They now scroll sideways.
+- **No more "…" buttons.** Buttons, toggles and checkboxes keep their full labels. The Logs toolbar
+  wraps onto more rows when the window is narrow, and wrapped text no longer ends in an ellipsis.
+- **No white flash while resizing.** The area a resize uncovers was painted white before the app
+  redrew it. It is now the app's background colour.
+
+## Restoring a wallet
+
+- **Any passphrase is accepted when restoring, including none.** Typing in an existing seed went
+  through the steps meant for a new wallet. You were told your passphrase was too short, and an
+  empty one was refused outright, so a wallet created with no passphrase could not be restored.
+  A seed you type in is now treated as a restore and takes its passphrase as it is. A seed
+  generated in the app still gets the dice-first passphrase steps. The terminal interface behaves
+  the same way.
+
+## Tor
+
+- **Restart Tor and New Tor Identity.** Right-click the connection status in the bottom right, or
+  use the new **Restart Tor** button in **Settings → Server**. New Tor Identity asks Tor for fresh
+  circuits. Restart Tor shuts the bundled Tor down, starts a fresh one and reconnects. Until now,
+  Tor only stopped when the app quit.
+- **A stuck Tor no longer leaves a second Tor running.** If Tor had not finished starting when a
+  retry or restart happened, a new Tor was launched while the first kept running. The first one
+  still held Tor's data folder, so the new one failed. The unfinished one is now shut down first.
+
+## Downloads
+
+- **One package per platform.** Releases now contain the Windows `.exe` installer, a macOS `.dmg`
+  for each chip type (Apple Silicon and Intel), and the Linux `.AppImage`. The `.msi`, the zips,
+  the `.deb`, the `.rpm`, the tarballs and the headless server builds are gone.
+- **Upgrading from an old package.** If you installed 1.4.x from a `.deb` or `.rpm`, the updater
+  offers the AppImage. If you used the `.msi`, it offers the `.exe`. Once 1.5.0 is running, you can
+  uninstall the old package. Your wallets in `~/.ashigaru` (or `%APPDATA%\Ashigaru`) are not
+  affected.
+
+## Cleanup
+
+- **"Sparrow" no longer appears in Ashigaru's own text.** Messages, the Whirlpool text, the
+  `--version` output, the name the app reports to Electrum servers and the help links now say
+  Ashigaru or point at this repository. Internal names that existing wallets and setups depend on
+  are unchanged.
+- **Restarting from the terminal interface works.** It looked for a launcher called `sparrow`,
+  which the build never creates.
+
+---
+
 # Ashigaru Desktop 1.4.5
 
 *Released 2026-08-30*

@@ -1,32 +1,54 @@
 # Ashigaru Desktop
 
-A graphical Bitcoin wallet and desktop GUI front-end for [Ashigaru Terminal](https://ashigaru.rs), providing a full Whirlpool coinjoin experience.
+A privacy-first Bitcoin wallet for the desktop, built around Whirlpool coinjoin. It is the graphical companion to [Ashigaru Terminal](https://ashigaru.rs) and Ashigaru Mobile: receive here, mix through Premix and Postmix, and spend from mobile. Everything goes over Tor by default.
 
----
-
-<img width="1092" height="829" alt="2026-07-25_12-10" src="https://github.com/user-attachments/assets/31386ed2-2dc7-49b4-97fc-f12de9f46dfc" />
+<p align="center">
+  <img src="docs/images/main.png" alt="Ashigaru Desktop with a wallet open on its Deposit account" width="880">
+</p>
 
 ---
 
 ### Features
 
-- **Whirlpool coinjoin** — Tx0, zeroleak coinjoin, Premix/Postmix/Badbank account management
-- **Tor** — built-in Tor support for network privacy
-- **Mix To** — Set to mix to an offline or different wallet
-- **Receive Only** — Decreases attack surface (spend is done on mobile)
-- **Import/Export Labels** — Transport your labels to any BIP-329 adhering wallet software
-- **BIP47 Message Verifier** — Verify that a message was signed by a specific entity
-- **PepeHash PayNym Integration** — BIP47 based transactions include the corresponding pepehash avatar in their transaction card for easy identification
-- **Whirlpoolstats.xyz Tool** — Want to know the latest Tx0? Pool totals? Unspent Capacity? It's all available as a tool now h/t to Black Coffee.
-- **AmIExposed or BitHypha UTXO analysis** — Do analysis on your own UTXO's
-- **Dojo Bay Integration** — Connect to geographically dispersed electrum servers with BIP47 Verified reputations. 
-- **Logs** — See under the hood and share application logs with developers, with addresses, keys and wallet names redacted by default
-- **Verified In-App Updates** — Ashigaru finds new releases and checks them against the release signing key before you install, so you never have to go looking for a download again
+**Mixing**
+- **Whirlpool coinjoin.** Tx0, zeroleak coinjoin, and Premix / Postmix / Badbank account management.
+- **Mix To.** Send mixed outputs on to an offline or different wallet.
+- **Whirlpoolstats.xyz tool.** See the latest Tx0s, pool totals and unspent capacity (h/t Black Coffee).
+
+**Wallets**
+- **Receive only.** Spending happens on mobile, which keeps the desktop's attack surface small.
+- **Dice-rolled passphrases.** Creating a wallet walks you through rolling a diceware BIP39 passphrase with physical dice. Restoring a wallet accepts the passphrase it already has, or none.
+- **Import / export labels.** Move your labels to and from any BIP-329 wallet.
+- **PayNym avatars.** BIP47 transactions show the counterparty's PepeHash avatar on the transaction card.
+- **UTXO analysis.** Check your own UTXOs with AmIExposed or BitHypha.
+
+**Privacy and network**
+- **Built-in Tor.** Every connection goes through the bundled Tor. If it gets stuck, right-click the connection status (or open **Settings → Server**) to request a new Tor identity or restart Tor.
+- **Dojo Bay integration.** Connect to geographically dispersed Electrum servers whose operators have signed their pairing with BIP47.
+
+**Tools**
+- **Guided tour.** A short walkthrough of wallets, accounts, receiving and mixing, shown on first run and available from Tools at any time.
+- **BIP47 message verifier.** Check that a message was signed by the holder of a payment code, including Ashigaru's own release signatures.
+- **Logs.** Look under the hood and share application logs with developers. Addresses, keys and wallet names are redacted by default.
+- **Verified in-app updates.** Ashigaru finds new releases and checks them against the release signing key before you install, so you never have to go hunting for a download.
+
+### Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/create-wallet-passphrase.png" alt="Choosing a passphrase when creating a wallet"><br><sub>Creating a wallet: a passphrase, rolled with dice</sub></td>
+    <td width="50%"><img src="docs/images/create-wallet-diceware.png" alt="Reviewing a six-word diceware passphrase and its master fingerprint"><br><sub>Reviewing the rolled passphrase and master fingerprint (example only)</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/tools-verifier.png" alt="The BIP47 message verifier with the release signing code filled in"><br><sub>Tools → Verifier, checking a release signature</sub></td>
+    <td width="50%"><img src="docs/images/settings-server.png" alt="Server settings with Test Connection and Restart Tor"><br><sub>Settings → Server, with Test Connection and Restart Tor</sub></td>
+  </tr>
+</table>
 
 ### Future Features
 
-- **Eigenwallet Integration** — Post bad bank funds for atomic swap into XMR
-- **Dojo Integration** — Get all the benefits of Dojo such as Nextblock estimates, personal electrum server detail and more
+- **Eigenwallet integration.** Post Badbank funds for an atomic swap into XMR.
+- **Dojo integration.** Get all the benefits of Dojo, such as Nextblock fee estimates, personal Electrum server details and more.
 
 ---
 
@@ -42,6 +64,8 @@ Pre-built binaries for every platform are published on the [Releases](../../rele
 | Linux | `Ashigaru-X.Y.Z-x86_64.AppImage` | — | — |
 
 Each release also includes `SHA256SUMS`, `MESSAGE.txt`, and `RELEASE-BIP47-SIGNATURE.txt` for verification.
+
+**Upgrading from 1.4.x.** Until 1.4.5, Linux releases also shipped `.deb`, `.rpm` and `.tar.gz` packages, and Windows releases shipped an `.msi`. From 1.5.0 there is one package per platform. The in-app updater offers the AppImage on Linux and the `.exe` on Windows. Once the new version is running you can uninstall the old package; your wallets live in `~/.ashigaru` (or `%APPDATA%\Ashigaru`) and are not touched.
 
 **macOS installation**
 
