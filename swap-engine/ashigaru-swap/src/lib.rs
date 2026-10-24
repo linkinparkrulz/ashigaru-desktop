@@ -5,6 +5,9 @@
 //! Panics are caught at this boundary so they surface as errors instead of aborting the JVM.
 
 mod engine;
+// Used by swaps (next milestone): relays the Monero node connection over Tor
+#[allow(dead_code)]
+mod forward;
 mod socks;
 mod wallet;
 

@@ -21,9 +21,9 @@ bdk_wallet = { workspace = true }
 bitcoin = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
-libp2p = { workspace = true, features = ["tcp", "tokio", "websocket", "noise", "yamux", "relay"] }
+libp2p = { workspace = true, features = ["tcp", "dns", "tokio", "websocket", "noise", "yamux", "relay"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "net", "sync", "time", "macros"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "net", "sync", "time", "macros", "io-util"] }
 tokio-socks = "0.5"
 tracing = { workspace = true }
