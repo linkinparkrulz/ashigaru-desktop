@@ -1,6 +1,7 @@
 package com.sparrowwallet.sparrow.gui;
 
 import com.sparrowwallet.sparrow.AppServices;
+import com.sparrowwallet.sparrow.io.Config;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -25,6 +26,7 @@ public class ToolsController implements Initializable {
     @FXML private ToggleButton statsButton;
     @FXML private ToggleButton logsButton;
     @FXML private ToggleButton tourButton;
+    @FXML private ToggleButton swapEngineButton;
     @FXML private StackPane toolsPane;
 
     @Override
@@ -43,8 +45,14 @@ public class ToolsController implements Initializable {
                 setToolPane("logs.fxml");
             } else if(selectedToggle == tourButton) {
                 setToolPane("tour-launcher.fxml");
+            } else if(selectedToggle == swapEngineButton) {
+                setToolPane("swap-engine.fxml");
             }
         });
+
+        boolean swapEngine = Config.get().isSwapEngineExperimental();
+        swapEngineButton.setVisible(swapEngine);
+        swapEngineButton.setManaged(swapEngine);
 
         // Select whichever tool is listed first rather than naming one, so the highlight follows
         // the sidebar order. getToggles() is in FXML declaration order.

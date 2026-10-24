@@ -64,6 +64,10 @@ open module com.sparrowwallet.sparrow {
     requires com.sparrowwallet.bokmakierie;
     requires java.smartcardio;
     requires com.jcraft.jzlib;
+    requires com.sun.jna;
+
+    //JNA builds the native swap engine binding as a proxy of this interface
+    exports com.sparrowwallet.sparrow.swap to com.sun.jna;
 
     //ControlsFX populates GlyphFontRegistry solely from ServiceLoader.load(GlyphFont.class), and
     //this is a named module on the module path, where ServiceLoader reads module descriptors and

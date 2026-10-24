@@ -64,6 +64,9 @@ public class Config {
     private boolean signBsmsExports = false;
     private boolean preventSleep = false;
     private boolean tourShown = false;
+    //Unlocks the experimental swap engine tool. There is no UI for this: it is set by editing the config
+    //file, so the work-in-progress Badbank to XMR swap stays out of sight of normal users.
+    private boolean swapEngineExperimental = false;
     private List<File> recentWalletFiles;
     private Integer keyDerivationPeriod;
     private long dustAttackThreshold = DUST_ATTACK_THRESHOLD_SATS;
@@ -181,6 +184,10 @@ public class Config {
     public void setTourShown(boolean tourShown) {
         this.tourShown = tourShown;
         flush();
+    }
+
+    public boolean isSwapEngineExperimental() {
+        return swapEngineExperimental;
     }
 
     public BitcoinUnit getBitcoinUnit() {

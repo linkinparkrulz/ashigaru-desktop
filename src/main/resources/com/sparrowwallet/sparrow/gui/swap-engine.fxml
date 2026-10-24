@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.controlsfx.glyphfont.Glyph?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.sparrowwallet.sparrow.gui.SwapEngineController"
+      stylesheets="@ashigaru.css, @../darktheme.css"
+      styleClass="verifier-panel"
+      spacing="16">
+    <padding><Insets top="22" right="22" bottom="22" left="22"/></padding>
+
+    <!-- Hero -->
+    <HBox spacing="16" alignment="CENTER_LEFT" styleClass="verifier-hero">
+        <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
+        <StackPane styleClass="verifier-hero-icon">
+            <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="22" icon="EXCHANGE_ALT" styleClass="verifier-hero-glyph"/>
+        </StackPane>
+        <VBox spacing="3" HBox.hgrow="ALWAYS">
+            <Label text="Swap Engine (experimental)" styleClass="verifier-hero-title"/>
+            <Label minHeight="-Infinity" wrapText="true" styleClass="verifier-hero-sub"
+                   text="Developer preview of the Badbank to XMR swap engine. It finds eigenwallet makers and shows their quotes, over Ashigaru's Tor only. It cannot spend anything."/>
+        </VBox>
+    </HBox>
+
+    <FlowPane hgap="10" vgap="10" alignment="CENTER_LEFT">
+        <Button minWidth="-Infinity" fx:id="chooseLibraryBtn" text="Choose Engine Library…" onAction="#onChooseLibrary" styleClass="secondary-btn"/>
+        <Button minWidth="-Infinity" fx:id="startBtn" text="Start Engine" onAction="#onStart" styleClass="primary-btn" disable="true"/>
+        <Button minWidth="-Infinity" fx:id="refreshBtn" text="Refresh Quotes" onAction="#onRefresh" styleClass="secondary-btn" disable="true"/>
+    </FlowPane>
+
+    <Label fx:id="statusLabel" minHeight="-Infinity" wrapText="true" styleClass="field-label" text="Choose the engine library built by the Swap engine workflow."/>
+
+    <TextArea fx:id="quotesArea" editable="false" wrapText="false" styleClass="mono-area" VBox.vgrow="ALWAYS" minHeight="280"/>
+</VBox>
