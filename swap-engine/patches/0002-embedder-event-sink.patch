@@ -1,0 +1,91 @@
+diff --git a/swap/src/cli/api/tauri_bindings.rs b/swap/src/cli/api/tauri_bindings.rs
+index c72f9d2..61c0910 100644
+--- a/swap/src/cli/api/tauri_bindings.rs
++++ b/swap/src/cli/api/tauri_bindings.rs
+@@ -259,14 +259,32 @@ struct TauriHandleInner {
+     pending_approvals: Arc<Mutex<HashMap<Uuid, PendingApproval>>>,
+ }
+ 
++/// Receives the engine's events and answers its approval requests when the swap library is embedded
++/// in another application instead of eigenwallet's Tauri GUI. Both carry the same JSON the GUI gets.
++#[async_trait]
++pub trait EmbedderSink: Send + Sync {
++    fn emit(&self, event: &str, payload: serde_json::Value);
++
++    /// Returns the approval response, or `None` to reject. Must not approve anything it does not
++    /// understand: an unanswered request is treated as rejected.
++    async fn approve(&self, request: serde_json::Value, timeout_secs: u64) -> Option<serde_json::Value>;
++}
++
+ #[derive(Clone)]
+ pub struct TauriHandle(
+     #[cfg(feature = "tauri")]
+     #[cfg_attr(feature = "tauri", allow(unused))]
+     Arc<TauriHandleInner>,
++    #[cfg(not(feature = "tauri"))] Option<Arc<dyn EmbedderSink>>,
+ );
+ 
+ impl TauriHandle {
++    /// A handle that hands events and approval requests to an embedding application
++    #[cfg(not(feature = "tauri"))]
++    pub fn embedded(sink: Arc<dyn EmbedderSink>) -> Self {
++        Self(Some(sink))
++    }
++
+     #[cfg(feature = "tauri")]
+     pub fn new(tauri_handle: tauri::AppHandle) -> Self {
+         use std::collections::HashMap;
+@@ -288,6 +306,11 @@ impl TauriHandle {
+             tauri::Emitter::emit(&inner.app_handle, event, payload).map_err(anyhow::Error::from)?;
+         }
+ 
++        #[cfg(not(feature = "tauri"))]
++        if let Some(sink) = &self.0 {
++            sink.emit(event, serde_json::to_value(payload)?);
++        }
++
+         Ok(())
+     }
+ 
+@@ -307,7 +330,29 @@ impl TauriHandle {
+     {
+         #[cfg(not(feature = "tauri"))]
+         {
+-            bail!("Tauri feature not enabled");
++            let Some(sink) = &self.0 else {
++                bail!("Tauri feature not enabled");
++            };
++            let timeout_secs = timeout_secs.unwrap_or(60 * 60 * 24 * 7);
++            let expiration_ts = SystemTime::now()
++                .duration_since(UNIX_EPOCH)
++                .map_err(|e| anyhow!("Failed to get current time: {}", e))?
++                .as_secs()
++                + timeout_secs;
++            let request = ApprovalRequest {
++                request: request_type,
++                request_status: RequestStatus::Pending { expiration_ts },
++                request_id: Uuid::new_v4(),
++            };
++            let response = tokio::time::timeout(
++                Duration::from_secs(timeout_secs),
++                sink.approve(serde_json::to_value(&request)?, timeout_secs),
++            )
++            .await
++            .ok()
++            .flatten()
++            .context("Approval was rejected")?;
++            return serde_json::from_value(response).context("Approval response has the wrong shape");
+         }
+ 
+         #[cfg(feature = "tauri")]
+@@ -782,8 +827,8 @@ impl TauriEmitter for Option<TauriHandle> {
+     ) -> Result<bool> {
+         match self {
+             Some(tauri) => tauri.request_bitcoin_approval(details, timeout_secs).await,
+-            // If no TauriHandle is available, we just approve the request
+-            None => Ok(true),
++            // Ashigaru: with no handle there is no one to approve, so the lock is never published
++            None => Ok(false),
+         }
+     }
+ 
