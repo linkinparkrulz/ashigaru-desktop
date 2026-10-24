@@ -1,0 +1,135 @@
+name: Swap engine
+
+# Builds the embedded eigenwallet swap engine (swap-engine/) as a native library for every platform
+# Ashigaru ships on. The build environment mirrors eigenwallet's own release workflow
+# (.github/actions/setup-build-environment at the pinned revision), minus its GUI tooling.
+
+on:
+  push:
+    branches: [xmr-swap]
+    paths:
+      - 'swap-engine/**'
+      - '.github/workflows/swap-engine.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CARGO_HTTP_MULTIPLEXING: false
+  DEPS_BUILD_LINUX: autoconf nsis mingw-w64 build-essential pkg-config libtool ccache make cmake gcc g++ git curl lbzip2 gperf g++-mingw-w64-x86-64
+  DEPS_BUILD_MACOS: autoconf automake pkg-config libtool ccache make cmake gcc git curl gperf
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.host }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            host: ubuntu-22.04
+            lib: libashigaru_swap.so
+            test: true
+          - target: aarch64-apple-darwin
+            host: macos-15
+            lib: libashigaru_swap.dylib
+            test: true
+          - target: x86_64-apple-darwin
+            host: macos-15-intel
+            lib: libashigaru_swap.dylib
+            test: true
+          - target: x86_64-pc-windows-gnu
+            host: ubuntu-22.04
+            lib: ashigaru_swap.dll
+            test: false
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch eigenwallet and apply patches
+        run: swap-engine/fetch.sh
+
+      - name: Install Rust 1.90
+        uses: dtolnay/rust-toolchain@1.90
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install build dependencies (Ubuntu)
+        if: startsWith(matrix.host, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y $DEPS_BUILD_LINUX
+
+      - name: Install build dependencies (macOS)
+        if: startsWith(matrix.host, 'macos')
+        run: |
+          brew uninstall --force --ignore-dependencies $DEPS_BUILD_MACOS
+          brew install --force $DEPS_BUILD_MACOS
+
+      - name: Prefer MinGW POSIX threading (Windows cross-build)
+        if: contains(matrix.target, 'windows')
+        run: |
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+
+      - name: Build MinGW gcc (Windows cross-build)
+        if: contains(matrix.target, 'windows')
+        working-directory: swap-engine/build/eigenwallet/dev-scripts
+        run: ./ubuntu_build_x86_86-w64-mingw32-gcc.sh
+
+      # The build script exports MINGW_TOOLCHAIN_DIR through GITHUB_ENV, so it is only visible from
+      # the next step on
+      - name: Use the MinGW gcc (Windows cross-build)
+        if: contains(matrix.target, 'windows')
+        run: |
+          if [ -z "${MINGW_TOOLCHAIN_DIR:-}" ]; then
+            echo "MINGW_TOOLCHAIN_DIR was not set by the build script" >&2
+            exit 1
+          fi
+          echo "$MINGW_TOOLCHAIN_DIR" >> "$GITHUB_PATH"
+          echo "CC_x86_64_pc_windows_gnu=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-gcc" >> "$GITHUB_ENV"
+          echo "CXX_x86_64_pc_windows_gnu=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-g++" >> "$GITHUB_ENV"
+          echo "AR_x86_64_pc_windows_gnu=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-ar" >> "$GITHUB_ENV"
+          echo "RANLIB_x86_64_pc_windows_gnu=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-ranlib" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-g++" >> "$GITHUB_ENV"
+
+      - name: Cache cargo and the Monero build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            swap-engine/build/eigenwallet/target
+          key: swap-engine-${{ matrix.target }}-${{ hashFiles('swap-engine/EIGENWALLET_REV', 'swap-engine/patches/**', 'swap-engine/ashigaru-swap/Cargo.toml') }}
+          restore-keys: swap-engine-${{ matrix.target }}-
+
+      - name: Test ashigaru-swap
+        if: matrix.test
+        working-directory: swap-engine/build/eigenwallet
+        run: cargo test -p ashigaru-swap --target ${{ matrix.target }} --release
+
+      - name: Build ashigaru-swap
+        working-directory: swap-engine/build/eigenwallet
+        run: |
+          start=$(date +%s)
+          cargo build -p ashigaru-swap --lib --target ${{ matrix.target }} --release
+          lib="target/${{ matrix.target }}/release/${{ matrix.lib }}"
+          size=$(wc -c < "$lib")
+          echo "### ${{ matrix.target }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`${{ matrix.lib }}\`: $((size / 1024 / 1024)) MiB, build step $(( $(date +%s) - start ))s" >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cp "$lib" "$GITHUB_WORKSPACE/out/"
+
+      - name: Upload library
+        uses: actions/upload-artifact@v4
+        with:
+          name: swap-engine-${{ matrix.target }}
+          path: out/*
+          if-no-files-found: error
