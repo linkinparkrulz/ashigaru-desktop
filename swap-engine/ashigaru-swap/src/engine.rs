@@ -1,25 +1,36 @@
-//! Assembles eigenwallet's taker networking from its public parts, the way its own `Context` does
-//! (`swap/src/cli/api.rs`), but with Ashigaru's Tor in place of the embedded one.
+//! Assembles eigenwallet's taker from its public parts, the way its own `Context` does
+//! (`swap/src/cli/api.rs`), but with Ashigaru's Tor in place of the embedded one and Ashigaru's
+//! Badbank in place of eigenwallet's internal Bitcoin wallet.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use libp2p::core::transport::Transport as _;
 use libp2p::{Multiaddr, PeerId, SwarmBuilder, noise, websocket, yamux};
 use serde::Deserialize;
+use serde_json::{Value, json};
+use swap::cli::api::tauri_bindings::TauriHandle;
 use swap::cli::{Behaviour, EventLoop, EventLoopHandle, QuoteWithAddress};
 use swap::database::{AccessMode, open_db};
+use swap::monero::{Daemon, Wallets};
 use swap::network::rendezvous::XmrBtcNamespace;
 use swap::network::transport::authenticate_and_multiplex;
-use swap::protocol::Database as _;
+use swap::protocol::bob::{self, BobState};
+use swap::protocol::{Database, State};
 use swap::seed::Seed;
-use swap_env::env::{GetConfig, Mainnet};
+use swap_env::env::{Config as EnvConfig, GetConfig, Mainnet};
 use swap_p2p::libp2p_ext::MultiAddrVecExt;
+use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
+use uuid::Uuid;
 
+use crate::events::AshigaruSink;
+use crate::forward;
 use crate::socks::Socks5Transport;
-use crate::wallet::QuoteOnlyWallet;
+use crate::wallet::{HybridWallet, QuoteOnlyWallet};
 
 /// Matches eigenwallet's CLI swarm (`swap/src/network/swarm.rs`)
 const IDLE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(60 * 2);
@@ -37,10 +48,44 @@ pub struct EngineConfig {
     /// Rendezvous points to discover makers through. Empty uses eigenwallet's defaults.
     #[serde(default)]
     pub rendezvous_points: Vec<String>,
+    /// Swapping needs both of these. Without them the engine only fetches quotes.
+    #[serde(default)]
+    pub swap: Option<SwapConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SwapConfig {
+    /// Electrum servers, e.g. `tcp://host.onion:50001`. Reached through the SOCKS proxy.
+    pub electrum_urls: Vec<String>,
+    /// Monero node `host:port`, reached through the SOCKS proxy over plain HTTP: use an onion node.
+    pub monero_node: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartSwap {
+    pub peer_id: String,
+    pub multiaddr: String,
+    pub btc_sats: u64,
+    pub tx_lock_fee_sats: u64,
+    pub xmr_address: String,
+    /// A Badbank address: receives the lock's change and any refund
+    pub refund_address: String,
+}
+
+struct SwapParts {
+    bitcoin_wallet: Arc<dyn bitcoin_wallet::BitcoinWallet>,
+    monero_wallets: Arc<Wallets>,
 }
 
 pub struct Engine {
-    event_loop: EventLoopHandle,
+    event_loop: Mutex<EventLoopHandle>,
+    db: Arc<dyn Database + Send + Sync>,
+    env_config: EnvConfig,
+    handle: TauriHandle,
+    swap: Option<SwapParts>,
+    running: Mutex<HashMap<Uuid, JoinHandle<()>>>,
 }
 
 impl Engine {
@@ -51,11 +96,24 @@ impl Engine {
             .try_into()
             .map_err(|_| anyhow::anyhow!("Swap seed must be 32 bytes"))?;
         let seed = Seed::from(seed_bytes);
+        let socks_proxy = format!("{}:{}", config.socks_host, config.socks_port);
 
         std::fs::create_dir_all(&config.data_dir).context("Could not create swap data directory")?;
-        let db = open_db(config.data_dir.join("sqlite"), AccessMode::ReadWrite, None)
+        let sqlite = open_db(config.data_dir.join("sqlite"), AccessMode::ReadWrite, None)
             .await
             .context("Could not open swap database")?;
+
+        let env_config = Mainnet::get_config();
+        let handle = TauriHandle::embedded(Arc::new(AshigaruSink));
+
+        let swap = match &config.swap {
+            Some(swap_config) => Some(Self::swap_parts(swap_config, &config.data_dir, &socks_proxy, env_config).await?),
+            None => None,
+        };
+        let wallet: Arc<dyn bitcoin_wallet::BitcoinWallet> = match &swap {
+            Some(parts) => parts.bitcoin_wallet.clone(),
+            None => Arc::new(QuoteOnlyWallet),
+        };
 
         let rendezvous_addresses: Vec<Multiaddr> = if config.rendezvous_points.is_empty() {
             swap_env::defaults::default_rendezvous_points()
@@ -69,7 +127,6 @@ impl Engine {
         let rendezvous_points = rendezvous_addresses.extract_peer_addresses();
         let rendezvous_peer_ids: Vec<PeerId> = rendezvous_points.iter().map(|(p, _)| *p).collect();
 
-        let env_config = Mainnet::get_config();
         let identity = seed.derive_libp2p_identity();
 
         // Websocket addresses (/wss) are unwrapped by WsConfig and dialled through the same proxy
@@ -79,9 +136,8 @@ impl Engine {
             .boxed();
         let transport = authenticate_and_multiplex(transport, &identity)?;
 
-        let wallet: Arc<dyn bitcoin_wallet::BitcoinWallet> = Arc::new(QuoteOnlyWallet);
         let behaviour_identity = identity.clone();
-        let behaviour_db = db.clone();
+        let behaviour_db = sqlite.clone();
         let mut swarm = SwarmBuilder::with_existing_identity(identity)
             .with_tokio()
             .with_other_transport(|_| transport)?
@@ -105,6 +161,7 @@ impl Engine {
                 swarm.add_peer_address(peer_id, addr);
             }
         }
+        let db: Arc<dyn Database + Send + Sync> = sqlite;
         for (peer_id, addrs) in db
             .get_all_peer_addresses()
             .await
@@ -115,17 +172,217 @@ impl Engine {
             }
         }
 
-        let (event_loop, event_loop_handle) = EventLoop::new(swarm, db, None, None)?;
+        let (event_loop, event_loop_handle) =
+            EventLoop::new(swarm, db.clone(), Some(handle.clone()), None)?;
         tokio::spawn(event_loop.run());
 
         Ok(Self {
-            event_loop: event_loop_handle,
+            event_loop: Mutex::new(event_loop_handle),
+            db,
+            env_config,
+            handle,
+            swap,
+            running: Mutex::new(HashMap::new()),
         })
+    }
+
+    async fn swap_parts(
+        config: &SwapConfig,
+        data_dir: &std::path::Path,
+        socks_proxy: &str,
+        env_config: EnvConfig,
+    ) -> Result<SwapParts> {
+        if config.electrum_urls.is_empty() {
+            bail!("No Electrum server configured");
+        }
+        let electrum = bitcoin_wallet::Client::new_with_socks5(
+            &config.electrum_urls,
+            env_config.bitcoin_sync_interval(),
+            socks_proxy.to_string(),
+        )
+        .await
+        .context("Could not connect to the Electrum server through Tor")?;
+        let bitcoin_wallet = Arc::new(HybridWallet::new(
+            Arc::new(electrum),
+            env_config.bitcoin_finality_confirmations,
+        ));
+
+        // The Monero wallet code cannot use a proxy, so it is pointed at a local relay into Tor
+        let (node_host, node_port) = config
+            .monero_node
+            .rsplit_once(':')
+            .context("Monero node must be host:port")?;
+        let node_port: u16 = node_port.parse().context("Monero node port is not a number")?;
+        let relay = forward::start_tcp_relay(socks_proxy.to_string(), node_host.to_string(), node_port).await?;
+        let daemon = Daemon {
+            hostname: relay.ip().to_string(),
+            port: relay.port(),
+            ssl: false,
+        };
+        let monero_dir = data_dir.join("monero");
+        std::fs::create_dir_all(&monero_dir).context("Could not create Monero wallet directory")?;
+        let monero_wallets = Arc::new(
+            Wallets::new(
+                monero_dir,
+                "main".to_string(),
+                daemon,
+                env_config.monero_network,
+                false,
+                None,
+                None,
+                env_config.monero_lock_construction_cooldown,
+            )
+            .await
+            .context("Could not open the Monero wallet")?,
+        );
+
+        Ok(SwapParts {
+            bitcoin_wallet,
+            monero_wallets,
+        })
+    }
+
+    fn parts(&self) -> Result<&SwapParts> {
+        self.swap.as_ref().context("The engine was started for quotes only")
     }
 
     /// Quotes from every maker discovered so far. Discovery runs continuously in the background, so
     /// the list fills in over the first minute or two after start.
-    pub fn quotes(&self) -> Vec<QuoteWithAddress> {
-        self.event_loop.cached_quotes().borrow().clone()
+    pub async fn quotes(&self) -> Vec<QuoteWithAddress> {
+        self.event_loop.lock().await.cached_quotes().borrow().clone()
+    }
+
+    /// Starts a swap with the chosen maker. Ashigaru has already picked the amount, worked out the
+    /// lock transaction's fee and the user has chosen where the XMR goes; the engine asks for the
+    /// lock transaction, its approval and its signature as the swap progresses.
+    pub async fn start_swap(&self, request: StartSwap) -> Result<Uuid> {
+        let parts = self.parts()?;
+        if !self.running.lock().await.values().all(|task| task.is_finished()) {
+            bail!("A swap is already running; one at a time");
+        }
+
+        let peer_id: PeerId = request.peer_id.parse().context("Bad maker peer id")?;
+        let multiaddr: Multiaddr = request.multiaddr.parse().context("Bad maker address")?;
+        let xmr_address = swap::monero::Address::from_str_with_unchecked_network(request.xmr_address.trim())
+            .context("Not a Monero address")?;
+        let refund_address = request
+            .refund_address
+            .parse::<bitcoin::Address<bitcoin::address::NetworkUnchecked>>()
+            .context("Bad refund address")?
+            .require_network(bitcoin::Network::Bitcoin)?;
+        let monero_receive_pool = swap::monero::MoneroAddressPool::from(xmr_address);
+        monero_receive_pool
+            .assert_network(self.env_config.monero_network)
+            .context("The Monero address is not a mainnet address")?;
+
+        let swap_id = Uuid::new_v4();
+        self.db.insert_peer_id(swap_id, peer_id).await?;
+        self.db.insert_address(peer_id, multiaddr.clone()).await?;
+        self.db.insert_monero_address_pool(swap_id, monero_receive_pool.clone()).await?;
+
+        let mut event_loop = self.event_loop.lock().await;
+        event_loop.queue_peer_address(peer_id, multiaddr).await?;
+        let swap_handle = event_loop.swap_handle(peer_id, swap_id).await?;
+        drop(event_loop);
+
+        let swap = bob::Swap::new(
+            self.db.clone(),
+            swap_id,
+            parts.bitcoin_wallet.clone(),
+            parts.monero_wallets.clone(),
+            self.env_config,
+            swap_handle,
+            monero_receive_pool,
+            refund_address,
+            bitcoin::Amount::from_sat(request.btc_sats),
+            bitcoin::Amount::from_sat(request.tx_lock_fee_sats),
+        )
+        .with_event_emitter(Some(self.handle.clone()));
+
+        self.run(swap_id, swap).await;
+        Ok(swap_id)
+    }
+
+    /// Picks every unfinished swap back up, e.g. after Ashigaru restarted. Swaps with timelocks
+    /// running must not be left alone, so this is called whenever the engine starts.
+    pub async fn resume_all(&self) -> Result<Vec<Uuid>> {
+        let parts = self.parts()?;
+        let mut resumed = Vec::new();
+        for (peer_id, swap_id, state) in self.db.all().await? {
+            let State::Bob(bob_state) = state else { continue };
+            if bob::is_complete(&bob_state) || self.is_running(swap_id).await {
+                continue;
+            }
+
+            let mut event_loop = self.event_loop.lock().await;
+            for address in self.db.get_addresses(peer_id).await? {
+                event_loop.queue_peer_address(peer_id, address).await?;
+            }
+            let swap_handle = event_loop.swap_handle(peer_id, swap_id).await?;
+            drop(event_loop);
+
+            let monero_receive_pool = self.db.get_monero_address_pool(swap_id).await?;
+            let swap = bob::Swap::from_db(
+                self.db.clone(),
+                swap_id,
+                parts.bitcoin_wallet.clone(),
+                parts.monero_wallets.clone(),
+                self.env_config,
+                swap_handle,
+                monero_receive_pool,
+            )
+            .await?
+            .with_event_emitter(Some(self.handle.clone()));
+
+            self.run(swap_id, swap).await;
+            resumed.push(swap_id);
+        }
+        Ok(resumed)
+    }
+
+    async fn is_running(&self, swap_id: Uuid) -> bool {
+        self.running
+            .lock()
+            .await
+            .get(&swap_id)
+            .is_some_and(|task| !task.is_finished())
+    }
+
+    async fn run(&self, swap_id: Uuid, swap: bob::Swap) {
+        let task = tokio::spawn(async move {
+            match bob::run(swap).await {
+                Ok(state) => tracing::info!(%swap_id, %state, "Swap finished"),
+                Err(e) => tracing::error!(%swap_id, "Swap stopped with an error: {e:#}"),
+            }
+            crate::bridge::notify("swap_stopped", &json!({ "swapId": swap_id }));
+        });
+        self.running.lock().await.insert(swap_id, task);
+    }
+
+    pub async fn list_swaps(&self) -> Result<Value> {
+        let running = self.running.lock().await;
+        let mut swaps = Vec::new();
+        for (peer_id, swap_id, state) in self.db.all().await? {
+            let State::Bob(bob_state) = state else { continue };
+            swaps.push(json!({
+                "swapId": swap_id,
+                "peerId": peer_id.to_string(),
+                "state": bob_state.to_string(),
+                "complete": bob::is_complete(&bob_state),
+                "running": running.get(&swap_id).is_some_and(|t| !t.is_finished()),
+            }));
+        }
+        Ok(Value::Array(swaps))
+    }
+
+    /// Takes the BTC back once the cancel timelock has expired. Fails before then.
+    pub async fn cancel_and_refund(&self, swap_id: Uuid) -> Result<String> {
+        let parts = self.parts()?;
+        if self.is_running(swap_id).await {
+            bail!("The swap is still running; it refunds by itself once the timelock allows");
+        }
+        let state: BobState =
+            swap::cli::cancel_and_refund(swap_id, parts.bitcoin_wallet.clone(), self.db.clone()).await?;
+        Ok(state.to_string())
     }
 }

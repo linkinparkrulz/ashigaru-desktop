@@ -1,0 +1,176 @@
+diff --git a/bitcoin-wallet/src/wallet.rs b/bitcoin-wallet/src/wallet.rs
+index b031278..294f56d 100644
+--- a/bitcoin-wallet/src/wallet.rs
++++ b/bitcoin-wallet/src/wallet.rs
+@@ -808,79 +808,9 @@ impl Wallet {
+     }
+ 
+     pub async fn subscribe_to(&self, tx: Box<dyn Watchable>) -> Subscription {
+-        let txid = tx.id();
+-        let script = tx.script();
+-        let idle_timeout = self.electrum_client.subscription_idle_timeout;
+-
+-        let initial_status = match self.electrum_client.status_of_script(&tx, false).await {
+-            Ok(status) => Some(status),
+-            Err(err) => {
+-                tracing::debug!(%txid, %err, "Failed to get initial status for subscription. We won't notify the caller and will try again later.");
+-                None
+-            }
+-        };
+-
+-        let mut subscriptions = self.electrum_client.subscriptions.lock().await;
+-
+-        let sender = subscriptions
+-            .entry((txid, script.clone()))
+-            .or_insert_with(|| {
+-                let (sender, _) = watch::channel(ScriptStatus::Unseen);
+-                if let Some(status) = initial_status {
+-                    sender.send_replace(status);
+-                }
+-                let client = self.electrum_client.clone();
+-                let task_sender = sender.clone();
+-
+-                tokio::spawn(async move {
+-                    let mut last_status = initial_status;
+-                    let mut idle_since: Option<Instant> = None;
+-
+-                    loop {
+-                        let new_status = client
+-                            .status_of_script(&tx, false)
+-                            .await
+-                            .unwrap_or_else(|error| {
+-                                tracing::warn!(%txid, error = ?error, "Failed to get status of script");
+-                                ScriptStatus::Retrying
+-                            });
+-
+-                        if new_status != ScriptStatus::Retrying {
+-                            last_status = Some(trace_status_change(txid, last_status, new_status));
+-                            let _ = task_sender.send(new_status);
+-                        }
+-
+-                        if task_sender.receiver_count() > 0 {
+-                            idle_since = None;
+-                        } else if idle_since.get_or_insert_with(Instant::now).elapsed()
+-                            >= idle_timeout
+-                        {
+-                            let mut subscriptions = client.subscriptions.lock().await;
+-
+-                            if subscriptions
+-                                .get(&(txid, script.clone()))
+-                                .is_some_and(|sender| sender.receiver_count() == 0)
+-                            {
+-                                tracing::debug!(%txid, ?idle_timeout, "No subscribers for transaction status, dropping subscription");
+-                                subscriptions.remove(&(txid, script));
+-                                return;
+-                            }
+-
+-                            idle_since = None;
+-                        }
+-
+-                        tokio::time::sleep(Duration::from_secs(5)).await;
+-                    }
+-                }.instrument(debug_span!("BitcoinWalletSubscription")));
+-
+-                sender
+-            });
+-
+-        Subscription {
+-            receiver: sender.subscribe(),
+-            finality_confirmations: self.finality_confirmations,
+-            txid,
+-        }
++        self.electrum_client
++            .subscribe_to(tx, self.finality_confirmations)
++            .await
+     }
+ 
+     pub async fn active_subscription_count(&self) -> usize {
+@@ -1872,6 +1802,88 @@ impl Client {
+         Ok(())
+     }
+ 
++    /// Watches a transaction's status, polling Electrum until nobody is listening any more.
++    /// Usable without a bdk wallet, e.g. by an application that funds and signs elsewhere.
++    pub async fn subscribe_to(
++        self: &Arc<Self>,
++        tx: Box<dyn Watchable>,
++        finality_confirmations: u32,
++    ) -> Subscription {
++        let txid = tx.id();
++        let script = tx.script();
++        let idle_timeout = self.subscription_idle_timeout;
++
++        let initial_status = match self.status_of_script(&tx, false).await {
++            Ok(status) => Some(status),
++            Err(err) => {
++                tracing::debug!(%txid, %err, "Failed to get initial status for subscription. We won't notify the caller and will try again later.");
++                None
++            }
++        };
++
++        let mut subscriptions = self.subscriptions.lock().await;
++
++        let sender = subscriptions
++            .entry((txid, script.clone()))
++            .or_insert_with(|| {
++                let (sender, _) = watch::channel(ScriptStatus::Unseen);
++                if let Some(status) = initial_status {
++                    sender.send_replace(status);
++                }
++                let client = Arc::clone(self);
++                let task_sender = sender.clone();
++
++                tokio::spawn(async move {
++                    let mut last_status = initial_status;
++                    let mut idle_since: Option<Instant> = None;
++
++                    loop {
++                        let new_status = client
++                            .status_of_script(&tx, false)
++                            .await
++                            .unwrap_or_else(|error| {
++                                tracing::warn!(%txid, error = ?error, "Failed to get status of script");
++                                ScriptStatus::Retrying
++                            });
++
++                        if new_status != ScriptStatus::Retrying {
++                            last_status = Some(trace_status_change(txid, last_status, new_status));
++                            let _ = task_sender.send(new_status);
++                        }
++
++                        if task_sender.receiver_count() > 0 {
++                            idle_since = None;
++                        } else if idle_since.get_or_insert_with(Instant::now).elapsed()
++                            >= idle_timeout
++                        {
++                            let mut subscriptions = client.subscriptions.lock().await;
++
++                            if subscriptions
++                                .get(&(txid, script.clone()))
++                                .is_some_and(|sender| sender.receiver_count() == 0)
++                            {
++                                tracing::debug!(%txid, ?idle_timeout, "No subscribers for transaction status, dropping subscription");
++                                subscriptions.remove(&(txid, script));
++                                return;
++                            }
++
++                            idle_since = None;
++                        }
++
++                        tokio::time::sleep(Duration::from_secs(5)).await;
++                    }
++                }.instrument(debug_span!("BitcoinWalletSubscription")));
++
++                sender
++            });
++
++        Subscription {
++            receiver: sender.subscribe(),
++            finality_confirmations,
++            txid,
++        }
++    }
++
+     /// Broadcast a transaction to all known electrum servers in parallel.
+     /// Returns the results from all servers - at least one success indicates successful broadcast.
+     pub async fn transaction_broadcast_all(
