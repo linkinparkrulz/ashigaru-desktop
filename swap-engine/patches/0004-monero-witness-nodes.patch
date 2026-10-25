@@ -1,0 +1,272 @@
+diff --git a/monero-wallet/src/lib.rs b/monero-wallet/src/lib.rs
+index 8a62752..36c3b01 100644
+--- a/monero-wallet/src/lib.rs
++++ b/monero-wallet/src/lib.rs
+@@ -2,6 +2,7 @@ pub mod compat;
+ pub mod construction_throttle;
+ pub mod listener;
+ pub mod wallets;
++pub mod witness;
+ 
+ pub use listener::*;
+ pub use wallets::*;
+diff --git a/monero-wallet/src/witness.rs b/monero-wallet/src/witness.rs
+new file mode 100644
+index 0000000..0349920
+--- /dev/null
++++ b/monero-wallet/src/witness.rs
+@@ -0,0 +1,80 @@
++//! Ashigaru: a second opinion on the Monero lock transaction.
++//!
++//! The taker only releases its side of a swap once its Monero node says the maker locked the agreed
++//! XMR. A node that lies could make it release the BTC for nothing. A witness is another node asked
++//! the same two questions - does the transaction pay the shared address the agreed amount, and has
++//! it got enough confirmations - and every witness has to agree with the main node.
++use anyhow::{Context, Result};
++use monero_daemon_rpc::MoneroDaemon;
++use monero_simple_request_rpc::SimpleRequestTransport;
++use std::time::Duration;
++use swap_core::monero::primitives::{Amount, PrivateViewKey, TxHash};
++use tokio::sync::OnceCell;
++use zeroize::Zeroizing;
++
++use crate::compat::tx_hash_to_bytes;
++
++const POLL_INTERVAL: Duration = Duration::from_secs(10);
++
++pub struct DaemonWitness {
++    url: String,
++    client: OnceCell<MoneroDaemon<SimpleRequestTransport>>,
++}
++
++impl DaemonWitness {
++    /// `url` is the node's RPC address, e.g. http://127.0.0.1:18081
++    pub fn new(url: String) -> Self {
++        Self {
++            url,
++            client: OnceCell::new(),
++        }
++    }
++
++    pub fn url(&self) -> &str {
++        &self.url
++    }
++
++    async fn rpc_client(&self) -> Result<MoneroDaemon<SimpleRequestTransport>> {
++        self.client
++            .get_or_try_init(|| async {
++                SimpleRequestTransport::new(self.url.clone())
++                    .await
++                    .context("Failed to connect to witness Monero daemon")
++            })
++            .await
++            .cloned()
++    }
++
++    /// Same check as [`crate::Wallets::verify_transfer`], against this node
++    pub async fn verify_transfer(
++        &self,
++        tx_hash: &TxHash,
++        public_spend_key: monero_oxide_ext::PublicKey,
++        private_view_key: PrivateViewKey,
++        expected_amount: Amount,
++    ) -> Result<bool> {
++        let rpc_client = self.rpc_client().await?;
++        let tx_id = tx_hash_to_bytes(tx_hash)?;
++
++        monero_wallet_ng::verify::verify_transfer(
++            &rpc_client,
++            tx_id,
++            public_spend_key.decompress(),
++            Zeroizing::new(private_view_key.0.scalar),
++            expected_amount.as_pico(),
++        )
++        .await
++        .with_context(|| format!("Witness {} could not verify the transfer", self.url))
++    }
++
++    /// Same wait as [`crate::Wallets::wait_until_confirmed`], against this node
++    pub async fn wait_until_confirmed(&self, tx_hash: &TxHash, confirmation_target: u64) -> Result<()> {
++        let rpc_client = self.rpc_client().await?;
++        let tx_id = tx_hash_to_bytes(tx_hash)?;
++
++        monero_wallet_ng::confirmations::subscribe(rpc_client, tx_id, POLL_INTERVAL)
++            .wait_until_confirmed(confirmation_target)
++            .await
++            .with_context(|| format!("Witness {} stopped before the transfer confirmed", self.url))
++    }
++}
+diff --git a/swap/src/protocol/bob.rs b/swap/src/protocol/bob.rs
+index 7adbe6b..6c127a9 100644
+--- a/swap/src/protocol/bob.rs
++++ b/swap/src/protocol/bob.rs
+@@ -29,6 +29,8 @@ pub struct Swap {
+     pub id: Uuid,
+     pub monero_receive_pool: MoneroAddressPool,
+     pub event_emitter: Option<TauriHandle>,
++    /// Ashigaru: further Monero nodes that must agree the XMR is locked before Bitcoin is released
++    pub monero_witnesses: Vec<Arc<monero::wallet::witness::DaemonWitness>>,
+ }
+ 
+ impl Swap {
+@@ -59,6 +61,7 @@ impl Swap {
+             id,
+             monero_receive_pool,
+             event_emitter: None,
++            monero_witnesses: Vec::new(),
+         }
+     }
+ 
+@@ -84,6 +87,7 @@ impl Swap {
+             id,
+             monero_receive_pool,
+             event_emitter: None,
++            monero_witnesses: Vec::new(),
+         })
+     }
+ 
+@@ -91,4 +95,12 @@ impl Swap {
+         self.event_emitter = event_emitter;
+         self
+     }
++
++    pub fn with_monero_witnesses(
++        mut self,
++        monero_witnesses: Vec<Arc<monero::wallet::witness::DaemonWitness>>,
++    ) -> Self {
++        self.monero_witnesses = monero_witnesses;
++        self
++    }
+ }
+diff --git a/swap/src/protocol/bob/swap.rs b/swap/src/protocol/bob/swap.rs
+index 4dd88b7..6d1582b 100644
+--- a/swap/src/protocol/bob/swap.rs
++++ b/swap/src/protocol/bob/swap.rs
+@@ -92,6 +92,7 @@ pub async fn run_until(
+             swap.monero_receive_pool.clone(),
+             swap.event_emitter.clone(),
+             swap.env_config,
++            swap.monero_witnesses.clone(),
+         )
+         .await?;
+ 
+@@ -136,6 +137,7 @@ async fn next_state(
+     monero_receive_pool: MoneroAddressPool,
+     event_emitter: Option<TauriHandle>,
+     env_config: env::Config,
++    monero_witnesses: Vec<Arc<monero::wallet::witness::DaemonWitness>>,
+ ) -> Result<BobState> {
+     if let Some(substate) = state.substate() {
+         tracing::debug!(%state, %substate, "Advancing state");
+@@ -511,6 +513,18 @@ async fn next_state(
+             select! {
+                 // Wait until we have verified the Monero lock transaction candidate
+                 validity = xmr_lock_transaction_verification => {
++                    // Ashigaru: the main node's word is not enough; every witness node must agree
++                    let validity = match validity {
++                        XmrLockTransactionValidity::Valid { .. } => {
++                            if witnesses_verify_xmr_lock(&state, &monero_witnesses, &lock_transfer_proof.tx_hash()).await {
++                                validity
++                            } else {
++                                XmrLockTransactionValidity::Invalid
++                            }
++                        }
++                        invalid => invalid,
++                    };
++
+                     if let XmrLockTransactionValidity::Valid { hermes_amount } = validity {
+                         tracing::info!(txid = %lock_transfer_proof.tx_hash(), "Monero lock transaction is valid");
+ 
+@@ -598,8 +612,17 @@ async fn next_state(
+             );
+ 
+             select! {
+-                // Wait for the Monero lock transaction to be fully confirmed
+-                _ = wait_for_confirmation => {
++                // Wait for the Monero lock transaction to be fully confirmed, on every witness too
++                _ = async {
++                    let confirmed = wait_for_confirmation.await;
++                    witnesses_wait_for_xmr_lock_confirmation(
++                        &monero_witnesses,
++                        &lock_transfer_proof.tx_hash(),
++                        env_config.monero_double_spend_safe_confirmations,
++                    )
++                    .await;
++                    confirmed
++                } => {
+                     BobState::XmrLocked(
+                         state.xmr_locked(monero_wallet_restore_blockheight, lock_transfer_proof.clone(), hermes_amount)
+                     )
+@@ -1876,3 +1899,72 @@ async fn advance_hermes(
+     .await
+     .expect("we never stop retrying to advance the Hermes channel")
+ }
++
++/// Ashigaru: asks every witness node whether the lock transaction pays the shared address the
++/// agreed amount. A witness that cannot be reached is asked again until it answers, so an outage
++/// stalls the swap (and it is cancelled and refunded at the timelock) rather than skipping the check.
++async fn witnesses_verify_xmr_lock(
++    state: &State3,
++    witnesses: &[Arc<monero::wallet::witness::DaemonWitness>],
++    tx_hash: &monero::TxHash,
++) -> bool {
++    let (public_spend_key, private_view_key) = state.xmr_view_keys();
++    let expected_amount = state.xmr_amount();
++
++    for witness in witnesses {
++        let valid = retry(
++            "Verifying Monero lock transaction with a witness node",
++            || {
++                let witness = witness.clone();
++                let tx_hash = tx_hash.clone();
++                let private_view_key = private_view_key.clone();
++
++                async move {
++                    witness
++                        .verify_transfer(&tx_hash, public_spend_key, private_view_key, expected_amount)
++                        .await
++                        .map_err(backoff::Error::transient)
++                }
++            },
++            None,
++            None,
++        )
++        .await
++        .expect("we never stop retrying to verify with a witness");
++
++        if !valid {
++            tracing::warn!(witness = %witness.url(), txid = %tx_hash, "A witness node does not see the Monero lock transaction paying the agreed amount");
++            return false;
++        }
++    }
++
++    true
++}
++
++/// Ashigaru: waits until every witness node also sees the lock transaction fully confirmed
++async fn witnesses_wait_for_xmr_lock_confirmation(
++    witnesses: &[Arc<monero::wallet::witness::DaemonWitness>],
++    tx_hash: &monero::TxHash,
++    confirmation_target: u64,
++) {
++    for witness in witnesses {
++        let _: () = retry(
++            "Waiting for a witness node to confirm the Monero lock transaction",
++            || {
++                let witness = witness.clone();
++                let tx_hash = tx_hash.clone();
++
++                async move {
++                    witness
++                        .wait_until_confirmed(&tx_hash, confirmation_target)
++                        .await
++                        .map_err(backoff::Error::transient)
++                }
++            },
++            None,
++            None,
++        )
++        .await
++        .expect("we never stop retrying to confirm with a witness");
++    }
++}

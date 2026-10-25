@@ -86,16 +86,36 @@ pub extern "C" fn as_respond(request_id: u64, answer_json: *const c_char) -> *mu
     })
 }
 
-/// Starts the engine. Calling it again replaces a running engine.
+/// Starts the engine. Calling it again replaces a running engine: the old one is stopped first.
 #[unsafe(no_mangle)]
 pub extern "C" fn as_init(config_json: *const c_char) -> *mut c_char {
     call(|| {
         let config: EngineConfig =
             serde_json::from_str(&read_str(config_json)?).context("Bad engine config")?;
+        stop_engine()?;
         let engine = runtime().block_on(Engine::start(config))?;
         *ENGINE.lock().map_err(|_| anyhow!("Engine lock poisoned"))? = Some(Arc::new(engine));
         Ok(Value::Null)
     })
+}
+
+/// Stops the engine, e.g. when swaps are turned off or before it takes a new identity. Unfinished
+/// swaps stop where they are and resume from their database when an engine using it starts again.
+#[unsafe(no_mangle)]
+pub extern "C" fn as_shutdown() -> *mut c_char {
+    call(|| {
+        stop_engine()?;
+        Ok(Value::Null)
+    })
+}
+
+fn stop_engine() -> Result<()> {
+    let old = ENGINE.lock().map_err(|_| anyhow!("Engine lock poisoned"))?.take();
+    if let Some(old) = old {
+        // Aborts its tasks once nothing else holds it; a call still running keeps it a moment longer
+        drop(old);
+    }
+    Ok(())
 }
 
 /// Quotes discovered so far, as eigenwallet's `QuoteWithAddress` list.

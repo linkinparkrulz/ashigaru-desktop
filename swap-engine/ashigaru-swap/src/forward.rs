@@ -13,20 +13,22 @@ use std::net::SocketAddr;
 
 use anyhow::{Context, Result};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::task::JoinHandle;
 
 /// Starts relaying a fresh localhost port to `target_host:target_port` through the SOCKS proxy.
-/// Returns the local address to give the engine as its Monero node. Runs until the runtime stops.
+/// Returns the local address to give the engine as its Monero node, and the relay's task: it runs
+/// until aborted or the runtime stops.
 pub async fn start_tcp_relay(
     socks_proxy: String,
     target_host: String,
     target_port: u16,
-) -> Result<SocketAddr> {
+) -> Result<(SocketAddr, JoinHandle<()>)> {
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .context("Could not open the local Monero relay port")?;
     let local = listener.local_addr()?;
 
-    tokio::spawn(async move {
+    let task = tokio::spawn(async move {
         loop {
             let (inbound, _) = match listener.accept().await {
                 Ok(connection) => connection,
@@ -45,7 +47,7 @@ pub async fn start_tcp_relay(
         }
     });
 
-    Ok(local)
+    Ok((local, task))
 }
 
 async fn relay(
@@ -108,7 +110,7 @@ mod tests {
         });
 
         let (proxy, requested) = fake_socks(echo_addr).await;
-        let local = start_tcp_relay(proxy.to_string(), "examplenode.onion".into(), 18089)
+        let (local, _relay) = start_tcp_relay(proxy.to_string(), "examplenode.onion".into(), 18089)
             .await
             .unwrap();
 

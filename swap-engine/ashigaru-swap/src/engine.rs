@@ -15,6 +15,7 @@ use serde_json::{Value, json};
 use swap::cli::api::tauri_bindings::TauriHandle;
 use swap::cli::{Behaviour, EventLoop, EventLoopHandle, QuoteWithAddress};
 use swap::database::{AccessMode, open_db};
+use swap::monero::wallet::witness::DaemonWitness;
 use swap::monero::{Daemon, Wallets};
 use swap::network::rendezvous::XmrBtcNamespace;
 use swap::network::transport::authenticate_and_multiplex;
@@ -38,12 +39,13 @@ const IDLE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(60 * 2);
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EngineConfig {
-    /// Swap database and state live here, one directory per Ashigaru wallet
+    /// Swap database and state live here, one directory per engine identity
     pub data_dir: PathBuf,
     /// Ashigaru's Tor SOCKS5 proxy. Required: there is no direct-connection mode.
     pub socks_host: String,
     pub socks_port: u16,
-    /// 32-byte swap seed, hex. Derived by Ashigaru from the wallet seed so swaps can be recovered.
+    /// 32-byte engine identity, hex. Ashigaru picks it at random and keeps it beside the swap
+    /// database; a swap's own keys are random too and live in that database, not in any seed.
     pub seed_hex: String,
     /// Rendezvous points to discover makers through. Empty uses eigenwallet's defaults.
     #[serde(default)]
@@ -58,8 +60,10 @@ pub struct EngineConfig {
 pub struct SwapConfig {
     /// Electrum servers, e.g. `tcp://host.onion:50001`. Reached through the SOCKS proxy.
     pub electrum_urls: Vec<String>,
-    /// Monero node `host:port`, reached through the SOCKS proxy over plain HTTP: use an onion node.
-    pub monero_node: String,
+    /// Monero nodes `host:port`, reached through the SOCKS proxy over plain HTTP: onion nodes.
+    /// The first is the engine's node; every other one is a witness that must agree the maker's
+    /// XMR is locked before the engine releases its side.
+    pub monero_nodes: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -77,6 +81,7 @@ pub struct StartSwap {
 struct SwapParts {
     bitcoin_wallet: Arc<dyn bitcoin_wallet::BitcoinWallet>,
     monero_wallets: Arc<Wallets>,
+    monero_witnesses: Vec<Arc<DaemonWitness>>,
 }
 
 pub struct Engine {
@@ -86,6 +91,21 @@ pub struct Engine {
     handle: TauriHandle,
     swap: Option<SwapParts>,
     running: Mutex<HashMap<Uuid, JoinHandle<()>>>,
+    /// The event loop and the Tor relays, stopped with the engine
+    tasks: Vec<JoinHandle<()>>,
+}
+
+impl Drop for Engine {
+    /// Stops everything the engine started, so a new engine (a new identity) can take its place.
+    /// A swap stopped here resumes from its database the next time an engine with that database starts.
+    fn drop(&mut self) {
+        for task in self.running.get_mut().values() {
+            task.abort();
+        }
+        for task in &self.tasks {
+            task.abort();
+        }
+    }
 }
 
 impl Engine {
@@ -106,8 +126,11 @@ impl Engine {
         let env_config = Mainnet::get_config();
         let handle = TauriHandle::embedded(Arc::new(AshigaruSink));
 
+        let mut tasks = Vec::new();
         let swap = match &config.swap {
-            Some(swap_config) => Some(Self::swap_parts(swap_config, &config.data_dir, &socks_proxy, env_config).await?),
+            Some(swap_config) => {
+                Some(Self::swap_parts(swap_config, &config.data_dir, &socks_proxy, env_config, &mut tasks).await?)
+            }
             None => None,
         };
         let wallet: Arc<dyn bitcoin_wallet::BitcoinWallet> = match &swap {
@@ -174,7 +197,7 @@ impl Engine {
 
         let (event_loop, event_loop_handle) =
             EventLoop::new(swarm, db.clone(), Some(handle.clone()), None)?;
-        tokio::spawn(event_loop.run());
+        tasks.push(tokio::spawn(event_loop.run()));
 
         Ok(Self {
             event_loop: Mutex::new(event_loop_handle),
@@ -183,6 +206,7 @@ impl Engine {
             handle,
             swap,
             running: Mutex::new(HashMap::new()),
+            tasks,
         })
     }
 
@@ -191,6 +215,7 @@ impl Engine {
         data_dir: &std::path::Path,
         socks_proxy: &str,
         env_config: EnvConfig,
+        tasks: &mut Vec<JoinHandle<()>>,
     ) -> Result<SwapParts> {
         if config.electrum_urls.is_empty() {
             bail!("No Electrum server configured");
@@ -207,13 +232,25 @@ impl Engine {
             env_config.bitcoin_finality_confirmations,
         ));
 
-        // The Monero wallet code cannot use a proxy, so it is pointed at a local relay into Tor
-        let (node_host, node_port) = config
-            .monero_node
-            .rsplit_once(':')
-            .context("Monero node must be host:port")?;
-        let node_port: u16 = node_port.parse().context("Monero node port is not a number")?;
-        let relay = forward::start_tcp_relay(socks_proxy.to_string(), node_host.to_string(), node_port).await?;
+        // The Monero wallet code cannot use a proxy, so each node is reached through a local relay
+        // into Tor
+        if config.monero_nodes.is_empty() {
+            bail!("No Monero node configured");
+        }
+        let mut relays = Vec::new();
+        for node in &config.monero_nodes {
+            let (node_host, node_port) = node.rsplit_once(':').context("Monero node must be host:port")?;
+            let node_port: u16 = node_port.parse().context("Monero node port is not a number")?;
+            let (relay, task) =
+                forward::start_tcp_relay(socks_proxy.to_string(), node_host.to_string(), node_port).await?;
+            tasks.push(task);
+            relays.push(relay);
+        }
+        let relay = relays[0];
+        let monero_witnesses = relays[1..]
+            .iter()
+            .map(|witness| Arc::new(DaemonWitness::new(format!("http://{witness}"))))
+            .collect();
         let daemon = Daemon {
             hostname: relay.ip().to_string(),
             port: relay.port(),
@@ -239,6 +276,7 @@ impl Engine {
         Ok(SwapParts {
             bitcoin_wallet,
             monero_wallets,
+            monero_witnesses,
         })
     }
 
@@ -297,7 +335,8 @@ impl Engine {
             bitcoin::Amount::from_sat(request.btc_sats),
             bitcoin::Amount::from_sat(request.tx_lock_fee_sats),
         )
-        .with_event_emitter(Some(self.handle.clone()));
+        .with_event_emitter(Some(self.handle.clone()))
+        .with_monero_witnesses(parts.monero_witnesses.clone());
 
         self.run(swap_id, swap).await;
         Ok(swap_id)
@@ -332,7 +371,8 @@ impl Engine {
                 monero_receive_pool,
             )
             .await?
-            .with_event_emitter(Some(self.handle.clone()));
+            .with_event_emitter(Some(self.handle.clone()))
+            .with_monero_witnesses(parts.monero_witnesses.clone());
 
             self.run(swap_id, swap).await;
             resumed.push(swap_id);
