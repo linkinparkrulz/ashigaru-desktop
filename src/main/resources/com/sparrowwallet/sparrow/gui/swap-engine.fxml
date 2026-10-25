@@ -22,17 +22,34 @@
         <VBox spacing="3" HBox.hgrow="ALWAYS">
             <Label text="Swap Engine (experimental)" styleClass="verifier-hero-title"/>
             <Label minHeight="-Infinity" wrapText="true" styleClass="verifier-hero-sub"
-                   text="Developer preview of the Badbank to XMR swap engine. It finds eigenwallet makers and shows their quotes, over Ashigaru's Tor only. It cannot spend anything."/>
+                   text="Developer preview: swap Badbank BTC for XMR with eigenwallet makers, on mainnet, over Ashigaru's Tor only. Ashigaru asks before signing and again before anything is locked. Use small amounts."/>
         </VBox>
     </HBox>
 
+    <!-- Engine -->
     <FlowPane hgap="10" vgap="10" alignment="CENTER_LEFT">
         <Button minWidth="-Infinity" fx:id="chooseLibraryBtn" text="Choose Engine Library…" onAction="#onChooseLibrary" styleClass="secondary-btn"/>
+        <ComboBox fx:id="walletCombo" promptText="Wallet" prefWidth="200"/>
         <Button minWidth="-Infinity" fx:id="startBtn" text="Start Engine" onAction="#onStart" styleClass="primary-btn" disable="true"/>
         <Button minWidth="-Infinity" fx:id="refreshBtn" text="Refresh Quotes" onAction="#onRefresh" styleClass="secondary-btn" disable="true"/>
     </FlowPane>
 
-    <Label fx:id="statusLabel" minHeight="-Infinity" wrapText="true" styleClass="field-label" text="Choose the engine library built by the Swap engine workflow."/>
+    <!-- Swap -->
+    <FlowPane hgap="10" vgap="10" alignment="CENTER_LEFT">
+        <ComboBox fx:id="makerCombo" promptText="Maker" prefWidth="420" disable="true"/>
+        <TextField fx:id="amountField" promptText="BTC amount" prefWidth="140" disable="true"/>
+        <TextField fx:id="xmrAddressField" promptText="Your XMR address" prefWidth="420" disable="true"/>
+        <Button minWidth="-Infinity" fx:id="swapBtn" text="Start Swap" onAction="#onStartSwap" styleClass="primary-btn" disable="true"/>
+    </FlowPane>
 
-    <TextArea fx:id="quotesArea" editable="false" wrapText="false" styleClass="mono-area" VBox.vgrow="ALWAYS" minHeight="280"/>
+    <!-- Swaps -->
+    <FlowPane hgap="10" vgap="10" alignment="CENTER_LEFT">
+        <Button minWidth="-Infinity" fx:id="listSwapsBtn" text="List Swaps" onAction="#onListSwaps" styleClass="secondary-btn" disable="true"/>
+        <TextField fx:id="swapIdField" promptText="Swap id" prefWidth="300" disable="true"/>
+        <Button minWidth="-Infinity" fx:id="refundBtn" text="Cancel and Refund" onAction="#onRefund" styleClass="secondary-btn" disable="true"/>
+    </FlowPane>
+
+    <Label fx:id="statusLabel" minHeight="-Infinity" wrapText="true" styleClass="field-label" text="Choose the engine library built by the Swap engine workflow, and the wallet whose Badbank funds the swaps."/>
+
+    <TextArea fx:id="logArea" editable="false" wrapText="true" styleClass="mono-area" VBox.vgrow="ALWAYS" minHeight="280"/>
 </VBox>

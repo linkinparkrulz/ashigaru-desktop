@@ -196,6 +196,11 @@ public class AshigaruGui extends Application {
             splashStage.close();
         }
 
+        mainStage.setOnCloseRequest(event -> {
+            if(SwapEngineController.isSwapActive() && !SwapEngineController.confirmQuitDuringSwap(mainStage)) {
+                event.consume();
+            }
+        });
         mainStage.show();
         //Must follow show(): JavaFX only centres the stage, and only knows its decorated size, once
         //it is on screen. Before that getX/getY/getHeight have nothing useful to clamp.

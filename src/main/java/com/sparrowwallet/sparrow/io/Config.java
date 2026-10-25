@@ -67,6 +67,10 @@ public class Config {
     //Unlocks the experimental swap engine tool. There is no UI for this: it is set by editing the config
     //file, so the work-in-progress Badbank to XMR swap stays out of sight of normal users.
     private boolean swapEngineExperimental = false;
+    //Largest swap the experimental engine will start, in sats, while it is being proven on mainnet
+    private long swapMaxSats = 1_000_000L;
+    //host:port of the Monero node the swap engine uses, reached through Tor over plain HTTP - an onion node
+    private String swapMoneroNode;
     private List<File> recentWalletFiles;
     private Integer keyDerivationPeriod;
     private long dustAttackThreshold = DUST_ATTACK_THRESHOLD_SATS;
@@ -188,6 +192,14 @@ public class Config {
 
     public boolean isSwapEngineExperimental() {
         return swapEngineExperimental;
+    }
+
+    public long getSwapMaxSats() {
+        return swapMaxSats;
+    }
+
+    public String getSwapMoneroNode() {
+        return swapMoneroNode;
     }
 
     public BitcoinUnit getBitcoinUnit() {
