@@ -14,6 +14,7 @@ import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.UnitFormat;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.Config;
+import com.sparrowwallet.sparrow.swap.SwapService;
 import com.sparrowwallet.sparrow.wallet.*;
 import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolException;
@@ -44,6 +45,7 @@ public class AshigaruWalletController implements Initializable {
     @FXML private Label accountNameLabel;
     @FXML private Button refreshBtn;
     @FXML private Button receiveBtn;
+    @FXML private Button swapBtn;
     @FXML private Button receiveCta;
     @FXML private TabPane accountTabs;
     @FXML private Label balanceLabel;
@@ -252,6 +254,9 @@ public class AshigaruWalletController implements Initializable {
         boolean isBadbank = wallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_BADBANK;
         badbankInfoBar.setVisible(isBadbank);
         badbankInfoBar.setManaged(isBadbank);
+        boolean canSwap = isBadbank && SwapService.get().isEnabled();
+        swapBtn.setVisible(canSwap);
+        swapBtn.setManaged(canSwap);
 
         // Buttons
         bindWhirlpoolState(wallet);
@@ -483,6 +488,13 @@ public class AshigaruWalletController implements Initializable {
     @FXML
     private void onReceiveCta() {
         onReceive();
+    }
+
+    @FXML
+    private void onSwap() {
+        if(currentWalletForm != null) {
+            SwapController.show(currentWalletForm, swapBtn.getScene().getWindow());
+        }
     }
 
     @FXML

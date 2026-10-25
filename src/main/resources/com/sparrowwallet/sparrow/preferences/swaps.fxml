@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import tornadofx.control.Form?>
+<?import tornadofx.control.Fieldset?>
+<?import tornadofx.control.Field?>
+<?import com.sparrowwallet.sparrow.control.UnlabeledToggleSwitch?>
+<?import com.sparrowwallet.sparrow.control.HelpLabel?>
+
+<GridPane hgap="10.0" vgap="14.0" stylesheets="@../general.css, @../gui/ashigaru.css, @preferences.css" styleClass="preferences-detail" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.sparrowwallet.sparrow.preferences.SwapsPreferencesController">
+    <padding>
+        <Insets left="28.0" right="32.0" top="24.0" bottom="28.0" />
+    </padding>
+    <columnConstraints>
+        <ColumnConstraints percentWidth="100" />
+    </columnConstraints>
+
+    <VBox GridPane.columnIndex="0" GridPane.rowIndex="0" spacing="6">
+        <Label text="Swaps" styleClass="preferences-section-title" />
+        <Label text="Swap Badbank BTC for XMR with eigenwallet makers, through Ashigaru's Tor only. Experimental: mainnet, small amounts, and keep Ashigaru open until a swap finishes."
+               wrapText="true" minHeight="-Infinity" styleClass="preferences-section-subtitle" />
+    </VBox>
+
+    <Form GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="preferences-form">
+        <Fieldset inputGrow="SOMETIMES" text="Badbank to XMR" styleClass="wideLabelFieldSet">
+            <Field text="Enable swaps:">
+                <UnlabeledToggleSwitch fx:id="swapsEnabled" />
+                <HelpLabel helpText="Adds Swap to XMR to each wallet's Badbank account. A swap locks BTC in a shared output with a market maker; if the swap does not complete, it can be cancelled after about 4 hours and the BTC refunded to Badbank, which must be claimed within about 24 hours. Some makers keep part of a refund as an anti-spam deposit; Ashigaru shows this before you approve."/>
+            </Field>
+            <Field text="Monero node:">
+                <TextField fx:id="moneroNode" promptText="node.onion:18081" prefWidth="360" />
+                <HelpLabel helpText="Your own Monero node's onion address and RPC port, e.g. from your node box. It is reached through Tor over plain HTTP, so only onion addresses are accepted. The node learns which Monero transactions your swap wallet looks at, so use one you run."/>
+                <Label fx:id="moneroNodeError" text="Must be an onion host:port" styleClass="card-faint" visible="false" managed="false" />
+            </Field>
+            <Field text="Maximum swap:">
+                <TextField fx:id="maxSwap" promptText="0.01" prefWidth="140" />
+                <Label text="BTC" styleClass="field-label" />
+            </Field>
+            <Field text="Engine:">
+                <Label fx:id="engineStatus" wrapText="true" minHeight="-Infinity" styleClass="field-value" />
+            </Field>
+        </Fieldset>
+    </Form>
+
+</GridPane>

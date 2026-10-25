@@ -32,6 +32,8 @@ import java.util.function.Supplier;
 public class SwapEngine {
     private static final Logger log = LoggerFactory.getLogger(SwapEngine.class);
     private static final Gson GSON = new Gson();
+    //JNA finds libashigaru_swap.so / .dylib / ashigaru_swap.dll under <os>-<arch>/ in the resources
+    private static final String BUNDLED_NAME = "ashigaru_swap";
 
     private final SwapEngineLibrary library;
     private final ExecutorService requests = Executors.newCachedThreadPool(runnable -> {
@@ -46,6 +48,15 @@ public class SwapEngine {
 
     private SwapEngine(SwapEngineLibrary library) {
         this.library = library;
+    }
+
+    /** Loads the library bundled in the app's resources, which only swap builds include */
+    public static SwapEngine loadBundled() throws SwapEngineException {
+        try {
+            return new SwapEngine(Native.load(BUNDLED_NAME, SwapEngineLibrary.class));
+        } catch(UnsatisfiedLinkError e) {
+            throw new SwapEngineException("This build does not include the swap engine", e);
+        }
     }
 
     public static SwapEngine load(File libraryFile) throws SwapEngineException {

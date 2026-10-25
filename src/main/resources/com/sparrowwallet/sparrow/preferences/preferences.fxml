@@ -36,6 +36,14 @@
                     <PreferenceGroup fx:constant="UPDATE"/>
                 </userData>
             </ToggleButton>
+            <ToggleButton fx:id="swapsPrefsBtn" text="Swaps" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" maxWidth="Infinity" toggleGroup="$preferencesMenu">
+                <graphic>
+                    <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="EXCHANGE_ALT" />
+                </graphic>
+                <userData>
+                    <PreferenceGroup fx:constant="SWAPS"/>
+                </userData>
+            </ToggleButton>
         </VBox>
     </left>
     <center>

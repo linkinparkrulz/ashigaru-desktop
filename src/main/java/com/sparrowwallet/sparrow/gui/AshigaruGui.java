@@ -6,6 +6,7 @@ import com.sparrowwallet.sparrow.*;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Storage;
+import com.sparrowwallet.sparrow.swap.SwapService;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
@@ -33,7 +34,7 @@ import java.util.stream.Collectors;
 public class AshigaruGui extends Application {
     private static final Logger log = LoggerFactory.getLogger(AshigaruGui.class);
     /** -ag-bg in ashigaru.css. */
-    private static final Color APP_BACKGROUND = Color.web("#0E0F12");
+    static final Color APP_BACKGROUND = Color.web("#0E0F12");
     private static AshigaruGui instance;
 
     private Stage mainStage;
@@ -197,7 +198,7 @@ public class AshigaruGui extends Application {
         }
 
         mainStage.setOnCloseRequest(event -> {
-            if(SwapEngineController.isSwapActive() && !SwapEngineController.confirmQuitDuringSwap(mainStage)) {
+            if(SwapService.get().isSwapActive() && !SwapController.confirmQuitDuringSwap(mainStage)) {
                 event.consume();
             }
         });
@@ -323,6 +324,7 @@ public class AshigaruGui extends Application {
     }
 
     public static void removeWallet(String walletId) {
+        SwapService.get().walletUnloaded(walletId);
         WalletForm form = instance.walletForms.remove(walletId);
         if (form != null) {
             EventManager.get().unregister(form);

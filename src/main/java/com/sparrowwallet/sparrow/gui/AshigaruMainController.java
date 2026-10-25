@@ -23,6 +23,7 @@ import com.sparrowwallet.sparrow.io.StorageException;
 import com.sparrowwallet.sparrow.io.WalletAndKey;
 import com.sparrowwallet.sparrow.io.WalletLabels;
 import com.sparrowwallet.sparrow.net.TorUtils;
+import com.sparrowwallet.sparrow.swap.SwapService;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -1005,6 +1006,8 @@ public class AshigaruMainController implements Initializable {
                     childStorage.restorePublicKeysFromSeed(childWak.getWallet(), childWak.getKey());
                     AshigaruGui.addWallet(childStorage, childWak.getWallet());
                 }
+                //While the key is at hand: the swap identity comes from the wallet's private key
+                SwapService.get().walletLoaded(storage.getWalletId(wak.getWallet()), wak.getWallet(), wak.getKey());
             } catch (Exception ex) {
                 log.error("Error opening wallet", ex);
                 showError("Error Opening Wallet", ex.getMessage());

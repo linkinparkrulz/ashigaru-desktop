@@ -64,9 +64,10 @@ public class Config {
     private boolean signBsmsExports = false;
     private boolean preventSleep = false;
     private boolean tourShown = false;
-    //Unlocks the experimental swap engine tool. There is no UI for this: it is set by editing the config
-    //file, so the work-in-progress Badbank to XMR swap stays out of sight of normal users.
-    private boolean swapEngineExperimental = false;
+    //Badbank to XMR swaps through the embedded swap engine, only in builds that include it
+    private boolean swapsEnabled = false;
+    //Developer override: a swap engine library to load instead of the bundled one
+    private File swapEngineLibrary;
     //Largest swap the experimental engine will start, in sats, while it is being proven on mainnet
     private long swapMaxSats = 1_000_000L;
     //host:port of the Monero node the swap engine uses, reached through Tor over plain HTTP - an onion node
@@ -190,16 +191,35 @@ public class Config {
         flush();
     }
 
-    public boolean isSwapEngineExperimental() {
-        return swapEngineExperimental;
+    public boolean isSwapsEnabled() {
+        return swapsEnabled;
+    }
+
+    public void setSwapsEnabled(boolean swapsEnabled) {
+        this.swapsEnabled = swapsEnabled;
+        flush();
+    }
+
+    public File getSwapEngineLibrary() {
+        return swapEngineLibrary;
     }
 
     public long getSwapMaxSats() {
         return swapMaxSats;
     }
 
+    public void setSwapMaxSats(long swapMaxSats) {
+        this.swapMaxSats = swapMaxSats;
+        flush();
+    }
+
     public String getSwapMoneroNode() {
         return swapMoneroNode;
+    }
+
+    public void setSwapMoneroNode(String swapMoneroNode) {
+        this.swapMoneroNode = swapMoneroNode;
+        flush();
     }
 
     public BitcoinUnit getBitcoinUnit() {

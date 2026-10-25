@@ -4,12 +4,9 @@ name: Swap engine
 # Ashigaru ships on. The build environment mirrors eigenwallet's own release workflow
 # (.github/actions/setup-build-environment at the pinned revision), minus its GUI tooling.
 
+# Called by the Swap build workflow, which packages Ashigaru with the library inside
 on:
-  push:
-    branches: [xmr-swap]
-    paths:
-      - 'swap-engine/**'
-      - '.github/workflows/swap-engine.yaml'
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -126,6 +123,12 @@ jobs:
           echo "- \`${{ matrix.lib }}\`: $((size / 1024 / 1024)) MiB, build step $(( $(date +%s) - start ))s" >> "$GITHUB_STEP_SUMMARY"
           mkdir -p "$GITHUB_WORKSPACE/out"
           cp "$lib" "$GITHUB_WORKSPACE/out/"
+
+      # The Windows library must not need MinGW runtime DLLs that Windows does not have
+      - name: List DLL imports (Windows cross-build)
+        if: contains(matrix.target, 'windows')
+        run: |
+          echo "- imports: $(x86_64-w64-mingw32-objdump -p out/${{ matrix.lib }} | grep 'DLL Name' | awk '{print $3}' | sort -u | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload library
         uses: actions/upload-artifact@v4

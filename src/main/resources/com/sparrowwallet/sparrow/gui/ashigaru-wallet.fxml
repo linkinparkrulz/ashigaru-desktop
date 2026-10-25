@@ -16,6 +16,8 @@
         <Region HBox.hgrow="ALWAYS"/>
         <Button minWidth="-Infinity" fx:id="receiveBtn" text="⬇  Receive" onAction="#onReceive"
                 styleClass="primary-btn" visible="false" managed="false"/>
+        <Button minWidth="-Infinity" fx:id="swapBtn" text="⇄  Swap to XMR" onAction="#onSwap"
+                styleClass="primary-btn" visible="false" managed="false"/>
         <Button minWidth="-Infinity" fx:id="refreshBtn" text="⟳  Refresh" onAction="#onRefresh" styleClass="action-btn refresh-btn"/>
     </HBox>
 
