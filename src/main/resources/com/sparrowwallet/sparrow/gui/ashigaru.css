@@ -1212,3 +1212,52 @@
     -fx-background-radius: -ag-radius;
     -fx-padding: 10 12 10 12;
 }
+
+/* ── Tools → Swaps ───────────────────────────────────────────────────────── */
+.swaps-title {
+    -fx-font-size: 22px;
+    -fx-text-fill: -ag-text;
+}
+.swaps-stats .swaps-stat {
+    -fx-padding: 14 18 14 18;
+    -fx-spacing: 4;
+    -fx-border-color: transparent -ag-border transparent transparent;
+}
+.swaps-stat-label {
+    -fx-text-fill: -ag-text-dim;
+}
+.swaps-stat-value {
+    -fx-font-size: 18px;
+    -fx-text-fill: -ag-text;
+}
+.swaps-amount {
+    -fx-font-size: 20px;
+    -fx-text-fill: -ag-text;
+}
+.swaps-good { -fx-text-fill: -ag-green; }
+.swaps-bad  { -fx-text-fill: -ag-red; }
+.swaps-chart .chart-series-line {
+    -fx-stroke: -ag-red;
+    -fx-stroke-width: 2px;
+}
+.swaps-chart .chart-plot-background {
+    -fx-background-color: transparent;
+}
+.swaps-chart .chart-vertical-grid-lines {
+    -fx-stroke: transparent;
+}
+.swaps-chart .chart-horizontal-grid-lines {
+    -fx-stroke: -ag-border;
+}
+.swaps-chart .axis {
+    -fx-tick-label-fill: -ag-text-faint;
+}
+.swaps-depth .bar {
+    -fx-background-color: -ag-green;
+    -fx-background-insets: 0;
+    -fx-background-radius: 2;
+}
+.swaps-depth .track {
+    -fx-background-color: -ag-bg-raised;
+    -fx-background-radius: 2;
+}

@@ -6,8 +6,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.sparrowwallet.drongo.Network;
-import com.sparrowwallet.drongo.crypto.Key;
-import com.sparrowwallet.drongo.wallet.StandardAccount;
+import com.sparrowwallet.drongo.wallet.BlockTransactionHashIndex;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.EventManager;
@@ -17,8 +16,11 @@ import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Server;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.net.ServerType;
-import com.sparrowwallet.sparrow.wallet.WalletForm;
 import javafx.application.Platform;
+import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.ReadOnlyBooleanWrapper;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.concurrent.Service;
@@ -31,42 +33,44 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
- * The app's one swap engine. It starts by itself for an open wallet once Tor is ready, resumes that
- * wallet's unfinished swaps, and outlives the swap window, so closing the window never stops a swap.
+ * The app's one swap engine. It runs whenever swaps are on and Tor is up, whichever wallets are open,
+ * and resumes unfinished swaps when it starts. Swaps go one at a time, each spending one Badbank coin;
+ * the wallet is only involved until the lock is signed, after which the engine finishes or refunds
+ * the swap with keys of its own.
  *
- * <p>Each wallet's swap identity is derived while the wallet is being unlocked, when its key is
- * already at hand, so swapping never asks for the password a second time. Identities stay in memory
- * only, and are wiped when the wallet is locked.
+ * <p>The engine's identity is renewed whenever no swap is unfinished, so makers cannot link swaps.
  *
  * <p>Everything here runs on the JavaFX thread; engine calls go to background services.
  */
-public class SwapService {
+public class SwapService implements SwapHost {
     private static final Logger log = LoggerFactory.getLogger(SwapService.class);
     private static final int MAX_LOG_CHARS = 200_000;
     private static final int MAX_EVENT_CHARS = 600;
 
     private static SwapService instance;
 
+    /** A Badbank coin chosen in the wallet view, waiting for an offer to be taken */
+    public record Coin(String walletName, Wallet badbank, BlockTransactionHashIndex outpoint) {}
+
     private Boolean available;
     //The loaded library; it runs one engine at a time
     private SwapEngine engine;
-    //The wallet the engine is for, once asked to start, and once it has started
-    private String engineWalletId;
-    private String runningWalletId;
-    private String runningWalletName;
-    private BadbankSwapHost host;
     private boolean starting;
-    //Wallet ids by when they were unlocked, with their swap identities
-    private final Map<String, byte[]> seeds = Collections.synchronizedMap(new LinkedHashMap<>());
+    private final ReadOnlyBooleanWrapper running = new ReadOnlyBooleanWrapper(false);
+    private final ReadOnlyStringWrapper status = new ReadOnlyStringWrapper("Off.");
+    private final ReadOnlyObjectWrapper<Coin> coin = new ReadOnlyObjectWrapper<>();
+    //The swap being set up: the only one Ashigaru answers wallet requests for
+    private BadbankSwapHost activeHost;
     private final Set<String> runningSwaps = ConcurrentHashMap.newKeySet();
     private final StringBuilder logText = new StringBuilder();
     private final List<Consumer<String>> logListeners = new CopyOnWriteArrayList<>();
-    private final ReadOnlyStringWrapper status = new ReadOnlyStringWrapper("Swaps are off.");
+    private final List<Runnable> swapListeners = new CopyOnWriteArrayList<>();
 
     public static synchronized SwapService get() {
         if(instance == null) {
@@ -89,27 +93,19 @@ public class SwapService {
     }
 
     public boolean isSwapActive() {
-        return !runningSwaps.isEmpty();
+        return !runningSwaps.isEmpty() || activeHost != null;
     }
 
-    public boolean isRunningFor(String walletId) {
-        return walletId.equals(runningWalletId) && host != null;
-    }
-
-    public boolean hasIdentity(String walletId) {
-        return seeds.containsKey(walletId);
-    }
-
-    public BadbankSwapHost getHost() {
-        return host;
-    }
-
-    public String getEngineWalletName() {
-        return runningWalletName == null ? "another wallet" : runningWalletName;
+    public ReadOnlyBooleanProperty runningProperty() {
+        return running.getReadOnlyProperty();
     }
 
     public ReadOnlyStringProperty statusProperty() {
         return status.getReadOnlyProperty();
+    }
+
+    public ReadOnlyObjectProperty<Coin> coinProperty() {
+        return coin.getReadOnlyProperty();
     }
 
     public String getLog() {
@@ -124,155 +120,81 @@ public class SwapService {
         logListeners.remove(listener);
     }
 
-    /**
-     * Called as a master wallet finishes unlocking, with the key that decrypts it (null when it is not
-     * encrypted). Derives the wallet's swap identity and starts the engine if none is running.
-     */
-    public void walletLoaded(String walletId, Wallet wallet, Key key) {
-        if(!isEnabled() || wallet.getChildWallet(StandardAccount.WHIRLPOOL_BADBANK) == null) {
+    /** Told when a swap starts or stops, so a swap list can refresh */
+    public void addSwapListener(Runnable listener) {
+        swapListeners.add(listener);
+    }
+
+    public void removeSwapListener(Runnable listener) {
+        swapListeners.remove(listener);
+    }
+
+    /** Chooses the Badbank coin to swap next, from the wallet view */
+    public void chooseCoin(String walletName, Wallet badbank, BlockTransactionHashIndex outpoint) {
+        coin.set(new Coin(walletName, badbank, outpoint));
+    }
+
+    /** Called when a wallet is locked or removed: a coin chosen from it is forgotten */
+    public void walletUnloaded(Wallet wallet) {
+        Coin chosen = coin.get();
+        if(chosen != null && chosen.badbank().getMasterWallet() == wallet) {
+            coin.set(null);
+        }
+    }
+
+    /** Starts the engine if swaps are on and everything it needs is there; says why not otherwise */
+    public void startIfEnabled() {
+        if(!Config.get().isSwapsEnabled()) {
+            status.set("Off.");
             return;
         }
-
-        Wallet decrypted = wallet;
-        try {
-            if(wallet.isEncrypted()) {
-                if(key == null) {
-                    return;
-                }
-                decrypted = wallet.copy();
-                decrypted.decrypt(key);
-            }
-            seeds.put(walletId, SwapSeed.derive(decrypted.getKeystores().get(0)));
-        } catch(Exception e) {
-            log.error("Could not derive the swap identity for " + wallet.getMasterName(), e);
-            return;
-        } finally {
-            if(decrypted != wallet) {
-                decrypted.clearPrivate();
-            }
-        }
-
-        if(runningWalletId == null && !starting) {
-            start(walletId);
-        }
-    }
-
-    /** Called when a wallet is locked or removed: its identity is wiped from memory */
-    public void walletUnloaded(String walletId) {
-        byte[] seed = seeds.remove(walletId);
-        if(seed != null) {
-            Arrays.fill(seed, (byte)0);
-        }
-        //A running swap keeps its wallet: it still needs Badbank to sign and to receive a refund
-        if(walletId.equals(engineWalletId) && !isSwapActive()) {
-            engineWalletId = null;
-            runningWalletId = null;
-            host = null;
-            status.set("Stopped: the wallet was locked.");
-        }
-    }
-
-    /**
-     * Makes sure the engine runs for this wallet. Returns why it cannot, or null when it is running or
-     * being started.
-     */
-    public String ensureRunningFor(String walletId) {
-        if(walletId.equals(engineWalletId)) {
-            return runningWalletId == null && !starting ? start(walletId) : null;
-        }
-        if(isSwapActive()) {
-            return "A swap is running for " + getEngineWalletName() + ". Swaps for another wallet can start once it finishes.";
-        }
-        return start(walletId);
-    }
-
-    /** Starts the engine for the open wallet whose identity is known, e.g. after swaps were turned on */
-    public void startForOpenWallet() {
-        if(runningWalletId != null || starting) {
+        if(running.get() || starting) {
             return;
         }
-        Optional<String> walletId;
-        synchronized(seeds) {
-            walletId = seeds.keySet().stream().findFirst();
-        }
-        if(walletId.isPresent()) {
-            start(walletId.get());
-        } else {
-            status.set(problem(null));
-        }
-    }
-
-    private String start(String walletId) {
-        String problem = problem(walletId);
-        engineWalletId = walletId;
+        String problem = problem();
         if(problem != null) {
             status.set(problem);
-            return problem;
+            return;
         }
-
-        WalletForm form = AshigaruGui.get().getWalletForms().get(walletId);
-        Wallet badbank = form.getWallet().getChildWallet(StandardAccount.WHIRLPOOL_BADBANK);
-        byte[] seed = seeds.get(walletId).clone();
-        HostAndPort torProxy = AppServices.getTorProxy();
-        List<String> electrumUrls = List.of(Config.get().getServer().getUrl());
-        String moneroNode = Config.get().getSwapMoneroNode().trim();
-        File dataDir = new File(new File(Storage.getSparrowHome(), "swaps"), SwapSeed.directoryName(seed));
-        BadbankSwapHost badbankHost = new BadbankSwapHost(badbank, AshigaruGui.get().getMainStage(), this::onNotification);
-        SwapEngine loaded = loadEngine();
-
-        starting = true;
-        host = null;
-        runningWalletId = null;
-        String walletName = form.getWallet().getMasterName();
-        status.set("Starting the swap engine for " + walletName + " through Tor…");
-        runInBackground(() -> {
-            try {
-                loaded.start(dataDir, torProxy, seed, badbankHost, electrumUrls, moneroNode);
-            } finally {
-                Arrays.fill(seed, (byte)0);
-            }
-            List<String> resumed = new ArrayList<>();
-            loaded.resumeAll().forEach(id -> resumed.add(id.getAsString()));
-            return resumed;
-        }, resumed -> {
-            starting = false;
-            if(!walletId.equals(engineWalletId)) {
-                return;
-            }
-            host = badbankHost;
-            runningWalletId = walletId;
-            runningWalletName = walletName;
-            runningSwaps.addAll(resumed);
-            appendLog("Swap engine running for " + walletName);
-            if(!resumed.isEmpty()) {
-                appendLog("Resumed unfinished swaps: " + String.join(", ", resumed));
-            }
-            status.set("Running for " + walletName + ".");
-        }, e -> {
-            starting = false;
-            status.set("Could not start the swap engine: " + e.getMessage());
-        });
-        return null;
+        start(false);
     }
 
-    /** Why the engine cannot start for this wallet now, or null */
-    private String problem(String walletId) {
-        if(!Config.get().isSwapsEnabled()) {
-            return "Swaps are off. Turn them on in Settings → Swaps.";
+    /** Stops the engine, e.g. when swaps are turned off. Unfinished swaps resume when it starts again. */
+    public void stop() {
+        if(!running.get() && !starting) {
+            status.set("Off.");
+            return;
         }
+        SwapEngine stopping = engine;
+        running.set(false);
+        status.set("Off.");
+        runInBackground(() -> {
+            stopping.shutdown();
+            return null;
+        }, ignored -> appendLog("Swap engine stopped"), e -> {});
+    }
+
+    /** Restarts the engine with the current settings, e.g. after the Monero nodes changed */
+    public void restart() {
+        if(running.get() && !isSwapActive()) {
+            running.set(false);
+            start(false);
+        } else if(!running.get()) {
+            startIfEnabled();
+        }
+    }
+
+    private String problem() {
         if(!isAvailable()) {
             return Network.get() == Network.MAINNET ? "This build does not include the swap engine." : "Swaps run on mainnet only.";
         }
-        if(walletId == null || !seeds.containsKey(walletId)) {
-            return "Lock and reopen the wallet to swap with it: its swap identity is set up while it unlocks.";
-        }
         Server server = Config.get().getServer();
         if(server == null || Config.get().getServerType() == ServerType.BITCOIN_CORE) {
-            return "Swaps watch the chain through an Electrum server. Connect Ashigaru to one (a Dojo or Electrum server).";
+            return "Waiting for an Electrum server: swaps watch the chain through one. Connect Ashigaru to a Dojo or Electrum server.";
         }
-        String moneroNode = Config.get().getSwapMoneroNode();
-        if(moneroNode == null || !isOnionHostAndPort(moneroNode)) {
-            return "Set your Monero node's onion address in Settings → Swaps.";
+        String nodes = MoneroNodes.problem(MoneroNodes.getSelected());
+        if(nodes != null) {
+            return nodes;
         }
         if(AppServices.getTorProxy() == null) {
             return "Waiting for Tor. Swaps only connect through Tor.";
@@ -280,36 +202,103 @@ public class SwapService {
         return null;
     }
 
-    public static boolean isOnionHostAndPort(String value) {
-        try {
-            HostAndPort node = HostAndPort.fromString(value.trim());
-            return node.hasPort() && node.getHost().endsWith(".onion");
-        } catch(IllegalArgumentException e) {
-            return false;
-        }
+    /**
+     * Starts (or replaces) the engine. With {@code renewIdentity}, a fresh identity is used: after a
+     * swap finished, or at start when the last identity's swaps are all finished.
+     */
+    private void start(boolean renewIdentity) {
+        HostAndPort torProxy = AppServices.getTorProxy();
+        List<String> electrumUrls = List.of(Config.get().getServer().getUrl());
+        List<String> moneroNodes = MoneroNodes.forEngine(MoneroNodes.getSelected());
+        File swapsDir = new File(Storage.getSparrowHome(), "swaps");
+        SwapEngine loaded = loadEngine();
+
+        starting = true;
+        status.set(renewIdentity ? "Taking a fresh identity for the next swap…" : "Starting through Tor…");
+        runInBackground(() -> {
+            SwapIdentity identity = renewIdentity ? SwapIdentity.renew(swapsDir) : SwapIdentity.current(swapsDir);
+            loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes);
+            List<String> resumed = new ArrayList<>();
+            loaded.resumeAll().forEach(id -> resumed.add(id.getAsString()));
+            boolean used = !loaded.listSwaps().isEmpty();
+            //Identity already used and nothing left to finish: makers have seen it, so take a new one
+            if(!renewIdentity && resumed.isEmpty() && used) {
+                identity = SwapIdentity.renew(swapsDir);
+                loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes);
+            }
+            return resumed;
+        }, resumed -> {
+            starting = false;
+            if(!Config.get().isSwapsEnabled()) {
+                stop();
+                return;
+            }
+            runningSwaps.addAll(resumed);
+            running.set(true);
+            status.set("On. Using " + moneroNodes.size() + " Monero node" + (moneroNodes.size() == 1 ? "" : "s")
+                    + (moneroNodes.size() > 1 ? ", which must agree before a swap releases your BTC." : ", your own."));
+            appendLog("Swap engine running" + (moneroNodes.size() > 1 ? " with " + moneroNodes.size() + " Monero nodes in agreement" : ""));
+            if(!resumed.isEmpty()) {
+                appendLog("Resumed unfinished swaps: " + String.join(", ", resumed));
+            }
+            swapListeners.forEach(Runnable::run);
+        }, e -> {
+            starting = false;
+            status.set("Could not start: " + e.getMessage());
+        });
     }
 
     @Subscribe
     public void torReady(TorReadyStatusEvent event) {
-        Platform.runLater(() -> {
-            if(engineWalletId != null && runningWalletId == null && !starting) {
-                start(engineWalletId);
-            }
-        });
+        Platform.runLater(this::startIfEnabled);
     }
 
     public void listQuotes(Consumer<List<SwapEngine.Quote>> onSuccess, Consumer<Throwable> onFailure) {
         runInBackground(engine::listQuotes, onSuccess, onFailure);
     }
 
-    public void startSwap(SwapEngine.Quote maker, long sats, long lockFee, String xmrAddress, String refundAddress,
-                          Consumer<String> onSuccess, Consumer<Throwable> onFailure) {
-        runInBackground(() -> engine.startSwap(maker, sats, lockFee, xmrAddress, refundAddress), swapId -> {
+    /** The fee and swap amount for the chosen coin at the current fee rate */
+    public long[] lockFeeAndAmount() {
+        Coin chosen = coin.get();
+        BadbankSwapHost host = new BadbankSwapHost(chosen.badbank(), chosen.outpoint(), null);
+        long fee = host.estimateLockFee();
+        return new long[] {fee, chosen.outpoint().getValue() - fee};
+    }
+
+    /** Swaps the chosen coin with this maker */
+    public void startSwap(SwapEngine.Quote maker, String xmrAddress, Consumer<String> onSuccess, Consumer<Throwable> onFailure) {
+        Coin chosen = coin.get();
+        if(chosen == null) {
+            onFailure.accept(new IllegalStateException("Choose a Badbank coin first."));
+            return;
+        }
+        if(isSwapActive()) {
+            onFailure.accept(new IllegalStateException("A swap is already running; one at a time."));
+            return;
+        }
+
+        BadbankSwapHost host = new BadbankSwapHost(chosen.badbank(), chosen.outpoint(), AshigaruGui.get().getMainStage());
+        long fee;
+        try {
+            fee = host.estimateLockFee();
+        } catch(Exception e) {
+            onFailure.accept(e);
+            return;
+        }
+        long sats = chosen.outpoint().getValue() - fee;
+        String refundAddress = host.getFreshAddress();
+        activeHost = host;
+        runInBackground(() -> engine.startSwap(maker, sats, fee, xmrAddress, refundAddress), swapId -> {
             runningSwaps.add(swapId);
-            appendLog("Swap " + swapId + " started: " + BadbankSwapHost.btc(sats) + " BTC to " + xmrAddress
-                    + ", lock fee " + lockFee + " sats, refunds to " + refundAddress);
+            coin.set(null);
+            appendLog("Swap " + swapId + " started: " + BadbankSwapHost.btc(sats) + " BTC from " + chosen.walletName()
+                    + "'s Badbank coin to " + xmrAddress + ", network fee " + fee + " sats, refunds to " + refundAddress);
+            swapListeners.forEach(Runnable::run);
             onSuccess.accept(swapId);
-        }, onFailure);
+        }, e -> {
+            activeHost = null;
+            onFailure.accept(e);
+        });
     }
 
     public void listSwaps(Consumer<JsonArray> onSuccess, Consumer<Throwable> onFailure) {
@@ -319,15 +308,33 @@ public class SwapService {
     public void refund(String swapId, Consumer<String> onSuccess, Consumer<Throwable> onFailure) {
         runInBackground(() -> engine.cancelAndRefund(swapId), state -> {
             appendLog("Swap " + swapId + " refunded: " + state);
+            swapListeners.forEach(Runnable::run);
             onSuccess.accept(state);
         }, onFailure);
     }
 
-    private void onNotification(String kind, JsonObject payload) {
+    @Override
+    public CompletableFuture<JsonElement> handle(String kind, JsonObject payload) {
+        BadbankSwapHost host = activeHost;
+        if(host == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("No swap is being set up"));
+        }
+        return host.handle(kind, payload);
+    }
+
+    @Override
+    public void onNotification(String kind, JsonObject payload) {
+        Platform.runLater(() -> notification(kind, payload));
+    }
+
+    private void notification(String kind, JsonObject payload) {
         if("swap_stopped".equals(kind)) {
             String swapId = payload.get("swapId").getAsString();
             runningSwaps.remove(swapId);
-            appendLog("Swap " + swapId + " stopped. List swaps to see where it ended.");
+            activeHost = null;
+            appendLog("Swap " + swapId + " stopped.");
+            swapListeners.forEach(Runnable::run);
+            renewIdentityIfIdle();
             return;
         }
 
@@ -339,8 +346,29 @@ public class SwapService {
         if("CliLog".equals(channel) || "P2P".equals(channel) || "BackgroundProgress".equals(channel)) {
             return;
         }
+        if("SwapProgress".equals(channel) || "SwapDatabaseStateUpdate".equals(channel)) {
+            swapListeners.forEach(Runnable::run);
+        }
         String text = body == null ? "" : body.toString();
         appendLog(channel + ": " + (text.length() > MAX_EVENT_CHARS ? text.substring(0, MAX_EVENT_CHARS) + "…" : text));
+    }
+
+    /** After a swap stops: if none is left unfinished, take a new identity for the next one */
+    private void renewIdentityIfIdle() {
+        if(!running.get() || starting) {
+            return;
+        }
+        listSwaps(swaps -> {
+            boolean unfinished = false;
+            for(JsonElement swap : swaps) {
+                if(!swap.getAsJsonObject().get("complete").getAsBoolean()) {
+                    unfinished = true;
+                }
+            }
+            if(!unfinished && !isSwapActive() && problem() == null) {
+                start(true);
+            }
+        }, e -> {});
     }
 
     private void appendLog(String line) {

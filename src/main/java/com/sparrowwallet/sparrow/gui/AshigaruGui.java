@@ -198,11 +198,13 @@ public class AshigaruGui extends Application {
         }
 
         mainStage.setOnCloseRequest(event -> {
-            if(SwapService.get().isSwapActive() && !SwapController.confirmQuitDuringSwap(mainStage)) {
+            if(SwapService.get().isSwapActive() && !SwapsToolController.confirmQuitDuringSwap(mainStage)) {
                 event.consume();
             }
         });
         mainStage.show();
+        //Swaps run whenever they are turned on, whichever wallets are open
+        SwapService.get().startIfEnabled();
         //Must follow show(): JavaFX only centres the stage, and only knows its decorated size, once
         //it is on screen. Before that getX/getY/getHeight have nothing useful to clamp.
         AppServices.clampToScreen(mainStage);
@@ -324,9 +326,9 @@ public class AshigaruGui extends Application {
     }
 
     public static void removeWallet(String walletId) {
-        SwapService.get().walletUnloaded(walletId);
         WalletForm form = instance.walletForms.remove(walletId);
         if (form != null) {
+            SwapService.get().walletUnloaded(form.getWallet());
             EventManager.get().unregister(form);
             for (WalletForm nested : form.getNestedWalletForms()) {
                 EventManager.get().unregister(nested);

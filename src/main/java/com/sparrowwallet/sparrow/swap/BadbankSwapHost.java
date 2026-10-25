@@ -28,36 +28,47 @@ import javafx.util.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 
 /**
- * Answers the swap engine from the open wallet's Badbank account. It builds the lock transaction
- * itself from Badbank coins, signs only transactions it built, asks before signing and asks again
- * before the lock is published. Anything it does not recognise is refused.
+ * Answers the swap engine for one swap of one Badbank coin. The lock transaction spends exactly that
+ * coin and pays it all into the lock, less the network fee: no change, so nothing of the coin stays
+ * behind. It signs only the transaction it built, asks before signing and asks again before the lock
+ * is published. Anything it does not recognise is refused.
  *
  * <p>All wallet work happens on the JavaFX thread, where the rest of Ashigaru touches the wallet.
  */
-public class BadbankSwapHost implements SwapHost {
+public class BadbankSwapHost {
     //Seconds the engine waits for the lock approval (PRE_BTC_LOCK_APPROVAL_TIMEOUT_SECS is 180);
     //the dialog closes, as a rejection, a little before so the answer is never late
     private static final int APPROVAL_DIALOG_SECS = 170;
 
     private final Wallet badbank;
+    private final BlockTransactionHashIndex coin;
     private final Window owner;
-    private final BiConsumer<String, JsonObject> notifications;
     //Lock transactions this host built, by txid: the only ones it will sign
     private final Map<Sha256Hash, FundedLock> funded = new ConcurrentHashMap<>();
 
-    public BadbankSwapHost(Wallet badbank, Window owner, BiConsumer<String, JsonObject> notifications) {
+    public BadbankSwapHost(Wallet badbank, BlockTransactionHashIndex coin, Window owner) {
         if(badbank.getStandardAccountType() != StandardAccount.WHIRLPOOL_BADBANK) {
             throw new IllegalArgumentException("Swaps are funded from Badbank only");
         }
         this.badbank = badbank;
+        this.coin = coin;
         this.owner = owner;
-        this.notifications = notifications;
     }
 
-    @Override
+    public Wallet getBadbank() {
+        return badbank;
+    }
+
+    public BlockTransactionHashIndex getCoin() {
+        return coin;
+    }
+
+    public long getCoinValue() {
+        return coin.getValue();
+    }
+
     public CompletableFuture<JsonElement> handle(String kind, JsonObject payload) {
         CompletableFuture<JsonElement> answer = new CompletableFuture<>();
         Platform.runLater(() -> {
@@ -78,27 +89,39 @@ public class BadbankSwapHost implements SwapHost {
         return answer;
     }
 
-    @Override
-    public void onNotification(String kind, JsonObject payload) {
-        Platform.runLater(() -> notifications.accept(kind, payload));
-    }
-
-    public long getBalance() {
-        return spendableTxos().keySet().stream().mapToLong(BlockTransactionHashIndex::getValue).sum();
-    }
-
     public String getFreshAddress() {
         return badbank.getFreshNode(KeyPurpose.RECEIVE).getAddress().toString();
     }
 
-    /** The fee for a lock of this size at Ashigaru's current fee rate, to agree with the maker up front */
-    public long estimateLockFee(long btcSats) throws InsufficientFundsException {
-        return buildLock(placeholderLockAddress(), btcSats, null).getFee();
+    /**
+     * The network fee for locking the whole coin at Ashigaru's current fee rate. The swap amount is
+     * the coin's value less this, and it is agreed with the maker up front.
+     */
+    public long estimateLockFee() {
+        long max = badbank.getMaxSpendable(List.of(placeholderLockAddress()), AppServices.getDefaultFeeRate(), coinTxo());
+        if(max <= 0) {
+            throw new IllegalStateException("This coin is too small to pay the network fee");
+        }
+        return coin.getValue() - max;
+    }
+
+    private Map<BlockTransactionHashIndex, WalletNode> coinTxo() {
+        Map<BlockTransactionHashIndex, WalletNode> txos = spendableTxos();
+        return txos.entrySet().stream()
+                .filter(entry -> sameOutpoint(entry.getKey(), coin))
+                .findFirst()
+                .map(entry -> Map.of(entry.getKey(), entry.getValue()))
+                .orElseThrow(() -> new IllegalStateException("The coin is no longer spendable in Badbank"));
+    }
+
+    private static boolean sameOutpoint(BlockTransactionHashIndex a, BlockTransactionHashIndex b) {
+        //Not equals(): that also compares the height, which changes as the coin confirms
+        return a.getHash().equals(b.getHash()) && a.getIndex() == b.getIndex();
     }
 
     private JsonObject walletInfo() {
         JsonObject info = new JsonObject();
-        info.addProperty("balanceSats", getBalance());
+        info.addProperty("balanceSats", coin.getValue());
         info.addProperty("freshAddress", getFreshAddress());
         return info;
     }
@@ -106,11 +129,19 @@ public class BadbankSwapHost implements SwapHost {
     private JsonObject fundLock(JsonObject payload) throws Exception {
         Address lockAddress = Address.fromString(payload.get("address").getAsString());
         long amount = payload.get("amountSats").getAsLong();
-        Long fee = payload.has("feeSats") && !payload.get("feeSats").isJsonNull() ? payload.get("feeSats").getAsLong() : null;
-        //Change goes to Badbank's own change address rather than the one the engine suggests: Badbank either way
+        long fee = payload.has("feeSats") && !payload.get("feeSats").isJsonNull()
+                ? payload.get("feeSats").getAsLong() : coin.getValue() - amount;
+        //The whole coin goes in: lock plus fee must be exactly its value, so there is no change
+        if(amount + fee != coin.getValue()) {
+            throw new IllegalStateException("The lock (" + amount + " sats) and fee (" + fee + " sats) do not spend exactly the "
+                    + coin.getValue() + " sats coin");
+        }
 
         WalletTransaction walletTransaction = buildLock(lockAddress, amount, fee);
         checkLockTransaction(walletTransaction.getTransaction(), lockAddress, amount);
+        if(walletTransaction.getTransaction().getOutputs().size() != 1 || walletTransaction.getTransaction().getInputs().size() != 1) {
+            throw new IllegalStateException("The lock must spend only the chosen coin and have no change");
+        }
         PSBT psbt = walletTransaction.createPSBT();
         funded.put(psbt.getTransaction().getTxId(), new FundedLock(psbt, amount, walletTransaction.getFee()));
 
@@ -119,14 +150,13 @@ public class BadbankSwapHost implements SwapHost {
         return answer;
     }
 
-    private WalletTransaction buildLock(Address lockAddress, long amount, Long fee) throws InsufficientFundsException {
+    private WalletTransaction buildLock(Address lockAddress, long amount, long fee) throws InsufficientFundsException {
+        coinTxo();
         //drongo wants the minimum rate when the fee is fixed, so selection does not underestimate values
-        double feeRate = fee != null ? Transaction.DEFAULT_MIN_RELAY_FEE : AppServices.getDefaultFeeRate();
         List<Payment> payments = List.of(new Payment(lockAddress, "Swap lock", amount, false));
-        long noInputsFee = badbank.getNoInputsFee(payments, feeRate);
-        return badbank.createWalletTransaction(List.of(new KnapsackUtxoSelector(noInputsFee)), txoFilters(), payments,
-                Collections.emptyList(), Collections.emptySet(), feeRate, AppServices.getMinimumRelayFeeRate(), fee,
-                AppServices.getCurrentBlockHeight(), Config.get().isGroupByAddress(), Config.get().isIncludeMempoolOutputs());
+        return badbank.createWalletTransaction(List.of(new PresetUtxoSelector(List.of(coin), true, true)), txoFilters(), payments,
+                Collections.emptyList(), Collections.emptySet(), Transaction.DEFAULT_MIN_RELAY_FEE,
+                AppServices.getMinimumRelayFeeRate(), fee, AppServices.getCurrentBlockHeight(), false, true);
     }
 
     /**
@@ -150,13 +180,10 @@ public class BadbankSwapHost implements SwapHost {
     }
 
     private JsonObject maxGiveable() {
-        double feeRate = AppServices.getDefaultFeeRate();
-        Map<BlockTransactionHashIndex, WalletNode> txos = spendableTxos();
-        long total = txos.keySet().stream().mapToLong(BlockTransactionHashIndex::getValue).sum();
-        long max = Math.max(0, badbank.getMaxSpendable(List.of(placeholderLockAddress()), feeRate, txos));
+        long fee = estimateLockFee();
         JsonObject answer = new JsonObject();
-        answer.addProperty("amountSats", max);
-        answer.addProperty("feeSats", max == 0 ? 0 : total - max);
+        answer.addProperty("amountSats", coin.getValue() - fee);
+        answer.addProperty("feeSats", fee);
         return answer;
     }
 

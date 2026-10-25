@@ -23,6 +23,8 @@ public interface SwapEngineLibrary extends Library {
 
     Pointer as_init(String configJson);
 
+    Pointer as_shutdown();
+
     Pointer as_list_quotes();
 
     Pointer as_start_swap(String requestJson);

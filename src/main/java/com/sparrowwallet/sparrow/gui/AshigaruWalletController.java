@@ -257,6 +257,7 @@ public class AshigaruWalletController implements Initializable {
         boolean canSwap = isBadbank && SwapService.get().isEnabled();
         swapBtn.setVisible(canSwap);
         swapBtn.setManaged(canSwap);
+        updateSwapButton();
 
         // Buttons
         bindWhirlpoolState(wallet);
@@ -479,6 +480,15 @@ public class AshigaruWalletController implements Initializable {
             updateMixSelectedButton();
         }
         updateSelectAllButton();
+        updateSwapButton();
+    }
+
+    //Swap to XMR takes exactly one Badbank coin: the whole coin is swapped, with no change
+    private void updateSwapButton() {
+        long selected = utxoRows.stream().filter(r -> r.selected.get()).count();
+        swapBtn.setDisable(selected != 1);
+        swapBtn.setTooltip(new Tooltip(selected == 1 ? "Swap this whole coin for XMR"
+                : "Tick one coin to swap it for XMR. The whole coin is swapped, with no change."));
     }
 
     // -------------------------------------------------------------------------
@@ -492,9 +502,13 @@ public class AshigaruWalletController implements Initializable {
 
     @FXML
     private void onSwap() {
-        if(currentWalletForm != null) {
-            SwapController.show(currentWalletForm, swapBtn.getScene().getWindow());
+        List<UtxoRow> selected = utxoRows.stream().filter(r -> r.selected.get()).toList();
+        if(currentWalletForm == null || activeAccountForm == null || selected.size() != 1) {
+            return;
         }
+        SwapService.get().chooseCoin(currentWalletForm.getWallet().getMasterName(), activeAccountForm.getWallet(),
+                selected.get(0).utxoEntry.getHashIndex());
+        AshigaruGui.get().getMainController().openSwapTool();
     }
 
     @FXML

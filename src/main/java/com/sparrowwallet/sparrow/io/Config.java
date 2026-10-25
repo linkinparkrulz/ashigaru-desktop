@@ -70,8 +70,9 @@ public class Config {
     private File swapEngineLibrary;
     //Largest swap the experimental engine will start, in sats, while it is being proven on mainnet
     private long swapMaxSats = 1_000_000L;
-    //host:port of the Monero node the swap engine uses, reached through Tor over plain HTTP - an onion node
-    private String swapMoneroNode;
+    //Monero nodes (onion host:port) ticked for swaps, and the ones the user added themselves
+    private List<String> swapMoneroNodes;
+    private List<String> swapCustomMoneroNodes;
     private List<File> recentWalletFiles;
     private Integer keyDerivationPeriod;
     private long dustAttackThreshold = DUST_ATTACK_THRESHOLD_SATS;
@@ -213,12 +214,22 @@ public class Config {
         flush();
     }
 
-    public String getSwapMoneroNode() {
-        return swapMoneroNode;
+    /** The ticked nodes, or null when the user has not chosen yet and the defaults apply */
+    public List<String> getSwapMoneroNodes() {
+        return swapMoneroNodes;
     }
 
-    public void setSwapMoneroNode(String swapMoneroNode) {
-        this.swapMoneroNode = swapMoneroNode;
+    public void setSwapMoneroNodes(List<String> swapMoneroNodes) {
+        this.swapMoneroNodes = swapMoneroNodes;
+        flush();
+    }
+
+    public List<String> getSwapCustomMoneroNodes() {
+        return swapCustomMoneroNodes == null ? List.of() : swapCustomMoneroNodes;
+    }
+
+    public void setSwapCustomMoneroNodes(List<String> swapCustomMoneroNodes) {
+        this.swapCustomMoneroNodes = swapCustomMoneroNodes;
         flush();
     }
 

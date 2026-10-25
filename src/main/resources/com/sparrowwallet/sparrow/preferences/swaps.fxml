@@ -19,7 +19,7 @@
 
     <VBox GridPane.columnIndex="0" GridPane.rowIndex="0" spacing="6">
         <Label text="Swaps" styleClass="preferences-section-title" />
-        <Label text="Swap Badbank BTC for XMR with eigenwallet makers, through Ashigaru's Tor only. Experimental: mainnet, small amounts, and keep Ashigaru open until a swap finishes."
+        <Label text="Swap Badbank coins for XMR with eigenwallet makers, through Ashigaru's Tor only. Experimental: mainnet, small amounts, and keep Ashigaru open until a swap finishes."
                wrapText="true" minHeight="-Infinity" styleClass="preferences-section-subtitle" />
     </VBox>
 
@@ -27,21 +27,27 @@
         <Fieldset inputGrow="SOMETIMES" text="Badbank to XMR" styleClass="wideLabelFieldSet">
             <Field text="Enable swaps:">
                 <UnlabeledToggleSwitch fx:id="swapsEnabled" />
-                <HelpLabel helpText="Adds Swap to XMR to each wallet's Badbank account. A swap locks BTC in a shared output with a market maker; if the swap does not complete, it can be cancelled after about 4 hours and the BTC refunded to Badbank, which must be claimed within about 24 hours. Some makers keep part of a refund as an anti-spam deposit; Ashigaru shows this before you approve."/>
+                <HelpLabel helpText="Adds Swap to XMR to every wallet's Badbank account and Swaps to Tools. A swap locks one Badbank coin in a shared output with a market maker; if the swap does not complete, it can be cancelled after about 4 hours and the BTC refunded to Badbank, which must be claimed within about 24 hours. Some makers keep part of a refund as an anti-spam deposit; Ashigaru shows this before you approve."/>
             </Field>
-            <Field text="Monero node:">
-                <TextField fx:id="moneroNode" promptText="node.onion:18081" prefWidth="360" />
-                <HelpLabel helpText="Your own Monero node's onion address and RPC port, e.g. from your node box. It is reached through Tor over plain HTTP, so only onion addresses are accepted. The node learns which Monero transactions your swap wallet looks at, so use one you run."/>
-                <Label fx:id="moneroNodeError" text="Must be an onion host:port" styleClass="card-faint" visible="false" managed="false" />
-            </Field>
-            <Field text="Maximum swap:">
-                <TextField fx:id="maxSwap" promptText="0.01" prefWidth="140" />
-                <Label text="BTC" styleClass="field-label" />
-            </Field>
-            <Field text="Engine:">
+            <Field text="Status:">
                 <Label fx:id="engineStatus" wrapText="true" minHeight="-Infinity" styleClass="field-value" />
             </Field>
+            <Field text="Maximum swap:">
+                <TextField fx:id="maxSwap" promptText="0.01" prefWidth="140" maxWidth="140" />
+                <Label text="BTC" styleClass="field-label" />
+            </Field>
+        </Fieldset>
+        <Fieldset inputGrow="SOMETIMES" text="Monero nodes" styleClass="wideLabelFieldSet">
+            <Label wrapText="true" minHeight="-Infinity" styleClass="card-faint"
+                   text="A swap only releases your BTC once the maker's XMR is seen locked, so the nodes that report it are trusted with the swap. Public nodes are used together: tick at least two, and every one must see the lock. A node you add yourself is your own, and trusted on its own." />
+            <VBox fx:id="nodeList" spacing="8">
+                <padding><Insets top="10" bottom="6"/></padding>
+            </VBox>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <TextField fx:id="customNode" promptText="your-node.onion:18081" HBox.hgrow="ALWAYS" />
+                <Button minWidth="-Infinity" fx:id="addNodeBtn" text="Add your node" onAction="#onAddNode" styleClass="secondary-btn" />
+            </HBox>
+            <Label fx:id="nodeMessage" wrapText="true" minHeight="-Infinity" styleClass="card-faint" visible="false" managed="false" />
         </Fieldset>
     </Form>
-
 </GridPane>
