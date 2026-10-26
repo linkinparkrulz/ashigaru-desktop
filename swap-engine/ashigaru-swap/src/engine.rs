@@ -3,13 +3,17 @@
 //! Badbank in place of eigenwallet's internal Bitcoin wallet.
 
 use std::collections::HashMap;
+use std::panic::AssertUnwindSafe;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
-use libp2p::core::transport::Transport as _;
-use libp2p::{Multiaddr, PeerId, SwarmBuilder, noise, websocket, yamux};
+use futures::FutureExt as _;
+use libp2p::core::muxing::StreamMuxerBox;
+use libp2p::core::transport::{Boxed, Transport as _};
+use libp2p::core::upgrade::Version;
+use libp2p::{Multiaddr, PeerId, SwarmBuilder, identity, noise, websocket, yamux};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use swap::cli::api::tauri_bindings::TauriHandle;
@@ -18,7 +22,6 @@ use swap::database::{AccessMode, open_db};
 use swap::monero::wallet::witness::DaemonWitness;
 use swap::monero::{Daemon, Wallets};
 use swap::network::rendezvous::XmrBtcNamespace;
-use swap::network::transport::authenticate_and_multiplex;
 use swap::protocol::bob::{self, BobState};
 use swap::protocol::{Database, State};
 use swap::seed::Seed;
@@ -35,6 +38,11 @@ use crate::wallet::{HybridWallet, QuoteOnlyWallet};
 
 /// Matches eigenwallet's CLI swarm (`swap/src/network/swarm.rs`)
 const IDLE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(60 * 2);
+/// eigenwallet allows 15 seconds to connect to a maker and set up the session; building a circuit to
+/// an onion maker through Tor often takes longer than that
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(60);
+/// As in eigenwallet's `swap/src/network/transport.rs`
+const MAX_NUM_STREAMS: usize = 5;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -397,12 +405,18 @@ impl Engine {
     async fn run(&self, swap_id: Uuid, swap: bob::Swap) {
         let task = tokio::spawn(async move {
             // Ashigaru shows how the swap ended, so the reason travels with the notification
-            let outcome = match bob::run(swap).await {
-                Ok(state) => {
+            // A panic deep in eigenwallet would otherwise end the task without a word
+            let outcome = match AssertUnwindSafe(bob::run(swap)).catch_unwind().await {
+                Err(panic) => {
+                    let error = format!("The swap engine hit an internal error: {}", crate::panic_message(&*panic));
+                    tracing::error!(%swap_id, "{error}");
+                    json!({ "swapId": swap_id, "error": error })
+                }
+                Ok(Ok(state)) => {
                     tracing::info!(%swap_id, %state, "Swap finished");
                     json!({ "swapId": swap_id, "state": state.to_string() })
                 }
-                Err(e) => {
+                Ok(Err(e)) => {
                     tracing::error!(%swap_id, "Swap stopped with an error: {e:#}");
                     json!({ "swapId": swap_id, "error": format!("{e:#}") })
                 }
@@ -470,4 +484,21 @@ impl Engine {
             swap::cli::cancel_and_refund(swap_id, parts.bitcoin_wallet.clone(), self.db.clone()).await?;
         Ok(state.to_string())
     }
+}
+
+/// eigenwallet's `swap::network::transport::authenticate_and_multiplex` with a timeout long enough
+/// for onion makers
+fn authenticate_and_multiplex<T>(transport: Boxed<T>, identity: &identity::Keypair) -> Result<Boxed<(PeerId, StreamMuxerBox)>>
+where
+    T: futures::AsyncRead + futures::AsyncWrite + Unpin + Send + 'static,
+{
+    let mut multiplex = yamux::Config::default();
+    multiplex.set_max_num_streams(MAX_NUM_STREAMS);
+    Ok(transport
+        .upgrade(Version::V1)
+        .authenticate(noise::Config::new(identity)?)
+        .multiplex(multiplex)
+        .timeout(CONNECT_TIMEOUT)
+        .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
+        .boxed())
 }

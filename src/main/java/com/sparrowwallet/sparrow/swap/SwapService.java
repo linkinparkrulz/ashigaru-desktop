@@ -382,8 +382,13 @@ public class SwapService implements SwapHost {
     private void notification(String kind, JsonObject payload) {
         if("log".equals(kind)) {
             String level = payload.has("level") ? payload.get("level").getAsString() : "INFO";
-            String message = payload.has("message") ? payload.get("message").getAsString() : "";
-            appendLog(("INFO".equals(level) ? "" : level + " ") + message);
+            String message = ("INFO".equals(level) ? "" : level + " ") + (payload.has("message") ? payload.get("message").getAsString() : "");
+            //Routine chatter (wallet2, maker connections coming and going) is kept for the log file only
+            if(payload.has("quiet") && payload.get("quiet").getAsBoolean()) {
+                log.info("Swap engine: " + message);
+            } else {
+                appendLog(message);
+            }
             return;
         }
         if("swap_stopped".equals(kind)) {

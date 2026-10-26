@@ -24,6 +24,8 @@ hex = { workspace = true }
 libp2p = { workspace = true, features = ["tcp", "dns", "tokio", "websocket", "noise", "yamux", "relay"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
+# eigenwallet's binaries install the ring provider at startup; the Monero RPC client needs one
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "net", "sync", "time", "macros", "io-util"] }
 tokio-socks = "0.5"
 tracing = { workspace = true }

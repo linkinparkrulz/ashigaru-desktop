@@ -28,6 +28,9 @@ fn runtime() -> &'static tokio::runtime::Runtime {
     static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
     RUNTIME.get_or_init(|| {
         logging::install();
+        // eigenwallet's binaries do this first thing; without it the Monero RPC client's TLS setup
+        // panics. Fails only when the host already installed one, which then serves as well.
+        let _ = rustls::crypto::ring::default_provider().install_default();
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .thread_name("ashigaru-swap")
@@ -50,11 +53,20 @@ fn respond(result: std::thread::Result<Result<Value>>) -> *mut c_char {
     let body = match result {
         Ok(Ok(value)) => json!({ "ok": value }),
         Ok(Err(e)) => json!({ "error": format!("{e:#}") }),
-        Err(_) => json!({ "error": "The swap engine hit an internal error" }),
+        Err(panic) => json!({ "error": format!("The swap engine hit an internal error: {}", panic_message(&*panic)) }),
     };
     CString::new(body.to_string())
         .expect("JSON never contains NUL")
         .into_raw()
+}
+
+/// The text a panic was raised with, for the error Ashigaru shows
+pub(crate) fn panic_message(panic: &(dyn std::any::Any + Send)) -> String {
+    panic
+        .downcast_ref::<&str>()
+        .map(|s| s.to_string())
+        .or_else(|| panic.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "no details".to_string())
 }
 
 fn call(f: impl FnOnce() -> Result<Value>) -> *mut c_char {

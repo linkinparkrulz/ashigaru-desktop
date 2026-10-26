@@ -3,7 +3,8 @@
 //! eigenwallet reports what it is doing, and above all why a swap stopped, through `tracing`. With
 //! no subscriber installed all of that is lost, which leaves a stalled swap unexplained. This layer
 //! passes the useful part - INFO and above from the swap's own crates - to Ashigaru as `log`
-//! notifications, where it lands in the swap log and Ashigaru's log file.
+//! notifications, where it lands in the swap log and Ashigaru's log file. Routine chatter, marked
+//! `quiet`, goes to the log file only.
 
 use std::fmt::Write as _;
 use std::sync::Once;
@@ -27,6 +28,15 @@ pub fn install() {
     });
 }
 
+/// Lines that matter only when digging into a problem: wallet2's own log, and the coming and going
+/// of maker connections, dozens of which time out over Tor in normal use
+pub fn quiet(target: &str, message: &str) -> bool {
+    target.starts_with("monero_cpp")
+        || ["Connected to peer", "Lost connection to peer", "Outgoing connection error to peer"]
+            .iter()
+            .any(|prefix| message.starts_with(prefix))
+}
+
 pub fn wanted(level: &Level, target: &str) -> bool {
     // In tracing, more verbose levels compare greater: keep INFO, WARN and ERROR
     *level <= Level::INFO && TARGETS.iter().any(|prefix| target.starts_with(prefix))
@@ -48,6 +58,7 @@ impl<S: Subscriber> Layer<S> for Forward {
                 "level": metadata.level().as_str(),
                 "target": metadata.target(),
                 "message": message.text(),
+                "quiet": quiet(metadata.target(), &message.message),
             }),
         );
     }
@@ -102,5 +113,13 @@ mod tests {
         assert!(!wanted(&Level::DEBUG, "swap::protocol::bob::swap"));
         assert!(!wanted(&Level::INFO, "libp2p_swarm"));
         assert!(!wanted(&Level::INFO, "hyper::client"));
+    }
+
+    #[test]
+    fn marks_routine_chatter_quiet() {
+        assert!(quiet("monero_cpp", "Generating SSL certificate"));
+        assert!(quiet("swap::cli::event_loop", "Outgoing connection error to peer"));
+        assert!(quiet("swap::cli::event_loop", "Connected to peer"));
+        assert!(!quiet("swap::protocol::bob::swap", "Checking Monero node connectivity"));
     }
 }
