@@ -11,6 +11,7 @@ mod bridge;
 mod engine;
 mod events;
 mod forward;
+mod logging;
 mod socks;
 mod wallet;
 
@@ -26,6 +27,7 @@ use crate::engine::{Engine, EngineConfig, StartSwap};
 fn runtime() -> &'static tokio::runtime::Runtime {
     static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
     RUNTIME.get_or_init(|| {
+        logging::install();
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .thread_name("ashigaru-swap")
@@ -164,6 +166,16 @@ pub extern "C" fn as_cancel_refund(swap_id: *const c_char) -> *mut c_char {
         let swap_id = read_str(swap_id)?.parse().context("Bad swap id")?;
         let engine = engine()?;
         Ok(json!(runtime().block_on(engine.cancel_and_refund(swap_id))?))
+    })
+}
+
+/// Asks every Monero node for its block height through Tor: `[{node, ok, height | error}]`. The
+/// first node is the engine's own, the rest its witnesses.
+#[unsafe(no_mangle)]
+pub extern "C" fn as_check_nodes() -> *mut c_char {
+    call(|| {
+        let engine = engine()?;
+        Ok(runtime().block_on(engine.check_nodes()))
     })
 }
 

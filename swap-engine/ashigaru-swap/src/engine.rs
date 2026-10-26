@@ -82,7 +82,12 @@ struct SwapParts {
     bitcoin_wallet: Arc<dyn bitcoin_wallet::BitcoinWallet>,
     monero_wallets: Arc<Wallets>,
     monero_witnesses: Vec<Arc<DaemonWitness>>,
+    /// The configured `host:port` of each node, in the same order: main first, then witnesses
+    monero_nodes: Vec<String>,
 }
+
+/// Longest a node check waits for one node
+const NODE_CHECK_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub struct Engine {
     event_loop: Mutex<EventLoopHandle>,
@@ -277,6 +282,7 @@ impl Engine {
             bitcoin_wallet,
             monero_wallets,
             monero_witnesses,
+            monero_nodes: config.monero_nodes.clone(),
         })
     }
 
@@ -390,13 +396,52 @@ impl Engine {
 
     async fn run(&self, swap_id: Uuid, swap: bob::Swap) {
         let task = tokio::spawn(async move {
-            match bob::run(swap).await {
-                Ok(state) => tracing::info!(%swap_id, %state, "Swap finished"),
-                Err(e) => tracing::error!(%swap_id, "Swap stopped with an error: {e:#}"),
-            }
-            crate::bridge::notify("swap_stopped", &json!({ "swapId": swap_id }));
+            // Ashigaru shows how the swap ended, so the reason travels with the notification
+            let outcome = match bob::run(swap).await {
+                Ok(state) => {
+                    tracing::info!(%swap_id, %state, "Swap finished");
+                    json!({ "swapId": swap_id, "state": state.to_string() })
+                }
+                Err(e) => {
+                    tracing::error!(%swap_id, "Swap stopped with an error: {e:#}");
+                    json!({ "swapId": swap_id, "error": format!("{e:#}") })
+                }
+            };
+            crate::bridge::notify("swap_stopped", &outcome);
         });
         self.running.lock().await.insert(swap_id, task);
+    }
+
+    /// Asks each Monero node for its height through its Tor relay, so a dead or unreachable node is
+    /// found before a swap depends on it
+    pub async fn check_nodes(&self) -> Value {
+        let Ok(parts) = self.parts() else {
+            return json!([]);
+        };
+        let main = async {
+            match tokio::time::timeout(NODE_CHECK_TIMEOUT, parts.monero_wallets.direct_rpc_block_height()).await {
+                Ok(Ok(height)) => json!({ "ok": true, "height": height }),
+                Ok(Err(e)) => json!({ "ok": false, "error": format!("{e:#}") }),
+                Err(_) => json!({ "ok": false, "error": "No answer within 60 seconds" }),
+            }
+        };
+        let witnesses = futures::future::join_all(parts.monero_witnesses.iter().map(|witness| async move {
+            match tokio::time::timeout(NODE_CHECK_TIMEOUT, witness.block_height()).await {
+                Ok(Ok(height)) => json!({ "ok": true, "height": height }),
+                Ok(Err(e)) => json!({ "ok": false, "error": format!("{e:#}") }),
+                Err(_) => json!({ "ok": false, "error": "No answer within 60 seconds" }),
+            }
+        }));
+        let (main, witnesses) = tokio::join!(main, witnesses);
+        let results = std::iter::once(main)
+            .chain(witnesses)
+            .zip(&parts.monero_nodes)
+            .map(|(mut result, node)| {
+                result["node"] = json!(node);
+                result
+            })
+            .collect();
+        Value::Array(results)
     }
 
     pub async fn list_swaps(&self) -> Result<Value> {

@@ -10,6 +10,7 @@
 //! onion node, where Tor itself encrypts and authenticates the connection.
 
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use tokio::net::{TcpListener, TcpStream};
@@ -40,7 +41,7 @@ pub async fn start_tcp_relay(
             let socks_proxy = socks_proxy.clone();
             let target_host = target_host.clone();
             tokio::spawn(async move {
-                if let Err(e) = relay(inbound, &socks_proxy, &target_host, target_port).await {
+                if let Err(e) = relay(inbound, &socks_proxy, &target_host, target_port, CONNECT_TIMEOUT).await {
                     tracing::debug!(error = %e, "Monero relay connection ended with an error");
                 }
             });
@@ -50,16 +51,25 @@ pub async fn start_tcp_relay(
     Ok((local, task))
 }
 
+/// How long Tor gets to reach the node. Onion circuits usually take seconds; without a limit a node
+/// that never answers hangs the swap at its first step instead of failing it with a reason. Kept
+/// under eigenwallet's 45s retry window for the node check, so a slow first attempt gets a retry.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(40);
+
 async fn relay(
     mut inbound: TcpStream,
     socks_proxy: &str,
     target_host: &str,
     target_port: u16,
+    connect_timeout: Duration,
 ) -> Result<()> {
-    let outbound =
-        tokio_socks::tcp::Socks5Stream::connect(socks_proxy, (target_host, target_port))
-            .await
-            .context("Could not reach the Monero node through Tor")?;
+    let outbound = tokio::time::timeout(
+        connect_timeout,
+        tokio_socks::tcp::Socks5Stream::connect(socks_proxy, (target_host, target_port)),
+    )
+    .await
+    .with_context(|| format!("Timed out reaching the Monero node {target_host} through Tor"))?
+    .with_context(|| format!("Could not reach the Monero node {target_host} through Tor"))?;
     let mut outbound = outbound.into_inner();
     tokio::io::copy_bidirectional(&mut inbound, &mut outbound).await?;
     Ok(())
@@ -121,5 +131,27 @@ mod tests {
 
         assert_eq!(&reply, b"ping");
         assert_eq!(requested.await.unwrap(), ("examplenode.onion".to_string(), 18089));
+    }
+
+    /// A proxy that accepts but never answers must not hang the relay
+    #[tokio::test]
+    async fn unanswered_proxy_times_out() {
+        let silent = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let proxy = silent.local_addr().unwrap();
+        tokio::spawn(async move {
+            let _held = silent.accept().await;
+            std::future::pending::<()>().await;
+        });
+
+        let client_side = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let client_addr = client_side.local_addr().unwrap();
+        let _client = TcpStream::connect(client_addr).await.unwrap();
+        let (inbound, _) = client_side.accept().await.unwrap();
+
+        let started = std::time::Instant::now();
+        let result = relay(inbound, &proxy.to_string(), "silentnode.onion", 18081, Duration::from_millis(300)).await;
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains("Timed out"), "{error}");
+        assert!(started.elapsed() < Duration::from_secs(5));
     }
 }

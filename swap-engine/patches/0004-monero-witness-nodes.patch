@@ -12,10 +12,10 @@ index 8a62752..36c3b01 100644
  pub use wallets::*;
 diff --git a/monero-wallet/src/witness.rs b/monero-wallet/src/witness.rs
 new file mode 100644
-index 0000000..0349920
+index 0000000..1d77d0a
 --- /dev/null
 +++ b/monero-wallet/src/witness.rs
-@@ -0,0 +1,80 @@
+@@ -0,0 +1,91 @@
 +//! Ashigaru: a second opinion on the Monero lock transaction.
 +//!
 +//! The taker only releases its side of a swap once its Monero node says the maker locked the agreed
@@ -61,6 +61,17 @@ index 0000000..0349920
 +            })
 +            .await
 +            .cloned()
++    }
++
++    /// The node's chain height, to check it can be reached
++    pub async fn block_height(&self) -> Result<u64> {
++        use monero_daemon_rpc::prelude::ProvidesBlockchainMeta;
++        let rpc_client = self.rpc_client().await?;
++        let height = rpc_client
++            .latest_block_number()
++            .await
++            .with_context(|| format!("Witness {} did not give its block height", self.url))?;
++        Ok(height as u64)
 +    }
 +
 +    /// Same check as [`crate::Wallets::verify_transfer`], against this node
