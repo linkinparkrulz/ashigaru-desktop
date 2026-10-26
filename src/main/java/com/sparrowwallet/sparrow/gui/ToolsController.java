@@ -1,17 +1,24 @@
 package com.sparrowwallet.sparrow.gui;
 
 import com.sparrowwallet.sparrow.AppServices;
+import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.swap.SwapService;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import org.controlsfx.glyphfont.Glyph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +35,10 @@ public class ToolsController implements Initializable {
     @FXML private ToggleButton tourButton;
     @FXML private ToggleButton swapsButton;
     @FXML private StackPane toolsPane;
+    @FXML private VBox toolsSidebar;
+    @FXML private Label toolsTitle;
+    @FXML private Button collapseBtn;
+    @FXML private Glyph collapseGlyph;
 
     private Toggle requested;
 
@@ -52,6 +63,12 @@ public class ToolsController implements Initializable {
             }
         });
 
+        for(Toggle toggle : toolsMenu.getToggles()) {
+            ToggleButton item = (ToggleButton)toggle;
+            item.setTooltip(new Tooltip(item.getText()));
+        }
+        setCollapsed(Config.get().isToolsMenuCollapsed());
+
         boolean swaps = SwapService.get().isEnabled();
         swapsButton.setVisible(swaps);
         swapsButton.setManaged(swaps);
@@ -65,6 +82,28 @@ public class ToolsController implements Initializable {
                 toolsMenu.selectToggle(toolsMenu.getToggles().get(0));
             }
         });
+    }
+
+    @FXML
+    private void onToggleCollapse() {
+        boolean collapsed = !toolsSidebar.getStyleClass().contains("collapsed");
+        Config.get().setToolsMenuCollapsed(collapsed);
+        setCollapsed(collapsed);
+    }
+
+    /** Icons only, so the tool gets the width; the names stay in each icon's tooltip */
+    private void setCollapsed(boolean collapsed) {
+        toolsSidebar.getStyleClass().remove("collapsed");
+        if(collapsed) {
+            toolsSidebar.getStyleClass().add("collapsed");
+        }
+        toolsTitle.setVisible(!collapsed);
+        toolsTitle.setManaged(!collapsed);
+        for(Toggle toggle : toolsMenu.getToggles()) {
+            ((ToggleButton)toggle).setContentDisplay(collapsed ? ContentDisplay.GRAPHIC_ONLY : ContentDisplay.LEFT);
+        }
+        collapseGlyph.setIcon(collapsed ? "ANGLE_DOUBLE_RIGHT" : "ANGLE_DOUBLE_LEFT");
+        collapseBtn.setTooltip(new Tooltip(collapsed ? "Show tool names" : "Icons only"));
     }
 
     /** Opens on Swaps instead of the first tool, e.g. after choosing a Badbank coin to swap */

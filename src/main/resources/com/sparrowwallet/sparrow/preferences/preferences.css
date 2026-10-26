@@ -44,6 +44,10 @@
     -fx-text-fill: -ag-text-dim;
 }
 
+.preferences-nav-item:armed {
+    -fx-background-color: derive(-ag-bg-raised, 25%);
+}
+
 .preferences-nav-item:hover {
     -fx-background-color: -ag-bg-raised;
     -fx-text-fill: -ag-text;
@@ -254,4 +258,31 @@
 
 #coreHost .left-pane, #electrumHost .left-pane {
     -fx-padding: 0 3 0 6;
+}
+
+/* ── Tools list collapsed to icons ───────────────────────────────────────── */
+.tools-collapse-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 2 6 2 6;
+}
+.tools-collapse-btn:hover {
+    -fx-background-color: -ag-bg-raised;
+}
+.tools-collapse-btn .glyph-font {
+    -fx-text-fill: -ag-text-faint;
+}
+.tools-collapse-btn:hover .glyph-font {
+    -fx-text-fill: -ag-text;
+}
+.preferences-sidebar.collapsed {
+    -fx-pref-width: 58;
+    -fx-padding: 18 8 18 8;
+}
+.preferences-sidebar.collapsed .tools-sidebar-header {
+    -fx-alignment: center;
+}
+.preferences-sidebar.collapsed .preferences-nav-item {
+    -fx-alignment: center;
+    -fx-padding: 9 0 9 0;
 }

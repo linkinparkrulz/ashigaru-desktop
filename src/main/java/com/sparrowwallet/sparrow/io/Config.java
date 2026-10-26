@@ -66,6 +66,8 @@ public class Config {
     private boolean tourShown = false;
     //Badbank to XMR swaps through the embedded swap engine, only in builds that include it
     private boolean swapsEnabled = false;
+    //The Tools list shows icons only, leaving the tool the room; null until the user chooses
+    private Boolean toolsMenuCollapsed;
     //Developer override: a swap engine library to load instead of the bundled one
     private File swapEngineLibrary;
     //Largest swap the experimental engine will start, in sats, while it is being proven on mainnet
@@ -189,6 +191,15 @@ public class Config {
 
     public void setTourShown(boolean tourShown) {
         this.tourShown = tourShown;
+        flush();
+    }
+
+    public boolean isToolsMenuCollapsed() {
+        return toolsMenuCollapsed == null || toolsMenuCollapsed;
+    }
+
+    public void setToolsMenuCollapsed(boolean toolsMenuCollapsed) {
+        this.toolsMenuCollapsed = toolsMenuCollapsed;
         flush();
     }
 

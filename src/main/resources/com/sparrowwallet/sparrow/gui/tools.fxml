@@ -6,8 +6,15 @@
 
 <BorderPane stylesheets="@../general.css, @ashigaru.css, @../darktheme.css, @../preferences/preferences.css" styleClass="preferences-root" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.sparrowwallet.sparrow.gui.ToolsController">
     <left>
-        <VBox styleClass="preferences-sidebar" spacing="6">
-            <Label text="TOOLS" styleClass="preferences-sidebar-title" />
+        <VBox fx:id="toolsSidebar" styleClass="preferences-sidebar" spacing="6">
+            <HBox alignment="CENTER_LEFT" styleClass="tools-sidebar-header">
+                <Label fx:id="toolsTitle" text="TOOLS" styleClass="preferences-sidebar-title" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
+                <Button fx:id="collapseBtn" onAction="#onToggleCollapse" styleClass="tools-collapse-btn">
+                    <graphic>
+                        <Glyph fx:id="collapseGlyph" fontFamily="Font Awesome 5 Free Solid" fontSize="12" icon="ANGLE_DOUBLE_LEFT" />
+                    </graphic>
+                </Button>
+            </HBox>
             <ToggleButton fx:id="tourButton" text="Guided Tour" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" maxWidth="Infinity" toggleGroup="$toolsMenu">
                 <toggleGroup>
                     <ToggleGroup fx:id="toolsMenu" />

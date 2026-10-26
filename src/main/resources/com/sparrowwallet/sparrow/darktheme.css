@@ -34,6 +34,8 @@
     -fx-control-inner-background: derive(-fx-base, 22%);
     -fx-control-inner-background-alt: -fx-control-inner-background ;
     -fx-default-button: -ag-accent;
+    -fx-hover-base: -ag-bg-raised;
+    -fx-pressed-base: derive(-ag-bg-raised, 25%);
     -fx-box-border: ladder(-fx-color, black 20%, derive(-fx-color,40%) 30%);
 }
 

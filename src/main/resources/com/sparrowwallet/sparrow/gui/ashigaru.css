@@ -39,6 +39,11 @@
     -ag-radius-sm:     4px;
     -ag-radius:        6px;
     -ag-radius-lg:     10px;
+
+    /* Built-in controls (checkboxes, combo boxes, tabs, table headers, titled panes) derive their
+       hover and pressed colours from these; left to Modena they come out near-black on this base */
+    -fx-hover-base:    -ag-bg-raised;
+    -fx-pressed-base:  derive(-ag-bg-raised, 25%);
 }
 
 /* ── Reusable surfaces ──────────────────────────────────────────────────────── */
@@ -193,7 +198,7 @@
     -fx-cursor: hand;
 }
 .button:hover  { -fx-background-color: -ag-bg-raised; }
-.button:armed  { -fx-background-color: derive(-ag-accent, -70%); }
+.button:armed  { -fx-background-color: derive(-ag-bg-raised, 25%); -fx-text-fill: -ag-text; }
 .button:disabled { -fx-opacity: 0.45; }
 
 .primary-btn {
@@ -635,6 +640,8 @@
     -fx-border-color: -ag-accent;
 }
 .toggle-button:selected:hover { -fx-background-color: derive(-ag-accent, -60%); }
+/* Pressed: a lighter grey, never the near-black that a darkened red or base gave */
+.toggle-button:armed { -fx-background-color: derive(-ag-bg-raised, 25%); -fx-text-fill: -ag-text; }
 .toggle-button:disabled { -fx-opacity: 0.45; }
 
 /* ── View toggle bar (UTXOs / Transactions) ───────────────────────────────── */
@@ -946,6 +953,15 @@
 }
 
 /* ── ControlsFX ToggleSwitch: override blue from darktheme.css ──────────── */
+/* A light knob that reads on both the off (grey) and on (green) track */
+.toggle-switch .thumb {
+    -fx-background-color: -ag-text-dim;
+    -fx-background-insets: 0;
+    -fx-background-radius: 100;
+}
+.toggle-switch:hover .thumb {
+    -fx-background-color: -ag-text;
+}
 .toggle-switch .thumb-area {
     -fx-background-color: #3a3a3a;
     -fx-background-insets: 0;
