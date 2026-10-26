@@ -31,6 +31,14 @@ public class AshigaruTerminal {
     private static Instance instance;
 
     public static void main(String[] argv) {
+        //On some Linux graphics drivers JavaFX's partial repaints leave changed controls as black boxes
+        //(a pressed or hovered button, a label whose text was updated). Repainting the whole window each
+        //frame avoids it at little cost. Read when the toolkit starts, so it must be set before then;
+        //-Dprism.dirtyopts=true on the command line restores the default.
+        if(System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("linux") && System.getProperty("prism.dirtyopts") == null) {
+            System.setProperty("prism.dirtyopts", "false");
+        }
+
         Args args = new Args();
         JCommander jCommander = JCommander.newBuilder().addObject(args).programName(APP_NAME.toLowerCase(Locale.ROOT)).acceptUnknownOptions(true).build();
         jCommander.parse(argv);

@@ -104,8 +104,4 @@
             <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN"/></columnResizePolicy>
         </TableView>
     </VBox>
-
-    <TitledPane text="Engine log" expanded="false" animated="false">
-        <TextArea fx:id="logArea" editable="false" wrapText="true" styleClass="mono-area" prefHeight="220"/>
-    </TitledPane>
 </VBox>

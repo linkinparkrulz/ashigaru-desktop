@@ -5,6 +5,7 @@ import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.AshigaruTerminal;
 import com.sparrowwallet.sparrow.io.Storage;
+import com.sparrowwallet.sparrow.swap.SwapService;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -12,6 +13,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +27,7 @@ import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,8 +56,14 @@ public class LogsController implements Initializable {
             new Redaction(Pattern.compile("\\bm(?:/\\d+['h]?)+"), "[path]")
     );
 
+    //The swap engine's lines, as SwapService keeps them: HH:mm:ss, two spaces, the level unless INFO, the message
+    private static final Pattern ENGINE_LEVEL = Pattern.compile("^\\d{2}:\\d{2}:\\d{2}  (WARN|ERROR)\\b");
+
     private record Redaction(Pattern pattern, String replacement) {}
 
+    @FXML private HBox sourceBar;
+    @FXML private ToggleGroup sourceGroup;
+    @FXML private ToggleButton engineToggle;
     @FXML private ToggleGroup levelGroup;
     @FXML private ToggleButton allToggle;
     @FXML private ToggleButton warnToggle;
@@ -66,8 +75,18 @@ public class LogsController implements Initializable {
     @FXML private Button refreshBtn;
     @FXML private TextArea logArea;
 
-    //The unmodified tail as read from disk. Everything shown is derived from this.
+    //The unmodified tail as read from disk, or the swap engine's log. Everything shown is derived from this.
     private List<String> logLines = List.of();
+
+    //Follows the swap engine while its log is shown
+    private final Consumer<String> engineListener = line -> Platform.runLater(() -> {
+        if(isEngine()) {
+            List<String> lines = new ArrayList<>(logLines);
+            lines.addAll(splitLines(line));
+            logLines = lines;
+            render();
+        }
+    });
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -92,7 +111,42 @@ public class LogsController implements Initializable {
             render();
         });
 
+        //The swap engine's log only exists in builds with swaps, once they have been turned on
+        SwapService swaps = SwapService.get();
+        boolean engine = swaps.isEnabled() || !swaps.getLog().isEmpty();
+        sourceBar.setVisible(engine);
+        sourceBar.setManaged(engine);
+        sourceGroup.selectedToggleProperty().addListener((obs, old, selected) -> {
+            if(selected == null) {
+                if(old != null) {
+                    old.setSelected(true);
+                }
+                return;
+            }
+            loadLog();
+        });
+        swaps.addLogListener(engineListener);
+        logArea.sceneProperty().addListener((obs, old, scene) -> {
+            if(scene == null) {
+                swaps.removeLogListener(engineListener);
+            }
+        });
+
         loadLog();
+    }
+
+    private boolean isEngine() {
+        return sourceGroup.getSelectedToggle() == engineToggle;
+    }
+
+    private static List<String> splitLines(String text) {
+        List<String> lines = new ArrayList<>();
+        for(String line : text.split("\\R")) {
+            if(!line.isEmpty()) {
+                lines.add(line);
+            }
+        }
+        return lines;
     }
 
     @FXML
@@ -145,6 +199,14 @@ public class LogsController implements Initializable {
     }
 
     private void loadLog() {
+        if(isEngine()) {
+            logLines = splitLines(SwapService.get().getLog());
+            render();
+            showStatus(logLines.isEmpty() ? "The swap engine has not logged anything since Ashigaru started."
+                    : "The swap engine's log since Ashigaru started. Routine connection messages are in the application log only.");
+            return;
+        }
+
         File logFile = getLogFile();
         if(!logFile.exists()) {
             logLines = List.of();
@@ -229,7 +291,7 @@ public class LogsController implements Initializable {
     }
 
     private void render() {
-        List<String> lines = filterByLevel(logLines, selectedLevel());
+        List<String> lines = isEngine() ? filterEngineByLevel(logLines, selectedLevel()) : filterByLevel(logLines, selectedLevel());
         lines = filterBySearch(lines, searchField.getText());
 
         String text = String.join("\n", lines);
@@ -273,6 +335,21 @@ public class LogsController implements Initializable {
             }
         }
 
+        return filtered;
+    }
+
+    /** The swap engine's lines are one per entry, with the level after the time */
+    static List<String> filterEngineByLevel(List<String> lines, String minLevel) {
+        if("ALL".equals(minLevel)) {
+            return lines;
+        }
+        List<String> filtered = new ArrayList<>();
+        for(String line : lines) {
+            Matcher matcher = ENGINE_LEVEL.matcher(line);
+            if(matcher.find() && atOrAbove(matcher.group(1), minLevel)) {
+                filtered.add(line);
+            }
+        }
         return filtered;
     }
 

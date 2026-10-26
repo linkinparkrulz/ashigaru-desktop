@@ -35,7 +35,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
-import java.util.function.Consumer;
 
 /**
  * Tools - Swaps. Shows the market and the makers' offers for the Badbank coin chosen in the wallet
@@ -64,7 +63,6 @@ public class SwapsToolController implements Initializable {
     @FXML private Label offersPlaceholder;
     @FXML private Label messageLabel;
     @FXML private TableView<JsonObject> swapsTable;
-    @FXML private TextArea logArea;
     @FXML private VBox progressCard;
     @FXML private Label progressSwapId;
     @FXML private Label progressElapsed;
@@ -88,7 +86,6 @@ public class SwapsToolController implements Initializable {
     //The swap shown in the card: the one picked in the table, otherwise the latest started
     private String shownSwapId;
 
-    private final Consumer<String> logListener = line -> logArea.appendText(line);
     private final Runnable swapListener = () -> {
         refreshSwaps();
         updateProgress();
@@ -105,8 +102,6 @@ public class SwapsToolController implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         SwapService service = SwapService.get();
         engineStatus.textProperty().bind(service.statusProperty());
-        logArea.setText(service.getLog());
-        service.addLogListener(logListener);
         service.addSwapListener(swapListener);
         service.runningProperty().addListener(runningListener);
         service.coinProperty().addListener(coinListener);
@@ -159,7 +154,6 @@ public class SwapsToolController implements Initializable {
         SwapService service = SwapService.get();
         refresher.stop();
         ticker.stop();
-        service.removeLogListener(logListener);
         service.removeSwapListener(swapListener);
         service.runningProperty().removeListener(runningListener);
         service.coinProperty().removeListener(coinListener);
@@ -514,8 +508,8 @@ public class SwapsToolController implements Initializable {
         progressSlow.setManaged(slow);
         if(slow) {
             progressSlow.setText(step == SwapProgress.Step.NODES
-                    ? "This is taking longer than usual: a Monero node may be unreachable through Tor. The engine log below says which; if one keeps failing, untick it in Settings → Swaps. Nothing is locked yet."
-                    : "This is taking longer than usual (normally under " + step.getUsual().toMinutes() + " minutes). The engine log below shows what it is waiting for.");
+                    ? "This is taking longer than usual: a Monero node may be unreachable through Tor. Tools → Logs → Swap engine says which; if one keeps failing, untick it in Settings → Swaps. Nothing is locked yet."
+                    : "This is taking longer than usual (normally under " + step.getUsual().toMinutes() + " minutes). Tools → Logs → Swap engine shows what it is waiting for.");
         }
 
         List<SwapProgress.Step> path = step.ordinal() >= SwapProgress.Step.REFUND_WAIT.ordinal() && step != SwapProgress.Step.WORKING && !stopped
