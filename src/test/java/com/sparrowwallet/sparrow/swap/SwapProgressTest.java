@@ -79,6 +79,14 @@ class SwapProgressTest {
     }
 
     @Test
+    void aMakerThatDoesNotAnswerIsExplained() {
+        String reason = SwapProgress.stopReason("Failed to setup swap after retries: Failed to read spot price response from Alice", null);
+        assertTrue(reason.startsWith("The maker did not answer the swap request"));
+        assertTrue(reason.contains("Failed to read spot price response"));
+        assertTrue(reason.contains("Nothing was locked"));
+    }
+
+    @Test
     void unknownEventsKeepTheStep() {
         SwapProgress.Status terms = SwapProgress.read(event("SwapSetupInflight", "{}"), null, T0);
         SwapProgress.Status unknown = SwapProgress.read(event("SomethingNew", null), terms, T0.plusSeconds(5));

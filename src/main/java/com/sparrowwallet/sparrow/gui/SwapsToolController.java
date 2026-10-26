@@ -32,6 +32,7 @@ import java.net.URL;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -192,8 +193,9 @@ public class SwapsToolController implements Initializable {
             }
         });
         depth.setPrefWidth(140);
-        TableColumn<Quote, String> maker = column("Maker", quote -> quote.peerId().substring(Math.max(0, quote.peerId().length() - 8)));
-        maker.setPrefWidth(100);
+        TableColumn<Quote, String> maker = column("Maker", quote -> quote.peerId().substring(Math.max(0, quote.peerId().length() - 8))
+                + (quote.version() == null || quote.version().isBlank() ? "" : "  v" + quote.version()));
+        maker.setPrefWidth(150);
         TableColumn<Quote, String> status = column("Status", this::offerStatus);
         status.setPrefWidth(150);
 
@@ -217,7 +219,7 @@ public class SwapsToolController implements Initializable {
                     return;
                 }
                 //Offers that cannot fit the coin are off; anything else missing is explained on click
-                take.setDisable(taking || (swapSats > 0 && !fits(quote, swapSats)));
+                take.setDisable(taking || quote.isIncompatible() || (swapSats > 0 && !fits(quote, swapSats)));
                 setGraphic(take);
             }
         });
@@ -329,7 +331,8 @@ public class SwapsToolController implements Initializable {
             return;
         }
         SwapService.get().listQuotes(list -> {
-            quotes.setAll(list.stream().sorted((a, b) -> Long.compare(a.priceSats(), b.priceSats())).toList());
+            //Makers that can complete a swap first, each group best price first
+            quotes.setAll(list.stream().sorted(Comparator.comparing(Quote::isIncompatible).thenComparingLong(Quote::priceSats)).toList());
             updateStats();
             updateReturn();
             offersTable.refresh();
@@ -385,7 +388,7 @@ public class SwapsToolController implements Initializable {
             versusMarket.getStyleClass().removeAll("swaps-good", "swaps-bad");
             return;
         }
-        Quote best = quotes.get(0);
+        Quote best = quotes.stream().filter(quote -> !quote.isIncompatible()).findFirst().orElse(quotes.get(0));
         bestRate.setText(String.format(Locale.ROOT, "1 BTC → %.3f XMR", xmrPerBtc(best)));
         onlineMakers.setText(String.valueOf(quotes.size()));
         totalLiquidity.setText(btc(quotes.stream().mapToLong(Quote::maxSats).sum()) + " BTC");
@@ -400,7 +403,7 @@ public class SwapsToolController implements Initializable {
     }
 
     private Quote bestFittingOffer() {
-        return quotes.stream().filter(quote -> fits(quote, swapSats)).findFirst().orElse(null);
+        return quotes.stream().filter(quote -> !quote.isIncompatible() && fits(quote, swapSats)).findFirst().orElse(null);
     }
 
     private static boolean fits(Quote quote, long sats) {
@@ -408,6 +411,9 @@ public class SwapsToolController implements Initializable {
     }
 
     private String offerStatus(Quote quote) {
+        if(quote.isIncompatible()) {
+            return "Outdated maker";
+        }
         if(swapSats == 0) {
             return "Online";
         }
@@ -421,6 +427,9 @@ public class SwapsToolController implements Initializable {
     private String offerProblem(Quote quote) {
         if(SwapService.get().coinProperty().get() == null || swapSats == 0) {
             return "Choose a Badbank coin first: tick one in a wallet's Badbank and press Swap to XMR.";
+        }
+        if(quote.isIncompatible()) {
+            return "This maker runs version " + quote.version() + ", too old to swap with (" + Quote.MIN_MAKER_VERSION + " or later is needed). Choose another maker.";
         }
         if(!fits(quote, swapSats)) {
             return "This maker takes " + btc(quote.minSats()) + " to " + btc(quote.maxSats()) + " BTC; this coin swaps " + btc(swapSats) + " BTC.";

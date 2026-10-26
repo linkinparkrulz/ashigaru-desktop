@@ -412,17 +412,28 @@ public class SwapService implements SwapHost {
         if("CliLog".equals(channel) || "P2P".equals(channel) || "BackgroundProgress".equals(channel)) {
             return;
         }
+        String text = body == null ? "" : body.toString();
+        String raw = channel + ": " + (text.length() > MAX_EVENT_CHARS ? text.substring(0, MAX_EVENT_CHARS) + "…" : text);
         if("SwapProgress".equals(channel) && body.isJsonObject()) {
             String swapId = SwapProgress.swapId(body.getAsJsonObject());
             if(swapId != null) {
-                progress.put(swapId, SwapProgress.read(body.getAsJsonObject(), progress.get(swapId), java.time.Instant.now()));
+                SwapProgress.Status previous = progress.get(swapId);
+                SwapProgress.Status status = SwapProgress.read(body.getAsJsonObject(), previous, java.time.Instant.now());
+                progress.put(swapId, status);
+                //The swap log gets a readable line per step; the raw event stays in the log file
+                log.info("Swap engine: " + raw);
+                if(previous == null || previous.step() != status.step() || !java.util.Objects.equals(previous.detail(), status.detail())) {
+                    appendLog("Swap " + swapId.substring(0, Math.min(8, swapId.length())) + ": " + status.step().getTitle()
+                            + (status.detail() == null || status.detail().isEmpty() ? "" : " (" + status.detail() + ")"));
+                }
+                swapListeners.forEach(Runnable::run);
+                return;
             }
         }
         if("SwapProgress".equals(channel) || "SwapDatabaseStateUpdate".equals(channel)) {
             swapListeners.forEach(Runnable::run);
         }
-        String text = body == null ? "" : body.toString();
-        appendLog(channel + ": " + (text.length() > MAX_EVENT_CHARS ? text.substring(0, MAX_EVENT_CHARS) + "…" : text));
+        appendLog(raw);
     }
 
     /** After a swap stops: if none is left unfinished, take a new identity for the next one */

@@ -28,11 +28,17 @@ pub fn install() {
     });
 }
 
-/// Lines that matter only when digging into a problem: wallet2's own log, and the coming and going
-/// of maker connections, dozens of which time out over Tor in normal use
+/// Lines that matter only when digging into a problem: wallet2's own log, the coming and going of
+/// maker connections, dozens of which time out over Tor in normal use, and the fee floor note the
+/// Bitcoin wallet repeats for every estimate while fees are low
 pub fn quiet(target: &str, message: &str) -> bool {
     target.starts_with("monero_cpp")
-        || ["Connected to peer", "Lost connection to peer", "Outgoing connection error to peer"]
+        || [
+            "Connected to peer",
+            "Lost connection to peer",
+            "Outgoing connection error to peer",
+            "Recommended fee rate is below the absolute minimum relay fee",
+        ]
             .iter()
             .any(|prefix| message.starts_with(prefix))
 }
@@ -120,6 +126,7 @@ mod tests {
         assert!(quiet("monero_cpp", "Generating SSL certificate"));
         assert!(quiet("swap::cli::event_loop", "Outgoing connection error to peer"));
         assert!(quiet("swap::cli::event_loop", "Connected to peer"));
+        assert!(quiet("bitcoin_wallet", "Recommended fee rate is below the absolute minimum relay fee. Falling back to: 1000 sats"));
         assert!(!quiet("swap::protocol::bob::swap", "Checking Monero node connectivity"));
     }
 }

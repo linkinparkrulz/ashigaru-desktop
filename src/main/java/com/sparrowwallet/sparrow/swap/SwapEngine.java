@@ -232,5 +232,42 @@ public class SwapEngine {
      * deposit ratio the maker may withhold.
      */
     public record Quote(String peerId, String multiaddr, String version, long priceSats, long minSats, long maxSats,
-                        String refundPolicy) {}
+                        String refundPolicy) {
+        /**
+         * Makers older than this cannot complete a swap with eigenwallet 4.16: 4.13 changed the
+         * cross-curve proof. eigenwallet's own GUI marks them "Incompatible software — will not work".
+         */
+        public static final String MIN_MAKER_VERSION = "4.13.0";
+
+        /** True when the maker reports a version known not to work. An unknown version is given a chance, as in eigenwallet. */
+        public boolean isIncompatible() {
+            return version != null && !version.isBlank() && compareVersions(version, MIN_MAKER_VERSION) < 0;
+        }
+
+        /** Compares semantic versions; a pre-release (4.13.0-rc.1) comes before its release */
+        static int compareVersions(String a, String b) {
+            String[] partsA = a.trim().replaceFirst("^v", "").split("-", 2);
+            String[] partsB = b.trim().replaceFirst("^v", "").split("-", 2);
+            String[] numbersA = partsA[0].split("\\.");
+            String[] numbersB = partsB[0].split("\\.");
+            for(int i = 0; i < Math.max(numbersA.length, numbersB.length); i++) {
+                int compared = Long.compare(number(numbersA, i), number(numbersB, i));
+                if(compared != 0) {
+                    return compared;
+                }
+            }
+            if(partsA.length != partsB.length) {
+                return partsA.length > partsB.length ? -1 : 1;
+            }
+            return partsA.length == 2 ? partsA[1].compareTo(partsB[1]) : 0;
+        }
+
+        private static long number(String[] numbers, int index) {
+            try {
+                return index < numbers.length ? Long.parseLong(numbers[index].replaceAll("\\D.*", "")) : 0;
+            } catch(NumberFormatException e) {
+                return 0;
+            }
+        }
+    }
 }

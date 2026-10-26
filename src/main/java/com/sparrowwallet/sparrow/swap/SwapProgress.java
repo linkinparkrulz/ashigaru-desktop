@@ -170,6 +170,10 @@ public final class SwapProgress {
 
     /** The engine's error, with what it means for the user's coin */
     static String stopReason(String error, Status previous) {
+        if(error.contains("Failed to read spot price response")) {
+            error = "The maker did not answer the swap request. It may be out of XMR, running software that does not work with this one, "
+                    + "or unreachable over Tor; try another maker.\n\nThe engine said: " + error;
+        }
         boolean beforeLock = previous == null || previous.step().ordinal() <= Step.APPROVAL.ordinal();
         String consequence = beforeLock
                 ? "Nothing was locked: the coin is still in Badbank and can be swapped again."
