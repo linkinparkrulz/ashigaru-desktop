@@ -35,5 +35,7 @@ public interface SwapEngineLibrary extends Library {
 
     Pointer as_cancel_refund(String swapId);
 
+    Pointer as_check_nodes();
+
     void as_free_string(Pointer string);
 }

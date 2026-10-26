@@ -18,6 +18,22 @@
         <Label fx:id="engineStatus" wrapText="true" minHeight="-Infinity" styleClass="card-faint" HBox.hgrow="ALWAYS"/>
     </HBox>
 
+    <!-- The running (or last selected) swap -->
+    <VBox fx:id="progressCard" styleClass="ag-card, swaps-progress" spacing="10" visible="false" managed="false">
+        <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+        <HBox spacing="10" alignment="BASELINE_LEFT">
+            <Label text="Your swap" styleClass="step-title"/>
+            <Label fx:id="progressSwapId" styleClass="card-faint" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            <Label fx:id="progressElapsed" styleClass="card-faint"/>
+        </HBox>
+        <Label fx:id="progressStep" wrapText="true" minHeight="-Infinity" styleClass="swaps-amount"/>
+        <Label fx:id="progressDoing" wrapText="true" minHeight="-Infinity" styleClass="field-value"/>
+        <Label fx:id="progressDetail" wrapText="true" minHeight="-Infinity" styleClass="field-value"/>
+        <Label fx:id="progressNext" wrapText="true" minHeight="-Infinity" styleClass="card-faint"/>
+        <Label fx:id="progressSlow" wrapText="true" minHeight="-Infinity" styleClass="swaps-slow" visible="false" managed="false"/>
+        <FlowPane fx:id="stepList" hgap="6" vgap="6"/>
+    </VBox>
+
     <!-- Market at a glance -->
     <HBox styleClass="ag-card, swaps-stats" spacing="0">
         <VBox styleClass="swaps-stat" HBox.hgrow="ALWAYS">

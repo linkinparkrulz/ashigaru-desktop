@@ -196,6 +196,11 @@ public class SwapEngine {
         return call(library::as_list_swaps).getAsJsonArray();
     }
 
+    /** Asks every Monero node for its height through Tor: {node, ok, height | error} each, main node first */
+    public JsonArray checkNodes() throws SwapEngineException {
+        return call(library::as_check_nodes).getAsJsonArray();
+    }
+
     /** Takes the BTC back after the cancel timelock. Blocks until the refund is published. */
     public String cancelAndRefund(String swapId) throws SwapEngineException {
         return call(() -> library.as_cancel_refund(swapId)).getAsString();

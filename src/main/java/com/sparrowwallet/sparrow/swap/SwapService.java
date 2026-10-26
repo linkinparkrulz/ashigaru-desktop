@@ -68,6 +68,9 @@ public class SwapService implements SwapHost {
     //The swap being set up: the only one Ashigaru answers wallet requests for
     private BadbankSwapHost activeHost;
     private final Set<String> runningSwaps = ConcurrentHashMap.newKeySet();
+    //Each swap's latest step, as reported by the engine; the swap being set up is the latest started
+    private final Map<String, SwapProgress.Status> progress = new ConcurrentHashMap<>();
+    private String currentSwapId;
     private final StringBuilder logText = new StringBuilder();
     private final List<Consumer<String>> logListeners = new CopyOnWriteArrayList<>();
     private final List<Runnable> swapListeners = new CopyOnWriteArrayList<>();
@@ -94,6 +97,16 @@ public class SwapService implements SwapHost {
 
     public boolean isSwapActive() {
         return !runningSwaps.isEmpty() || activeHost != null;
+    }
+
+    /** The latest step of a swap, or null when nothing is known about it yet */
+    public SwapProgress.Status getProgress(String swapId) {
+        return swapId == null ? null : progress.get(swapId);
+    }
+
+    /** The swap started or resumed most recently, to show first */
+    public String getCurrentSwapId() {
+        return currentSwapId;
     }
 
     public ReadOnlyBooleanProperty runningProperty() {
@@ -234,6 +247,9 @@ public class SwapService implements SwapHost {
                 return;
             }
             runningSwaps.addAll(resumed);
+            if(!resumed.isEmpty()) {
+                currentSwapId = resumed.get(resumed.size() - 1);
+            }
             running.set(true);
             status.set("On. Using " + moneroNodes.size() + " Monero node" + (moneroNodes.size() == 1 ? "" : "s")
                     + (moneroNodes.size() > 1 ? ", which must agree before a swap releases your BTC." : ", your own."));
@@ -290,6 +306,8 @@ public class SwapService implements SwapHost {
         activeHost = host;
         runInBackground(() -> engine.startSwap(maker, sats, fee, xmrAddress, refundAddress), swapId -> {
             runningSwaps.add(swapId);
+            currentSwapId = swapId;
+            progress.putIfAbsent(swapId, new SwapProgress.Status(SwapProgress.Step.NODES, null, java.time.Instant.now(), false));
             coin.set(null);
             appendLog("Swap " + swapId + " started: " + BadbankSwapHost.btc(sats) + " BTC from " + chosen.walletName()
                     + "'s Badbank coin to " + xmrAddress + ", network fee " + fee + " sats, refunds to " + refundAddress);
@@ -299,6 +317,27 @@ public class SwapService implements SwapHost {
             activeHost = null;
             onFailure.accept(e);
         });
+    }
+
+    /** Asks each Monero node for its height through Tor, so a dead one is found before a swap needs it */
+    public void checkNodes(Consumer<JsonArray> onSuccess, Consumer<Throwable> onFailure) {
+        if(!running.get()) {
+            onFailure.accept(new IllegalStateException("Swaps are not running"));
+            return;
+        }
+        runInBackground(engine::checkNodes, onSuccess, onFailure);
+    }
+
+    /** The unreachable nodes in a check, as one line each, or an empty list when all answered */
+    public static List<String> unreachable(JsonArray check) {
+        List<String> problems = new ArrayList<>();
+        for(JsonElement element : check) {
+            JsonObject node = element.getAsJsonObject();
+            if(!node.get("ok").getAsBoolean()) {
+                problems.add(node.get("node").getAsString() + ": " + (node.has("error") ? node.get("error").getAsString() : "no answer"));
+            }
+        }
+        return problems;
     }
 
     public void listSwaps(Consumer<JsonArray> onSuccess, Consumer<Throwable> onFailure) {
@@ -319,6 +358,19 @@ public class SwapService implements SwapHost {
         if(host == null) {
             return CompletableFuture.failedFuture(new IllegalStateException("No swap is being set up"));
         }
+        if("sign".equals(kind) || "approve".equals(kind)) {
+            //The user is being asked: show it as the swap's current step
+            Platform.runLater(() -> {
+                String swapId = currentSwapId;
+                if(swapId != null) {
+                    SwapProgress.Status previous = progress.get(swapId);
+                    java.time.Instant since = previous != null && previous.step() == SwapProgress.Step.APPROVAL ? previous.since() : java.time.Instant.now();
+                    progress.put(swapId, new SwapProgress.Status(SwapProgress.Step.APPROVAL,
+                            "sign".equals(kind) ? "Sign the lock in the dialog" : "Approve or reject the final terms in the dialog", since, false));
+                    swapListeners.forEach(Runnable::run);
+                }
+            });
+        }
         return host.handle(kind, payload);
     }
 
@@ -328,11 +380,20 @@ public class SwapService implements SwapHost {
     }
 
     private void notification(String kind, JsonObject payload) {
+        if("log".equals(kind)) {
+            String level = payload.has("level") ? payload.get("level").getAsString() : "INFO";
+            String message = payload.has("message") ? payload.get("message").getAsString() : "";
+            appendLog(("INFO".equals(level) ? "" : level + " ") + message);
+            return;
+        }
         if("swap_stopped".equals(kind)) {
             String swapId = payload.get("swapId").getAsString();
             runningSwaps.remove(swapId);
             activeHost = null;
-            appendLog("Swap " + swapId + " stopped.");
+            SwapProgress.Status status = SwapProgress.stopped(payload, progress.get(swapId), java.time.Instant.now());
+            progress.put(swapId, status);
+            appendLog("Swap " + swapId + " stopped" + (payload.has("error") ? ": " + payload.get("error").getAsString()
+                    : payload.has("state") ? " at " + payload.get("state").getAsString() : "") + ".");
             swapListeners.forEach(Runnable::run);
             renewIdentityIfIdle();
             return;
@@ -345,6 +406,12 @@ public class SwapService implements SwapHost {
         //Log lines and peer discovery are frequent and add nothing to a swap's progress
         if("CliLog".equals(channel) || "P2P".equals(channel) || "BackgroundProgress".equals(channel)) {
             return;
+        }
+        if("SwapProgress".equals(channel) && body.isJsonObject()) {
+            String swapId = SwapProgress.swapId(body.getAsJsonObject());
+            if(swapId != null) {
+                progress.put(swapId, SwapProgress.read(body.getAsJsonObject(), progress.get(swapId), java.time.Instant.now()));
+            }
         }
         if("SwapProgress".equals(channel) || "SwapDatabaseStateUpdate".equals(channel)) {
             swapListeners.forEach(Runnable::run);

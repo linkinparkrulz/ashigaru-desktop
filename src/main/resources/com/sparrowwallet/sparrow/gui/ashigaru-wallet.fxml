@@ -48,6 +48,12 @@
                styleClass="badbank-info-text" wrapText="true"/>
     </HBox>
 
+    <!-- A swap is running: where it is, and a way to it (any account, any wallet) -->
+    <HBox fx:id="swapBanner" styleClass="swaps-banner" alignment="CENTER_LEFT" spacing="10" visible="false" managed="false">
+        <Label fx:id="swapBannerLabel" wrapText="true" minHeight="-Infinity" styleClass="field-value" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+        <Button minWidth="-Infinity" text="View" onAction="#onViewSwap" styleClass="secondary-btn"/>
+    </HBox>
+
     <!-- Coordinator-unreachable warning bar (shown while mixing can't connect) -->
     <HBox fx:id="coordinatorWarningBar" styleClass="coordinator-warning-bar" alignment="CENTER_LEFT" spacing="8" visible="false" managed="false">
         <padding><Insets top="10" right="20" bottom="10" left="20"/></padding>

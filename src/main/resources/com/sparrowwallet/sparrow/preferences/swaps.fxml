@@ -46,6 +46,7 @@
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <TextField fx:id="customNode" promptText="your-node.onion:18081" HBox.hgrow="ALWAYS" />
                 <Button minWidth="-Infinity" fx:id="addNodeBtn" text="Add your node" onAction="#onAddNode" styleClass="secondary-btn" />
+                <Button minWidth="-Infinity" fx:id="checkNodesBtn" text="Check nodes" onAction="#onCheckNodes" styleClass="secondary-btn" />
             </HBox>
             <Label fx:id="nodeMessage" wrapText="true" minHeight="-Infinity" styleClass="card-faint" visible="false" managed="false" />
         </Fieldset>

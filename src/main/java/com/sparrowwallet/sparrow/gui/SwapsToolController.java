@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.swap.SwapEngine.Quote;
+import com.sparrowwallet.sparrow.swap.SwapProgress;
 import com.sparrowwallet.sparrow.swap.SwapService;
 import com.sparrowwallet.sparrow.swap.XmrPrice;
 import javafx.animation.KeyFrame;
@@ -21,6 +22,8 @@ import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
@@ -62,6 +65,15 @@ public class SwapsToolController implements Initializable {
     @FXML private Label messageLabel;
     @FXML private TableView<JsonObject> swapsTable;
     @FXML private TextArea logArea;
+    @FXML private VBox progressCard;
+    @FXML private Label progressSwapId;
+    @FXML private Label progressElapsed;
+    @FXML private Label progressStep;
+    @FXML private Label progressDoing;
+    @FXML private Label progressDetail;
+    @FXML private Label progressNext;
+    @FXML private Label progressSlow;
+    @FXML private FlowPane stepList;
 
     private final ObservableList<Quote> quotes = FXCollections.observableArrayList();
     private final ObservableList<JsonObject> swaps = FXCollections.observableArrayList();
@@ -71,9 +83,16 @@ public class SwapsToolController implements Initializable {
     private long swapSats;
     private boolean taking;
     private Timeline refresher;
+    //Ticks the card's "on this step for" time
+    private Timeline ticker;
+    //The swap shown in the card: the one picked in the table, otherwise the latest started
+    private String shownSwapId;
 
     private final Consumer<String> logListener = line -> logArea.appendText(line);
-    private final Runnable swapListener = this::refreshSwaps;
+    private final Runnable swapListener = () -> {
+        refreshSwaps();
+        updateProgress();
+    };
     private final ChangeListener<Boolean> runningListener = (observable, oldValue, running) -> {
         if(running) {
             refreshAll();
@@ -113,6 +132,14 @@ public class SwapsToolController implements Initializable {
         //Refresh while the page is shown; stop, and let go of the service, when it is closed
         refresher = new Timeline(new KeyFrame(Duration.seconds(20), event -> refreshQuotes()));
         refresher.setCycleCount(Timeline.INDEFINITE);
+        ticker = new Timeline(new KeyFrame(Duration.seconds(1), event -> updateProgress()));
+        ticker.setCycleCount(Timeline.INDEFINITE);
+        swapsTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, swap) -> {
+            if(swap != null) {
+                shownSwapId = swap.get("swapId").getAsString();
+                updateProgress();
+            }
+        });
         engineStatus.sceneProperty().addListener((observable, oldScene, scene) -> {
             if(scene == null) {
                 close();
@@ -124,11 +151,14 @@ public class SwapsToolController implements Initializable {
         refreshAll();
         refreshPrice();
         refresher.play();
+        ticker.play();
+        updateProgress();
     }
 
     private void close() {
         SwapService service = SwapService.get();
         refresher.stop();
+        ticker.stop();
         service.removeLogListener(logListener);
         service.removeSwapListener(swapListener);
         service.runningProperty().removeListener(runningListener);
@@ -425,17 +455,110 @@ public class SwapsToolController implements Initializable {
         }
         taking = true;
         offersTable.refresh();
-        messageLabel.setText("Setting up the swap with the maker…");
-        SwapService.get().startSwap(quote, xmrAddressField.getText().trim(), swapId -> {
-            taking = false;
-            offersTable.refresh();
-            messageLabel.setText("Swap " + swapId + " is running. Ashigaru asks before signing and again before locking anything.");
-            refreshSwaps();
+        messageLabel.setText("Checking that every Monero node answers through Tor…");
+        SwapService.get().checkNodes(check -> {
+            List<String> unreachable = SwapService.unreachable(check);
+            if(!unreachable.isEmpty()) {
+                taking = false;
+                offersTable.refresh();
+                messageLabel.setText("Not started: " + (unreachable.size() == 1 ? "a Monero node" : unreachable.size() + " Monero nodes")
+                        + " did not answer. Untick it in Settings → Swaps (keeping at least two public nodes) or add your own node, then try again.\n"
+                        + String.join("\n", unreachable));
+                return;
+            }
+            messageLabel.setText("Setting up the swap with the maker…");
+            SwapService.get().startSwap(quote, xmrAddressField.getText().trim(), swapId -> {
+                taking = false;
+                offersTable.refresh();
+                shownSwapId = swapId;
+                messageLabel.setText("");
+                updateProgress();
+                scrollToTop();
+                refreshSwaps();
+            }, e -> {
+                taking = false;
+                offersTable.refresh();
+                messageLabel.setText("Could not start the swap: " + e.getMessage());
+            });
         }, e -> {
             taking = false;
             offersTable.refresh();
-            messageLabel.setText("Could not start the swap: " + e.getMessage());
+            messageLabel.setText("Could not check the Monero nodes: " + e.getMessage());
         });
+    }
+
+    /** Shows the card for the chosen swap, or the latest one, with where it is and what comes next */
+    private void updateProgress() {
+        SwapService service = SwapService.get();
+        String swapId = shownSwapId != null ? shownSwapId : service.getCurrentSwapId();
+        SwapProgress.Status status = service.getProgress(swapId);
+        boolean show = swapId != null && status != null;
+        progressCard.setVisible(show);
+        progressCard.setManaged(show);
+        if(!show) {
+            return;
+        }
+
+        SwapProgress.Step step = status.step();
+        progressSwapId.setText("Swap " + swapId.substring(0, Math.min(8, swapId.length())));
+        Instant now = Instant.now();
+        long seconds = java.time.Duration.between(status.since(), now).getSeconds();
+        progressElapsed.setText(status.finished() ? "" : "on this step for " + elapsed(seconds));
+        progressStep.setText(step.getTitle());
+        boolean stopped = step == SwapProgress.Step.STOPPED;
+        setText(progressDoing, stopped ? null : step.getDoing());
+        setText(progressDetail, status.detail());
+        setText(progressNext, step.getNext().isEmpty() ? null : step.getNext());
+        boolean slow = status.isSlow(now);
+        progressSlow.setVisible(slow);
+        progressSlow.setManaged(slow);
+        if(slow) {
+            progressSlow.setText(step == SwapProgress.Step.NODES
+                    ? "This is taking longer than usual: a Monero node may be unreachable through Tor. The engine log below says which; if one keeps failing, untick it in Settings → Swaps. Nothing is locked yet."
+                    : "This is taking longer than usual (normally under " + step.getUsual().toMinutes() + " minutes). The engine log below shows what it is waiting for.");
+        }
+
+        List<SwapProgress.Step> path = step.ordinal() >= SwapProgress.Step.REFUND_WAIT.ordinal() && step != SwapProgress.Step.WORKING && !stopped
+                ? List.of(SwapProgress.Step.REFUND_WAIT, SwapProgress.Step.REFUNDING, SwapProgress.Step.REFUNDED)
+                : SwapProgress.MAIN_STEPS;
+        int current = path.indexOf(step);
+        stepList.getChildren().clear();
+        for(int i = 0; i < path.size(); i++) {
+            Label chip = new Label((i < current || (i == current && status.finished()) ? "✓ " : "") + (i + 1) + ". " + path.get(i).getTitle());
+            chip.getStyleClass().add("swaps-step");
+            if(i < current || (i == current && status.finished())) {
+                chip.getStyleClass().add("swaps-step-done");
+            } else if(i == current) {
+                chip.getStyleClass().add("swaps-step-current");
+            }
+            stepList.getChildren().add(chip);
+        }
+    }
+
+    private static void setText(Label label, String text) {
+        boolean show = text != null && !text.isBlank();
+        label.setText(show ? text : "");
+        label.setVisible(show);
+        label.setManaged(show);
+    }
+
+    private static String elapsed(long seconds) {
+        if(seconds < 60) {
+            return seconds + "s";
+        }
+        long minutes = seconds / 60;
+        return minutes < 60 ? minutes + " min" : (minutes / 60) + " h " + (minutes % 60) + " min";
+    }
+
+    /** The card sits at the top: bring it into view after Take */
+    private void scrollToTop() {
+        javafx.scene.Node node = progressCard;
+        while(node != null && !(node instanceof ScrollPane)) {
+            node = node.getParent();
+        }
+        if(node instanceof ScrollPane scroll) {
+            scroll.setVvalue(0);
+        }
     }
 
     private void onRefund(JsonObject swap) {

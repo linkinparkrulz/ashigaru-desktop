@@ -1261,3 +1261,25 @@
     -fx-background-color: -ag-bg-raised;
     -fx-background-radius: 2;
 }
+.swaps-step {
+    -fx-padding: 3 8 3 8;
+    -fx-background-radius: 10;
+    -fx-background-color: -ag-bg-raised;
+    -fx-text-fill: -ag-text-faint;
+}
+.swaps-step-done {
+    -fx-text-fill: -ag-green;
+}
+.swaps-step-current {
+    -fx-background-color: -ag-red;
+    -fx-text-fill: -ag-text;
+}
+.swaps-slow {
+    -fx-text-fill: #e0a030;
+}
+.swaps-banner {
+    -fx-background-color: -ag-bg-light;
+    -fx-border-color: -ag-red;
+    -fx-border-width: 0 0 0 3;
+    -fx-padding: 8 20 8 20;
+}

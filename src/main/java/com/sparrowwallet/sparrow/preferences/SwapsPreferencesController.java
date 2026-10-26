@@ -31,8 +31,11 @@ public class SwapsPreferencesController extends PreferencesDetailController {
     @FXML private VBox nodeList;
     @FXML private TextField customNode;
     @FXML private Label nodeMessage;
+    @FXML private Button checkNodesBtn;
 
     private final List<CheckBox> nodeBoxes = new ArrayList<>();
+    //Each node's last check result, beside its address
+    private final java.util.Map<String, Label> nodeResults = new java.util.HashMap<>();
 
     @Override
     public void initializeView(Config config) {
@@ -67,6 +70,7 @@ public class SwapsPreferencesController extends PreferencesDetailController {
     private void buildNodeList(Config config) {
         nodeList.getChildren().clear();
         nodeBoxes.clear();
+        nodeResults.clear();
         List<String> selected = MoneroNodes.getSelected();
         for(MoneroNodes.Node node : MoneroNodes.PUBLIC_NODES) {
             nodeList.getChildren().add(nodeRow(node.name(), node.address(), selected.contains(node.address()), false, config));
@@ -89,7 +93,10 @@ public class SwapsPreferencesController extends PreferencesDetailController {
         addressLabel.getStyleClass().add("card-faint");
         addressLabel.setMinWidth(0);
         HBox.setHgrow(addressLabel, Priority.ALWAYS);
-        HBox row = new HBox(10, box, addressLabel);
+        Label result = new Label();
+        result.setMinWidth(Region.USE_PREF_SIZE);
+        nodeResults.put(address, result);
+        HBox row = new HBox(10, box, addressLabel, result);
         row.setAlignment(Pos.CENTER_LEFT);
 
         if(custom) {
@@ -134,6 +141,36 @@ public class SwapsPreferencesController extends PreferencesDetailController {
         customNode.clear();
         buildNodeList(config);
         SwapService.get().restart();
+    }
+
+    @FXML
+    private void onCheckNodes() {
+        SwapService service = SwapService.get();
+        if(!service.runningProperty().get()) {
+            showNodeMessage("Turn swaps on first: the nodes are checked through the swap engine and Tor.");
+            return;
+        }
+        checkNodesBtn.setDisable(true);
+        nodeResults.values().forEach(label -> label.setText(""));
+        showNodeMessage("Asking each ticked node for its block height through Tor. This can take up to a minute.");
+        service.checkNodes(check -> {
+            checkNodesBtn.setDisable(false);
+            for(com.google.gson.JsonElement element : check) {
+                com.google.gson.JsonObject node = element.getAsJsonObject();
+                Label label = nodeResults.get(node.get("node").getAsString());
+                if(label != null) {
+                    boolean ok = node.get("ok").getAsBoolean();
+                    label.setText(ok ? "✓ block " + node.get("height").getAsString() : "✗ no answer");
+                    label.getStyleClass().removeAll("swaps-good", "swaps-bad");
+                    label.getStyleClass().add(ok ? "swaps-good" : "swaps-bad");
+                }
+            }
+            List<String> unreachable = SwapService.unreachable(check);
+            showNodeMessage(unreachable.isEmpty() ? "Every node answered." : "Not answering:\n" + String.join("\n", unreachable));
+        }, e -> {
+            checkNodesBtn.setDisable(false);
+            showNodeMessage("Could not check the nodes: " + e.getMessage());
+        });
     }
 
     private void saveSelection(Config config) {

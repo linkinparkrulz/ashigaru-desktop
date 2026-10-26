@@ -14,6 +14,7 @@ import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.UnitFormat;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.Config;
+import com.sparrowwallet.sparrow.swap.SwapProgress;
 import com.sparrowwallet.sparrow.swap.SwapService;
 import com.sparrowwallet.sparrow.wallet.*;
 import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
@@ -46,6 +47,8 @@ public class AshigaruWalletController implements Initializable {
     @FXML private Button refreshBtn;
     @FXML private Button receiveBtn;
     @FXML private Button swapBtn;
+    @FXML private HBox swapBanner;
+    @FXML private Label swapBannerLabel;
     @FXML private Button receiveCta;
     @FXML private TabPane accountTabs;
     @FXML private Label balanceLabel;
@@ -82,6 +85,16 @@ public class AshigaruWalletController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        //Follows the running swap while this view is shown, and lets go of the service once it is replaced
+        Runnable swapListener = this::updateSwapBanner;
+        SwapService.get().addSwapListener(swapListener);
+        swapBanner.sceneProperty().addListener((observable, oldScene, scene) -> {
+            if(oldScene != null && scene == null) {
+                SwapService.get().removeSwapListener(swapListener);
+            }
+        });
+        updateSwapBanner();
+
         // UTXO list — responsive card view (one card per UTXO, never scrolls sideways)
         utxoTable.setItems(utxoRows);
         utxoTable.setCellFactory(lv -> new AshigaruUtxoCell(showMixInfo));
@@ -498,6 +511,24 @@ public class AshigaruWalletController implements Initializable {
     @FXML
     private void onReceiveCta() {
         onReceive();
+    }
+
+    private void updateSwapBanner() {
+        SwapService service = SwapService.get();
+        SwapProgress.Status status = service.getProgress(service.getCurrentSwapId());
+        boolean show = service.isSwapActive() && status != null && !status.finished();
+        swapBanner.setVisible(show);
+        swapBanner.setManaged(show);
+        if(show) {
+            int index = SwapProgress.MAIN_STEPS.indexOf(status.step());
+            swapBannerLabel.setText("Swap to XMR in progress: " + (index >= 0 ? "step " + (index + 1) + " of " + SwapProgress.MAIN_STEPS.size() + ", " : "")
+                    + status.step().getTitle().toLowerCase(java.util.Locale.ROOT) + ".");
+        }
+    }
+
+    @FXML
+    private void onViewSwap() {
+        AshigaruGui.get().getMainController().openSwapTool();
     }
 
     @FXML
