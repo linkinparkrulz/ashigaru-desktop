@@ -21,6 +21,9 @@ jobs:
 
   package:
     needs: engine
+    # Package every platform whose engine built: a runner losing its network on one engine job
+    # should not hold back the other three. A platform without an engine fails at its download.
+    if: ${{ !cancelled() }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
