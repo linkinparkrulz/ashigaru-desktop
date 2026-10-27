@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.chart.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
@@ -18,90 +17,67 @@
         <Label fx:id="engineStatus" wrapText="true" minHeight="-Infinity" styleClass="card-faint" HBox.hgrow="ALWAYS"/>
     </HBox>
 
-    <!-- The running (or last selected) swap -->
-    <VBox fx:id="progressCard" styleClass="ag-card, swaps-progress" spacing="10" visible="false" managed="false">
-        <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+    <!-- The running (or chosen) swap. While it runs it is all the page shows. -->
+    <VBox fx:id="progressCard" styleClass="ag-card, swaps-progress" spacing="12" visible="false" managed="false">
+        <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
         <HBox spacing="10" alignment="BASELINE_LEFT">
-            <Label text="Your swap" styleClass="step-title"/>
-            <Label fx:id="progressSwapId" styleClass="card-faint" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            <Label fx:id="progressSwapId" styleClass="swaps-stat-label" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
             <Label fx:id="progressElapsed" styleClass="card-faint"/>
         </HBox>
-        <Label fx:id="progressStep" wrapText="true" minHeight="-Infinity" styleClass="swaps-amount"/>
-        <Label fx:id="progressDoing" wrapText="true" minHeight="-Infinity" styleClass="field-value"/>
-        <Label fx:id="progressDetail" wrapText="true" minHeight="-Infinity" styleClass="field-value"/>
+        <Label fx:id="progressStep" wrapText="true" minHeight="-Infinity" styleClass="swaps-step-title"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <ProgressBar fx:id="stepProgress" styleClass="swaps-step-bar" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            <Label fx:id="stepCount" styleClass="card-faint" minWidth="-Infinity"/>
+        </HBox>
+        <Label fx:id="progressDoing" wrapText="true" minHeight="-Infinity" styleClass="swaps-doing"/>
+        <Label fx:id="progressDetail" wrapText="true" minHeight="-Infinity" styleClass="card-faint"/>
         <Label fx:id="progressNext" wrapText="true" minHeight="-Infinity" styleClass="card-faint"/>
         <Label fx:id="progressSlow" wrapText="true" minHeight="-Infinity" styleClass="swaps-slow" visible="false" managed="false"/>
-        <FlowPane fx:id="stepList" hgap="6" vgap="6"/>
-    </VBox>
-
-    <!-- Market at a glance -->
-    <HBox styleClass="ag-card, swaps-stats" spacing="0">
-        <VBox styleClass="swaps-stat" HBox.hgrow="ALWAYS">
-            <Label text="Best rate" styleClass="swaps-stat-label"/>
-            <Label fx:id="bestRate" text="—" styleClass="swaps-stat-value"/>
-        </VBox>
-        <VBox styleClass="swaps-stat" HBox.hgrow="ALWAYS">
-            <Label text="Online makers" styleClass="swaps-stat-label"/>
-            <Label fx:id="onlineMakers" text="—" styleClass="swaps-stat-value"/>
-        </VBox>
-        <VBox styleClass="swaps-stat" HBox.hgrow="ALWAYS">
-            <Label text="Total liquidity" styleClass="swaps-stat-label"/>
-            <Label fx:id="totalLiquidity" text="—" styleClass="swaps-stat-value"/>
-        </VBox>
-        <VBox styleClass="swaps-stat" HBox.hgrow="ALWAYS">
-            <Label fx:id="marketLabel" text="Best offer vs market" styleClass="swaps-stat-label"/>
-            <Label fx:id="versusMarket" text="—" styleClass="swaps-stat-value"/>
-        </VBox>
-    </HBox>
-
-    <!-- Market trend -->
-    <VBox styleClass="ag-card" spacing="6">
-        <padding><Insets top="12" right="14" bottom="8" left="14"/></padding>
-        <HBox spacing="10" alignment="BASELINE_LEFT">
-            <Label text="XMR price, last 24 hours" styleClass="step-title"/>
-            <Label fx:id="priceSource" styleClass="card-faint"/>
+        <HBox fx:id="progressDone" alignment="CENTER_RIGHT" visible="false" managed="false">
+            <Button text="Back to offers" onAction="#onBackToOffers" styleClass="secondary-btn" minWidth="-Infinity"/>
         </HBox>
-        <LineChart fx:id="priceChart" createSymbols="false" legendVisible="false" animated="false" prefHeight="200" minHeight="160" styleClass="swaps-chart">
-            <xAxis><NumberAxis fx:id="timeAxis" forceZeroInRange="false" autoRanging="true" minorTickVisible="false"/></xAxis>
-            <yAxis><NumberAxis fx:id="priceAxis" forceZeroInRange="false" autoRanging="true" label="sats per XMR" minorTickVisible="false"/></yAxis>
-        </LineChart>
     </VBox>
 
-    <!-- What is being swapped -->
-    <GridPane styleClass="ag-card" hgap="16" vgap="10">
-        <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
-        <columnConstraints>
-            <ColumnConstraints percentWidth="60"/>
-            <ColumnConstraints percentWidth="40"/>
-        </columnConstraints>
-        <Label text="Spend" styleClass="swaps-stat-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-        <Label text="Expected return" styleClass="swaps-stat-label" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-        <Label fx:id="spendAmount" text="—" styleClass="swaps-amount" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-        <Label fx:id="expectedReturn" text="—" styleClass="swaps-amount" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-        <Label fx:id="spendDetail" wrapText="true" minHeight="-Infinity" styleClass="card-faint" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-        <Label fx:id="returnDetail" wrapText="true" minHeight="-Infinity" styleClass="card-faint" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-        <TextField fx:id="xmrAddressField" promptText="Your XMR address (receives the swap)" GridPane.rowIndex="3" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
-    </GridPane>
+    <!-- Everything else; hidden while a swap runs -->
+    <VBox fx:id="offersView" spacing="16">
+        <!-- What is being swapped -->
+        <GridPane styleClass="ag-card" hgap="16" vgap="10">
+            <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+            <columnConstraints>
+                <ColumnConstraints percentWidth="60"/>
+                <ColumnConstraints percentWidth="40"/>
+            </columnConstraints>
+            <Label text="Spend" styleClass="swaps-stat-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+            <Label text="Expected return" styleClass="swaps-stat-label" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+            <Label fx:id="spendAmount" text="—" styleClass="swaps-amount" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+            <Label fx:id="expectedReturn" text="—" styleClass="swaps-amount" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+            <Label fx:id="spendDetail" wrapText="true" minHeight="-Infinity" styleClass="card-faint" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+            <Label fx:id="returnDetail" wrapText="true" minHeight="-Infinity" styleClass="card-faint" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+            <TextField fx:id="xmrAddressField" promptText="Your XMR address (receives the swap)" GridPane.rowIndex="3" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
+        </GridPane>
 
-    <!-- Offers -->
-    <VBox spacing="8">
-        <HBox spacing="10" alignment="CENTER_LEFT">
-            <Label text="Available offers to buy XMR" styleClass="step-title" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
-            <Button minWidth="-Infinity" fx:id="refreshBtn" text="Refresh" onAction="#onRefresh" styleClass="secondary-btn"/>
-        </HBox>
-        <TableView fx:id="offersTable" prefHeight="230" minHeight="140" styleClass="swaps-table">
-            <placeholder><Label fx:id="offersPlaceholder" text="No makers yet. They are discovered over a minute or two after swaps start." wrapText="true"/></placeholder>
-            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN"/></columnResizePolicy>
-        </TableView>
-        <Label fx:id="messageLabel" wrapText="true" minHeight="-Infinity" styleClass="field-label"/>
-    </VBox>
+        <!-- Offers -->
+        <VBox spacing="10">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label fx:id="offersTitle" text="Offers" styleClass="step-title"/>
+                    <Label fx:id="marketLine" styleClass="card-faint"/>
+                </VBox>
+                <Button minWidth="-Infinity" fx:id="refreshBtn" text="Refresh" onAction="#onRefresh" styleClass="secondary-btn"/>
+            </HBox>
+            <FlowPane fx:id="offerCards" hgap="12" vgap="12"/>
+            <Label fx:id="offersEmpty" wrapText="true" minHeight="-Infinity" styleClass="field-label"/>
+            <Label fx:id="offersFooter" wrapText="true" minHeight="-Infinity" styleClass="card-faint"/>
+            <Label fx:id="messageLabel" wrapText="true" minHeight="-Infinity" styleClass="field-label"/>
+        </VBox>
 
-    <!-- Swaps -->
-    <VBox spacing="8">
-        <Label text="Your swaps" styleClass="step-title"/>
-        <TableView fx:id="swapsTable" prefHeight="150" minHeight="100" styleClass="swaps-table">
-            <placeholder><Label text="No swaps yet."/></placeholder>
-            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN"/></columnResizePolicy>
-        </TableView>
+        <!-- Swaps -->
+        <VBox spacing="8">
+            <Label text="Your swaps" styleClass="step-title"/>
+            <TableView fx:id="swapsTable" prefHeight="150" minHeight="100" styleClass="swaps-table">
+                <placeholder><Label text="No swaps yet."/></placeholder>
+                <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN"/></columnResizePolicy>
+            </TableView>
+        </VBox>
     </VBox>
 </VBox>

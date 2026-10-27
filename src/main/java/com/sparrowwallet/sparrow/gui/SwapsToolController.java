@@ -18,50 +18,42 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 import javafx.util.Duration;
-import javafx.util.StringConverter;
 
 import java.net.URL;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
 /**
- * Tools - Swaps. Shows the market and the makers' offers for the Badbank coin chosen in the wallet
- * view, takes an offer, and follows swaps through to the end. The engine itself lives in
- * {@link SwapService}, so leaving this page never stops a swap.
+ * Tools - Swaps. Shows the offers that can take the Badbank coin chosen in the wallet view, takes
+ * one, and follows the swap through to the end. While a swap runs the page shows only that swap.
+ * The engine itself lives in {@link SwapService}, so leaving this page never stops a swap.
  */
 public class SwapsToolController implements Initializable {
-    private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault());
-
     @FXML private Label engineStatus;
-    @FXML private Label bestRate;
-    @FXML private Label onlineMakers;
-    @FXML private Label totalLiquidity;
-    @FXML private Label marketLabel;
-    @FXML private Label versusMarket;
-    @FXML private Label priceSource;
-    @FXML private LineChart<Number, Number> priceChart;
-    @FXML private NumberAxis timeAxis;
+    @FXML private VBox offersView;
+    @FXML private Label offersTitle;
+    @FXML private Label marketLine;
+    @FXML private FlowPane offerCards;
+    @FXML private Label offersEmpty;
+    @FXML private Label offersFooter;
     @FXML private Label spendAmount;
     @FXML private Label spendDetail;
     @FXML private Label expectedReturn;
     @FXML private Label returnDetail;
     @FXML private TextField xmrAddressField;
     @FXML private Button refreshBtn;
-    @FXML private TableView<Quote> offersTable;
-    @FXML private Label offersPlaceholder;
     @FXML private Label messageLabel;
     @FXML private TableView<JsonObject> swapsTable;
     @FXML private VBox progressCard;
@@ -72,7 +64,9 @@ public class SwapsToolController implements Initializable {
     @FXML private Label progressDetail;
     @FXML private Label progressNext;
     @FXML private Label progressSlow;
-    @FXML private FlowPane stepList;
+    @FXML private ProgressBar stepProgress;
+    @FXML private Label stepCount;
+    @FXML private HBox progressDone;
 
     private final ObservableList<Quote> quotes = FXCollections.observableArrayList();
     private final ObservableList<JsonObject> swaps = FXCollections.observableArrayList();
@@ -86,6 +80,8 @@ public class SwapsToolController implements Initializable {
     private Timeline ticker;
     //The swap shown in the card: the one picked in the table, otherwise the latest started
     private String shownSwapId;
+    //A finished swap the user has gone back to offers from
+    private String dismissedSwapId;
 
     private final Runnable swapListener = () -> {
         refreshSwaps();
@@ -107,23 +103,8 @@ public class SwapsToolController implements Initializable {
         service.runningProperty().addListener(runningListener);
         service.coinProperty().addListener(coinListener);
 
-        setUpOffersTable();
         setUpSwapsTable();
-        timeAxis.setTickLabelFormatter(new StringConverter<>() {
-            @Override
-            public String toString(Number millis) {
-                return HOUR.format(Instant.ofEpochMilli(millis.longValue()));
-            }
-
-            @Override
-            public Number fromString(String string) {
-                return 0;
-            }
-        });
-        xmrAddressField.textProperty().addListener((observable, oldValue, newValue) -> offersTable.refresh());
-        //An empty chart only shows meaningless axes: keep it hidden until there are prices to draw
-        priceChart.visibleProperty().bind(javafx.beans.binding.Bindings.isNotEmpty(priceChart.getData()));
-        priceChart.managedProperty().bind(priceChart.visibleProperty());
+        offersView.managedProperty().bind(offersView.visibleProperty());
 
         //Refresh while the page is shown; stop, and let go of the service, when it is closed
         refresher = new Timeline(new KeyFrame(Duration.seconds(20), event -> refreshQuotes()));
@@ -133,6 +114,7 @@ public class SwapsToolController implements Initializable {
         swapsTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, swap) -> {
             if(swap != null) {
                 shownSwapId = swap.get("swapId").getAsString();
+                dismissedSwapId = null;
                 updateProgress();
             }
         });
@@ -161,72 +143,135 @@ public class SwapsToolController implements Initializable {
         engineStatus.textProperty().unbind();
     }
 
-    private void setUpOffersTable() {
-        TableColumn<Quote, String> rate = column("Rate", quote -> {
-            String text = String.format(Locale.ROOT, "%.4f XMR", xmrPerBtc(quote));
-            if(price != null) {
-                text += String.format(Locale.ROOT, "  (%+.1f%%)", XmrPrice.offerVersusMarket(quote.priceSats(), price.btcPerXmr()));
+    /** Rebuilds the offer cards: only offers that can take this coin, best rate first */
+    private void renderOffers() {
+        Double market = price == null ? null : price.btcPerXmr();
+        Offers offers = Offers.of(quotes, swapSats, market);
+        offerCards.getChildren().clear();
+        for(Quote quote : offers.shown()) {
+            offerCards.getChildren().add(offerCard(quote, quote == offers.bestRate(), quote == offers.bestRefund()));
+        }
+
+        boolean running = SwapService.get().runningProperty().get();
+        offersTitle.setText(swapSats > 0 ? "Offers for this coin" : "Offers");
+        String empty = !offers.shown().isEmpty() ? null
+                : !running ? "Swaps are not running. Turn them on in Settings → Swaps."
+                : quotes.isEmpty() ? "No makers yet. They are found over a minute or two after swaps start."
+                : swapSats > 0 ? "No maker can take this coin right now." : "No usable offers right now.";
+        offersEmpty.setText(empty == null ? "" : empty);
+        offersEmpty.setVisible(empty != null);
+        offersEmpty.setManaged(empty != null);
+
+        String footer = offers.footer(market != null);
+        offersFooter.setText(footer);
+        offersFooter.setVisible(!footer.isEmpty());
+        offersFooter.setManaged(!footer.isEmpty());
+        updateReturn(offers.bestRate());
+    }
+
+    private Region offerCard(Quote quote, boolean bestRate, boolean bestRefund) {
+        VBox card = new VBox();
+        card.getStyleClass().addAll("ag-card", "swaps-offer");
+        if(bestRate) {
+            card.getStyleClass().add("swaps-offer-best");
+        }
+
+        HBox badges = new HBox(6);
+        if(bestRate) {
+            badges.getChildren().add(badge("BEST RATE"));
+        }
+        if(bestRefund) {
+            badges.getChildren().add(badge("BEST REFUND"));
+        }
+        badges.setMinHeight(18);
+
+        Label rate = new Label(String.format(Locale.ROOT, "1 BTC → %.2f XMR", xmrPerBtc(quote)));
+        rate.getStyleClass().add("swaps-offer-rate");
+        List<String> about = new ArrayList<>();
+        if(price != null) {
+            //Negative: less XMR than at the market price, as every honest maker charges a spread
+            about.add(String.format(Locale.ROOT, "%+.1f%% vs market", XmrPrice.offerVersusMarket(quote.priceSats(), price.btcPerXmr())));
+        }
+        if(quote.version() != null && !quote.version().isBlank()) {
+            about.add("v" + quote.version());
+        }
+        Label versus = new Label(String.join("  ·  ", about));
+        versus.getStyleClass().add("card-faint");
+
+        Label provider = new Label(quote.provider());
+        provider.getStyleClass().add("field-value");
+        provider.setTooltip(new Tooltip(quote.peerId() + "\n" + quote.multiaddr()));
+
+        double ratio = quote.refundRatio();
+        Label refund = new Label(ratio == 0 ? "Full refund if cancelled"
+                : String.format(Locale.ROOT, "If cancelled, the maker may keep %.0f%% as a deposit", ratio * 100));
+        refund.getStyleClass().add("card-faint");
+        refund.setWrapText(true);
+
+        Button take = new Button("Take");
+        take.getStyleClass().add("primary-btn");
+        take.setMinWidth(Button.USE_PREF_SIZE);
+        take.setDisable(taking);
+        take.setOnAction(event -> onTake(quote));
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox actions = new HBox(spacer, take);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+
+        card.getChildren().addAll(badges, rate, versus, provider, refund, actions);
+        return card;
+    }
+
+    private static Label badge(String text) {
+        Label badge = new Label(text);
+        badge.getStyleClass().add("swaps-badge");
+        return badge;
+    }
+
+    /**
+     * The offers worth showing for a coin, and how many were left out and why. Outdated makers, offers
+     * that cannot take the coin and offers below the market are never shown: none of them can
+     * complete a swap.
+     */
+    record Offers(List<Quote> shown, Quote bestRate, Quote bestRefund, int outdated, int wrongSize, int belowMarket) {
+        static Offers of(List<Quote> quotes, long swapSats, Double marketBtcPerXmr) {
+            List<Quote> shown = new ArrayList<>();
+            int outdated = 0, wrongSize = 0, belowMarket = 0;
+            for(Quote quote : quotes) {
+                if(quote.isIncompatible()) {
+                    outdated++;
+                } else if(quote.isBelowMarket(marketBtcPerXmr)) {
+                    belowMarket++;
+                } else if(quote.maxSats() <= 0 || (swapSats > 0 && !fits(quote, swapSats))) {
+                    wrongSize++;
+                } else {
+                    shown.add(quote);
+                }
+            }
+            shown.sort(Comparator.comparingLong(Quote::priceSats));
+            Quote bestRate = shown.isEmpty() ? null : shown.get(0);
+            //Lowest deposit the maker may keep; the better rate wins a tie
+            Quote bestRefund = shown.stream().min(Comparator.comparingDouble(Quote::refundRatio)).orElse(null);
+            return new Offers(List.copyOf(shown), bestRate, bestRefund, outdated, wrongSize, belowMarket);
+        }
+
+        String footer(boolean marketKnown) {
+            List<String> hidden = new ArrayList<>();
+            if(belowMarket > 0) {
+                hidden.add(belowMarket + " priced below the market (makers that undercut the market refuse the swap)");
+            }
+            if(wrongSize > 0) {
+                hidden.add(wrongSize + " that cannot take this amount");
+            }
+            if(outdated > 0) {
+                hidden.add(outdated + " running outdated software");
+            }
+            String text = hidden.isEmpty() ? "" : "Not shown: " + String.join(", ", hidden) + ".";
+            if(!marketKnown && (shown.size() + wrongSize) > 0) {
+                text = (text.isEmpty() ? "" : text + " ") + "Fake offers below the market are filtered once the market price has loaded.";
             }
             return text;
-        });
-        rate.setPrefWidth(170);
-        TableColumn<Quote, String> size = column("Min / Max size", quote -> btc(quote.minSats()) + " – " + btc(quote.maxSats()) + " BTC");
-        size.setPrefWidth(190);
-
-        TableColumn<Quote, Quote> depth = new TableColumn<>("Liquidity");
-        depth.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue()));
-        depth.setCellFactory(column -> new TableCell<>() {
-            private final ProgressBar bar = new ProgressBar();
-
-            @Override
-            protected void updateItem(Quote quote, boolean empty) {
-                super.updateItem(quote, empty);
-                if(empty || quote == null) {
-                    setGraphic(null);
-                    return;
-                }
-                long largest = quotes.stream().mapToLong(Quote::maxSats).max().orElse(1);
-                bar.setProgress((double)quote.maxSats() / Math.max(1, largest));
-                bar.setMaxWidth(Double.MAX_VALUE);
-                bar.getStyleClass().add("swaps-depth");
-                setGraphic(bar);
-            }
-        });
-        depth.setPrefWidth(140);
-        TableColumn<Quote, String> maker = column("Maker", quote -> quote.peerId().substring(Math.max(0, quote.peerId().length() - 8))
-                + (quote.version() == null || quote.version().isBlank() ? "" : "  v" + quote.version()));
-        maker.setPrefWidth(150);
-        TableColumn<Quote, String> status = column("Status", this::offerStatus);
-        status.setPrefWidth(150);
-
-        TableColumn<Quote, Quote> action = new TableColumn<>("");
-        action.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue()));
-        action.setCellFactory(column -> new TableCell<>() {
-            private final Button take = new Button("Take");
-
-            {
-                take.getStyleClass().add("primary-btn");
-                take.setMinWidth(Button.USE_PREF_SIZE);
-                take.setOnAction(event -> onTake(getItem()));
-                setAlignment(Pos.CENTER);
-            }
-
-            @Override
-            protected void updateItem(Quote quote, boolean empty) {
-                super.updateItem(quote, empty);
-                if(empty || quote == null) {
-                    setGraphic(null);
-                    return;
-                }
-                //Offers that cannot fit the coin are off; anything else missing is explained on click
-                take.setDisable(taking || quote.isIncompatible() || (swapSats > 0 && !fits(quote, swapSats)));
-                setGraphic(take);
-            }
-        });
-        action.setPrefWidth(90);
-
-        offersTable.getColumns().setAll(List.of(rate, size, depth, maker, status, action));
-        offersTable.setItems(quotes);
+        }
     }
 
     private void setUpSwapsTable() {
@@ -289,30 +334,26 @@ public class SwapsToolController implements Initializable {
                 spendDetail.setText("This coin cannot be swapped: " + e.getMessage());
             }
         }
-        updateReturn();
-        offersTable.refresh();
+        renderOffers();
     }
 
-    private void updateReturn() {
-        Quote best = bestFittingOffer();
+    private void updateReturn(Quote best) {
         if(swapSats == 0 || best == null) {
             expectedReturn.setText("—");
             returnDetail.setText(swapSats == 0 ? "" : "No maker takes this amount right now.");
         } else {
             expectedReturn.setText(String.format(Locale.ROOT, "%.6f XMR", swapSats / (double)best.priceSats()));
-            returnDetail.setText("At the best offer for this amount. The maker confirms the final amount, shown before you approve.");
+            returnDetail.setText("At the best rate offered for this coin. The maker confirms the final amount, shown before you approve.");
         }
     }
 
     private void updateState() {
         boolean running = SwapService.get().runningProperty().get();
         refreshBtn.setDisable(!running);
-        offersPlaceholder.setText(running ? "No makers yet. They are discovered over a minute or two after swaps start."
-                : "Swaps are not running. Turn them on in Settings → Swaps.");
         if(!running) {
             quotes.clear();
-            updateStats();
         }
+        renderOffers();
     }
 
     private void refreshAll() {
@@ -331,11 +372,8 @@ public class SwapsToolController implements Initializable {
             return;
         }
         SwapService.get().listQuotes(list -> {
-            //Makers that can complete a swap first, each group best price first
-            quotes.setAll(list.stream().sorted(Comparator.comparing(Quote::isIncompatible).thenComparingLong(Quote::priceSats)).toList());
-            updateStats();
-            updateReturn();
-            offersTable.refresh();
+            quotes.setAll(list);
+            renderOffers();
         }, e -> messageLabel.setText("Could not list offers: " + e.getMessage()));
     }
 
@@ -353,7 +391,7 @@ public class SwapsToolController implements Initializable {
 
     private void refreshPrice() {
         if(AppServices.getTorProxy() == null) {
-            priceSource.setText("Price unavailable until Tor is running");
+            marketLine.setText("Market price unavailable until Tor is running");
             return;
         }
         Task<XmrPrice.Snapshot> task = new Task<>() {
@@ -364,72 +402,23 @@ public class SwapsToolController implements Initializable {
         };
         task.setOnSucceeded(event -> {
             price = task.getValue();
-            priceSource.setText("from " + price.source() + ", over Tor");
-            XYChart.Series<Number, Number> series = new XYChart.Series<>();
-            for(double[] point : price.history()) {
-                series.getData().add(new XYChart.Data<>(point[0], Math.round(point[1] * 100_000_000d)));
-            }
-            priceChart.getData().setAll(List.of(series));
-            updateStats();
-            offersTable.refresh();
+            marketLine.setText(String.format(Locale.ROOT, "Market: 1 BTC → %.2f XMR (%s, over Tor)", 1 / price.btcPerXmr(), price.source()));
+            renderOffers();
         });
-        task.setOnFailed(event -> priceSource.setText("Price unavailable: " + task.getException().getMessage()));
+        task.setOnFailed(event -> marketLine.setText("Market price unavailable: " + task.getException().getMessage()));
         Thread thread = new Thread(task, "XmrPrice");
         thread.setDaemon(true);
         thread.start();
-    }
-
-    private void updateStats() {
-        if(quotes.isEmpty()) {
-            bestRate.setText("—");
-            onlineMakers.setText(SwapService.get().runningProperty().get() ? "0" : "—");
-            totalLiquidity.setText("—");
-            versusMarket.setText("—");
-            versusMarket.getStyleClass().removeAll("swaps-good", "swaps-bad");
-            return;
-        }
-        Quote best = quotes.stream().filter(quote -> !quote.isIncompatible()).findFirst().orElse(quotes.get(0));
-        bestRate.setText(String.format(Locale.ROOT, "1 BTC → %.3f XMR", xmrPerBtc(best)));
-        onlineMakers.setText(String.valueOf(quotes.size()));
-        totalLiquidity.setText(btc(quotes.stream().mapToLong(Quote::maxSats).sum()) + " BTC");
-        versusMarket.getStyleClass().removeAll("swaps-good", "swaps-bad");
-        if(price == null) {
-            versusMarket.setText("—");
-        } else {
-            double percent = XmrPrice.offerVersusMarket(best.priceSats(), price.btcPerXmr());
-            versusMarket.setText(String.format(Locale.ROOT, "%+.1f%%", percent));
-            versusMarket.getStyleClass().add(percent >= 0 ? "swaps-good" : "swaps-bad");
-        }
-    }
-
-    private Quote bestFittingOffer() {
-        return quotes.stream().filter(quote -> !quote.isIncompatible() && fits(quote, swapSats)).findFirst().orElse(null);
     }
 
     private static boolean fits(Quote quote, long sats) {
         return sats >= quote.minSats() && sats <= quote.maxSats();
     }
 
-    private String offerStatus(Quote quote) {
-        if(quote.isIncompatible()) {
-            return "Outdated maker";
-        }
-        if(swapSats == 0) {
-            return "Online";
-        }
-        if(!fits(quote, swapSats)) {
-            return swapSats < quote.minSats() ? "Coin too small" : "Coin too large";
-        }
-        return "Fits this coin";
-    }
-
     /** Why this offer cannot be taken now, or null */
     private String offerProblem(Quote quote) {
         if(SwapService.get().coinProperty().get() == null || swapSats == 0) {
             return "Choose a Badbank coin first: tick one in a wallet's Badbank and press Swap to XMR.";
-        }
-        if(quote.isIncompatible()) {
-            return "This maker runs version " + quote.version() + ", too old to swap with (" + Quote.MIN_MAKER_VERSION + " or later is needed). Choose another maker.";
         }
         if(!fits(quote, swapSats)) {
             return "This maker takes " + btc(quote.minSats()) + " to " + btc(quote.maxSats()) + " BTC; this coin swaps " + btc(swapSats) + " BTC.";
@@ -457,13 +446,13 @@ public class SwapsToolController implements Initializable {
             return;
         }
         taking = true;
-        offersTable.refresh();
+        renderOffers();
         messageLabel.setText("Checking that every Monero node answers through Tor…");
         SwapService.get().checkNodes(check -> {
             List<String> unreachable = SwapService.unreachable(check);
             if(!unreachable.isEmpty()) {
                 taking = false;
-                offersTable.refresh();
+                renderOffers();
                 messageLabel.setText("Not started: " + (unreachable.size() == 1 ? "a Monero node" : unreachable.size() + " Monero nodes")
                         + " did not answer. Untick it in Settings → Swaps (keeping at least two public nodes) or add your own node, then try again.\n"
                         + String.join("\n", unreachable));
@@ -472,7 +461,7 @@ public class SwapsToolController implements Initializable {
             messageLabel.setText("Setting up the swap with the maker…");
             SwapService.get().startSwap(quote, xmrAddressField.getText().trim(), swapId -> {
                 taking = false;
-                offersTable.refresh();
+                renderOffers();
                 shownSwapId = swapId;
                 messageLabel.setText("");
                 updateProgress();
@@ -480,30 +469,35 @@ public class SwapsToolController implements Initializable {
                 refreshSwaps();
             }, e -> {
                 taking = false;
-                offersTable.refresh();
+                renderOffers();
                 messageLabel.setText("Could not start the swap: " + e.getMessage());
             });
         }, e -> {
             taking = false;
-            offersTable.refresh();
+            renderOffers();
             messageLabel.setText("Could not check the Monero nodes: " + e.getMessage());
         });
     }
 
-    /** Shows the card for the chosen swap, or the latest one, with where it is and what comes next */
+    /**
+     * Shows the card for the chosen swap, or the latest one, with where it is and what comes next.
+     * While that swap is unfinished, or until the user goes back from a finished one, the card is
+     * all the page shows.
+     */
     private void updateProgress() {
         SwapService service = SwapService.get();
         String swapId = shownSwapId != null ? shownSwapId : service.getCurrentSwapId();
-        SwapProgress.Status status = service.getProgress(swapId);
-        boolean show = swapId != null && status != null;
+        SwapProgress.Status status = swapId == null || swapId.equals(dismissedSwapId) ? null : service.getProgress(swapId);
+        boolean show = status != null;
         progressCard.setVisible(show);
         progressCard.setManaged(show);
+        offersView.setVisible(!show);
         if(!show) {
             return;
         }
 
         SwapProgress.Step step = status.step();
-        progressSwapId.setText("Swap " + swapId.substring(0, Math.min(8, swapId.length())));
+        progressSwapId.setText("YOUR SWAP  ·  " + swapId.substring(0, Math.min(8, swapId.length())));
         Instant now = Instant.now();
         long seconds = java.time.Duration.between(status.since(), now).getSeconds();
         progressElapsed.setText(status.finished() ? "" : "on this step for " + elapsed(seconds));
@@ -521,21 +515,32 @@ public class SwapsToolController implements Initializable {
                     : "This is taking longer than usual (normally under " + step.getUsual().toMinutes() + " minutes). Tools → Logs → Swap engine shows what it is waiting for.");
         }
 
-        List<SwapProgress.Step> path = step.ordinal() >= SwapProgress.Step.REFUND_WAIT.ordinal() && step != SwapProgress.Step.WORKING && !stopped
+        boolean refundPath = step.ordinal() >= SwapProgress.Step.REFUND_WAIT.ordinal() && step != SwapProgress.Step.WORKING && !stopped;
+        List<SwapProgress.Step> path = refundPath
                 ? List.of(SwapProgress.Step.REFUND_WAIT, SwapProgress.Step.REFUNDING, SwapProgress.Step.REFUNDED)
                 : SwapProgress.MAIN_STEPS;
         int current = path.indexOf(step);
-        stepList.getChildren().clear();
-        for(int i = 0; i < path.size(); i++) {
-            Label chip = new Label((i < current || (i == current && status.finished()) ? "✓ " : "") + (i + 1) + ". " + path.get(i).getTitle());
-            chip.getStyleClass().add("swaps-step");
-            if(i < current || (i == current && status.finished())) {
-                chip.getStyleClass().add("swaps-step-done");
-            } else if(i == current) {
-                chip.getStyleClass().add("swaps-step-current");
-            }
-            stepList.getChildren().add(chip);
+        boolean showBar = current >= 0;
+        stepProgress.setVisible(showBar);
+        stepCount.setVisible(showBar);
+        if(showBar) {
+            int done = current + (status.finished() ? 1 : 0);
+            stepProgress.setProgress((double)Math.max(done, 1) / path.size());
+            stepCount.setText((refundPath ? "Refund step " : "Step ") + (current + 1) + " of " + path.size());
         }
+
+        progressDone.setVisible(status.finished());
+        progressDone.setManaged(status.finished());
+    }
+
+    @FXML
+    private void onBackToOffers() {
+        SwapService service = SwapService.get();
+        dismissedSwapId = shownSwapId != null ? shownSwapId : service.getCurrentSwapId();
+        shownSwapId = null;
+        swapsTable.getSelectionModel().clearSelection();
+        updateProgress();
+        refreshAll();
     }
 
     private static void setText(Label label, String text) {

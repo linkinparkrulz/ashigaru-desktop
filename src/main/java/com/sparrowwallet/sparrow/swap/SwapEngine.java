@@ -239,6 +239,55 @@ public class SwapEngine {
          */
         public static final String MIN_MAKER_VERSION = "4.13.0";
 
+        /**
+         * Offers this much cheaper than the market are left out. No honest maker sells XMR below the
+         * market; such offers draw takers in and then refuse the swap, and none is on eigenwallet's
+         * liquidity list.
+         */
+        public static final double MAX_BELOW_MARKET_PERCENT = 1.0;
+
+        /** Share of the BTC the maker may keep as an anti-spam deposit if the swap is refunded: 0 for a full refund */
+        public double refundRatio() {
+            try {
+                com.google.gson.JsonObject policy = com.google.gson.JsonParser.parseString(refundPolicy).getAsJsonObject();
+                if(!"PartialRefund".equals(policy.get("type").getAsString())) {
+                    return 0;
+                }
+                return policy.getAsJsonObject("content").get("anti_spam_deposit_ratio").getAsDouble();
+            } catch(RuntimeException e) {
+                //Unknown or unreadable terms rank last for refunds
+                return 1;
+            }
+        }
+
+        /** True when the market price is known and this offer undercuts it by more than {@link #MAX_BELOW_MARKET_PERCENT} */
+        public boolean isBelowMarket(Double marketBtcPerXmr) {
+            return marketBtcPerXmr != null && XmrPrice.offerVersusMarket(priceSats, marketBtcPerXmr) > MAX_BELOW_MARKET_PERCENT;
+        }
+
+        /** Where the maker is, as eigenwallet's liquidity list shows it: host:port, or the start of its onion */
+        public String provider() {
+            String[] parts = multiaddr == null ? new String[0] : multiaddr.split("/");
+            String host = null;
+            String port = null;
+            for(int i = 1; i + 1 < parts.length; i++) {
+                switch(parts[i]) {
+                    case "ip4", "dns", "dns4", "dns6", "dnsaddr" -> host = parts[i + 1];
+                    case "ip6" -> host = "[" + parts[i + 1] + "]";
+                    case "tcp" -> port = parts[i + 1];
+                    case "onion3" -> {
+                        String onion = parts[i + 1].split(":")[0];
+                        return (onion.length() > 10 ? onion.substring(0, 10) + "…" : onion) + ".onion";
+                    }
+                    default -> {}
+                }
+            }
+            if(host != null) {
+                return port == null ? host : host + ":" + port;
+            }
+            return peerId.length() > 8 ? "…" + peerId.substring(peerId.length() - 8) : peerId;
+        }
+
         /** True when the maker reports a version known not to work. An unknown version is given a chance, as in eigenwallet. */
         public boolean isIncompatible() {
             return version != null && !version.isBlank() && compareVersions(version, MIN_MAKER_VERSION) < 0;

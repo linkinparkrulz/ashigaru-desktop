@@ -41,6 +41,10 @@ public class BadbankSwapHost {
     //Seconds the engine waits for the lock approval (PRE_BTC_LOCK_APPROVAL_TIMEOUT_SECS is 180);
     //the dialog closes, as a rejection, a little before so the answer is never late
     private static final int APPROVAL_DIALOG_SECS = 170;
+    /** eigenwallet's absolute minimum transaction fee, the lowest a maker accepts for the lock */
+    static final long MIN_LOCK_FEE_SATS = 1000;
+    /** eigenwallet's dust limit: the lock must be worth more than this */
+    private static final long DUST_SATS = 546;
 
     private final Wallet badbank;
     private final BlockTransactionHashIndex coin;
@@ -99,10 +103,20 @@ public class BadbankSwapHost {
      */
     public long estimateLockFee() {
         long max = badbank.getMaxSpendable(List.of(placeholderLockAddress()), AppServices.getDefaultFeeRate(), coinTxo());
-        if(max <= 0) {
+        long fee = lockFee(coin.getValue() - max);
+        if(max <= 0 || coin.getValue() - fee <= DUST_SATS) {
             throw new IllegalStateException("This coin is too small to pay the network fee");
         }
-        return coin.getValue() - max;
+        return fee;
+    }
+
+    /**
+     * Makers refuse a lock paying less than half their own fee estimate, and eigenwallet never
+     * estimates below 1000 sats (bitcoin_wallet::MIN_ABSOLUTE_TX_FEE_SATS), so a lock at a low fee
+     * rate is rejected. Pay at least that, as eigenwallet's own taker does.
+     */
+    static long lockFee(long rateFee) {
+        return Math.max(rateFee, MIN_LOCK_FEE_SATS);
     }
 
     private Map<BlockTransactionHashIndex, WalletNode> coinTxo() {

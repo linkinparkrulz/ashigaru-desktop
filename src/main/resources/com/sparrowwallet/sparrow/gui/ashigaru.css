@@ -1290,6 +1290,46 @@
     -fx-background-color: -ag-red;
     -fx-text-fill: -ag-text;
 }
+.swaps-step-title {
+    -fx-font-size: 20px;
+    -fx-text-fill: -ag-text;
+}
+.swaps-step-bar .bar {
+    -fx-background-color: -ag-red;
+    -fx-background-insets: 0;
+    -fx-background-radius: 2;
+    -fx-padding: 2;
+}
+.swaps-step-bar .track {
+    -fx-background-color: -ag-bg-raised;
+    -fx-background-insets: 0;
+    -fx-background-radius: 2;
+}
+.swaps-doing {
+    -fx-font-size: 14px;
+    -fx-text-fill: -ag-text;
+}
+.swaps-offer {
+    -fx-padding: 14 16 14 16;
+    -fx-spacing: 6;
+    -fx-pref-width: 270;
+    -fx-min-width: 270;
+    -fx-max-width: 270;
+}
+.swaps-offer-best {
+    -fx-border-color: -ag-red;
+}
+.swaps-badge {
+    -fx-font-size: 10px;
+    -fx-text-fill: -ag-text;
+    -fx-background-color: -ag-accent-tint;
+    -fx-background-radius: 8;
+    -fx-padding: 2 7 2 7;
+}
+.swaps-offer-rate {
+    -fx-font-size: 18px;
+    -fx-text-fill: -ag-text;
+}
 .swaps-slow {
     -fx-text-fill: #e0a030;
 }
