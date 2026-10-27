@@ -310,7 +310,8 @@ public class SwapService implements SwapHost {
             progress.putIfAbsent(swapId, new SwapProgress.Status(SwapProgress.Step.NODES, null, java.time.Instant.now(), false));
             coin.set(null);
             appendLog("Swap " + swapId + " started: " + BadbankSwapHost.btc(sats) + " BTC from " + chosen.walletName()
-                    + "'s Badbank coin to " + xmrAddress + ", network fee " + fee + " sats, refunds to " + refundAddress);
+                    + "'s Badbank coin to " + xmrAddress + ", network fee " + fee + " sats, refunds to " + refundAddress
+                    + ", with maker " + maker.peerId() + (maker.version() == null ? "" : " v" + maker.version()) + " at " + maker.multiaddr());
             swapListeners.forEach(Runnable::run);
             onSuccess.accept(swapId);
         }, e -> {

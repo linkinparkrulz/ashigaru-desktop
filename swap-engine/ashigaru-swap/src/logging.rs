@@ -11,8 +11,10 @@ use std::sync::Once;
 
 use serde_json::json;
 use tracing::field::{Field, Visit};
+use tracing::span::{Attributes, Id};
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::layer::{Context, Layer, SubscriberExt};
+use tracing_subscriber::registry::LookupSpan;
 
 use crate::bridge;
 
@@ -30,7 +32,7 @@ pub fn install() {
 
 /// Lines that matter only when digging into a problem: wallet2's own log, the coming and going of
 /// maker connections, dozens of which time out over Tor in normal use, and the fee floor note the
-/// Bitcoin wallet repeats for every estimate while fees are low
+/// Bitcoin wallet repeats for every estimate while fees are low, and rendezvous retries
 pub fn quiet(target: &str, message: &str) -> bool {
     target.starts_with("monero_cpp")
         || [
@@ -38,6 +40,7 @@ pub fn quiet(target: &str, message: &str) -> bool {
             "Lost connection to peer",
             "Outgoing connection error to peer",
             "Recommended fee rate is below the absolute minimum relay fee",
+            "Failed to discover peers at rendezvous node",
         ]
             .iter()
             .any(|prefix| message.starts_with(prefix))
@@ -50,14 +53,25 @@ pub fn wanted(level: &Level, target: &str) -> bool {
 
 struct Forward;
 
-impl<S: Subscriber> Layer<S> for Forward {
-    fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
+/// A span's fields as text. eigenwallet names the maker in spans (`swap_setup{peer=..}`), not in
+/// the events inside them, so they are kept to say which maker an error came from.
+struct SpanFields(String);
+
+impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for Forward {
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+        let mut fields = Message::default();
+        attrs.record(&mut fields);
+        if let Some(span) = ctx.span(id) {
+            span.extensions_mut().insert(SpanFields(fields.text()));
+        }
+    }
+
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         let metadata = event.metadata();
         if !wanted(metadata.level(), metadata.target()) {
             return;
         }
-        let mut message = Message::default();
-        event.record(&mut message);
+        let message = compose(event, &ctx);
         bridge::notify(
             "log",
             &json!({
@@ -68,6 +82,22 @@ impl<S: Subscriber> Layer<S> for Forward {
             }),
         );
     }
+}
+
+/// The event's message and fields, then the fields of the spans it happened in
+fn compose<S: Subscriber + for<'a> LookupSpan<'a>>(event: &Event<'_>, ctx: &Context<'_, S>) -> Message {
+    let mut message = Message::default();
+    event.record(&mut message);
+    if let Some(scope) = ctx.event_scope(event) {
+        for span in scope.from_root() {
+            if let Some(SpanFields(fields)) = span.extensions().get::<SpanFields>()
+                && !fields.is_empty()
+            {
+                let _ = write!(message.fields, " {fields}");
+            }
+        }
+    }
+    message
 }
 
 /// The event's message followed by its other fields as `name=value`
@@ -122,10 +152,34 @@ mod tests {
     }
 
     #[test]
+    fn span_fields_name_the_maker() {
+        use std::sync::{Arc, Mutex};
+        use tracing_subscriber::layer::SubscriberExt;
+
+        // Collects the lines Forward would send; Forward records the span fields it reads
+        struct Capture(Arc<Mutex<Vec<String>>>);
+        impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for Capture {
+            fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+                self.0.lock().unwrap().push(compose(event, &ctx).text());
+            }
+        }
+
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let subscriber = tracing_subscriber::registry().with(Forward).with(Capture(lines.clone()));
+        tracing::subscriber::with_default(subscriber, || {
+            let span = tracing::info_span!("swap_setup", peer = "12D3KooWmaker");
+            let _entered = span.enter();
+            tracing::warn!(error = "closed", "Swap setup failed");
+        });
+        assert_eq!(lines.lock().unwrap().as_slice(), ["Swap setup failed error=closed peer=12D3KooWmaker"]);
+    }
+
+    #[test]
     fn marks_routine_chatter_quiet() {
         assert!(quiet("monero_cpp", "Generating SSL certificate"));
         assert!(quiet("swap::cli::event_loop", "Outgoing connection error to peer"));
         assert!(quiet("swap::cli::event_loop", "Connected to peer"));
+        assert!(quiet("swap_p2p::protocols::rendezvous", "Failed to discover peers at rendezvous node, scheduling retry"));
         assert!(quiet("bitcoin_wallet", "Recommended fee rate is below the absolute minimum relay fee. Falling back to: 1000 sats"));
         assert!(!quiet("swap::protocol::bob::swap", "Checking Monero node connectivity"));
     }
