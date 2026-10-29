@@ -59,11 +59,7 @@ struct SpanFields(String);
 
 impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for Forward {
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
-        let mut fields = Message::default();
-        attrs.record(&mut fields);
-        if let Some(span) = ctx.span(id) {
-            span.extensions_mut().insert(SpanFields(fields.text()));
-        }
+        record_span_fields(attrs, id, &ctx);
     }
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
@@ -81,6 +77,15 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for Forward {
                 "quiet": quiet(metadata.target(), &message.message),
             }),
         );
+    }
+}
+
+/// Keeps a new span's fields, for `compose` to add to the events inside it
+fn record_span_fields<S: Subscriber + for<'a> LookupSpan<'a>>(attrs: &Attributes<'_>, id: &Id, ctx: &Context<'_, S>) {
+    let mut fields = Message::default();
+    attrs.record(&mut fields);
+    if let Some(span) = ctx.span(id) {
+        span.extensions_mut().insert(SpanFields(fields.text()));
     }
 }
 
@@ -156,16 +161,21 @@ mod tests {
         use std::sync::{Arc, Mutex};
         use tracing_subscriber::layer::SubscriberExt;
 
-        // Collects the lines Forward would send; Forward records the span fields it reads
+        // Does what Forward does, but collects the lines instead of sending them to Ashigaru:
+        // bridge's own tests listen on the callback at the same time
         struct Capture(Arc<Mutex<Vec<String>>>);
         impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for Capture {
+            fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+                record_span_fields(attrs, id, &ctx);
+            }
+
             fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
                 self.0.lock().unwrap().push(compose(event, &ctx).text());
             }
         }
 
         let lines = Arc::new(Mutex::new(Vec::new()));
-        let subscriber = tracing_subscriber::registry().with(Forward).with(Capture(lines.clone()));
+        let subscriber = tracing_subscriber::registry().with(Capture(lines.clone()));
         tracing::subscriber::with_default(subscriber, || {
             let span = tracing::info_span!("swap_setup", peer = "12D3KooWmaker");
             let _entered = span.enter();
