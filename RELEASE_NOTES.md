@@ -1,4 +1,8 @@
-# Ashigaru Desktop (unreleased)
+# Ashigaru Desktop 1.5.1
+
+*Released 2026-10-29*
+
+A fix for Tor, which stopped connecting for everyone on 2026-10-28.
 
 ## Tor
 

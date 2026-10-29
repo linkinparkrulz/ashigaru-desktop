@@ -32,7 +32,7 @@ Inside the container (or copy a checked-out source tree in with `docker cp`):
 apt update && apt install -y git
 git clone https://github.com/linkinparkrulz/ashigaru-desktop.git
 cd ashigaru-desktop
-git checkout v1.5.0   # the tag you are reproducing
+git checkout v1.5.1   # the tag you are reproducing
 
 ./gradlew clean packageAppImage
 ```
@@ -45,11 +45,11 @@ used for the official build (see `build.gradle` `repositories`).
 
 The AppImage wraps the application in a squashfs image whose metadata is not byte-for-byte
 reproducible, so compare the application it contains rather than the AppImage file itself. Download
-the official `Ashigaru-1.5.0-x86_64.AppImage`, check it against `SHA256SUMS`, then:
+the official `Ashigaru-1.5.1-x86_64.AppImage`, check it against `SHA256SUMS`, then:
 
 ```bash
-chmod +x Ashigaru-1.5.0-x86_64.AppImage
-./Ashigaru-1.5.0-x86_64.AppImage --appimage-extract   # unpacks to squashfs-root/
+chmod +x Ashigaru-1.5.1-x86_64.AppImage
+./Ashigaru-1.5.1-x86_64.AppImage --appimage-extract   # unpacks to squashfs-root/
 diff -r squashfs-root/usr build/jpackage/Ashigaru && echo "Reproduced"
 ```
 

@@ -8,7 +8,7 @@ plugins {
     id 'io.matthewnelson.kmp.tor.resource-filterjar' version '409.5.0'
 }
 
-def ashigaruTerminalVersion = '1.5.0'
+def ashigaruTerminalVersion = '1.5.1'
 def os = org.gradle.internal.os.OperatingSystem.current()
 def osName = os.getFamilyName()
 if(os.macOsX) {
