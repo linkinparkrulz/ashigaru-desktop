@@ -10,7 +10,8 @@ to work from these two files plus the source.
 ## 1. Environment & Build
 
 **Requirements:** JDK 21 (Temurin recommended). Nothing else — Gradle comes via the wrapper,
-Tor is embedded in the app (kmp-tor 4.7.13-4 / 1.4.3, pulled per-platform by `build.gradle`).
+Tor is embedded in the app (Tor 0.4.9.5 via kmp-tor runtime 2.5.0 / resource-exec-tor-gpl 409.5.0;
+the filterjar plugin in `build.gradle` keeps only the build platform's Tor binary).
 
 ```sh
 ./gradlew jar          # build

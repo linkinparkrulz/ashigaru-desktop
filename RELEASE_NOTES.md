@@ -1,3 +1,15 @@
+# Ashigaru Desktop (unreleased)
+
+## Tor
+
+- **Tor connects again.** Ashigaru bundled Tor 0.4.7. On 2026-10-28 the Tor network began
+  requiring the `Desc=3` and `Microdesc=3` protocols, which Tor releases before 0.4.9 lack. They
+  read the network's consensus, find a protocol they cannot speak and shut down, so Ashigaru
+  could not connect at all. The bundled Tor is now 0.4.9.5. The Tor binaries Ashigaru unpacked
+  before are deleted the first time the new version starts.
+- **Linux ARM64 uses the same Tor as every other platform.** It used to need a separately
+  built Tor binary.
+
 # Ashigaru Desktop 1.5.0
 
 *Released 2026-10-23*

@@ -1,17 +1,18 @@
 package com.sparrowwallet.sparrow.net;
 
-import io.matthewnelson.kmp.tor.ext.callback.manager.CallbackTorManager;
-import io.matthewnelson.kmp.tor.manager.common.event.TorManagerEvent;
+import io.matthewnelson.kmp.tor.runtime.Action;
+import io.matthewnelson.kmp.tor.runtime.RuntimeEvent;
+import io.matthewnelson.kmp.tor.runtime.TorListeners;
+import io.matthewnelson.kmp.tor.runtime.TorRuntime;
+import io.matthewnelson.kmp.tor.runtime.core.OnEvent;
+import io.matthewnelson.kmp.tor.runtime.core.ctrl.Reply;
 import javafx.concurrent.ScheduledService;
 import javafx.concurrent.Task;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Service to start internal Tor (including a Tor proxy running on localhost:9050, or another port if unavailable)
@@ -20,9 +21,6 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class TorService extends ScheduledService<Tor> {
     private static final Logger log = LoggerFactory.getLogger(TorService.class);
-
-    private final ReentrantLock startupLock = new ReentrantLock();
-    private final Condition startupCondition = startupLock.newCondition();
 
     //The daemon between being launched and becoming Tor.getDefault(). Kept so a retry or a restart can
     //shut it down: otherwise it runs on unseen, holding the data directory the next daemon needs.
@@ -40,7 +38,7 @@ public class TorService extends ScheduledService<Tor> {
     @Override
     protected Task<Tor> createTask() {
         return new Task<>() {
-            private Exception startupException;
+            private volatile Exception startupException;
 
             @Override
             protected Tor call() throws Exception {
@@ -49,40 +47,31 @@ public class TorService extends ScheduledService<Tor> {
                     destroyBootingTor();
                     tor = new Tor();
                     bootingTor = tor;
-                    CallbackTorManager callbackTorManager = tor.getTorManager();
-                    callbackTorManager.addListener(new TorManagerEvent.Listener() {
-                        @Override
-                        public void managerEventAddressInfo(@NotNull TorManagerEvent.AddressInfo info) {
-                            if(!info.isNull) {
-                                try {
-                                    startupLock.lock();
-                                    startupCondition.signalAll();
-                                } finally {
-                                    startupLock.unlock();
-                                }
-                            }
+                    TorRuntime torRuntime = tor.getTorRuntime();
+                    //A latch rather than a condition, as Tor can fail or come up before this thread starts waiting
+                    CountDownLatch startup = new CountDownLatch(1);
+                    RuntimeEvent.Observer<TorListeners> startupObserver = RuntimeEvent.LISTENERS.INSTANCE.observer("startup", OnEvent.Executor.Immediate.INSTANCE, listeners -> {
+                        if(!listeners.socks.isEmpty()) {
+                            startup.countDown();
                         }
                     });
-                    callbackTorManager.start(throwable -> {
-                        if(throwable instanceof Exception exception) {
+                    torRuntime.subscribe(startupObserver);
+                    torRuntime.enqueue(Action.StartDaemon, throwable -> {
+                        if(throwable instanceof Reply.Error replyError && !replyError.replies.isEmpty()) {
+                            startupException = new TorStartupException(replyError.replies.get(0).message);
+                        } else if(throwable instanceof Exception exception) {
                             startupException = exception;
                         } else {
                             startupException = new Exception(throwable);
                         }
-                        log.error("Error", throwable);
-                        try {
-                            startupLock.lock();
-                            startupCondition.signalAll();
-                        } finally {
-                            startupLock.unlock();
-                        }
+                        log.error("Error starting Tor daemon", throwable);
+                        startup.countDown();
                     }, success -> {
                         log.info("Tor daemon started successfully");
                     });
 
                     try {
-                        startupLock.lock();
-                        if(!startupCondition.await(5, TimeUnit.MINUTES)) {
+                        if(!startup.await(5, TimeUnit.MINUTES)) {
                             throw new TorStartupException("Tor failed to start after 5 minutes, giving up");
                         }
 
@@ -90,7 +79,7 @@ public class TorService extends ScheduledService<Tor> {
                             throw startupException;
                         }
                     } finally {
-                        startupLock.unlock();
+                        torRuntime.unsubscribe(startupObserver);
                     }
                     bootingTor = null;
                 }
@@ -105,7 +94,7 @@ public class TorService extends ScheduledService<Tor> {
         Tor previous = takeBootingTor();
         if(previous != null) {
             CountDownLatch destroyed = new CountDownLatch(1);
-            previous.getTorManager().destroy(true, success -> destroyed.countDown());
+            previous.stop(destroyed::countDown);
             if(!destroyed.await(15, TimeUnit.SECONDS)) {
                 log.warn("Previous Tor daemon did not stop within 15 seconds");
             }
