@@ -165,6 +165,7 @@ public class AppServices {
                     }
                 } else {
                     restartServices();
+                    startUpdateCheckIfAllowed();
                 }
             } else {
                 connectionService.cancel();
@@ -462,7 +463,16 @@ public class AppServices {
             updateCheckService = createUpdateCheckService();
         }
 
-        if(isUpdateCheckAllowed() && !updateCheckService.isRunning()) {
+        if(!isUpdateCheckAllowed()) {
+            return;
+        }
+
+        if(Config.get().requiresInternalTor() && !isTorRunning()) {
+            return;
+        }
+
+        Worker.State state = updateCheckService.getState();
+        if(state != Worker.State.RUNNING && state != Worker.State.SCHEDULED) {
             restartService(updateCheckService);
         }
     }
@@ -498,6 +508,7 @@ public class AppServices {
             Tor.setDefault(torService.getValue());
             torService.cancel();
             restartServices();
+            startUpdateCheckIfAllowed();
             EventManager.get().post(new TorReadyStatusEvent());
         });
         torService.setOnFailed(workerStateEvent -> {
@@ -1314,9 +1325,8 @@ public class AppServices {
             updateCheckService.cancel();
         }
 
-        if(event.isEnabled() && isUpdateCheckAllowed()) {
-            updateCheckService = createUpdateCheckService();
-            updateCheckService.start();
+        if(event.isEnabled()) {
+            startUpdateCheckIfAllowed();
         }
     }
 
