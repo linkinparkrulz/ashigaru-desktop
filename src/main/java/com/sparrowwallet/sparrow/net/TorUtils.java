@@ -2,7 +2,6 @@ package com.sparrowwallet.sparrow.net;
 
 import com.google.common.net.HostAndPort;
 import com.sparrowwallet.sparrow.AppServices;
-import io.matthewnelson.kmp.tor.controller.common.control.usecase.TorControlSignal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,11 +13,7 @@ public class TorUtils {
 
     public static void changeIdentity(HostAndPort proxy) {
         if(AppServices.isTorRunning()) {
-            Tor.getDefault().getTorManager().signal(TorControlSignal.Signal.NewNym, throwable -> {
-                log.warn("Failed to signal newnym");
-            }, successEvent -> {
-                log.info("Signalled newnym for new Tor circuit");
-            });
+            Tor.getDefault().changeIdentity();
         } else {
             HostAndPort control = HostAndPort.fromParts(proxy.getHost(), proxy.getPort() + 1);
             try(Socket socket = new Socket(control.getHost(), control.getPort())) {
