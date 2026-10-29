@@ -267,7 +267,7 @@ public class AppServices {
         }
 
         if(Tor.getDefault() != null) {
-            Tor.getDefault().getTorManager().destroy(true, success -> {});
+            Tor.getDefault().stop(() -> {});
         }
     }
 
@@ -305,7 +305,7 @@ public class AppServices {
                 startFreshTor();
             }
         };
-        tor.getTorManager().destroy(true, success -> Platform.runLater(startOnce));
+        tor.stop(() -> Platform.runLater(startOnce));
         //A wedged daemon may never report that it stopped, and that is exactly when a restart is wanted
         PauseTransition fallback = new PauseTransition(Duration.seconds(15));
         fallback.setOnFinished(event -> startOnce.run());
