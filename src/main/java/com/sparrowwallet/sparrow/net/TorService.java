@@ -45,6 +45,7 @@ public class TorService extends ScheduledService<Tor> {
                 Tor tor = Tor.getDefault();
                 if(tor == null) {
                     destroyBootingTor();
+                    Tor.killStrayDaemons();
                     tor = new Tor();
                     bootingTor = tor;
                     TorRuntime torRuntime = tor.getTorRuntime();

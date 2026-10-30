@@ -22,6 +22,9 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ServerSocket;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class Tor {
     private static final Logger log = LoggerFactory.getLogger(Tor.class);
@@ -113,6 +116,51 @@ public class Tor {
             b.required(TorEvent.ERR.INSTANCE);
             b.required(TorEvent.WARN.INSTANCE);
         });
+    }
+
+    /** Where Tor keeps its state, and the lock a second Tor cannot take while another holds it */
+    static File getDataDir() {
+        return new File(new File(new File(Storage.getSparrowHome(), TOR_DIR), WORK_DIR), "data");
+    }
+
+    /**
+     * Stops any Tor still running on our data directory. kmp-tor can lose a daemon that hangs (one
+     * spun at several cores and stopped answering its control port): it then treats it as stopped,
+     * and the next daemon exits at once because it cannot lock the data directory. Call before
+     * starting a daemon, off the JavaFX thread; it waits up to ten seconds per stray.
+     */
+    public static void killStrayDaemons() {
+        File dataDir = getDataDir();
+        long self = ProcessHandle.current().pid();
+        ProcessHandle.allProcesses()
+                .filter(process -> process.pid() != self)
+                .filter(process -> process.info().arguments().map(args -> holdsDataDir(Arrays.asList(args), dataDir)).orElse(false))
+                .forEach(process -> {
+                    log.warn("Stopping a Tor process (pid " + process.pid() + ") still running on " + dataDir + ", so a new one can start");
+                    process.destroy();
+                    try {
+                        process.onExit().get(5, TimeUnit.SECONDS);
+                    } catch(Exception e) {
+                        //A hung Tor can ignore SIGTERM
+                        log.warn("Tor process " + process.pid() + " did not stop, killing it");
+                        process.destroyForcibly();
+                        try {
+                            process.onExit().get(5, TimeUnit.SECONDS);
+                        } catch(Exception ex) {
+                            log.error("Could not stop Tor process " + process.pid(), ex);
+                        }
+                    }
+                });
+    }
+
+    /** True when these command line arguments start a Tor on this data directory */
+    static boolean holdsDataDir(List<String> args, File dataDir) {
+        int index = args.indexOf("--DataDirectory");
+        if(index < 0 || index + 1 >= args.size()) {
+            return false;
+        }
+        String path = args.get(index + 1);
+        return new File(path).getAbsoluteFile().equals(dataDir.getAbsoluteFile());
     }
 
     public static Tor getDefault() {
