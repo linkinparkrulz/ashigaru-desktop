@@ -275,6 +275,11 @@ public class SwapsToolController implements Initializable {
     }
 
     private void setUpSwapsTable() {
+        TableColumn<JsonObject, String> started = column("Started", swap -> {
+            Instant when = startedAt(swap);
+            return when == null ? "" : STARTED.format(when);
+        });
+        started.setPrefWidth(140);
         TableColumn<JsonObject, String> id = column("Swap", swap -> swap.get("swapId").getAsString());
         id.setPrefWidth(280);
         TableColumn<JsonObject, String> state = column("State", swap -> swap.get("state").getAsString());
@@ -298,12 +303,14 @@ public class SwapsToolController implements Initializable {
             protected void updateItem(JsonObject swap, boolean empty) {
                 super.updateItem(swap, empty);
                 //A running swap refunds by itself once its timelock allows; a stopped, unfinished one is refunded here
-                boolean canRefund = !empty && swap != null && !swap.get("complete").getAsBoolean() && !swap.get("running").getAsBoolean();
+                //A past identity's swap is only shown: no engine holds its database to act on it
+                boolean canRefund = !empty && swap != null && !swap.get("complete").getAsBoolean() && !swap.get("running").getAsBoolean()
+                        && !(swap.has("past") && swap.get("past").getAsBoolean());
                 setGraphic(canRefund ? refund : null);
             }
         });
         action.setPrefWidth(100);
-        swapsTable.getColumns().setAll(List.of(id, state, progress, action));
+        swapsTable.getColumns().setAll(List.of(started, id, state, progress, action));
         swapsTable.setItems(swaps);
     }
 
@@ -382,10 +389,13 @@ public class SwapsToolController implements Initializable {
             return;
         }
         SwapService.get().listSwaps(list -> {
-            swaps.clear();
+            List<JsonObject> all = new ArrayList<>();
             for(JsonElement element : list) {
-                swaps.add(0, element.getAsJsonObject());
+                all.add(element.getAsJsonObject());
             }
+            //Newest first; a swap without a start date goes last
+            all.sort(Comparator.comparing((JsonObject swap) -> startedAt(swap), Comparator.nullsFirst(Comparator.naturalOrder())).reversed());
+            swaps.setAll(all);
         }, e -> {});
     }
 
@@ -577,6 +587,25 @@ public class SwapsToolController implements Initializable {
         messageLabel.setText("Cancelling and refunding " + swapId + "…");
         SwapService.get().refund(swapId, state -> messageLabel.setText("Refund published to Badbank."),
                 e -> messageLabel.setText("Could not refund yet: " + e.getMessage()));
+    }
+
+    private static final java.time.format.DateTimeFormatter STARTED =
+            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(java.time.ZoneId.systemDefault());
+    //eigenwallet stores when a swap started as the time crate prints it, in UTC: "2026-10-30 6:41:05.123 +00:00:00"
+    private static final java.util.regex.Pattern ENTERED_AT =
+            java.util.regex.Pattern.compile("^(\\d{4})-(\\d{2})-(\\d{2}) (\\d{1,2}):(\\d{2}):(\\d{2})");
+
+    /** When the swap started, or null when the engine did not say */
+    static Instant startedAt(JsonObject swap) {
+        if(!swap.has("startedAt") || swap.get("startedAt").isJsonNull()) {
+            return null;
+        }
+        java.util.regex.Matcher m = ENTERED_AT.matcher(swap.get("startedAt").getAsString());
+        if(!m.find()) {
+            return null;
+        }
+        return java.time.LocalDateTime.of(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)),
+                Integer.parseInt(m.group(4)), Integer.parseInt(m.group(5)), Integer.parseInt(m.group(6))).toInstant(java.time.ZoneOffset.UTC);
     }
 
     private static double xmrPerBtc(Quote quote) {

@@ -74,9 +74,10 @@ public class SwapEngine {
      * @param electrumUrls e.g. tcp://host.onion:50001, reached through Tor
      * @param moneroNodes  onion host:port of each Monero node, reached through Tor over plain HTTP: the
      *                     first is the engine's node, the others witnesses that must agree with it
+     * @param pastDataDirs earlier identities' data directories, read for the list of past swaps
      */
     public void start(File dataDir, HostAndPort torProxy, byte[] seed, SwapHost host, List<String> electrumUrls,
-                      List<String> moneroNodes) throws SwapEngineException {
+                      List<String> moneroNodes, List<File> pastDataDirs) throws SwapEngineException {
         if(seed.length != 32) {
             throw new IllegalArgumentException("Swap seed must be 32 bytes");
         }
@@ -92,6 +93,9 @@ public class SwapEngine {
         config.addProperty("socksHost", torProxy.getHost());
         config.addProperty("socksPort", torProxy.getPort());
         config.addProperty("seedHex", Utils.bytesToHex(seed));
+        JsonArray past = new JsonArray();
+        pastDataDirs.forEach(dir -> past.add(dir.getAbsolutePath()));
+        config.add("pastDataDirs", past);
         if(host != null && electrumUrls != null && !electrumUrls.isEmpty() && moneroNodes != null && !moneroNodes.isEmpty()) {
             JsonObject swap = new JsonObject();
             JsonArray urls = new JsonArray();

@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.security.SecureRandom;
+import java.util.List;
 
 /**
  * The swap engine's identity: how makers see this app, and the seed of the engine's own keys. It
@@ -65,6 +66,15 @@ public final class SwapIdentity {
         Files.move(temp.toPath(), new File(swapsDir, CURRENT).toPath(), StandardCopyOption.REPLACE_EXISTING,
                 StandardCopyOption.ATOMIC_MOVE);
         return new SwapIdentity(seed, swapsDir);
+    }
+
+    /**
+     * The data directories of earlier identities that hold a swap database. Each identity keeps its
+     * own, so these are what the list of past swaps is read from.
+     */
+    public static List<File> pastDataDirs(File swapsDir, File current) {
+        File[] dirs = swapsDir.listFiles(dir -> dir.isDirectory() && !dir.equals(current) && new File(dir, "sqlite").isFile());
+        return dirs == null ? List.of() : List.of(dirs);
     }
 
     /** A directory name for a seed, without revealing the seed */

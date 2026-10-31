@@ -54,4 +54,16 @@ class SwapsToolControllerTest {
         assertEquals(List.of(fake, fair), early.shown());
         assertTrue(early.footer(false).contains("once the market price has loaded"));
     }
+
+    @Test
+    void swapStartTimesAreRead() {
+        com.google.gson.JsonObject swap = new com.google.gson.JsonObject();
+        swap.addProperty("startedAt", "2026-10-30 6:41:05.123456 +00:00:00");
+        assertEquals(java.time.Instant.parse("2026-10-30T06:41:05Z"), SwapsToolController.startedAt(swap));
+        swap.addProperty("startedAt", "2026-10-30 16:41:05.0 +00:00:00");
+        assertEquals(java.time.Instant.parse("2026-10-30T16:41:05Z"), SwapsToolController.startedAt(swap));
+        swap.add("startedAt", com.google.gson.JsonNull.INSTANCE);
+        assertNull(SwapsToolController.startedAt(swap));
+        assertNull(SwapsToolController.startedAt(new com.google.gson.JsonObject()));
+    }
 }

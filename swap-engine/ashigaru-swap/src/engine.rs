@@ -61,6 +61,11 @@ pub struct EngineConfig {
     /// Swapping needs both of these. Without them the engine only fetches quotes.
     #[serde(default)]
     pub swap: Option<SwapConfig>,
+    /// The data directories of earlier identities. Ashigaru takes a new identity once no swap is
+    /// unfinished, so a finished swap's record stays behind in its identity's directory; these are
+    /// read once, read-only, so past swaps stay in the list.
+    #[serde(default)]
+    pub past_data_dirs: Vec<PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -104,6 +109,8 @@ pub struct Engine {
     handle: TauriHandle,
     swap: Option<SwapParts>,
     running: Mutex<HashMap<Uuid, JoinHandle<()>>>,
+    /// Swaps recorded under earlier identities, as `list_swaps` entries
+    past_swaps: Vec<Value>,
     /// The event loop and the Tor relays, stopped with the engine
     tasks: Vec<JoinHandle<()>>,
 }
@@ -212,6 +219,8 @@ impl Engine {
             EventLoop::new(swarm, db.clone(), Some(handle.clone()), None)?;
         tasks.push(tokio::spawn(event_loop.run()));
 
+        let past_swaps = read_past_swaps(&config.past_data_dirs, &config.data_dir).await;
+
         Ok(Self {
             event_loop: Mutex::new(event_loop_handle),
             db,
@@ -219,6 +228,7 @@ impl Engine {
             handle,
             swap,
             running: Mutex::new(HashMap::new()),
+            past_swaps,
             tasks,
         })
     }
@@ -463,13 +473,13 @@ impl Engine {
         let mut swaps = Vec::new();
         for (peer_id, swap_id, state) in self.db.all().await? {
             let State::Bob(bob_state) = state else { continue };
-            swaps.push(json!({
-                "swapId": swap_id,
-                "peerId": peer_id.to_string(),
-                "state": bob_state.to_string(),
-                "complete": bob::is_complete(&bob_state),
-                "running": running.get(&swap_id).is_some_and(|t| !t.is_finished()),
-            }));
+            let running = running.get(&swap_id).is_some_and(|t| !t.is_finished());
+            swaps.push(swap_entry(self.db.as_ref(), peer_id, swap_id, &bob_state, running, false).await);
+        }
+        for past in &self.past_swaps {
+            if !swaps.iter().any(|swap| swap["swapId"] == past["swapId"]) {
+                swaps.push(past.clone());
+            }
         }
         Ok(Value::Array(swaps))
     }
@@ -501,4 +511,48 @@ where
         .timeout(CONNECT_TIMEOUT)
         .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
         .boxed())
+}
+
+/// One `list_swaps` entry. `past` marks a swap recorded under an earlier identity: it can only be
+/// shown, as no engine holds its database for writing.
+async fn swap_entry(db: &(dyn Database + Send + Sync), peer_id: PeerId, swap_id: Uuid, state: &BobState, running: bool, past: bool) -> Value {
+    json!({
+        "swapId": swap_id,
+        "peerId": peer_id.to_string(),
+        "state": state.to_string(),
+        "complete": bob::is_complete(state),
+        "running": running,
+        "past": past,
+        "startedAt": db.get_swap_start_date(swap_id).await.ok(),
+    })
+}
+
+/// Reads the swaps in earlier identities' databases. A directory that cannot be read is skipped:
+/// the list is for showing, and the current swaps must not depend on it.
+async fn read_past_swaps(dirs: &[PathBuf], current: &std::path::Path) -> Vec<Value> {
+    let mut swaps = Vec::new();
+    for dir in dirs {
+        let sqlite = dir.join("sqlite");
+        // open_db creates a missing database, so only open one that exists
+        if dir == current || !sqlite.exists() {
+            continue;
+        }
+        let db = match open_db(&sqlite, AccessMode::ReadOnly, None).await {
+            Ok(db) => db,
+            Err(e) => {
+                tracing::warn!(dir = %dir.display(), "Could not read past swaps: {e:#}");
+                continue;
+            }
+        };
+        match db.all().await {
+            Ok(all) => {
+                for (peer_id, swap_id, state) in all {
+                    let State::Bob(bob_state) = state else { continue };
+                    swaps.push(swap_entry(db.as_ref(), peer_id, swap_id, &bob_state, false, true).await);
+                }
+            }
+            Err(e) => tracing::warn!(dir = %dir.display(), "Could not read past swaps: {e:#}"),
+        }
+    }
+    swaps
 }

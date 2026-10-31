@@ -230,14 +230,16 @@ public class SwapService implements SwapHost {
         status.set(renewIdentity ? "Taking a fresh identity for the next swap…" : "Starting through Tor…");
         runInBackground(() -> {
             SwapIdentity identity = renewIdentity ? SwapIdentity.renew(swapsDir) : SwapIdentity.current(swapsDir);
-            loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes);
+            loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes,
+                    SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
             List<String> resumed = new ArrayList<>();
             loaded.resumeAll().forEach(id -> resumed.add(id.getAsString()));
             boolean used = !loaded.listSwaps().isEmpty();
             //Identity already used and nothing left to finish: makers have seen it, so take a new one
             if(!renewIdentity && resumed.isEmpty() && used) {
                 identity = SwapIdentity.renew(swapsDir);
-                loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes);
+                loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes,
+                    SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
             }
             return resumed;
         }, resumed -> {
