@@ -52,10 +52,43 @@ public class SwapEngine {
 
     /** Loads the library bundled in the app's resources, which only swap builds include */
     public static SwapEngine loadBundled() throws SwapEngineException {
+        //By class loader, as JNA itself looks: the <os>-<arch>/ folders are not packages of any module
+        if(SwapEngine.class.getClassLoader().getResource(com.sun.jna.Platform.RESOURCE_PREFIX + "/" + System.mapLibraryName(BUNDLED_NAME)) == null) {
+            throw new SwapEngineException("This build does not include the swap engine");
+        }
         try {
+            if(com.sun.jna.Platform.isWindows()) {
+                loadWindowsRuntime();
+            }
             return new SwapEngine(Native.load(BUNDLED_NAME, SwapEngineLibrary.class));
-        } catch(UnsatisfiedLinkError e) {
-            throw new SwapEngineException("This build does not include the swap engine", e);
+        } catch(UnsatisfiedLinkError | java.io.IOException e) {
+            throw new SwapEngineException("The swap engine could not load: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * The engine is cross-compiled with MinGW, whose runtime DLLs Windows does not have; swap builds
+     * ship the ones it imports beside it. JNA unpacks the engine on its own, where Windows would not
+     * find them, so they are loaded first: Windows then resolves the engine's imports from the
+     * modules already in the process. libwinpthread comes first, as the other two import it.
+     */
+    private static void loadWindowsRuntime() throws java.io.IOException {
+        java.nio.file.Path dir = null;
+        for(String dll : List.of("libwinpthread-1.dll", "libgcc_s_seh-1.dll", "libstdc++-6.dll")) {
+            try(java.io.InputStream in = SwapEngine.class.getClassLoader().getResourceAsStream(com.sun.jna.Platform.RESOURCE_PREFIX + "/" + dll)) {
+                if(in == null) {
+                    continue;
+                }
+                if(dir == null) {
+                    dir = java.nio.file.Files.createTempDirectory("ashigaru-swap");
+                    dir.toFile().deleteOnExit();
+                }
+                java.nio.file.Path file = dir.resolve(dll);
+                java.nio.file.Files.copy(in, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                file.toFile().deleteOnExit();
+                System.load(file.toAbsolutePath().toString());
+                log.debug("Loaded " + dll + " for the swap engine");
+            }
         }
     }
 

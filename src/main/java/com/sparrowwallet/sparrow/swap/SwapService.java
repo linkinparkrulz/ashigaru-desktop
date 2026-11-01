@@ -61,6 +61,8 @@ public class SwapService implements SwapHost {
     private Boolean available;
     //The loaded library; it runs one engine at a time
     private SwapEngine engine;
+    //Why the engine could not be loaded, shown in Settings → Swaps
+    private String loadError;
     private boolean starting;
     //The Tor proxy the running engine was started with, to notice when Tor comes back on another port
     private HostAndPort engineProxy;
@@ -201,7 +203,8 @@ public class SwapService implements SwapHost {
 
     private String problem() {
         if(!isAvailable()) {
-            return Network.get() == Network.MAINNET ? "This build does not include the swap engine." : "Swaps run on mainnet only.";
+            return Network.get() != Network.MAINNET ? "Swaps run on mainnet only."
+                    : loadError != null ? loadError : "This build does not include the swap engine.";
         }
         Server server = Config.get().getServer();
         if(server == null || Config.get().getServerType() == ServerType.BITCOIN_CORE) {
@@ -500,7 +503,12 @@ public class SwapService implements SwapHost {
                 File override = Config.get().getSwapEngineLibrary();
                 engine = override != null ? SwapEngine.load(override) : SwapEngine.loadBundled();
             } catch(SwapEngineException e) {
-                log.info("Swap engine not available: " + e.getMessage());
+                loadError = e.getMessage();
+                if(e.getCause() != null) {
+                    log.warn("Swap engine not available: " + e.getMessage(), e.getCause());
+                } else {
+                    log.info("Swap engine not available: " + e.getMessage());
+                }
             }
         }
         return engine;

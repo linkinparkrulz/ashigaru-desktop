@@ -64,7 +64,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p "src/main/resources/${{ matrix.prefix }}"
-          cp "engine/${{ matrix.lib }}" "src/main/resources/${{ matrix.prefix }}/"
+          # The library, and on Windows the MinGW runtime DLLs it needs
+          cp engine/* "src/main/resources/${{ matrix.prefix }}/"
           ls -l "src/main/resources/${{ matrix.prefix }}"
 
       - name: Set up JDK 21.0.7
@@ -90,6 +91,7 @@ jobs:
         shell: bash
         run: |
           jar=$(find build/libs -name '*.jar' | head -1)
+          unzip -l "$jar" | grep "${{ matrix.prefix }}/"
           unzip -l "$jar" | grep "${{ matrix.prefix }}/${{ matrix.lib }}"
 
       - name: Upload Artifacts

@@ -124,11 +124,28 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/out"
           cp "$lib" "$GITHUB_WORKSPACE/out/"
 
-      # The Windows library must not need MinGW runtime DLLs that Windows does not have
-      - name: List DLL imports (Windows cross-build)
+      # Windows does not have MinGW's runtime DLLs, so ship the ones the library imports beside it,
+      # as eigenwallet's own Windows app does; Ashigaru loads them before the engine
+      - name: Ship MinGW runtime DLLs (Windows cross-build)
         if: contains(matrix.target, 'windows')
         run: |
-          echo "- imports: $(x86_64-w64-mingw32-objdump -p out/${{ matrix.lib }} | grep 'DLL Name' | awk '{print $3}' | sort -u | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"
+          imports=$(x86_64-w64-mingw32-objdump -p out/${{ matrix.lib }} | grep 'DLL Name' | awk '{print $3}' | sort -u)
+          echo "Imports of ${{ matrix.lib }}:"
+          echo "$imports"
+          echo "- imports: $(echo "$imports" | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"
+          prefix="$(dirname "$MINGW_TOOLCHAIN_DIR")"
+          for dll in libwinpthread-1.dll libgcc_s_seh-1.dll libstdc++-6.dll; do
+            if echo "$imports" | grep -qix "$dll"; then
+              found=$(find "$prefix" -name "$dll" -path '*x86_64-w64-mingw32*' | head -1)
+              if [ -z "$found" ]; then
+                echo "$dll is imported but was not found under $prefix" >&2
+                exit 1
+              fi
+              cp "$found" out/
+              echo "Shipping $found"
+            fi
+          done
+          ls -l out
 
       - name: Upload library
         uses: actions/upload-artifact@v4
