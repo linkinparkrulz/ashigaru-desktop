@@ -4,24 +4,41 @@
 //! DNS when there is none. Ashigaru runs exactly one Tor and never connects directly, so this
 //! transport has no fallback: an address it cannot hand to the proxy is refused, and DNS names are
 //! always resolved by the proxy (Tor) rather than locally.
+//!
+//! At start the engine dials every maker it knows at once: thirty or more, many of them onion
+//! services that each need a fresh circuit and, under Tor 0.4.9, possibly a proof-of-work puzzle.
+//! Ashigaru's Tor hung and fell over under that burst, so only a few connections are set up at a
+//! time and the rest wait their turn.
 
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use futures::future::BoxFuture;
 use libp2p::core::multiaddr::Protocol;
 use libp2p::core::transport::{DialOpts, ListenerId, TransportError, TransportEvent};
 use libp2p::{Multiaddr, Transport};
+use tokio::sync::Semaphore;
+
+/// How many connections may be in the middle of being set up through Tor at once
+pub const MAX_PENDING_DIALS: usize = 6;
 
 #[derive(Debug, Clone)]
 pub struct Socks5Transport {
     proxy: String,
+    /// Shared by every clone, so the websocket and plain TCP dials count against one limit
+    pending: Arc<Semaphore>,
 }
 
 impl Socks5Transport {
     pub fn new(proxy_host: &str, proxy_port: u16) -> Self {
+        Self::with_limit(proxy_host, proxy_port, MAX_PENDING_DIALS)
+    }
+
+    pub fn with_limit(proxy_host: &str, proxy_port: u16, max_pending: usize) -> Self {
         Self {
             proxy: format!("{proxy_host}:{proxy_port}"),
+            pending: Arc::new(Semaphore::new(max_pending)),
         }
     }
 }
@@ -92,8 +109,14 @@ impl Transport for Socks5Transport {
         let (host, port) =
             proxy_target(&addr).ok_or_else(|| TransportError::MultiaddrNotSupported(addr.clone()))?;
         let proxy = self.proxy.clone();
+        let pending = self.pending.clone();
 
         Ok(Box::pin(async move {
+            // Held only while the connection is set up: an open connection does not count
+            let _permit = pending
+                .acquire_owned()
+                .await
+                .map_err(|e| std::io::Error::other(e.to_string()))?;
             let stream = tokio_socks::tcp::Socks5Stream::connect(proxy.as_str(), (host.as_str(), port))
                 .await
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::ConnectionRefused, e))?;
@@ -165,5 +188,43 @@ mod tests {
         let addr: Multiaddr = "/dns4/example.com/tcp/80".parse().unwrap();
         let result = transport.dial(addr, opts).unwrap().await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn only_a_few_dials_are_set_up_at_once() {
+        // A proxy that accepts connections and never answers, like a Tor that is busy
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let accepted = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let hang_up = Arc::new(tokio::sync::Notify::new());
+        let (counter, hang_up_signal) = (accepted.clone(), hang_up.clone());
+        tokio::spawn(async move {
+            let mut held = Vec::new();
+            loop {
+                tokio::select! {
+                    Ok((socket, _)) = listener.accept() => {
+                        counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                        held.push(socket);
+                    }
+                    _ = hang_up_signal.notified() => held.clear(),
+                }
+            }
+        });
+
+        let mut transport = Socks5Transport::with_limit("127.0.0.1", port, 2);
+        for i in 0..3u16 {
+            let addr: Multiaddr = format!("/dns4/maker{i}.example/tcp/9939").parse().unwrap();
+            tokio::spawn(transport.dial(addr, DialOpts {
+                role: libp2p::core::Endpoint::Dialer,
+                port_use: libp2p::core::transport::PortUse::New,
+            }).unwrap());
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        assert_eq!(accepted.load(std::sync::atomic::Ordering::SeqCst), 2);
+
+        // Once a dial in progress ends, failed here, its place goes to the one waiting
+        hang_up.notify_one();
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        assert_eq!(accepted.load(std::sync::atomic::Ordering::SeqCst), 3);
     }
 }

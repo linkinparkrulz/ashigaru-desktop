@@ -62,6 +62,8 @@ public class SwapService implements SwapHost {
     //The loaded library; it runs one engine at a time
     private SwapEngine engine;
     private boolean starting;
+    //The Tor proxy the running engine was started with, to notice when Tor comes back on another port
+    private HostAndPort engineProxy;
     private final ReadOnlyBooleanWrapper running = new ReadOnlyBooleanWrapper(false);
     private final ReadOnlyStringWrapper status = new ReadOnlyStringWrapper("Off.");
     private final ReadOnlyObjectWrapper<Coin> coin = new ReadOnlyObjectWrapper<>();
@@ -221,6 +223,7 @@ public class SwapService implements SwapHost {
      */
     private void start(boolean renewIdentity) {
         HostAndPort torProxy = AppServices.getTorProxy();
+        engineProxy = torProxy;
         List<String> electrumUrls = List.of(Config.get().getServer().getUrl());
         List<String> moneroNodes = MoneroNodes.forEngine(MoneroNodes.getSelected());
         File swapsDir = new File(Storage.getSparrowHome(), "swaps");
@@ -268,7 +271,18 @@ public class SwapService implements SwapHost {
 
     @Subscribe
     public void torReady(TorReadyStatusEvent event) {
-        Platform.runLater(this::startIfEnabled);
+        Platform.runLater(() -> {
+            //A restarted Tor listens on a new port: an engine still dialling the old one reaches nothing
+            //("ProxyServerUnreachable") until it is started again. A running swap resumes from its database.
+            HostAndPort proxy = AppServices.getTorProxy();
+            if(running.get() && !starting && proxy != null && !proxy.equals(engineProxy)) {
+                appendLog("Tor restarted on " + proxy + "; restarting the swap engine to use it");
+                running.set(false);
+                start(false);
+            } else {
+                startIfEnabled();
+            }
+        });
     }
 
     public void listQuotes(Consumer<List<SwapEngine.Quote>> onSuccess, Consumer<Throwable> onFailure) {
