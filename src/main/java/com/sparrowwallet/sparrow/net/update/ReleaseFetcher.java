@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.sparrowwallet.sparrow.AppServices;
+import com.sparrowwallet.sparrow.io.Config;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -162,6 +163,10 @@ public class ReleaseFetcher {
     }
 
     private static HttpURLConnection open(String url, String accept) throws IOException {
+        if(Config.get().requiresInternalTor() && !AppServices.isTorRunning()) {
+            throw new IOException("The bundled Tor is not running; refusing to connect to " + url + " over clearnet");
+        }
+
         Proxy proxy = AppServices.getProxy();
         HttpURLConnection connection = (HttpURLConnection)(proxy != null
                 ? new URL(url).openConnection(proxy)
