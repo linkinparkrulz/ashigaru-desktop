@@ -49,4 +49,23 @@ class SwapServiceTest {
         assertTrue(service.handle("fund_lock", new com.google.gson.JsonObject()).isCompletedExceptionally());
         assertTrue(service.handle("sign", new com.google.gson.JsonObject()).isCompletedExceptionally());
     }
+
+    @org.junit.jupiter.api.Test
+    void onlyThisIdentitysSwapsMeanItWasUsed() {
+        com.google.gson.JsonArray swaps = new com.google.gson.JsonArray();
+        org.junit.jupiter.api.Assertions.assertFalse(SwapService.usedByThisIdentity(swaps));
+
+        //A finished swap from an earlier identity, listed so it stays in Your swaps
+        com.google.gson.JsonObject past = new com.google.gson.JsonObject();
+        past.addProperty("swapId", "282210d2-18f1-4f90-a4fa-1eccbd9c2466");
+        past.addProperty("past", true);
+        swaps.add(past);
+        org.junit.jupiter.api.Assertions.assertFalse(SwapService.usedByThisIdentity(swaps));
+
+        com.google.gson.JsonObject current = new com.google.gson.JsonObject();
+        current.addProperty("swapId", "98a303f2-39aa-43c9-aec3-2f8b2303103c");
+        current.addProperty("past", false);
+        swaps.add(current);
+        org.junit.jupiter.api.Assertions.assertTrue(SwapService.usedByThisIdentity(swaps));
+    }
 }

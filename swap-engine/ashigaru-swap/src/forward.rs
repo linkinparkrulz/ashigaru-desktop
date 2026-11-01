@@ -56,6 +56,11 @@ pub async fn start_tcp_relay(
 /// under eigenwallet's 45s retry window for the node check, so a slow first attempt gets a retry.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(40);
 
+/// The first byte of a TLS handshake record
+const TLS_HANDSHAKE: u8 = 0x16;
+/// How long to wait for a client's first byte before relaying regardless
+const FIRST_BYTE_WAIT: Duration = Duration::from_secs(10);
+
 async fn relay(
     mut inbound: TcpStream,
     socks_proxy: &str,
@@ -63,6 +68,18 @@ async fn relay(
     target_port: u16,
     connect_timeout: Duration,
 ) -> Result<()> {
+    // Every node is reached as plain HTTP, but wallet2 opens its first connection with SSL
+    // "autodetect": it sends a TLS handshake and falls back to plain HTTP only once that fails.
+    // Passed on through Tor the handshake just hangs until wallet2 gives up 20 seconds later, so
+    // refuse it here at once, before spending a Tor stream on it.
+    let mut first = [0u8; 1];
+    if let Ok(Ok(1)) = tokio::time::timeout(FIRST_BYTE_WAIT, inbound.peek(&mut first)).await
+        && first[0] == TLS_HANDSHAKE
+    {
+        tracing::debug!("Refused a TLS handshake on the plain HTTP relay to {target_host}");
+        return Ok(());
+    }
+
     let outbound = tokio::time::timeout(
         connect_timeout,
         tokio_socks::tcp::Socks5Stream::connect(socks_proxy, (target_host, target_port)),
@@ -145,7 +162,9 @@ mod tests {
 
         let client_side = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let client_addr = client_side.local_addr().unwrap();
-        let _client = TcpStream::connect(client_addr).await.unwrap();
+        let mut client = TcpStream::connect(client_addr).await.unwrap();
+        // HTTP clients send their request at once, before the relay connects onwards
+        client.write_all(b"GET /get_info HTTP/1.1\r\n").await.unwrap();
         let (inbound, _) = client_side.accept().await.unwrap();
 
         let started = std::time::Instant::now();
@@ -154,4 +173,31 @@ mod tests {
         assert!(error.contains("Timed out"), "{error}");
         assert!(started.elapsed() < Duration::from_secs(5));
     }
+
+    /// wallet2's SSL autodetect must be refused at once, without reaching Tor
+    #[tokio::test]
+    async fn tls_handshake_is_refused_without_reaching_tor() {
+        let proxy = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let proxy_addr = proxy.local_addr().unwrap();
+        let contacted = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag = contacted.clone();
+        tokio::spawn(async move {
+            if proxy.accept().await.is_ok() {
+                flag.store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+        });
+        let (local, _relay) = start_tcp_relay(proxy_addr.to_string(), "examplenode.onion".into(), 18089)
+            .await
+            .unwrap();
+
+        let mut client = TcpStream::connect(local).await.unwrap();
+        // The start of a TLS ClientHello record
+        client.write_all(&[0x16, 0x03, 0x01, 0x02, 0x00]).await.unwrap();
+        let mut buf = [0u8; 8];
+        let read = tokio::time::timeout(Duration::from_secs(1), client.read(&mut buf)).await;
+        assert!(matches!(read, Ok(Ok(0)) | Ok(Err(_))), "the relay should hang up: {read:?}");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert!(!contacted.load(std::sync::atomic::Ordering::SeqCst));
+    }
 }
+

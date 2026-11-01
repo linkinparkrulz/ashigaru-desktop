@@ -230,6 +230,7 @@ public class SwapService implements SwapHost {
         SwapEngine loaded = loadEngine();
 
         starting = true;
+        long startedAt = System.currentTimeMillis();
         status.set(renewIdentity ? "Taking a fresh identity for the next swap…" : "Starting through Tor…");
         runInBackground(() -> {
             SwapIdentity identity = renewIdentity ? SwapIdentity.renew(swapsDir) : SwapIdentity.current(swapsDir);
@@ -237,7 +238,7 @@ public class SwapService implements SwapHost {
                     SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
             List<String> resumed = new ArrayList<>();
             loaded.resumeAll().forEach(id -> resumed.add(id.getAsString()));
-            boolean used = !loaded.listSwaps().isEmpty();
+            boolean used = usedByThisIdentity(loaded.listSwaps());
             //Identity already used and nothing left to finish: makers have seen it, so take a new one
             if(!renewIdentity && resumed.isEmpty() && used) {
                 identity = SwapIdentity.renew(swapsDir);
@@ -258,7 +259,8 @@ public class SwapService implements SwapHost {
             running.set(true);
             status.set("On. Using " + moneroNodes.size() + " Monero node" + (moneroNodes.size() == 1 ? "" : "s")
                     + (moneroNodes.size() > 1 ? ", which must agree before a swap releases your BTC." : ", your own."));
-            appendLog("Swap engine running" + (moneroNodes.size() > 1 ? " with " + moneroNodes.size() + " Monero nodes in agreement" : ""));
+            appendLog("Swap engine running" + (moneroNodes.size() > 1 ? " with " + moneroNodes.size() + " Monero nodes in agreement" : "")
+                    + " (ready in " + (System.currentTimeMillis() - startedAt) / 1000 + " s)");
             if(!resumed.isEmpty()) {
                 appendLog("Resumed unfinished swaps: " + String.join(", ", resumed));
             }
@@ -451,6 +453,17 @@ public class SwapService implements SwapHost {
             swapListeners.forEach(Runnable::run);
         }
         appendLog(raw);
+    }
+
+    /** True when the engine's own database holds a swap; earlier identities' swaps, listed too, do not count */
+    static boolean usedByThisIdentity(JsonArray swaps) {
+        for(JsonElement swap : swaps) {
+            JsonObject entry = swap.getAsJsonObject();
+            if(!entry.has("past") || !entry.get("past").getAsBoolean()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** After a swap stops: if none is left unfinished, take a new identity for the next one */
