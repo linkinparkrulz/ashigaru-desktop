@@ -129,22 +129,34 @@ jobs:
       - name: Ship MinGW runtime DLLs (Windows cross-build)
         if: contains(matrix.target, 'windows')
         run: |
-          imports=$(x86_64-w64-mingw32-objdump -p out/${{ matrix.lib }} | grep 'DLL Name' | awk '{print $3}' | sort -u)
-          echo "Imports of ${{ matrix.lib }}:"
-          echo "$imports"
-          echo "- imports: $(echo "$imports" | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"
+          # The engine imports libstdc++-6.dll, which in turn imports the other MinGW runtime DLLs,
+          # so ship the whole chain: every MinGW DLL that anything shipped imports
           prefix="$(dirname "$MINGW_TOOLCHAIN_DIR")"
-          for dll in libwinpthread-1.dll libgcc_s_seh-1.dll libstdc++-6.dll; do
-            if echo "$imports" | grep -qix "$dll"; then
-              found=$(find "$prefix" -name "$dll" -path '*x86_64-w64-mingw32*' | head -1)
-              if [ -z "$found" ]; then
-                echo "$dll is imported but was not found under $prefix" >&2
-                exit 1
+          runtime="libwinpthread-1.dll libgcc_s_seh-1.dll libstdc++-6.dll"
+          queue="out/${{ matrix.lib }}"
+          summary=""
+          while [ -n "$queue" ]; do
+            file="${queue%% *}"
+            if [ "$queue" = "$file" ]; then queue=""; else queue="${queue#* }"; fi
+            imports=$(x86_64-w64-mingw32-objdump -p "$file" | grep 'DLL Name' | awk '{print $3}' | sort -u)
+            echo "Imports of $(basename "$file"):"
+            echo "$imports" | sed 's/^/  /'
+            summary="$summary $(basename "$file") -> [$(echo "$imports" | tr '\n' ' ')]"
+            for dll in $runtime; do
+              if echo "$imports" | grep -qix "$dll" && [ ! -f "out/$dll" ]; then
+                found=$(find "$prefix" -name "$dll" -path '*x86_64-w64-mingw32*' | head -1)
+                if [ -z "$found" ]; then
+                  echo "$dll is imported by $(basename "$file") but was not found under $prefix" >&2
+                  exit 1
+                fi
+                cp "$found" out/
+                echo "Shipping $found"
+                queue="$queue out/$dll"
+                queue="${queue# }"
               fi
-              cp "$found" out/
-              echo "Shipping $found"
-            fi
+            done
           done
+          echo "- imports:$summary" >> "$GITHUB_STEP_SUMMARY"
           ls -l out
 
       - name: Upload library
