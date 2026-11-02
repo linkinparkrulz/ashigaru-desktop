@@ -22,8 +22,10 @@
 package com.sparrowwallet.drongo.crypto;
 
 import com.sparrowwallet.drongo.Drongo;
+import com.sparrowwallet.drongo.Network;
 import com.sparrowwallet.drongo.Utils;
 import com.sparrowwallet.drongo.protocol.Base58;
+import com.sparrowwallet.drongo.protocol.ScriptType;
 import com.sparrowwallet.drongo.protocol.Sha256Hash;
 import org.bouncycastle.crypto.generators.SCrypt;
 import org.bouncycastle.math.ec.ECPoint;
@@ -32,7 +34,9 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 import java.util.Arrays;
 
 import static com.sparrowwallet.drongo.crypto.ECKey.CURVE;
@@ -47,6 +51,9 @@ public class BIP38 {
      */
     public static DumpedPrivateKey decrypt(String passphrase, String encryptedKey) throws UnsupportedEncodingException, GeneralSecurityException {
         byte[] encryptedKeyBytes = Base58.decodeChecked(encryptedKey);
+        if(encryptedKeyBytes.length != 39 || encryptedKeyBytes[0] != 0x01) {
+            throw new GeneralSecurityException("Invalid BIP38 key");
+        }
         DumpedPrivateKey result;
         byte ec = encryptedKeyBytes[1];
         switch (ec) {
@@ -117,7 +124,9 @@ public class BIP38 {
         BigInteger n = CURVE.getN();
         BigInteger pk = new BigInteger(1, passFactor).multiply(new BigInteger(1, factorB)).remainder(n);
 
-        ECKey privKey = ECKey.fromPrivate(pk, false);
+        boolean compressed = (flagByte & (byte) 0x20) == 0x20;
+        ECKey privKey = ECKey.fromPrivate(pk, compressed);
+        verifyAddressHash(privKey, addressHash);
         return privKey.getPrivateKeyEncoded();
     }
 
@@ -146,8 +155,21 @@ public class BIP38 {
         }
 
         boolean compressed = (encryptedKey[2] & (byte) 0x20) == 0x20;
-        ECKey k = new ECKey(new BigInteger(1, keyBytes), null, compressed);
+        ECKey k = ECKey.fromPrivate(new BigInteger(1, keyBytes), compressed);
+        verifyAddressHash(k, addressHash);
         return k.getPrivateKeyEncoded();
+    }
+
+    /**
+     * BIP38 requires the decrypted key to be checked against the address hash, otherwise a wrong passphrase
+     * silently yields a valid looking but unrelated key. The hash is always over the mainnet P2PKH address.
+     */
+    private static void verifyAddressHash(ECKey key, byte[] addressHash) throws GeneralSecurityException {
+        String address = ScriptType.P2PKH.getAddress(key).getAddress(Network.MAINNET);
+        byte[] hash = Arrays.copyOfRange(Sha256Hash.hashTwice(address.getBytes(StandardCharsets.US_ASCII)), 0, 4);
+        if(!MessageDigest.isEqual(hash, addressHash)) {
+            throw new GeneralSecurityException("Incorrect passphrase or invalid BIP38 key");
+        }
     }
 
     /**

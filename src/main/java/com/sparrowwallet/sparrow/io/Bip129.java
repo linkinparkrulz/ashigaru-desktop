@@ -153,7 +153,7 @@ public class Bip129 implements KeystoreFileExport, KeystoreFileImport, WalletExp
         hmac.init(secretKeySpec);
         String macData = Utils.bytesToHex(token) + plaintextString;
         byte[] calculatedMac = hmac.doFinal(macData.getBytes(StandardCharsets.UTF_8));
-        if(!Arrays.equals(mac, calculatedMac)) {
+        if(!java.security.MessageDigest.isEqual(mac, calculatedMac)) {
             throw new ImportException("Message digest authentication failed.");
         }
 

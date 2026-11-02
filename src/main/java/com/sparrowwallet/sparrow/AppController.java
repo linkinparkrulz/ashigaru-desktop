@@ -1915,6 +1915,17 @@ public class AppController implements Initializable {
                 if(Arrays.equals(transactionTabData.getTransaction().bitcoinSerialize(), transaction.bitcoinSerialize())) {
                     if(transactionTabData.getPsbt() != null && psbt != null && !transactionTabData.getPsbt().isFinalized()) {
                         if(!psbt.isFinalized()) {
+                            //Signatures from the other PSBT may only be verifiable with utxo data from this one, so verify the combined result before applying it
+                            try {
+                                PSBT combined = new PSBT(transactionTabData.getPsbt().serialize(), false);
+                                combined.combine(psbt);
+                                combined.verifySignatures();
+                            } catch(PSBTParseException | PSBTSignatureException | IllegalArgumentException e) {
+                                AppServices.showErrorDialog("Invalid PSBT", "The PSBT could not be combined: " + e.getMessage());
+                                tabs.getSelectionModel().select(tab);
+                                return;
+                            }
+
                             //As per BIP174, combine PSBTs with matching transactions so long as they are not yet finalized
                             transactionTabData.getPsbt().combine(psbt);
                             if(name != null && !name.isEmpty()) {

@@ -524,7 +524,7 @@ public class PSBTInput {
             return true;
         } else if(!getPartialSignatures().isEmpty()) {
             try {
-                //All partial sigs are already verified
+                //Partial sigs are verified when a PSBT is parsed and before another PSBT is combined into it
                 int reqSigs = getSigningScript().getNumRequiredSignatures();
                 int sigs = getPartialSignatures().size();
                 return sigs >= reqSigs;
