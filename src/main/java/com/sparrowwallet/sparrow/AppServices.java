@@ -1128,7 +1128,10 @@ public class AppServices {
             BitcoinURI bitcoinURI = new BitcoinURI(uri.toString());
             List<PolicyType> policyTypes = Arrays.asList(PolicyType.values());
             List<ScriptType> scriptTypes = Arrays.asList(ScriptType.ADDRESSABLE_TYPES);
-            Wallet wallet = selectWallet(policyTypes, scriptTypes, true, false, "pay from", false);
+            //URIs can arrive from other processes, so always confirm the wallet and show the destination rather than silently pre-filling a send
+            String destination = bitcoinURI.getAddress() == null ? "" : " to " + bitcoinURI.getAddress()
+                    + (bitcoinURI.getAmount() == null ? "" : " (" + bitcoinURI.getAmount() + " sats)");
+            Wallet wallet = selectWallet(policyTypes, scriptTypes, true, false, "pay from" + destination, true);
 
             if(wallet != null) {
                 final Wallet sendingWallet = wallet;

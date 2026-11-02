@@ -92,6 +92,7 @@ public abstract class Instance {
 	
 	// starting position of port check
 	private static final int PORT_START = 7221;
+	private static final int MAX_MESSAGE_LENGTH = 1024 * 1024;
 	
 	// system temporary directory path
 	private static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
@@ -214,6 +215,7 @@ public abstract class Instance {
 					try {
 						// establish connection
 						final Socket socket = server.accept();
+						socket.setSoTimeout(10000);
 						
 						// handle socket on a different thread to allow parallel connections
 						Thread thread = new Thread() {
@@ -233,10 +235,13 @@ public abstract class Instance {
 									
 									// read message string from client
 									String message = null;
+									if (length > MAX_MESSAGE_LENGTH) {
+										throw new IOException("Instance message too long: " + length);
+									}
 									if (length > -1) {
 										byte[] messageBytes = new byte[length];
-										int bytesRead = dis.read(messageBytes, 0, length);
-										message = new String(messageBytes, 0, bytesRead, "UTF-8");
+										dis.readFully(messageBytes);
+										message = new String(messageBytes, 0, length, "UTF-8");
 									}
 									
 									// write response to client

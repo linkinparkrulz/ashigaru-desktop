@@ -403,4 +403,60 @@ public class PSBTTest {
     public void tearDown() throws Exception {
         Network.set(null);
     }
+
+    private static final String P2PKH_PSBT = "cHNidP8BAHUCAAAAASaBcTce3/KF6Tet7qSze3gADAVmy7OtZGQXE8pCFxv2AAAAAAD+////AtPf9QUAAAAAGXapFNDFmQPFusKGh2DpD9UhpGZap2UgiKwA4fUFAAAAABepFDVF5uM7gyxHBQ8k0+65PJwDlIvHh7MuEwAAAQD9pQEBAAAAAAECiaPHHqtNIOA3G7ukzGmPopXJRjr6Ljl/hTPMti+VZ+UBAAAAFxYAFL4Y0VKpsBIDna89p95PUzSe7LmF/////4b4qkOnHf8USIk6UwpyN+9rRgi7st0tAXHmOuxqSJC0AQAAABcWABT+Pp7xp0XpdNkCxDVZQ6vLNL1TU/////8CAMLrCwAAAAAZdqkUhc/xCX/Z4Ai7NK9wnGIZeziXikiIrHL++E4sAAAAF6kUM5cluiHv1irHU6m80GfWx6ajnQWHAkcwRAIgJxK+IuAnDzlPVoMR3HyppolwuAJf3TskAinwf4pfOiQCIAGLONfc0xTnNMkna9b7QPZzMlvEuqFEyADS8vAtsnZcASED0uFWdJQbrUqZY3LLh+GFbTZSYG2YVi/jnF6efkE/IQUCSDBFAiEA0SuFLYXc2WHS9fSrZgZU327tzHlMDDPOXMMJ/7X85Y0CIGczio4OFyXBl/saiK9Z9R5E5CVbIBZ8hoQDHAXR8lkqASECI7cr7vCWXRC+B3jv7NYfysb3mk6haTkzgHNEZPhPKrMAAAAAAAAA";
+
+    @Test
+    public void invalidEntryLengthLargerThanRemaining() {
+        //Key length of 0x7fffffff must be rejected before any allocation
+        Assertions.assertThrows(PSBTParseException.class, () -> PSBT.fromString("70736274fffeffffff7f00"));
+    }
+
+    @Test
+    public void invalidNegativeEntryLength() {
+        Assertions.assertThrows(PSBTParseException.class, () -> PSBT.fromString("70736274fffeffffffff00"));
+    }
+
+    @Test
+    public void invalidTruncatedPsbt() throws PSBTParseException {
+        byte[] bytes = PSBT.fromString(P2PKH_PSBT).serialize();
+        byte[] truncated = java.util.Arrays.copyOf(bytes, bytes.length - 1);
+        Assertions.assertThrows(PSBTParseException.class, () -> new PSBT(truncated));
+    }
+
+    @Test
+    public void invalidWitnessUtxoValueDiffersFromNonWitnessUtxo() throws PSBTParseException {
+        PSBT psbt = PSBT.fromString(P2PKH_PSBT);
+        PSBTInput psbtInput = psbt.getPsbtInputs().get(0);
+        Script redeemScript = ScriptType.P2PKH.getOutputScript(ECKey.fromPrivate(java.math.BigInteger.TEN));
+        psbtInput.setWitnessUtxo(new TransactionOutput(null, 1000L, ScriptType.P2SH.getOutputScript(redeemScript)));
+        byte[] bytes = psbt.serialize();
+        Assertions.assertThrows(PSBTParseException.class, () -> new PSBT(bytes));
+    }
+
+    @Test
+    public void invalidLegacyRedeemScriptBeforeWitnessUtxo() throws PSBTParseException {
+        //A legacy P2SH input with a witness utxo would let the claimed value (and so the displayed fee) be faked,
+        //since legacy signatures do not commit to it. Placing the redeem script first must not bypass the check.
+        PSBT psbt = PSBT.fromString(P2PKH_PSBT);
+        Script redeemScript = ScriptType.P2PKH.getOutputScript(ECKey.fromPrivate(java.math.BigInteger.TEN));
+        TransactionOutput fakeUtxo = new TransactionOutput(null, 1000L, ScriptType.P2SH.getOutputScript(redeemScript));
+
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        baos.writeBytes(Utils.hexToBytes("70736274ff"));
+        PSBTEntry.populateEntry((byte)0x00, null, psbt.getTransaction().bitcoinSerialize()).serializeToStream(baos);
+        baos.write(0x00);
+        PSBTEntry.populateEntry(PSBTInput.PSBT_IN_REDEEM_SCRIPT, null, redeemScript.getProgram()).serializeToStream(baos);
+        PSBTEntry.populateEntry(PSBTInput.PSBT_IN_WITNESS_UTXO, null, fakeUtxo.bitcoinSerialize()).serializeToStream(baos);
+        baos.write(0x00);
+        for(PSBTOutput psbtOutput : psbt.getPsbtOutputs()) {
+            for(PSBTEntry entry : psbtOutput.getOutputEntries()) {
+                entry.serializeToStream(baos);
+            }
+            baos.write(0x00);
+        }
+
+        byte[] bytes = baos.toByteArray();
+        Assertions.assertThrows(PSBTParseException.class, () -> new PSBT(bytes));
+    }
 }

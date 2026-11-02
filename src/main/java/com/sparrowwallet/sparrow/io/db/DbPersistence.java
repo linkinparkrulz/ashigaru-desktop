@@ -715,7 +715,8 @@ public class DbPersistence implements Persistence {
         String h2Password = password == null ? H2_PASSWORD : password + " " + H2_PASSWORD;
         String cipherSuffix = password == null ? "" : ";CIPHER=AES";
         String readOnlyUrl = "jdbc:h2:" + fileBase + ";ACCESS_MODE_DATA=r;DATABASE_TO_UPPER=false;DB_CLOSE_ON_EXIT=FALSE" + cipherSuffix;
-        File tempSql = Files.createTempFile("h2migrate", ".sql").toFile();
+        //The script is a plaintext dump of the wallet database, so keep it in the owner-only wallet directory rather than the shared temp directory
+        File tempSql = createOwnerOnlyTempFile(walletFile.getParentFile());
         String newBase = fileBase + "_new";
         File newMvDb = new File(newBase + "." + getType().getExtension());
         try {
@@ -734,9 +735,18 @@ public class DbPersistence implements Persistence {
             Files.move(newMvDb.toPath(), walletFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             log.info("Migrated {} from legacy H2 format. Backup at {}", walletFile.getName(), backup.getName());
         } finally {
-            tempSql.delete();
+            IOUtils.secureDelete(tempSql);
             if(newMvDb.exists()) newMvDb.delete();
         }
+    }
+
+    private static File createOwnerOnlyTempFile(File dir) throws IOException {
+        if(java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            return Files.createTempFile(dir.toPath(), "h2migrate", ".sql",
+                    java.nio.file.attribute.PosixFilePermissions.asFileAttribute(java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"))).toFile();
+        }
+
+        return Files.createTempFile(dir.toPath(), "h2migrate", ".sql").toFile();
     }
 
     private boolean persistsFor(Wallet wallet) {

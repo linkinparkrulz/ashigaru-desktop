@@ -36,6 +36,7 @@ public class PSBTEntry {
             keyData = null;
             data = null;
         } else {
+            checkLength(keyLen, psbtByteBuffer);
             byte[] key = new byte[keyLen];
             psbtByteBuffer.get(key);
 
@@ -48,6 +49,7 @@ public class PSBTEntry {
             }
 
             int dataLen = readCompactInt(psbtByteBuffer);
+            checkLength(dataLen, psbtByteBuffer);
             byte[] data = new byte[dataLen];
             psbtByteBuffer.get(data);
 
@@ -179,6 +181,12 @@ public class PSBTEntry {
         return data;
     }
 
+    private static void checkLength(int length, ByteBuffer psbtByteBuffer) throws PSBTParseException {
+        if(length < 0 || length > psbtByteBuffer.remaining()) {
+            throw new PSBTParseException("Invalid PSBT entry length " + length + ", only " + psbtByteBuffer.remaining() + " bytes remaining");
+        }
+    }
+
     public static int readCompactInt(ByteBuffer psbtByteBuffer) throws PSBTParseException {
         byte b = psbtByteBuffer.get();
 
@@ -195,7 +203,11 @@ public class PSBTEntry {
                 psbtByteBuffer.get(buf);
                 ByteBuffer byteBuffer = ByteBuffer.wrap(buf);
                 byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-                return byteBuffer.getInt();
+                long length = Integer.toUnsignedLong(byteBuffer.getInt());
+                if(length > Integer.MAX_VALUE) {
+                    throw new PSBTParseException("Data too long: " + length);
+                }
+                return (int)length;
             }
             case (byte) 0xff: {
                 byte[] buf = new byte[8];

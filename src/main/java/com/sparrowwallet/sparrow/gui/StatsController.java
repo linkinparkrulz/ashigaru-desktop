@@ -311,6 +311,10 @@ public class StatsController implements Initializable {
                     int blockHeight = tx.get("block_height").getAsInt();
                     String poolLabel = tx.has("pool_label") ? tx.get("pool_label").getAsString() : "—";
                     String poolColor = tx.has("pool_color") ? tx.get("pool_color").getAsString() : "#8e8e93";
+                    if(!poolColor.matches("#[0-9a-fA-F]{6}")) {
+                        //Inserted into a JavaFX style, so anything other than a plain colour could inject other CSS properties
+                        poolColor = "#8e8e93";
+                    }
 
                     List<TxInput> inputs = new ArrayList<>();
                     if(tx.has("tx0_inputs")) {

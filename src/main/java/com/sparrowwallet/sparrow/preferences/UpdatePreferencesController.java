@@ -172,6 +172,13 @@ public class UpdatePreferencesController extends PreferencesDetailController {
             return;
         }
 
+        File destination = new File(updatesDir(), candidate.name());
+        if(!ReleaseArtifactSelector.isSafeFileName(candidate.name()) || !destination.toPath().normalize().getParent().equals(updatesDir().toPath().normalize())) {
+            log.error("Refusing to download release asset with unsafe file name: " + candidate.name());
+            AppServices.showErrorDialog("Download refused", "The release asset name is not a plain file name and will not be downloaded.");
+            return;
+        }
+
         resetChain();
         cancelRequested = false;
         verifiedFile = null;
@@ -181,8 +188,6 @@ public class UpdatePreferencesController extends PreferencesDetailController {
         setVisible(progressLabel, true);
         downloadProgress.setProgress(0);
         progressLabel.setText("Starting download…");
-
-        File destination = new File(updatesDir(), candidate.name());
 
         Task<ReleaseVerifier.Result> task = new Task<>() {
             @Override

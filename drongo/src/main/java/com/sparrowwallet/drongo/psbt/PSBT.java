@@ -191,7 +191,14 @@ public class PSBT {
 
     public PSBT(byte[] psbt, boolean verifySignatures) throws PSBTParseException {
         this.psbtBytes = psbt;
-        parse(verifySignatures);
+        try {
+            parse(verifySignatures);
+        } catch(PSBTParseException e) {
+            throw e;
+        } catch(RuntimeException e) {
+            //Malformed input must surface as a parse failure rather than an unchecked exception on the caller's thread
+            throw new PSBTParseException("Invalid PSBT: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()), e);
+        }
     }
 
     private void parse(boolean verifySignatures) throws PSBTParseException {
@@ -268,6 +275,8 @@ public class PSBT {
             if(transaction == null) {
                 throw new PSBTParseException("Missing transaction");
             }
+
+            throw new PSBTParseException("PSBT is truncated: expected " + inputs + " inputs and " + outputs + " outputs, found " + seenInputs + " and " + seenOutputs);
         }
 
         if(log.isDebugEnabled()) {

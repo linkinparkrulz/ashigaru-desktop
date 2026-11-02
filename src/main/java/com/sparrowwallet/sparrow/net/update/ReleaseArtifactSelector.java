@@ -28,7 +28,7 @@ public class ReleaseArtifactSelector {
     static List<Candidate> select(List<ReleaseAsset> assets, Family family, String osArch) {
         List<ReleaseAsset> installable = new ArrayList<>();
         for(ReleaseAsset asset : assets) {
-            if(!isAttestation(asset.name()) && matchesFamily(asset.name(), family)) {
+            if(isSafeFileName(asset.name()) && !isAttestation(asset.name()) && matchesFamily(asset.name(), family)) {
                 installable.add(asset);
             }
         }
@@ -40,6 +40,14 @@ public class ReleaseArtifactSelector {
         }
 
         return candidates;
+    }
+
+    /**
+     * Asset names come from release metadata and are used as local file names, so anything that could
+     * name a path outside the updates directory is never offered for download.
+     */
+    public static boolean isSafeFileName(String name) {
+        return name != null && name.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,254}") && !name.contains("..");
     }
 
     private static boolean isAttestation(String name) {

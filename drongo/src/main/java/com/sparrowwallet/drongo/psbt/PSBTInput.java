@@ -151,7 +151,11 @@ public class PSBTInput {
                     Script redeemScript = new Script(entry.getData());
                     Script scriptPubKey = null;
                     if(this.nonWitnessUtxo != null) {
-                        scriptPubKey = this.nonWitnessUtxo.getOutputs().get((int)transaction.getInputs().get(index).getOutpoint().getIndex()).getScript();
+                        long redeemVout = transaction.getInputs().get(index).getOutpoint().getIndex();
+                        if(redeemVout < 0 || redeemVout >= this.nonWitnessUtxo.getOutputs().size()) {
+                            throw new PSBTParseException("Non witness utxo transaction does not contain the output index " + redeemVout + " spent by input " + index);
+                        }
+                        scriptPubKey = this.nonWitnessUtxo.getOutputs().get((int)redeemVout).getScript();
                     } else if(this.witnessUtxo != null) {
                         scriptPubKey = this.witnessUtxo.getScript();
                         if(!P2WPKH.isScriptType(redeemScript) && !P2WSH.isScriptType(redeemScript)) { //Witness UTXO should only be provided for P2SH-P2WPKH or P2SH-P2WSH
@@ -248,6 +252,40 @@ public class PSBTInput {
 
         this.transaction = transaction;
         this.index = index;
+
+        validateUtxoConsistency();
+    }
+
+    /**
+     * Checks performed after all entries are parsed, so they do not depend on the order of keys in the PSBT.
+     * Legacy (non-segwit) signatures do not commit to the input value, so a witness utxo claiming a false value
+     * for a legacy P2SH input would hide the real fee from the user without invalidating the signature.
+     */
+    private void validateUtxoConsistency() throws PSBTParseException {
+        if(nonWitnessUtxo != null) {
+            long vout = transaction.getInputs().get(index).getOutpoint().getIndex();
+            if(vout < 0 || vout >= nonWitnessUtxo.getOutputs().size()) {
+                throw new PSBTParseException("Non witness utxo transaction does not contain the output index " + vout + " spent by input " + index);
+            }
+        }
+
+        if(witnessUtxo != null) {
+            if(P2SH.isScriptType(witnessUtxo.getScript()) && redeemScript != null) {
+                if(!P2WPKH.isScriptType(redeemScript) && !P2WSH.isScriptType(redeemScript)) {
+                    throw new PSBTParseException("Witness UTXO provided but redeem script is not P2WPKH or P2WSH");
+                }
+                if(!Arrays.equals(Utils.sha256hash160(redeemScript.getProgram()), witnessUtxo.getScript().getPubKeyHash())) {
+                    throw new PSBTParseException("Redeem script hash does not match witness utxo script pubkey hash");
+                }
+            }
+
+            if(nonWitnessUtxo != null) {
+                TransactionOutput verifiedOutput = nonWitnessUtxo.getOutputs().get((int)transaction.getInputs().get(index).getOutpoint().getIndex());
+                if(verifiedOutput.getValue() != witnessUtxo.getValue() || !Arrays.equals(verifiedOutput.getScriptBytes(), witnessUtxo.getScriptBytes())) {
+                    throw new PSBTParseException("Witness UTXO does not match the output of the provided non witness utxo transaction at input " + index);
+                }
+            }
+        }
     }
 
     public List<PSBTEntry> getInputEntries() {
