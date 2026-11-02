@@ -12,7 +12,6 @@ tasks.withType(AbstractArchiveTask) {
 
 repositories {
     mavenCentral()
-    maven { url 'https://jitpack.io' }
 }
 
 dependencies {

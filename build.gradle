@@ -36,8 +36,15 @@ repositories {
     mavenCentral()
     maven { url 'https://code.sparrowwallet.com/api/packages/sparrowwallet/maven' }
     maven { url 'https://oss.sonatype.org/content/groups/public' }
-    maven { url 'https://mymavenrepo.com/repo/29EACwkkGcoOKnbx3bxN/' }
-    maven { url 'https://jitpack.io' }
+    //Third-party hosts may only serve the artifacts they are needed for, so they cannot shadow or add anything else
+    maven {
+        url 'https://mymavenrepo.com/repo/29EACwkkGcoOKnbx3bxN/'
+        content { includeGroup 'de.codecentric.centerdevice' }
+    }
+    maven {
+        url 'https://jitpack.io'
+        content { includeGroup 'com.github.hervegirod' }
+    }
 }
 
 tasks.withType(AbstractArchiveTask) {
@@ -268,17 +275,19 @@ if (os.linux) {
                 new URL("https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${appImageArch}.AppImage")
                     .withInputStream { input -> appImageTool.withOutputStream { output -> output << input } }
             }
-            // AppImageKit only publishes a "continuous" release, so pin the expected checksum
-            // with -PappImageToolSha256=... to keep this download trustworthy. Build fails on mismatch.
-            String expected = findProperty('appImageToolSha256')
-            if(expected != null) {
-                String actual = java.security.MessageDigest.getInstance("SHA-256")
-                    .digest(appImageTool.bytes).encodeHex().toString()
-                if(!expected.equalsIgnoreCase(actual)) {
-                    throw new GradleException("appimagetool checksum mismatch: expected ${expected}, got ${actual}. Delete ${appImageTool} to re-download.")
-                }
-            } else {
-                logger.warn("Building AppImage with unverified appimagetool from the 'continuous' channel. Pass -PappImageToolSha256 to pin a checksum.")
+            // AppImageKit only publishes a mutable "continuous" release, so the expected checksum is pinned here.
+            // If upstream replaces the file the build fails rather than running an unverified tool; review the new
+            // file before updating the pin (or passing -PappImageToolSha256=... for a one-off build).
+            Map<String, String> pinnedSha256 = [
+                'x86_64' : 'b90f4a8b18967545fda78a445b27680a1642f1ef9488ced28b65398f2be7add2',
+                'aarch64': 'a48972e5ae91c944c5a7c80214e7e0a42dd6aa3ae979d8756203512a74ff574d'
+            ]
+            String expected = findProperty('appImageToolSha256') ?: pinnedSha256[appImageArch]
+            String actual = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(appImageTool.bytes).encodeHex().toString()
+            if(!expected.equalsIgnoreCase(actual)) {
+                appImageTool.delete()
+                throw new GradleException("appimagetool checksum mismatch: expected ${expected}, got ${actual}. The download was deleted.")
             }
             appImageTool.setExecutable(true)
         }
