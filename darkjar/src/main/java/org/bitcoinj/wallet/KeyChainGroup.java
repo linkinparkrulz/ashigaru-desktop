@@ -395,7 +395,7 @@ public class KeyChainGroup implements KeyBag {
         checkArgument(address.isP2SHAddress());
         for (Map.Entry<KeyChain.KeyPurpose, Address> entry : currentAddresses.entrySet()) {
             if (entry.getValue() != null && entry.getValue().equals(address)) {
-                log.info("Marking P2SH address as used: {}", address);
+                log.debug("Marking P2SH address as used: {}", address);
                 currentAddresses.put(entry.getKey(), freshAddress(entry.getKey()));
                 return;
             }

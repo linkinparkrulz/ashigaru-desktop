@@ -96,6 +96,11 @@ public class Soroban {
     }
 
     public SorobanCahootsService getSorobanCahootsService(CahootsWallet cahootsWallet) {
+        //Soroban messages reveal the payment codes and UTXOs of both participants, so never fall back to the clearnet server
+        if(httpClientService.getTorProxy() == null) {
+            throw new IllegalStateException("Soroban requires a Tor connection. Connect to Tor and try again.");
+        }
+
         IHttpClient httpClient = httpClientService.getHttpClient(HttpUsage.COORDINATOR_REST);
         RpcClient rpcClient = new RpcClient(httpClient, httpClientService.getTorProxy() != null, sorobanServer.getParams());
         return new SorobanCahootsService(bip47Util, PROVIDER_JAVA, cahootsWallet, rpcClient);

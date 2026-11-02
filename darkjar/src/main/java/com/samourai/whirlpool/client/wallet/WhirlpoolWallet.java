@@ -789,7 +789,8 @@ public class WhirlpoolWallet {
     aggregate();
 
     // send to destination
-    log.info(" • Moving funds to: " + toAddress);
+    log.info(" • Moving funds to destination address");
+    log.debug(" • Moving funds to: " + toAddress);
     walletAggregateService.toAddress(getWalletDeposit(), toAddress);
 
     // refresh

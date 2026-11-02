@@ -104,7 +104,8 @@ public class LnurlAuth {
         URL callback = getReturnURL(wallet);
 
         if(log.isInfoEnabled()) {
-            log.info("Sending LNURL-auth response to " + callback);
+            //The callback url carries the linking key and signature, so only log the host
+            log.info("Sending LNURL-auth response to " + callback.getHost());
         }
 
         Proxy proxy = AppServices.getProxy();
@@ -113,6 +114,8 @@ public class LnurlAuth {
         }
 
         HttpURLConnection connection = proxy == null ? (HttpURLConnection) callback.openConnection() : (HttpURLConnection) callback.openConnection(proxy);
+        connection.setConnectTimeout(30000);
+        connection.setReadTimeout(30000);
         connection.setRequestMethod("GET");
         connection.setRequestProperty("Content-Type", "application/json");
 

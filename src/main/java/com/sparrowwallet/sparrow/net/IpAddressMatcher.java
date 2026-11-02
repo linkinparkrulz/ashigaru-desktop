@@ -106,6 +106,13 @@ public final class IpAddressMatcher {
     }
 
     public static boolean isLocalNetworkAddress(String address) {
+        if(AppServices.isUsingProxy() && address != null && !com.google.common.net.InetAddresses.isInetAddress(address)) {
+            //Resolving a hostname here would leak it to the system resolver even though the connection is proxied,
+            //so only treat names that can only be local as local and leave everything else to the proxy
+            String lower = address.toLowerCase(java.util.Locale.ROOT);
+            return "localhost".equals(lower) || !lower.contains(".") || lower.endsWith(".local") || lower.endsWith(".lan") || lower.endsWith(".home.arpa");
+        }
+
         try {
             return "localhost".equals(address) || "127.0.0.1".equals(address) || LOCAL_RANGE_1.matches(address) || LOCAL_RANGE_2.matches(address) || LOCAL_RANGE_3.matches(address) || LOCAL_RANGE_4.matches(address);
         } catch(IllegalArgumentException e) {

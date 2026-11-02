@@ -948,6 +948,10 @@ public class HeadersController extends TransactionFormController implements Init
     }
 
     private void signFromSeed(DeterministicSeed seed) {
+        if(!confirmNonStandardSigHash()) {
+            return;
+        }
+
         try {
             String masterFingerprint = Keystore.fromSeed(seed, ScriptType.P2PKH.getDefaultDerivation()).getKeyDerivation().getMasterFingerprint();
             Wallet walletCopy = headersForm.getSigningWallet().copy();
@@ -1010,8 +1014,39 @@ public class HeadersController extends TransactionFormController implements Init
     }
 
     public void signPSBT(ActionEvent event) {
+        if(!confirmNonStandardSigHash()) {
+            return;
+        }
+
         signSoftwareKeystores();
         signDeviceKeystores();
+    }
+
+    /**
+     * A sighash type other than ALL (or DEFAULT for taproot) leaves some of the transaction unsigned. A PSBT can arrive with
+     * one already set, and SIGHASH_NONE in particular lets anyone redirect the signed inputs to themselves, so require explicit confirmation.
+     */
+    private boolean confirmNonStandardSigHash() {
+        PSBT psbt = headersForm.getPsbt();
+        if(psbt == null) {
+            return true;
+        }
+
+        Set<SigHash> nonStandard = psbt.getPsbtInputs().stream().map(PSBTInput::getSigHash)
+                .filter(sh -> sh != null && sh != SigHash.ALL && sh != SigHash.DEFAULT).collect(Collectors.toCollection(LinkedHashSet::new));
+        if(nonStandard.isEmpty()) {
+            return true;
+        }
+
+        String types = nonStandard.stream().map(SigHash::getName).collect(Collectors.joining(", "));
+        boolean redirectable = nonStandard.stream().anyMatch(sh -> sh == SigHash.NONE || sh == SigHash.ANYONECANPAY_NONE);
+        Optional<ButtonType> optType = AppServices.showWarningDialog("Non-standard signature type",
+                "This transaction is set to sign with " + types + " instead of All. "
+                        + (redirectable ? "With None, anyone who sees the signed transaction can change its outputs and take the funds of the signed inputs. "
+                                        : "Parts of the transaction will not be covered by your signature and can be changed by others. ")
+                        + "Only continue if you intended this.\n\nSign anyway?",
+                ButtonType.NO, ButtonType.YES);
+        return optType.isPresent() && optType.get() == ButtonType.YES;
     }
 
     private void signSoftwareKeystores() {

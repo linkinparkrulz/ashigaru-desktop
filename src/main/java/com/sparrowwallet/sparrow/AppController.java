@@ -1920,7 +1920,7 @@ public class AppController implements Initializable {
                                 PSBT combined = new PSBT(transactionTabData.getPsbt().serialize(), false);
                                 combined.combine(psbt);
                                 combined.verifySignatures();
-                            } catch(PSBTParseException | PSBTSignatureException | IllegalArgumentException e) {
+                            } catch(PSBTParseException | IllegalArgumentException e) {
                                 AppServices.showErrorDialog("Invalid PSBT", "The PSBT could not be combined: " + e.getMessage());
                                 tabs.getSelectionModel().select(tab);
                                 return;

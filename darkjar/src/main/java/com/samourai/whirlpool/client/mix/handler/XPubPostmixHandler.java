@@ -36,7 +36,7 @@ public class XPubPostmixHandler extends AbstractPostmixHandler {
     String address = xPubUtil.getAddressBech32(xPub, index, chain, params);
     String path = xPubUtil.getPath(index, chain);
 
-    log.info("Mixing to external xPub -> receiveAddress=" + address + ", path=" + path);
+    log.debug("Mixing to external xPub -> receiveAddress=" + address + ", path=" + path);
     return new MixDestination(DestinationType.XPUB, index, address, path);
   }
 }

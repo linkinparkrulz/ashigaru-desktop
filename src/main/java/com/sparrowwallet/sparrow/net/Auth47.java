@@ -124,7 +124,8 @@ public class Auth47 {
 
     private void send(String json) throws IOException, Auth47Exception {
         if(log.isInfoEnabled()) {
-            log.info("Sending auth47 response " + json + " to " + callback);
+            //The response contains the wallet's payment code, so only log where it goes
+            log.info("Sending auth47 response to " + callback.getHost());
         }
 
         Proxy proxy = AppServices.getProxy();
@@ -133,6 +134,8 @@ public class Auth47 {
         }
 
         HttpURLConnection connection = proxy == null ? (HttpURLConnection) callback.openConnection() : (HttpURLConnection) callback.openConnection(proxy);
+        connection.setConnectTimeout(30000);
+        connection.setReadTimeout(30000);
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setDoOutput(true);

@@ -4,6 +4,8 @@ import com.github.arteam.simplejsonrpc.client.Transport;
 import com.sparrowwallet.drongo.Network;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.io.Server;
+import com.sparrowwallet.sparrow.io.Storage;
+import com.sparrowwallet.sparrow.net.IpAddressMatcher;
 import com.sparrowwallet.sparrow.net.Protocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,8 +19,11 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
 import java.util.Base64;
 
 public class BitcoindTransport implements Transport {
@@ -57,10 +62,12 @@ public class BitcoindTransport implements Transport {
     @Override
     public String pass(String request) throws IOException {
         Proxy proxy = AppServices.getProxy();
-        HttpURLConnection connection = proxy != null && Protocol.isOnionAddress(bitcoindServer) ? (HttpURLConnection)bitcoindUrl.openConnection(proxy) : (HttpURLConnection)bitcoindUrl.openConnection();
+        //Route remote nodes through the proxy as well as onion ones, so RPC credentials and the node's address do not go out over clearnet
+        boolean useProxy = proxy != null && (Protocol.isOnionAddress(bitcoindServer) || !IpAddressMatcher.isLocalNetworkAddress(bitcoindServer.getHost()));
+        HttpURLConnection connection = useProxy ? (HttpURLConnection)bitcoindUrl.openConnection(proxy) : (HttpURLConnection)bitcoindUrl.openConnection();
 
         if(connection instanceof HttpsURLConnection httpsURLConnection) {
-            SSLSocketFactory sslSocketFactory = getTrustAllSocketFactory();
+            SSLSocketFactory sslSocketFactory = getPinningSocketFactory();
             if(sslSocketFactory != null) {
                 httpsURLConnection.setSSLSocketFactory(sslSocketFactory);
             }
@@ -142,24 +149,49 @@ public class BitcoindTransport implements Transport {
         return bitcoindDir;
     }
 
-    private SSLSocketFactory getTrustAllSocketFactory() {
-        TrustManager[] trustAllCerts = new TrustManager[] {
+    /**
+     * Core RPC servers behind TLS normally use self-signed certificates, so trust the first certificate seen for this
+     * server and require the same certificate afterwards, rather than accepting any certificate on every connection.
+     */
+    private SSLSocketFactory getPinningSocketFactory() {
+        String certName = "bitcoind-" + bitcoindServer.getHost() + "-" + bitcoindServer.getHostAndPort().getPortOrDefault(Network.get().getDefaultPort());
+        TrustManager[] pinningTrustManagers = new TrustManager[] {
             new X509TrustManager() {
                 public X509Certificate[] getAcceptedIssuers() {
                     return new X509Certificate[0];
                 }
 
                 public void checkClientTrusted(X509Certificate[] certs, String authType) throws CertificateException {
+                    throw new CertificateException("Client certificates are not accepted");
                 }
 
                 public void checkServerTrusted(X509Certificate[] certs, String authType) throws CertificateException {
+                    if(certs == null || certs.length == 0) {
+                        throw new CertificateException("No server certificate provided");
+                    }
+
+                    File pinnedFile = Storage.getCertificateFile(certName);
+                    if(pinnedFile == null) {
+                        log.info("Trusting certificate for Bitcoin Core RPC server " + bitcoindServer.getHost() + " on first use");
+                        Storage.saveCertificate(certName, certs[0]);
+                        return;
+                    }
+
+                    try(InputStream inputStream = new FileInputStream(pinnedFile)) {
+                        Certificate pinned = CertificateFactory.getInstance("X.509").generateCertificate(inputStream);
+                        if(!Arrays.equals(pinned.getEncoded(), certs[0].getEncoded())) {
+                            throw new CertificateException("Bitcoin Core RPC server certificate has changed. If this is expected, delete " + pinnedFile.getAbsolutePath() + " to trust the new certificate.");
+                        }
+                    } catch(IOException e) {
+                        throw new CertificateException("Could not read pinned certificate " + pinnedFile.getAbsolutePath(), e);
+                    }
                 }
             }
         };
 
         try {
             SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, trustAllCerts, null);
+            sslContext.init(null, pinningTrustManagers, null);
             return sslContext.getSocketFactory();
         } catch (Exception e) {
             log.error("Error creating SSL socket factory", e);

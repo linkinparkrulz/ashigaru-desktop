@@ -78,8 +78,8 @@ public class TcpOverTlsTransport extends TcpTransport {
                 //Allow expired certificates so long as they have been previously used or explicitly approved
                 //These will usually be self-signed certificates that users may not have the expertise to renew
             } catch(CertificateException e) {
-                crtFile.delete();
-                return getTrustManagers(null);
+                //Keep trusting only the pinned certificate (e.g. one not yet valid due to clock skew) rather than silently falling back to trusting any certificate
+                log.warn("Pinned certificate for " + server.getHost() + " is not currently valid: " + e.getMessage());
             }
         }
 
