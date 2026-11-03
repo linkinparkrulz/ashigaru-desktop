@@ -92,9 +92,31 @@ public abstract class Instance {
 	
 	// starting position of port check
 	private static final int PORT_START = 7221;
+	private static final int MAX_MESSAGE_LENGTH = 1024 * 1024;
 	
-	// system temporary directory path
-	private static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
+	// lock directory: the owner-only application home, so other users can neither read the port and token nor pre-create the lock file
+	private static final String TEMP_DIR = getLockDirectory();
+
+	// per-run secret written to the owner-only lock file, which a client must present before its message is accepted
+	private String token;
+
+	private static String getLockDirectory() {
+		try {
+			File home = com.sparrowwallet.sparrow.io.Storage.getSparrowHome();
+			if (home.exists() || home.mkdirs()) {
+				return home.getAbsolutePath();
+			}
+		} catch (Exception e) {
+			log.warn("Could not use application home for lock file", e);
+		}
+		return System.getProperty("java.io.tmpdir");
+	}
+
+	private static String newToken() {
+		byte[] bytes = new byte[32];
+		new java.security.SecureRandom().nextBytes(bytes);
+		return com.sparrowwallet.drongo.Utils.bytesToHex(bytes);
+	}
 	
 	/**
 	 * Unique string representing the application ID.<br><br>
@@ -214,6 +236,7 @@ public abstract class Instance {
 					try {
 						// establish connection
 						final Socket socket = server.accept();
+						socket.setSoTimeout(10000);
 						
 						// handle socket on a different thread to allow parallel connections
 						Thread thread = new Thread() {
@@ -228,15 +251,29 @@ public abstract class Instance {
 									InputStream is = socket.getInputStream();
 									DataInputStream dis = new DataInputStream(is);
 									
+									// read and check the token from the lock file before anything else
+									int tokenLength = dis.readInt();
+									if (tokenLength < 0 || tokenLength > 256) {
+										throw new IOException("Invalid instance token length");
+									}
+									byte[] tokenBytes = new byte[tokenLength];
+									dis.readFully(tokenBytes);
+									if (token == null || !java.security.MessageDigest.isEqual(tokenBytes, token.getBytes("UTF-8"))) {
+										throw new IOException("Rejected instance message without a valid token");
+									}
+
 									// read message length from client
 									int length = dis.readInt();
 									
 									// read message string from client
 									String message = null;
+									if (length > MAX_MESSAGE_LENGTH) {
+										throw new IOException("Instance message too long: " + length);
+									}
 									if (length > -1) {
 										byte[] messageBytes = new byte[length];
-										int bytesRead = dis.read(messageBytes, 0, length);
-										message = new String(messageBytes, 0, bytesRead, "UTF-8");
+										dis.readFully(messageBytes);
+										message = new String(messageBytes, 0, length, "UTF-8");
 									}
 									
 									// write response to client
@@ -262,6 +299,12 @@ public abstract class Instance {
 									socket.close();
 								} catch (IOException e) {
 									handleException(new InstanceException(e));
+								} finally {
+									try {
+										socket.close();
+									} catch (IOException e) {
+										//ignore
+									}
 								}
 							}
 						};
@@ -315,6 +358,11 @@ public abstract class Instance {
 				InputStream is = socket.getInputStream();
 				DataInputStream dis = new DataInputStream(is);
 				
+				// prove access to the lock file
+				byte[] tokenBytes = (token == null ? "" : token).getBytes("UTF-8");
+				dos.writeInt(tokenBytes.length);
+				dos.write(tokenBytes);
+
 				// write message to server
 				if (message == null) {
 					dos.writeInt(-1);
@@ -333,17 +381,20 @@ public abstract class Instance {
 				
 				// read response string from server
 				String response = null;
+				if (length > MAX_MESSAGE_LENGTH) {
+					throw new IOException("Instance response too long: " + length);
+				}
 				if (length > -1) {
 					byte[] responseBytes = new byte[length];
-					int bytesRead = dis.read(responseBytes, 0, length);
-					response = new String(responseBytes, 0, bytesRead, "UTF-8");
+					dis.readFully(responseBytes);
+					response = new String(responseBytes, 0, length, "UTF-8");
 				}
 				
 				// close writer and reader
 				dos.close();
 				dis.close();
 				
-				if (response.equals(APP_ID)) {
+				if (response != null && response.equals(APP_ID)) {
 					// validation successful
 					if (AUTO_EXIT) {
 						// perform pre-exit tasks
@@ -380,7 +431,9 @@ public abstract class Instance {
 			BufferedReader br = null;
 			try {
 				br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
-				return Integer.parseInt(br.readLine());
+				int lockPort = Integer.parseInt(br.readLine());
+				token = br.readLine();
+				return lockPort;
 			} catch (IOException e) {
 				throw new InstanceException(e);
 			} catch (NumberFormatException e) {
@@ -403,11 +456,19 @@ public abstract class Instance {
 		String filePath = TEMP_DIR + File.separator + APP_ID + ".lock";
 		File file = new File(filePath);
 		
-		// try to write port to lock file
+		// try to write port and token to lock file
+		token = newToken();
 		BufferedWriter bw = null;
 		try {
 			bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)));
+			try {
+				java.nio.file.Files.setPosixFilePermissions(file.toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
+			} catch (UnsupportedOperationException | IOException e) {
+				//not a POSIX file system; the lock file is in the user's application home
+			}
 			bw.write(String.valueOf(port));
+			bw.newLine();
+			bw.write(token);
 		} catch (IOException e) {
 			throw new InstanceException(e);
 		} finally {

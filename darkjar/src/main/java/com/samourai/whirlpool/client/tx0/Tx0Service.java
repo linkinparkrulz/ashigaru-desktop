@@ -32,6 +32,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Tx0Service {
+  // the coordinator fee may never exceed 10% of the pool denomination
+  private static final long MAX_POOL_FEE_DIVISOR = 10;
+
   private Logger log = LoggerFactory.getLogger(Tx0Service.class);
 
   private final Bech32UtilGeneric bech32Util = Bech32UtilGeneric.getInstance();
@@ -157,9 +160,20 @@ public class Tx0Service {
       throw new NotifiableException("Invalid premixValue for Tx0: " + premixValue);
     }
 
+    // check coordinator fee: the tx0 data must not ask for more than the advertised pool fee,
+    // and the pool fee itself must stay within a sane fraction of the denomination
+    Pool pool = tx0Param.getPool();
+    if (tx0Data.getFeeValue() > pool.getFeeValue()) {
+      throw new NotifiableException(
+          "Invalid coordinator fee for Tx0: " + tx0Data.getFeeValue() + " > pool fee " + pool.getFeeValue());
+    }
+    if (pool.getFeeValue() > pool.getDenomination() / MAX_POOL_FEE_DIVISOR) {
+      throw new NotifiableException(
+          "Invalid pool fee for Tx0: " + pool.getFeeValue() + " for denomination " + pool.getDenomination());
+    }
+
     NetworkParameters params = config.getNetworkParameters();
     long feeValueOrFeeChange = tx0Data.computeFeeValueOrFeeChange();
-    Pool pool = tx0Param.getPool();
     int nbPremix = computeNbPremixMax(premixValue, spendFroms, feeValueOrFeeChange, feeTx0, pool);
     long tx0MinerFee = ClientUtils.computeTx0MinerFee(nbPremix, feeTx0, spendFroms, params);
     long premixMinerFee = tx0Param.getPremixValue() - tx0Param.getPool().getDenomination();

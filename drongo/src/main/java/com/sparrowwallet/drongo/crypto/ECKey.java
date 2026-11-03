@@ -89,7 +89,8 @@ public class ECKey {
     }
 
     // The two parts of the key. If "pub" is set but not "priv", we can only verify signatures, not make them.
-    protected final BigInteger priv;
+    //Not final so that clear() can drop the private key; a BigInteger is immutable and cannot be wiped in place
+    protected volatile BigInteger priv;
     protected final LazyECPoint pub;
 
     private byte[] pubKeyHash;
@@ -807,10 +808,12 @@ public class ECKey {
         return Utils.bigIntegerToBytes(getPrivKey(), 32);
     }
 
+    /**
+     * Drops the private key so this key can no longer sign or reveal it, and the value becomes unreachable for collection.
+     * BigInteger values are immutable, so the underlying memory cannot be overwritten in place.
+     */
     public void clear() {
-        for(int i = 0; i < priv.bitLength(); i++) {
-            priv.clearBit(i);
-        }
+        priv = null;
     }
 
     public static class MissingPrivateKeyException extends RuntimeException {

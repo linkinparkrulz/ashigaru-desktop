@@ -14,6 +14,9 @@ import com.sparrowwallet.drongo.psbt.PSBT;
 import com.sparrowwallet.drongo.psbt.PSBTInput;
 import com.sparrowwallet.drongo.psbt.PSBTOutput;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
@@ -23,6 +26,8 @@ import static com.sparrowwallet.drongo.protocol.ScriptType.*;
 import static com.sparrowwallet.drongo.protocol.Transaction.WITNESS_SCALE_FACTOR;
 
 public class Wallet extends Persistable implements Comparable<Wallet> {
+    private static final Logger log = LoggerFactory.getLogger(Wallet.class);
+
     public static final int DEFAULT_LOOKAHEAD = 20;
     public static final int SEARCH_LOOKAHEAD = 4000;
     public static final String ALLOW_DERIVATIONS_MATCHING_OTHER_SCRIPT_TYPES_PROPERTY = "com.sparrowwallet.allowDerivationsMatchingOtherScriptTypes";
@@ -1478,12 +1483,40 @@ public class Wallet extends Persistable implements Comparable<Wallet> {
                 Script scriptPubKey = utxo.getScript();
                 WalletNode signingNode = walletOutputScripts.get(scriptPubKey);
                 if(signingNode != null) {
+                    if(!hasVerifiableValue(psbtInput, signingNode.getWallet().getScriptType())) {
+                        log.warn("Not signing PSBT input " + psbt.getPsbtInputs().indexOf(psbtInput) + ": legacy input value is not backed by the full previous transaction");
+                        continue;
+                    }
                     signingNodes.put(psbtInput, signingNode);
                 }
             }
         }
 
         return signingNodes;
+    }
+
+    /**
+     * Legacy (non-segwit) signatures do not commit to the value of the spent output, so the value displayed to the user
+     * (and therefore the fee) can only be trusted when it comes from the hash-verified non witness utxo transaction.
+     */
+    private static boolean hasVerifiableValue(PSBTInput psbtInput, ScriptType signingScriptType) {
+        if(signingScriptType == null || signingScriptType == P2TR || Arrays.asList(ScriptType.WITNESS_TYPES).contains(signingScriptType)) {
+            return true;
+        }
+
+        Transaction nonWitnessUtxo = psbtInput.getNonWitnessUtxo();
+        if(nonWitnessUtxo == null) {
+            return false;
+        }
+
+        TransactionOutput claimed = psbtInput.getUtxo();
+        long vout = psbtInput.getInput().getOutpoint().getIndex();
+        if(vout < 0 || vout >= nonWitnessUtxo.getOutputs().size()) {
+            return false;
+        }
+
+        TransactionOutput verified = nonWitnessUtxo.getOutputs().get((int)vout);
+        return verified.getValue() == claimed.getValue() && Arrays.equals(verified.getScriptBytes(), claimed.getScriptBytes());
     }
 
     public List<Keystore> getSigningKeystores(PSBT psbt) {

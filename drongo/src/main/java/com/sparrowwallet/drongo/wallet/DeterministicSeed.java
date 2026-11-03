@@ -30,7 +30,7 @@ public class DeterministicSeed extends Persistable implements EncryptableItem {
     }
 
     public DeterministicSeed(List<String> mnemonic, boolean needsPassphrase, long creationTimeSeconds, Type type) {
-        this.mnemonicCode = mnemonic;
+        this.mnemonicCode = mnemonic == null ? null : canonicalWords(mnemonic);
         this.encryptedMnemonicCode = null;
         this.needsPassphrase = needsPassphrase;
         this.creationTimeSeconds = creationTimeSeconds;
@@ -300,7 +300,50 @@ public class DeterministicSeed extends Persistable implements EncryptableItem {
                 builder.setLength(builder.length() - 1);
             }
 
-            return new SecureString(builder);
+            SecureString mnemonicString = new SecureString(builder);
+            for(int i = 0; i < builder.length(); i++) {
+                builder.setCharAt(i, ' ');
+            }
+
+            return mnemonicString;
+        }
+
+        return null;
+    }
+
+    /**
+     * Mnemonic words are held as references to the shared word list entries where possible, so the seed only exists
+     * as the order of references in a list that clear() empties, rather than as separate String copies of each word
+     * that cannot be wiped and stay in memory until collected.
+     */
+    private static List<String> canonicalWords(List<String> mnemonic) {
+        List<String> words = new ArrayList<>(mnemonic.size());
+        for(String word : mnemonic) {
+            String canonical = word == null ? null : findWord(word);
+            words.add(canonical != null ? canonical : word);
+        }
+
+        return words;
+    }
+
+    private static String findWord(CharSequence word) {
+        if(Bip39MnemonicCode.INSTANCE == null) {
+            return null;
+        }
+
+        List<String> wordList = Bip39MnemonicCode.INSTANCE.getWordList();
+        int low = 0;
+        int high = wordList.size() - 1;
+        while(low <= high) {
+            int mid = (low + high) >>> 1;
+            int cmp = CharSequence.compare(wordList.get(mid), word);
+            if(cmp < 0) {
+                low = mid + 1;
+            } else if(cmp > 0) {
+                high = mid - 1;
+            } else {
+                return wordList.get(mid);
+            }
         }
 
         return null;
@@ -323,7 +366,8 @@ public class DeterministicSeed extends Persistable implements EncryptableItem {
                 word.append(mnemonicCode.charAt(i));
             }
             if(c == ' ' || i == mnemonicCode.length() - 1) {
-                words.add(word.toString());
+                String canonical = findWord(word);
+                words.add(canonical != null ? canonical : word.toString());
 
                 for(int j = 0; j < word.length(); j++) {
                     word.setCharAt(j, ' ');

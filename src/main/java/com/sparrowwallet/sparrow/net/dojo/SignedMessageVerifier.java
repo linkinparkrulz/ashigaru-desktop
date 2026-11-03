@@ -62,11 +62,12 @@ public class SignedMessageVerifier {
             if(signedBlock == null || signedBlock.isBlank()) {
                 return false;
             }
-            if(mustContain != null && !signedBlock.contains(mustContain)) {
+            ParsedBlock parsed = parse(signedBlock);
+            //Only the message is covered by the signature, so the required content must appear there rather than anywhere in the block
+            if(mustContain != null && !parsed.message().contains(mustContain)) {
                 return false;
             }
 
-            ParsedBlock parsed = parse(signedBlock);
             PaymentCode paymentCode = extractPaymentCode(parsed.message());
             if(paymentCode == null) {
                 return false;

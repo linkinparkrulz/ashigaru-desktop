@@ -43,7 +43,7 @@ public class SparrowPostmixHandler implements IPostmixHandler {
         Address address = node.getAddress();
         String path = XPubUtil.getInstance().getPath(index, keyPurpose.getPathIndex().num());
 
-        log.info("Mixing to external xPub -> receiveAddress=" + address + ", path=" + path);
+        log.debug("Mixing to external xPub -> receiveAddress=" + address + ", path=" + path);
         return new MixDestination(DestinationType.XPUB, index, address.toString(), path);
     }
 

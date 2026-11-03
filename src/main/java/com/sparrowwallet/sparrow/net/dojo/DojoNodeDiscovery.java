@@ -192,14 +192,29 @@ public class DojoNodeDiscovery {
                 continue;
             }
 
-            Server indexerServer = new Server(candidate.indexerUrl(), candidate.name());
+            //The signature covers the operator's pairing payload, not the indexer url, which comes from the directory alone.
+            //Say so in the label unless the signed message happens to name the indexer host too.
+            String signedMessage = signedMessage(candidate.signedBlock());
+            String indexerHost = new Server(candidate.indexerUrl(), candidate.name()).getHost();
+            boolean indexerSigned = signedMessage != null && indexerHost != null && signedMessage.contains(indexerHost);
+            Server indexerServer = new Server(candidate.indexerUrl(), indexerSigned ? candidate.name() : candidate.name() + " (unverified endpoint)");
             if(seenHosts.add(indexerServer.getHost())) {
-                Server explorerServer = candidate.explorerUrl() == null ? null : new Server(candidate.explorerUrl(), candidate.name());
+                //Only offer an explorer url that is part of the signed message
+                String explorerUrl = candidate.explorerUrl() != null && signedMessage != null && signedMessage.contains(candidate.explorerUrl()) ? candidate.explorerUrl() : null;
+                Server explorerServer = explorerUrl == null ? null : new Server(explorerUrl, candidate.name());
                 discovered.add(new DiscoveredNode(indexerServer, explorerServer, candidate.name(), true));
             }
         }
 
         return new DiscoveryResult(discovered, candidates.size(), unverified);
+    }
+
+    private static String signedMessage(String signedBlock) {
+        try {
+            return signedBlock == null ? null : SignedMessageVerifier.parse(signedBlock).message();
+        } catch(Exception e) {
+            return null;
+        }
     }
 
     /**

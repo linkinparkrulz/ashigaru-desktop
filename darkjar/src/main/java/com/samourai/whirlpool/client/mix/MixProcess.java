@@ -331,7 +331,7 @@ public class MixProcess {
         // verify my input
         UtxoWithBalance utxo = premixHandler.getUtxo();
         Integer inputIndex = TxUtil.getInstance().findInputIndex(tx, utxo.getHash(), utxo.getIndex());
-        if (outputIndex == null) {
+        if (inputIndex == null) {
             throw new Exception("Input not found in tx");
         }
 

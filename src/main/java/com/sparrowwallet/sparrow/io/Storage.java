@@ -337,6 +337,9 @@ public class Storage {
             persistence = type.getInstance();
             persistence.setKeyDeriver(keyDeriver);
             walletFile = new File(walletFile.getParentFile(), wallet.getName() + "." + type.getExtension());
+            if(!isContainedIn(existingFile.getParentFile(), walletFile)) {
+                throw new IOException("Wallet name resolves outside the wallet directory");
+            }
             if(walletFile.exists()) {
                 walletFile.delete();
             }
@@ -413,18 +416,32 @@ public class Storage {
 
     public static File getExistingWallet(File walletsDir, String walletName) {
         File encrypted = new File(walletsDir, walletName.trim());
+        if(!isContainedIn(walletsDir, encrypted)) {
+            log.warn("Ignoring wallet name that resolves outside " + walletsDir.getAbsolutePath());
+            return null;
+        }
+
         if(encrypted.exists()) {
             return encrypted;
         }
 
         for(PersistenceType persistenceType : PersistenceType.values()) {
             File unencrypted = new File(walletsDir, walletName.trim() + "." + persistenceType.getExtension());
-            if(unencrypted.exists()) {
+            if(isContainedIn(walletsDir, unencrypted) && unencrypted.exists()) {
                 return unencrypted;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Wallet names can come from the contents of imported files, so a file derived from one must stay inside the intended directory.
+     */
+    static boolean isContainedIn(File dir, File file) {
+        Path dirPath = dir.toPath().toAbsolutePath().normalize();
+        Path filePath = file.toPath().toAbsolutePath().normalize();
+        return !filePath.equals(dirPath) && filePath.startsWith(dirPath);
     }
 
     public static File getWalletFile(String walletName) {

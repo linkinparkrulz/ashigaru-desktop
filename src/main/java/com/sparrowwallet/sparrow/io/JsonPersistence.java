@@ -107,7 +107,7 @@ public class JsonPersistence implements Persistence {
 
     private File[] getChildWalletFiles(File walletFile, Wallet masterWallet) {
         File childDir = new File(walletFile.getParentFile(), masterWallet.getName() + "-child");
-        if(!childDir.exists()) {
+        if(!Storage.isContainedIn(walletFile.getParentFile(), childDir) || !childDir.exists()) {
             return new File[0];
         }
 

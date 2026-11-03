@@ -30,4 +30,12 @@ public class BIP38Test {
         Assertions.assertEquals("5JLdxTtcTHcfYcmJsNVy1v2PMDx432JPoYcBTVVRHpPaxUrdtf8", BIP38.decrypt("MOLON LABE", "6PgNBNNzDkKdhkT6uJntUXwwzQV8Rr2tZcbkDcuC9DZRsS6AtHts4Ypo1j").toString()); ;
         Assertions.assertEquals("5KMKKuUmAkiNbA3DazMQiLfDq47qs8MAEThm4yL8R2PhV1ov33D", BIP38.decrypt("ΜΟΛΩΝ ΛΑΒΕ", "6PgGWtx25kUg8QWvwuJAgorN6k9FbE25rv5dMRwu5SKMnfpfVe5mar2ngH").toString()); ;
     }
+
+    @Test
+    public void testWrongPassphraseRejected() {
+        Assertions.assertThrows(GeneralSecurityException.class, () -> BIP38.decrypt("Wrong", "6PRVWUbkzzsbcVac2qwfssoUJAN1Xhrg6bNk8J7Nzm5H7kxEbn2Nh2ZoGg"));
+        Assertions.assertThrows(GeneralSecurityException.class, () -> BIP38.decrypt("Wrong", "6PYNKZ1EAgYgmQfmNVamxyXVWHzK5s6DGhwP4J5o44cvXdoY7sRzhtpUeo"));
+        Assertions.assertThrows(GeneralSecurityException.class, () -> BIP38.decrypt("Wrong", "6PfQu77ygVyJLZjfvMLyhLMQbYnu5uguoJJ4kMCLqWwPEdfpwANVS76gTX"));
+        Assertions.assertThrows(GeneralSecurityException.class, () -> BIP38.decrypt("Wrong", "6PgNBNNzDkKdhkT6uJntUXwwzQV8Rr2tZcbkDcuC9DZRsS6AtHts4Ypo1j"));
+    }
 }
