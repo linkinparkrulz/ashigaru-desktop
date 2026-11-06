@@ -10,6 +10,8 @@ import com.sparrowwallet.drongo.wallet.BlockTransactionHashIndex;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.EventManager;
+import com.sparrowwallet.sparrow.event.TorBootStatusEvent;
+import com.sparrowwallet.sparrow.event.TorFailedStatusEvent;
 import com.sparrowwallet.sparrow.event.TorReadyStatusEvent;
 import com.sparrowwallet.sparrow.gui.AshigaruGui;
 import com.sparrowwallet.sparrow.io.Config;
@@ -268,26 +270,64 @@ public class SwapService implements SwapHost {
                 appendLog("Resumed unfinished swaps: " + String.join(", ", resumed));
             }
             swapListeners.forEach(Runnable::run);
+            //Tor may have moved or gone while the engine was starting, which followTor had to leave until now
+            followTor();
         }, e -> {
             starting = false;
             status.set("Could not start: " + e.getMessage());
+            if(!Objects.equals(AppServices.getTorProxy(), engineProxy)) {
+                followTor();
+            }
         });
     }
 
     @Subscribe
     public void torReady(TorReadyStatusEvent event) {
-        Platform.runLater(() -> {
-            //A restarted Tor listens on a new port: an engine still dialling the old one reaches nothing
-            //("ProxyServerUnreachable") until it is started again. A running swap resumes from its database.
-            HostAndPort proxy = AppServices.getTorProxy();
-            if(running.get() && !starting && proxy != null && !proxy.equals(engineProxy)) {
-                appendLog("Tor restarted on " + proxy + "; restarting the swap engine to use it");
-                running.set(false);
-                start(false);
-            } else {
-                startIfEnabled();
-            }
-        });
+        Platform.runLater(this::followTor);
+    }
+
+    @Subscribe
+    public void torBooting(TorBootStatusEvent event) {
+        Platform.runLater(this::followTor);
+    }
+
+    @Subscribe
+    public void torFailed(TorFailedStatusEvent event) {
+        Platform.runLater(this::followTor);
+    }
+
+    /**
+     * Keeps the engine on the Tor proxy that is actually there. The engine dials the one port it was
+     * started with, and a Tor that restarts listens on another ("ProxyServerUnreachable" until the
+     * engine is started again) or may not come back at all. A running swap resumes from its database.
+     * While the engine is starting nothing is done; it looks again when the start finishes.
+     */
+    private void followTor() {
+        if(starting) {
+            return;
+        }
+        if(!running.get()) {
+            startIfEnabled();
+            return;
+        }
+        if(!Config.get().isSwapsEnabled()) {
+            return;
+        }
+        HostAndPort proxy = AppServices.getTorProxy();
+        if(proxy == null) {
+            appendLog("Tor is gone; stopping the swap engine until it is back");
+            SwapEngine stopping = engine;
+            running.set(false);
+            status.set("Waiting for Tor. Swaps only connect through Tor.");
+            runInBackground(() -> {
+                stopping.shutdown();
+                return null;
+            }, ignored -> {}, e -> {});
+        } else if(!proxy.equals(engineProxy)) {
+            appendLog("Tor restarted on " + proxy + "; restarting the swap engine to use it");
+            running.set(false);
+            start(false);
+        }
     }
 
     public void listQuotes(Consumer<List<SwapEngine.Quote>> onSuccess, Consumer<Throwable> onFailure) {
