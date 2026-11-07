@@ -1,8 +1,5 @@
 package com.sparrowwallet.sparrow.gui;
 
-import com.sparrowwallet.drongo.ExtendedKey;
-import com.sparrowwallet.drongo.KeyDerivation;
-import com.sparrowwallet.drongo.OutputDescriptor;
 import com.sparrowwallet.drongo.SecureString;
 import com.sparrowwallet.drongo.Utils;
 import com.sparrowwallet.drongo.crypto.ECKey;
@@ -26,7 +23,6 @@ import com.sparrowwallet.sparrow.io.ImportException;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.io.StorageException;
 import com.sparrowwallet.sparrow.net.ElectrumServer;
-import com.sparrowwallet.sparrow.wallet.KeystoreController;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import javafx.animation.PauseTransition;
@@ -729,70 +725,45 @@ public class WalletCreationFlow {
         ButtonType importType = new ButtonType("Import Wallet", ButtonBar.ButtonData.OK_DONE);
         dlg.getDialogPane().getButtonTypes().addAll(importType, ButtonType.CANCEL);
 
+        Label errorLabel = new Label();
+        errorLabel.getStyleClass().add("field-label");
+        errorLabel.setWrapText(true);
+        errorLabel.setVisible(false);
+        errorLabel.managedProperty().bind(errorLabel.visibleProperty());
+        errorLabel.setMinHeight(Region.USE_PREF_SIZE);
+        //Keep the two-line hint whole when the error line appears; the dialog grows instead
+        hint.setMinHeight(Region.USE_PREF_SIZE);
+        content.getChildren().add(errorLabel);
+
         Button importNode = (Button) dlg.getDialogPane().lookupButton(importType);
         importNode.setDisable(true);
         styleWizardButtons(dlg.getDialogPane());
-        descriptorArea.textProperty().addListener((obs, old, text) ->
-                importNode.setDisable(!isValidDescriptorOrXpub(text.replaceAll("\\s+", ""))));
+        descriptorArea.textProperty().addListener((obs, old, text) -> {
+            String problem = text.isBlank() ? null : WatchOnlyWalletBuilder.validate(text);
+            importNode.setDisable(text.isBlank() || problem != null);
+            errorLabel.setText(problem == null ? "" : problem);
+            if (errorLabel.isVisible() != (problem != null)) {
+                errorLabel.setVisible(problem != null);
+                if (dlg.getDialogPane().getScene() != null && dlg.getDialogPane().getScene().getWindow() != null) {
+                    Platform.runLater(() -> dlg.getDialogPane().getScene().getWindow().sizeToScene());
+                }
+            }
+        });
 
         dlg.setResultConverter(bt -> bt);
 
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isEmpty() || result.get() != importType) return;
 
-        String raw = descriptorArea.getText().replaceAll("\\s+", "");
-        List<Wallet> wallets = buildWatchOnlyWallets(walletName, raw);
-        if (wallets.isEmpty()) {
-            showError("Invalid Input", "Could not parse the descriptor or xpub.");
+        Wallet wallet;
+        try {
+            wallet = WatchOnlyWalletBuilder.build(walletName, descriptorArea.getText());
+        } catch (WatchOnlyWalletBuilder.InvalidWatchOnlyInputException e) {
+            showError("Invalid Input", e.getMessage());
             return;
         }
 
-        discoverAndSave(walletName, wallets);
-    }
-
-    private boolean isValidDescriptorOrXpub(String text) {
-        if (text.isEmpty()) return false;
-        try {
-            OutputDescriptor.getOutputDescriptor(text);
-            return true;
-        } catch (Exception e1) {
-            try {
-                ExtendedKey.fromDescriptor(text);
-                return true;
-            } catch (Exception e2) {
-                return false;
-            }
-        }
-    }
-
-    private List<Wallet> buildWatchOnlyWallets(String walletName, String raw) {
-        try {
-            OutputDescriptor desc = OutputDescriptor.getOutputDescriptor(raw);
-            Wallet wallet = desc.toWallet();
-            wallet.setName(walletName);
-            return List.of(wallet);
-        } catch (Exception e1) {
-            try {
-                ExtendedKey xpub = ExtendedKey.fromDescriptor(raw);
-                Wallet wallet = new Wallet(walletName);
-                wallet.setPolicyType(PolicyType.SINGLE);
-                wallet.setScriptType(ScriptType.P2WPKH);
-                Keystore keystore = new Keystore();
-                keystore.setSource(KeystoreSource.SW_WATCH);
-                keystore.setWalletModel(WalletModel.SPARROW);
-                keystore.setKeyDerivation(new KeyDerivation(
-                        KeystoreController.DEFAULT_WATCH_ONLY_FINGERPRINT,
-                        ScriptType.P2WPKH.getDefaultDerivationPath()));
-                keystore.setExtendedPublicKey(xpub);
-                wallet.makeLabelsUnique(keystore);
-                wallet.getKeystores().add(keystore);
-                wallet.setDefaultPolicy(Policy.getPolicy(PolicyType.SINGLE, ScriptType.P2WPKH, wallet.getKeystores(), 1));
-                return List.of(wallet);
-            } catch (Exception e2) {
-                log.error("Could not build watch only wallet from: " + raw, e2);
-                return Collections.emptyList();
-            }
-        }
+        discoverAndSave(walletName, List.of(wallet));
     }
 
     // -------------------------------------------------------------------------
@@ -835,7 +806,7 @@ public class WalletCreationFlow {
             AtomicBoolean proceeded = new AtomicBoolean(false);
             Consumer<Wallet> proceed = wallet -> {
                 if (!proceeded.compareAndSet(false, true)) return;
-                try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }
+                addWhirlpoolAccountsIfMixable(wallet);
                 // Platform.runLater lets the discovery dialog fully close before the save dialog opens
                 Platform.runLater(() -> saveWallet(walletName, wallet));
             };
@@ -867,8 +838,21 @@ public class WalletCreationFlow {
             ((Stage) progress.getDialogPane().getScene().getWindow()).setOnCloseRequest(Event::consume);
         } else {
             Wallet wallet = wallets.get(0);
-            try { addWhirlpoolAccounts(wallet); } catch (Exception ex) { log.error("Whirlpool setup failed", ex); }
+            addWhirlpoolAccountsIfMixable(wallet);
             saveWallet(walletName, wallet);
+        }
+    }
+
+    private void addWhirlpoolAccountsIfMixable(Wallet wallet) {
+        //Whirlpool needs the seed, so a watch-only wallet can't mix, and setting it up would only fail
+        if (!WhirlpoolServices.canWalletMix(wallet)) {
+            return;
+        }
+
+        try {
+            addWhirlpoolAccounts(wallet);
+        } catch (Exception ex) {
+            log.error("Whirlpool setup failed", ex);
         }
     }
 
@@ -879,6 +863,15 @@ public class WalletCreationFlow {
     }
 
     private void saveWallet(String walletName, Wallet wallet) {
+        //The database rejects an incomplete wallet with an unreadable constraint error, so catch it here first
+        try {
+            wallet.checkWallet();
+        } catch (InvalidWalletException e) {
+            log.error("Refusing to save incomplete wallet " + walletName, e);
+            showError("Save Error", "Could not save wallet: it is incomplete (" + e.getMessage() + ").");
+            return;
+        }
+
         // Ask for optional password
         Dialog<String> pwDlg = new Dialog<>();
         pwDlg.setTitle("Wallet Password");
