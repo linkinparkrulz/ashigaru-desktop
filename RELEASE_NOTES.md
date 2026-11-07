@@ -1,3 +1,33 @@
+# Ashigaru Desktop 1.5.2
+
+*Unreleased*
+
+Wallets open again when Ashigaru starts, so mixing resumes after a restart, and fixes for watch-only
+imports and private Electrum server addresses.
+
+## Wallets and mixing
+
+- **Wallets that were open when Ashigaru closed open again on launch, so mixing resumes after a
+  restart.** The "Load recent wallets" setting promised this but Ashigaru only listed the wallets as
+  locked, so mixing stopped after every restart, update or crash until each wallet was unlocked by
+  hand. Wallets without a password now open by themselves. Password-protected wallets ask for their
+  password at launch, one at a time; press Cancel to leave a wallet locked. A wallet you lock before
+  quitting stays locked, and turning "Load recent wallets" off stops wallets reopening.
+
+## Watch-only wallets
+
+- **Importing a watch-only wallet from a bare zpub works.** It used to fail with "Could not save
+  wallet". Output descriptors without a key origin, such as `wpkh(zpub…)`, work too.
+- **A Postmix zpub is recorded as the Postmix account** rather than as account 0.
+- **Keys Ashigaru can't watch are refused with a reason** before you import them: other script
+  types such as a ypub or a Taproot descriptor, multisig descriptors and private keys.
+
+## Servers
+
+- **Pasting a full server address into the private Electrum server host field works.** An address
+  such as `tcp://example.onion:50001` used to fail with "Electrum server URL not specified". It is
+  now split into the host, port and SSL setting, as is Electrum's `host:port:s` form.
+
 # Ashigaru Desktop 1.5.1
 
 *Released 2026-10-29*
