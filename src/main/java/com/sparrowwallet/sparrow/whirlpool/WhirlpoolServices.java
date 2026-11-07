@@ -58,7 +58,7 @@ public class WhirlpoolServices {
             whirlpoolMap.put(walletId, whirlpool);
         } else if (!whirlpool.isStarted()) {
             HostAndPort torProxy = getTorProxy();
-            if (!Objects.equals(whirlpool.getTorProxy(), torProxy)) {
+            if (!Objects.equals(whirlpool.getTorProxy(), torProxy) || whirlpool.isServerOverrideChanged()) {
                 whirlpool.setTorProxy(getTorProxy());
             }
         }

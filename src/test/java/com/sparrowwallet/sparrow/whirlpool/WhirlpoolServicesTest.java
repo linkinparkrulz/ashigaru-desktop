@@ -27,11 +27,8 @@ class WhirlpoolServicesTest {
     void closeWalletRemovesEngineAndUnlinksMixToWallet() throws Exception {
         WhirlpoolServices services = new WhirlpoolServices();
 
-        // MAINNET is used here, not TESTNET, because Network.TESTNET.getName() returns
-        // "testnet3" while WhirlpoolServer's matching constant is named TESTNET - the
-        // constructor's WhirlpoolServer.valueOf(network.getName()...) throws for testnet before
-        // it ever gets here. That's a separate, real bug (see PR description), out of scope for
-        // this cleanup-path test.
+        // MAINNET keeps this cleanup-path test independent of which testnet is in use; the
+        // network-to-server mapping itself is covered by WhirlpoolServerResolverTest.
         Whirlpool deletedWallet = new Whirlpool(Network.MAINNET, null);
         Whirlpool mixingIntoDeletedWallet = new Whirlpool(Network.MAINNET, null);
         // Seeding the mix-to link directly via reflection rather than calling the public

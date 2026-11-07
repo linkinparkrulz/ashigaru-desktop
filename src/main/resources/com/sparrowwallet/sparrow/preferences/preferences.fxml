@@ -28,6 +28,14 @@
                     <PreferenceGroup fx:constant="SERVER"/>
                 </userData>
             </ToggleButton>
+            <ToggleButton fx:id="networkPrefsBtn" text="Network" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" maxWidth="Infinity" toggleGroup="$preferencesMenu">
+                <graphic>
+                    <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="GLOBE" />
+                </graphic>
+                <userData>
+                    <PreferenceGroup fx:constant="NETWORK"/>
+                </userData>
+            </ToggleButton>
             <ToggleButton fx:id="updatePrefsBtn" text="Update" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" maxWidth="Infinity" toggleGroup="$preferencesMenu">
                 <graphic>
                     <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="ARROW_CIRCLE_DOWN" />

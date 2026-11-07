@@ -575,10 +575,13 @@ Things worth knowing that aren't obvious from the code's surface:
    path always uses the onion URL (`Whirlpool.java:108`), the clearnet entries are effectively
    dead config. Whoever operates the coordinator behind those onions today (post-Samourai,
    the Ashigaru project) is a code-external fact — the client protocol is unchanged.
-2. **Network support mismatch.** `Whirlpool.WHIRLPOOL_NETWORKS` includes `TESTNET4`
-   (`Whirlpool.java:60`), but the `WhirlpoolServer` enum has no `TESTNET4` entry —
-   `WhirlpoolServer.valueOf("TESTNET4")` (`Whirlpool.java:89`) would throw. Whirlpool is
-   practically MAINNET/TESTNET only.
+2. **Network names do not match `WhirlpoolServer`'s constants.** `Network.TESTNET.getName()` is
+   `"testnet3"` and `Network.TESTNET4.getName()` is `"testnet"`, while the testnet constant is
+   `WhirlpoolServer.TESTNET`. Looking the server up by name therefore threw for testnet3 and worked
+   for testnet4 only by accident. `WhirlpoolServerResolver.builtInServer` now maps networks to servers
+   explicitly (mainnet → `MAINNET`, either testnet → `TESTNET`), and applies the server set in
+   Settings → Network on top (`NetworkSettings`, stored in `network.json` in the home folder because the
+   per-network config cannot hold both networks' servers).
 3. **The dual-identity design is the protocol's soul.** Everything privacy-critical hangs on
    the input identity and output identity being unlinkable: separate Tor circuits, separate
    HTTP clients, separate onion endpoints, blind signature in between. The

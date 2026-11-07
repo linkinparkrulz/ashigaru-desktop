@@ -6,6 +6,7 @@ import org.slf4j.event.Level;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class Args {
     @Parameter(names = { "--dir", "-d" }, description = "Path to Ashigaru home folder")
@@ -35,7 +36,9 @@ public class Args {
         }
         if(network != null) {
             params.add("-n");
-            params.add(network.toString());
+            //JCommander matches the enum constant name; getName() is "testnet3" for TESTNET and "testnet" for TESTNET4,
+            //neither of which round-trips
+            params.add(network.name().toLowerCase(Locale.ROOT));
         }
         if(level != null) {
             params.add("-l");

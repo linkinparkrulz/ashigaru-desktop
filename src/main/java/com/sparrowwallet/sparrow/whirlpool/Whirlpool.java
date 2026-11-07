@@ -62,12 +62,15 @@ public class Whirlpool {
     public static final int DEFAULT_MIXTO_RANDOM_FACTOR = 4;
     protected static final int TIMEOUT_MS = 60000;
 
+    private final Network network;
     private final WhirlpoolServer whirlpoolServer;
     private final JavaHttpClientService httpClientService;
     private final JavaStompClientService stompClientService;
     private final TorClientService torClientService;
     private final WhirlpoolWalletService whirlpoolWalletService;
     private final WhirlpoolWalletConfig config;
+    //The user's server settings this engine's connection was built from (see isServerOverrideChanged)
+    private String serverOverrideFingerprint;
     private final Tx0ParamService tx0ParamService;
     private final ExpirablePoolSupplier poolSupplier;
     private final Tx0Service tx0Service;
@@ -86,7 +89,8 @@ public class Whirlpool {
     private final BooleanProperty mixingProperty = new SimpleBooleanProperty(false);
 
     public Whirlpool(Network network, HostAndPort torProxy) {
-        this.whirlpoolServer = WhirlpoolServer.valueOf(network.getName().toUpperCase(Locale.ROOT));
+        this.network = network;
+        this.whirlpoolServer = WhirlpoolServerResolver.builtInServer(network);
         this.httpClientService = new JavaHttpClientService(torProxy, TIMEOUT_MS);
         this.stompClientService = new JavaStompClientService(httpClientService);
         this.torClientService = new SparrowTorClientService(this);
@@ -105,13 +109,14 @@ public class Whirlpool {
         DataSourceFactory dataSourceFactory = (whirlpoolWallet, bip44w, dataPersister) -> new SparrowDataSource(whirlpoolWallet, bip44w, dataPersister);
 
         boolean onion = (torProxy != null);
-        String serverUrl = whirlpoolServer.getServerUrl(true);
-        String serverUrlOutputReg = whirlpoolServer.getServerUrlOutputReg();
-        ServerApi serverApi = new ServerApi(serverUrl, serverUrlOutputReg, httpClientService);
+        WhirlpoolServerResolver.ServerUrls serverUrls = WhirlpoolServerResolver.resolve(network, true);
+        ServerApi serverApi = new ServerApi(serverUrls.serverUrl(), serverUrls.serverUrlOutputReg(), httpClientService);
 
         WhirlpoolWalletConfig whirlpoolWalletConfig = new WhirlpoolWalletConfig(dataSourceFactory, httpClientService, stompClientService, torClientService, serverApi, whirlpoolServer.getParams(), false);
         whirlpoolWalletConfig.setDataPersisterFactory(dataPersisterFactory);
         whirlpoolWalletConfig.setPartner(PARTNER_ID_ASHIGARU);
+        whirlpoolWalletConfig.setBlindSignaturePublicKeyFile(WhirlpoolServerResolver.blindSignatureKeyFile(network));
+        serverOverrideFingerprint = WhirlpoolServerResolver.overrideFingerprint(network);
         whirlpoolWalletConfig.setIndexRangePostmix(IndexRange.FULL);
         return whirlpoolWalletConfig;
     }
@@ -477,10 +482,19 @@ public class Whirlpool {
         httpClientService.shutdown();
 
         httpClientService.setTorProxy(torProxy);
-        String serverUrl = whirlpoolServer.getServerUrl(torProxy != null);
-        String serverUrlOutputReg = whirlpoolServer.getServerUrlOutputReg();
-        ServerApi serverApi = new ServerApi(serverUrl, serverUrlOutputReg, httpClientService);
+        WhirlpoolServerResolver.ServerUrls serverUrls = WhirlpoolServerResolver.resolve(network, torProxy != null);
+        ServerApi serverApi = new ServerApi(serverUrls.serverUrl(), serverUrls.serverUrlOutputReg(), httpClientService);
         config.setServerApi(serverApi);
+        config.setBlindSignaturePublicKeyFile(WhirlpoolServerResolver.blindSignatureKeyFile(network));
+        serverOverrideFingerprint = WhirlpoolServerResolver.overrideFingerprint(network);
+    }
+
+    /**
+     * Whether the Whirlpool server was changed in Settings after this engine connected. Call {@link #setTorProxy}
+     * to pick the change up, which is only possible while it is not started.
+     */
+    public boolean isServerOverrideChanged() {
+        return !Objects.equals(serverOverrideFingerprint, WhirlpoolServerResolver.overrideFingerprint(network));
     }
 
     public void refreshTorCircuits() {

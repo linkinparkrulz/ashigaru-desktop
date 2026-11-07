@@ -28,13 +28,13 @@ The application plugin runs main class `com.sparrowwallet.sparrow.AshigaruTermin
 
 | Flag | Effect |
 |---|---|
-| `--network` / `-n` | `mainnet` (default), `testnet`, `testnet4`, `signet`, `regtest` |
+| `--network` / `-n` | `mainnet` (default), `testnet`, `testnet4`, `signet`, `regtest`. Beats the `SPARROW_NETWORK` variable, which beats the network chosen in Settings → Network |
 | `--dir` / `-d` | Override the home folder (useful for throwaway test profiles) |
 | `--level` / `-l` | Log level (`DEBUG`, `INFO`, …) |
 | `--terminal` / `-t` | Lanterna TUI instead of the JavaFX GUI |
 | `--version`, `--help` | As expected |
 
-With `./gradlew run`, pass flags as `./gradlew run --args="--network testnet --level DEBUG"`.
+With `./gradlew run`, pass flags as `./gradlew run --args="--network testnet4 --level DEBUG"`.
 
 **Headless/server:** setting `-Djava.awt.headless=true` at build/run time switches JavaFX to
 Monocle software rendering (`build.gradle` `headless` conditional). Releases no longer ship a
@@ -76,7 +76,9 @@ with `--dir`. Contents:
   certs/          # pinned Electrum server certificates
 ```
 
-Network-specific subdirectories are used for non-mainnet (e.g. `~/.ashigaru/testnet/`).
+Network-specific subdirectories are used for non-mainnet (e.g. `~/.ashigaru/testnet4/`), so each network has its own
+  wallets and config. `network.json` in the home folder holds the network chosen in Settings → Network and the Whirlpool
+  server for mainnet and testnet4 (`NetworkSettings`).
 
 **Logging:** logback config at `src/main/resources/logback.xml`, file output to
 `<home>/ashigaru.log`. Bump verbosity with `--level DEBUG`. During a mix, the useful log lines
@@ -100,19 +102,24 @@ works without Tor.
 
 ## 4. Exercising Whirlpool Safely
 
-- **Never develop against mainnet with real funds.** Run `--network testnet` with a throwaway
-  `--dir`; the `WhirlpoolServer.TESTNET` coordinator endpoints are baked in.
+- **Never develop against mainnet with real funds.** Switch to Testnet4 in Settings → Network (Ashigaru
+  restarts onto it), or run `--network testnet4` with a throwaway `--dir`.
+- Settings → Network also sets the Whirlpool server for each network: a coordinator URL, an optional
+  output registration URL (defaults to the coordinator), and the coordinator's blind signature public key
+  (a PEM file; a coordinator you run has its own key, and the built-in one will not match it). Blank
+  means the built-in `WhirlpoolServer` for that network. These override the enum at runtime
+  (`WhirlpoolServerResolver`), so no code change is needed to point at your own server.
 - Coordinator availability is external — if the testnet coordinator is down, mixing simply
   won't form rounds; that's not a client bug.
-- For fully offline protocol work there is `WhirlpoolServer.LOCAL_TESTNET`
-  (`127.0.0.1:8080`), which expects a locally run `whirlpool-server` instance (not in this
-  repo).
+- For fully offline protocol work, run a local `whirlpool-server` (not in this repo) and point the
+  Testnet4 server at it (for example `http://127.0.0.1:8080`) in Settings → Network. Plain `http://` is
+  accepted only for `.onion` addresses and loopback or private-network hosts.
 - The full manual flow to verify: create wallet → Receive (Deposit) → fund from a testnet
   faucet → select UTXO → Mix Selected (Tx0 dialog: pick pool, fee target, broadcast) → Premix
   tab → Start Mixing → watch `ashigaru.log` and the Mixes column.
-- Known gap: `TESTNET4` is listed in `Whirlpool.WHIRLPOOL_NETWORKS` but has no
-  `WhirlpoolServer` entry, so whirlpool startup on testnet4 will throw. Use `testnet` (v3) for
-  mix testing.
+- A server changed in Settings is picked up by wallets that are not mixing; a wallet that is already
+  mixing keeps its current server until mixing is stopped and started again.
+- Soroban (collaborative mixing) is still mainnet-only: `SorobanServer` is hardcoded, so it is off on Testnet4.
 
 ## 5. Where to Make Changes (Cookbook)
 
@@ -168,8 +175,7 @@ treat darkjar as vendored upstream (below).
   here to avoid this doc drifting out of sync with it).
 - Known code TODOs: zeroleak change-index revert and BIP69 output sorting remain unimplemented
   in the vendored darkjar Tx0 construction path (inherited from upstream Samourai code, not
-  fixable in-tree without diverging from the vendored source); the `TESTNET4` enum mismatch
-  (§4) is still present as of this release.
+  fixable in-tree without diverging from the vendored source).
 - Docs: `docs/ARCHITECTURE.md` (system breakdown), this file,
   `docs/ReproducibleBuilds.md`, `docs/SeedEntropyAnalysis.md`, the historical `docs/PLAN.md`,
   and the release checklist at `docs/TESTING.txt`.

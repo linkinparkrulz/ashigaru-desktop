@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import tornadofx.control.Form?>
+<?import tornadofx.control.Fieldset?>
+<?import tornadofx.control.Field?>
+<?import com.sparrowwallet.sparrow.control.HelpLabel?>
+
+<GridPane hgap="10.0" vgap="14.0" stylesheets="@../general.css, @../gui/ashigaru.css, @preferences.css" styleClass="preferences-detail" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.sparrowwallet.sparrow.preferences.NetworkPreferencesController">
+    <padding>
+        <Insets left="28.0" right="32.0" top="24.0" bottom="28.0" />
+    </padding>
+    <columnConstraints>
+        <ColumnConstraints percentWidth="100" />
+    </columnConstraints>
+
+    <VBox GridPane.columnIndex="0" GridPane.rowIndex="0" spacing="6">
+        <Label text="Network" styleClass="preferences-section-title" />
+        <Label text="Choose which Bitcoin network Ashigaru runs on, and which Whirlpool server each network mixes with. Every network keeps its own wallets and settings."
+               wrapText="true" styleClass="preferences-section-subtitle" />
+    </VBox>
+
+    <Form GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="preferences-form">
+        <Fieldset inputGrow="SOMETIMES" text="Network" styleClass="wideLabelFieldSet">
+            <Field text="Running on:">
+                <Label fx:id="activeNetworkLabel" text="—" styleClass="field-value" />
+            </Field>
+            <Field text="Switch to:">
+                <ComboBox fx:id="networkCombo" />
+                <Button minWidth="-Infinity" fx:id="switchBtn" text="Switch and restart" onAction="#onSwitch" styleClass="primary-btn" disable="true" />
+                <HelpLabel helpText="Ashigaru closes and reopens on the chosen network, showing only that network's wallets. Testnet coins have no value. Mixing stops while Ashigaru restarts."/>
+            </Field>
+        </Fieldset>
+    </Form>
+
+    <Form GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="preferences-form">
+        <Fieldset inputGrow="SOMETIMES" text="Whirlpool server - Mainnet" styleClass="wideLabelFieldSet">
+            <Field text="Coordinator URL:">
+                <TextField fx:id="mainnetCoordinator" promptText="Built-in server" />
+                <HelpLabel helpText="The address of the Whirlpool coordinator to mix with. Leave every field empty to use the built-in server. Use https://, or http:// for an .onion address or a server on your own network."/>
+            </Field>
+            <Field text="Output registration URL:">
+                <TextField fx:id="mainnetOutputReg" promptText="Same as coordinator" />
+            </Field>
+            <Field text="Blind signature key:">
+                <TextField fx:id="mainnetKey" promptText="Built-in key" />
+                <Button minWidth="-Infinity" fx:id="mainnetBrowse" text="Browse..." styleClass="secondary-btn" />
+                <HelpLabel helpText="A coordinator signs with its own key. If you run your own, select its PEM-encoded RSA public key here; the built-in key will not match it."/>
+            </Field>
+            <Field text="">
+                <Button minWidth="-Infinity" fx:id="mainnetSave" text="Save" styleClass="primary-btn" />
+                <Button minWidth="-Infinity" fx:id="mainnetReset" text="Reset to default" styleClass="secondary-btn" />
+                <Label fx:id="mainnetStatus" wrapText="true" styleClass="card-faint" />
+            </Field>
+        </Fieldset>
+
+        <Fieldset inputGrow="SOMETIMES" text="Whirlpool server - Testnet4" styleClass="wideLabelFieldSet">
+            <Field text="Coordinator URL:">
+                <TextField fx:id="testnetCoordinator" promptText="Built-in server" />
+                <HelpLabel helpText="The address of the Whirlpool coordinator to mix with. Leave every field empty to use the built-in server. Use https://, or http:// for an .onion address or a server on your own network."/>
+            </Field>
+            <Field text="Output registration URL:">
+                <TextField fx:id="testnetOutputReg" promptText="Same as coordinator" />
+            </Field>
+            <Field text="Blind signature key:">
+                <TextField fx:id="testnetKey" promptText="Built-in key" />
+                <Button minWidth="-Infinity" fx:id="testnetBrowse" text="Browse..." styleClass="secondary-btn" />
+                <HelpLabel helpText="A coordinator signs with its own key. If you run your own, select its PEM-encoded RSA public key here; the built-in key will not match it."/>
+            </Field>
+            <Field text="">
+                <Button minWidth="-Infinity" fx:id="testnetSave" text="Save" styleClass="primary-btn" />
+                <Button minWidth="-Infinity" fx:id="testnetReset" text="Reset to default" styleClass="secondary-btn" />
+                <Label fx:id="testnetStatus" wrapText="true" styleClass="card-faint" />
+            </Field>
+        </Fieldset>
+    </Form>
+</GridPane>

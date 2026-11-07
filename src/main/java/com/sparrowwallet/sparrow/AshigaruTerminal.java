@@ -7,6 +7,7 @@ import com.sparrowwallet.sparrow.event.RequestConnectEvent;
 import com.sparrowwallet.sparrow.instance.InstanceException;
 import com.sparrowwallet.sparrow.instance.InstanceList;
 import com.sparrowwallet.sparrow.io.Config;
+import com.sparrowwallet.sparrow.io.NetworkSettings;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.net.PublicElectrumServer;
 import com.sparrowwallet.sparrow.net.ServerType;
@@ -17,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -53,37 +55,16 @@ public class AshigaruTerminal {
             getLogger().info("Using configured Ashigaru home folder of " + args.dir);
         }
 
-        if(args.network != null) {
-            if (args.network == Network.RESTART)
-                Network.set(Network.TESTNET4);
-            else
-                Network.set(args.network);
-        } else {
-            String envNetwork = System.getenv(NETWORK_ENV_PROPERTY);
-            if(envNetwork != null) {
-                try {
-                    Network.set(Network.valueOf(envNetwork.toUpperCase(Locale.ROOT)));
-                } catch(Exception e) {
-                    getLogger().warn("Invalid " + NETWORK_ENV_PROPERTY + " property: " + envNetwork);
-                }
+        //Launch argument, then environment variable, then the network saved from Settings, then a legacy flag file
+        List<Network> legacyFlags = new ArrayList<>();
+        for(Network flagNetwork : List.of(Network.TESTNET, Network.TESTNET4, Network.SIGNET)) {
+            if(new File(Storage.getSparrowHome(), "network-" + flagNetwork.getName()).exists()) {
+                legacyFlags.add(flagNetwork);
             }
         }
 
-        File testnetFlag = new File(Storage.getSparrowHome(), "network-" + Network.TESTNET.getName());
-        if(testnetFlag.exists()) {
-            Network.set(Network.TESTNET);
-        }
-
-
-        File testnet4Flag = new File(Storage.getSparrowHome(), "network-" + Network.TESTNET4.getName());
-        if(testnet4Flag.exists()) {
-            Network.set(Network.TESTNET4);
-        }
-
-        File signetFlag = new File(Storage.getSparrowHome(), "network-" + Network.SIGNET.getName());
-        if(signetFlag.exists()) {
-            Network.set(Network.SIGNET);
-        }
+        Network.set(NetworkSettings.resolveNetwork(args.network, System.getenv(NETWORK_ENV_PROPERTY),
+                NetworkSettings.get().getNetwork(), legacyFlags));
 
         if(Network.get() != Network.MAINNET) {
             getLogger().info("Using " + Network.get() + " configuration");

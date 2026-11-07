@@ -1,6 +1,5 @@
 package com.sparrowwallet.sparrow.terminal;
 
-import com.beust.jcommander.JCommander;
 import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.gui2.ActionListBox;
 import com.googlecode.lanterna.gui2.BorderLayout;
@@ -12,8 +11,8 @@ import com.sparrowwallet.drongo.Network;
 import com.sparrowwallet.drongo.SecureString;
 import com.sparrowwallet.drongo.crypto.InvalidPasswordException;
 import com.sparrowwallet.drongo.wallet.Wallet;
+import com.sparrowwallet.sparrow.AppRestart;
 import com.sparrowwallet.sparrow.AppServices;
-import com.sparrowwallet.sparrow.Args;
 import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.event.StorageEvent;
 import com.sparrowwallet.sparrow.event.TimedEvent;
@@ -33,15 +32,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.sparrowwallet.sparrow.AppController.JPACKAGE_APP_PATH;
 import static com.sparrowwallet.sparrow.AppServices.showErrorDialog;
-import static java.util.Objects.nonNull;
 
 public class MasterActionListBox extends Panel {
     private static final Logger log = LoggerFactory.getLogger(MasterActionListBox.class);
@@ -118,25 +113,8 @@ public class MasterActionListBox extends Panel {
         final Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
-                final Args args = new Args();
-                ProcessHandle.current().info().arguments()
-                        .ifPresent(argv -> JCommander.newBuilder()
-                                .addObject(args)
-                                .acceptUnknownOptions(true)
-                                .build()
-                                .parse(argv));
-
-                if (networkToRestart == Network.TESTNET4)
-                    args.network = Network.RESTART;
-                else
-                    args.network = networkToRestart;
-
                 try {
-                    List<String> cmd = new ArrayList<>();
-                    cmd.add(getPath());
-                    cmd.addAll(args.toParams());
-                    final ProcessBuilder builder = new ProcessBuilder(cmd);
-                    builder.start();
+                    AppRestart.start(AppRestart.relaunchParams(AppRestart.currentArgs(), networkToRestart));
                 } catch(Exception e) {
                     log.error("Error restarting application", e);
                     throw e;
@@ -157,24 +135,6 @@ public class MasterActionListBox extends Panel {
             }
         };
         new Thread(task).start();
-    }
-
-    private static String getPath() {
-        final String jPackageAppPath = System.getProperty(JPACKAGE_APP_PATH);
-        if(nonNull(jPackageAppPath)) {
-            return jPackageAppPath;
-        } else {
-            final String userDir = Paths.get(System.getProperty("user.dir"), getAppName()).toString();
-            log.warn("Jpackage app path not set, used user.dir ({}) for restart", userDir);
-            return userDir;
-        }
-    }
-
-    private static String getAppName() {
-        if (System.getProperty("os.name").toLowerCase().contains("win")) {
-            return "Ashigaru.bat";
-        }
-        return "Ashigaru";
     }
 
     private static void openLoadedWallet(Storage storage, Wallet wallet) {

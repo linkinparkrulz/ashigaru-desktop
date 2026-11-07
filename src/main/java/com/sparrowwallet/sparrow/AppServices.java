@@ -71,6 +71,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -129,6 +130,7 @@ public class AppServices {
     private UpdateCheckService updateCheckService;
 
     private TorService torService;
+    private CompletableFuture<Void> stopFuture;
 
     private ScheduledService<Void> preventSleepService;
 
@@ -252,6 +254,19 @@ public class AppServices {
     }
 
     public void stop() {
+        stopServices();
+    }
+
+    /**
+     * Stops the background services and the Tor daemon. Safe to call more than once: later calls return the
+     * same future. The future completes once Tor has stopped (or failed to), which is what a caller that
+     * is about to start another Ashigaru process needs to wait for - two processes cannot share Tor's data directory.
+     */
+    public synchronized CompletableFuture<Void> stopServices() {
+        if(stopFuture != null) {
+            return stopFuture;
+        }
+
         if(connectionService != null) {
             connectionService.cancel();
         }
@@ -269,9 +284,15 @@ public class AppServices {
             shutdownService.start();
         }
 
+        CompletableFuture<Void> torStopped = new CompletableFuture<>();
         if(Tor.getDefault() != null) {
-            Tor.getDefault().stop(() -> {});
+            Tor.getDefault().stop(() -> torStopped.complete(null));
+        } else {
+            torStopped.complete(null);
         }
+
+        stopFuture = torStopped;
+        return stopFuture;
     }
 
     /**
@@ -1006,8 +1027,9 @@ public class AppServices {
         if(url.contains("{0}")) {
             url = url.replace("{0}", txid);
         } else {
-            if(Network.get() != Network.MAINNET) {
-                url += "/" + Network.get().getName();
+            String networkPath = BlockExplorer.getNetworkPath(Network.get());
+            if(!networkPath.isEmpty()) {
+                url += "/" + networkPath;
             }
             url += "/tx/" + txid;
         }

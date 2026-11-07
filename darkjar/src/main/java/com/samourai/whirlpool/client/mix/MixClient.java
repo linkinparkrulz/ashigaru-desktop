@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ResourceLoader;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 
 public class MixClient {
@@ -69,6 +70,17 @@ public class MixClient {
     }
 
     private RSAKeyParameters loadBlindSignaturePubKey() {
+        final String overrideFile = config.getBlindSignaturePublicKeyFile();
+        if (overrideFile != null && !overrideFile.isEmpty()) {
+            // An explicit key must not silently fall back to the bundled one: the coordinator would reject it
+            try (final InputStream inputStream = new FileInputStream(overrideFile)) {
+                log.info("loading blind signature public key from " + overrideFile);
+                return CipherHelper.loadRSAPublicKey(inputStream);
+            } catch (Throwable t) {
+                throw new IllegalStateException(
+                        "Could not load the configured blind signature public key " + overrideFile + ": " + t.getMessage(), t);
+            }
+        }
 
         try (final InputStream inputStream = ResourceLoader.class.getClassLoader()
                 .getResourceAsStream(getBlindSignaturePubKeyPath())) {

@@ -280,7 +280,7 @@ public class AshigaruMainController implements Initializable {
 
     private void updateNetworkLabel() {
         Network network = Network.get();
-        networkLabel.setText(network.getName().toUpperCase());
+        networkLabel.setText(network.toDisplayString().toUpperCase(Locale.ROOT));
         networkLabel.getStyleClass().removeAll("mainnet", "testnet");
         networkLabel.getStyleClass().add(network == Network.MAINNET ? "mainnet" : "testnet");
     }

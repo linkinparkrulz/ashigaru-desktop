@@ -14,6 +14,20 @@ imports and private Electrum server addresses.
   password at launch, one at a time; press Cancel to leave a wallet locked. A wallet you lock before
   quitting stays locked, and turning "Load recent wallets" off stops wallets reopening.
 
+## Networks
+
+- **Switch between Mainnet and Testnet4 in Settings → Network.** Ashigaru restarts onto the chosen
+  network and shows only that network's wallets and settings; your other wallets are kept and come
+  back when you switch again. Until now the only way to change network was a launch option.
+- **Set the Whirlpool server for Mainnet and Testnet4.** Enter a coordinator URL, an optional output
+  registration URL and, for a coordinator you run yourself, its blind signature public key. Leave
+  them empty to use the built-in server. Wallets that are already mixing keep their current server
+  until mixing is stopped and started again.
+- **A launch option now beats the network saved in Settings**, where an old `network-testnet` flag
+  file used to override everything.
+- **Block explorer links on Testnet4 open the right page.** They went to the Testnet3 pages.
+- The network shown in the header reads "TESTNET4" rather than "TESTNET".
+
 ## Watch-only wallets
 
 - **Importing a watch-only wallet from a bare zpub works.** It used to fail with "Could not save

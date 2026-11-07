@@ -17,6 +17,8 @@ public class WhirlpoolClientConfig {
   private ExternalDestination externalDestination;
   private NetworkParameters networkParameters;
   private IndexRange indexRangePostmix;
+  // PEM file overriding the bundled blind signature public key, for a coordinator with its own key
+  private String blindSignaturePublicKeyFile;
 
   public WhirlpoolClientConfig(
       IHttpClientService httpClientService,
@@ -81,5 +83,13 @@ public class WhirlpoolClientConfig {
 
   public void setIndexRangePostmix(IndexRange indexRangePostmix) {
     this.indexRangePostmix = indexRangePostmix;
+  }
+
+  public String getBlindSignaturePublicKeyFile() {
+    return blindSignaturePublicKeyFile;
+  }
+
+  public void setBlindSignaturePublicKeyFile(String blindSignaturePublicKeyFile) {
+    this.blindSignaturePublicKeyFile = blindSignaturePublicKeyFile;
   }
 }
