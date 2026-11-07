@@ -307,6 +307,17 @@ public class ServerPreferencesController extends PreferencesDetailController {
 
         electrumHost.textProperty().addListener(getElectrumServerListener(config));
         electrumPort.textProperty().addListener(getElectrumServerListener(config));
+        electrumHost.textProperty().addListener((observable, oldValue, newValue) -> {
+            //A pasted url (tcp://host:port, ssl://host:port, host:port:s) can't be typed as a host, so split it up straight away
+            if(newValue != null && (newValue.contains("://") || newValue.trim().matches(".+:\\d{1,5}:[tTsS]"))) {
+                Platform.runLater(this::splitElectrumHostInput);
+            }
+        });
+        electrumHost.focusedProperty().addListener((observable, oldValue, focused) -> {
+            if(!focused) {
+                splitElectrumHostInput();
+            }
+        });
 
         proxyHost.textProperty().addListener(getProxyListener(config));
         proxyPort.textProperty().addListener(getProxyListener(config));
@@ -781,7 +792,7 @@ public class ServerPreferencesController extends PreferencesDetailController {
         ));
 
         validationSupport.registerValidator(electrumHost, Validator.combine(
-                (Control c, String newValue) -> ValidationResult.fromErrorIf( c, "Invalid Electrum host", getHost(newValue) == null)
+                (Control c, String newValue) -> ValidationResult.fromErrorIf( c, "Invalid Electrum host", !newValue.isEmpty() && ServerAddress.parse(newValue) == null && Config.get().getRecentElectrumServers().stream().noneMatch(server -> newValue.equals(server.getAlias())))
         ));
 
         validationSupport.registerValidator(electrumPort, Validator.combine(
@@ -870,15 +881,46 @@ public class ServerPreferencesController extends PreferencesDetailController {
             return;
         }
 
-        String hostAsString = getHost(electrumHost.getText());
-        Integer portAsInteger = getPort(electrumPort.getText());
-        if(hostAsString != null && !hostAsString.isEmpty() && portAsInteger != null && isValidPort(portAsInteger)) {
-            config.setElectrumServer(new Server(getProtocol().toUrlString(hostAsString, portAsInteger)));
-        } else if(hostAsString != null && !hostAsString.isEmpty()) {
-            config.setElectrumServer(new Server(getProtocol().toUrlString(hostAsString)));
-        } else {
+        //The host field may hold a full url (e.g. tcp://host.onion:50001) until it is split into the separate fields
+        ServerAddress address = ServerAddress.parse(electrumHost.getText());
+        if(address == null) {
+            config.setElectrumServer(null);
+            return;
+        }
+
+        Protocol protocol = address.protocol() != null ? address.protocol() : getProtocol();
+        Integer portAsInteger = address.port() != null ? address.port() : getPort(electrumPort.getText());
+        try {
+            if(portAsInteger != null && isValidPort(portAsInteger)) {
+                config.setElectrumServer(new Server(protocol.toUrlString(address.host(), portAsInteger)));
+            } else {
+                config.setElectrumServer(new Server(protocol.toUrlString(address.host())));
+            }
+        } catch(IllegalArgumentException e) {
+            log.debug("Invalid Electrum server address " + electrumHost.getText(), e);
             config.setElectrumServer(null);
         }
+    }
+
+    private void splitElectrumHostInput() {
+        String text = electrumHost.getText();
+        if(text == null || Config.get().getRecentElectrumServers().stream().anyMatch(server -> text.equals(server.getAlias()))) {
+            return;
+        }
+
+        ServerAddress address = ServerAddress.parse(text);
+        if(address == null || (!address.hasExtraParts() && address.host().equals(text))) {
+            return;
+        }
+
+        if(address.protocol() != null) {
+            electrumUseSsl.setSelected(address.protocol() == Protocol.SSL);
+        }
+        if(address.port() != null) {
+            electrumPort.setText(Integer.toString(address.port()));
+        }
+        electrumHost.setText(address.host());
+        electrumHost.positionCaret(address.host().length());
     }
 
     @NotNull
