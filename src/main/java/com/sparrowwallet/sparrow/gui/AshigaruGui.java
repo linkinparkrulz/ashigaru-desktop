@@ -223,8 +223,12 @@ public class AshigaruGui extends Application {
             mainController.addRecentWalletFile(walletFile);
         }
 
-        // First-run guided tour, once the main window is visible and wallets are loaded.
-        Platform.runLater(mainController::maybeShowFirstRunTour);
+        // Reopen the wallets that were open when Ashigaru last closed, so mixing resumes after a restart.
+        // The first-run tour and other startup prompts follow once that is done, so they never stack with a
+        // password prompt, and an unanswered prompt cannot hold up wallets that reopen without one.
+        // A first run has no recent wallets, so the tour then shows straight away.
+        List<File> toReopen = WalletReopen.walletsToReopen(recentWalletFiles, Config.get().isLoadRecentWallets(), File::isFile);
+        Platform.runLater(() -> mainController.reopenWallets(toReopen, mainController::maybeShowFirstRunTour));
     }
 
     private static boolean isWalletFile(File file) {
@@ -303,15 +307,8 @@ public class AshigaruGui extends Application {
                 Platform.runLater(() -> walletForm.refreshHistory(AppServices.getCurrentBlockHeight()));
             }
 
-            // Track recent wallet files
-            Set<File> walletFiles = new LinkedHashSet<>();
-            walletFiles.add(storage.getWalletFile());
-            if (Config.get().getRecentWalletFiles() != null) {
-                walletFiles.addAll(Config.get().getRecentWalletFiles().stream()
-                        .limit(9).collect(Collectors.toList()));
-            }
-            Config.get().setRecentWalletFiles(
-                    Config.get().isLoadRecentWallets() ? new ArrayList<>(walletFiles) : Collections.emptyList());
+            // Config.recentWalletFiles is kept by AppServices.openWallets() as the master wallets open right now
+            // (it runs on every OpenWalletsEvent, so on open, lock and delete), which is what reopens on launch.
         }
 
         EventManager.get().post(new WalletOpenedEvent(storage, wallet));

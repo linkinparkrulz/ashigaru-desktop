@@ -36,6 +36,9 @@ public class WhirlpoolServices {
 
     private final Map<String, Whirlpool> whirlpoolMap = new HashMap<>();
 
+    //Wallets whose mix to wallet was still being reopened on launch when they started, so the warning waits until then
+    private final Set<String> deferredMixToWarnings = new LinkedHashSet<>();
+
     public Whirlpool getWhirlpool(Wallet wallet) {
         Wallet masterWallet = wallet.isMasterWallet() ? wallet : wallet.getMasterWallet();
         for (Map.Entry<Wallet, Storage> entry : AppServices.get().getOpenWallets().entrySet()) {
@@ -159,6 +162,28 @@ public class WhirlpoolServices {
         shutdownService.start();
     }
 
+    /**
+     * Once wallets have been reopened on launch, warns about any whose mix to wallet still did not open.
+     */
+    public void showDeferredMixToWarnings() {
+        Platform.runLater(() -> {
+            List<String> walletIds = new ArrayList<>(deferredMixToWarnings);
+            deferredMixToWarnings.clear();
+            for (String walletId : walletIds) {
+                Wallet wallet = AppServices.get().getWallet(walletId);
+                if (wallet == null || wallet.getMasterMixConfig() == null || wallet.getMasterMixConfig().getMixOnStartup() == Boolean.FALSE) {
+                    continue;
+                }
+
+                try {
+                    getWhirlpoolMixToWalletId(wallet.getMasterMixConfig());
+                } catch (NoSuchElementException e) {
+                    AppServices.showWarningDialog("Mix to wallet not open", wallet.getMasterName() + " is configured to mix to " + wallet.getMasterMixConfig().getMixToWalletName() + ", but this wallet is not open. Mix to wallets are required to be open to avoid address reuse.");
+                }
+            }
+        });
+    }
+
     public String getWhirlpoolMixToWalletId(MixConfig mixConfig) {
         if (mixConfig == null || mixConfig.getMixToWalletFile() == null || mixConfig.getMixToWalletName() == null) {
             return null;
@@ -243,7 +268,13 @@ public class WhirlpoolServices {
             String walletId = event.getStorage().getWalletId(event.getWallet());
             Whirlpool whirlpool = whirlpoolMap.get(walletId);
             if (whirlpool != null && !whirlpool.isStarted() && AppServices.isConnected()) {
-                startWhirlpool(event.getWallet(), whirlpool, true);
+                //When reopening on launch the mix to wallet may simply not have opened yet, and is wired up when it does
+                MixConfig mixConfig = event.getWallet().getMasterMixConfig();
+                boolean mixToReopening = mixConfig != null && AppServices.isReopeningWalletFile(mixConfig.getMixToWalletFile());
+                if (mixToReopening) {
+                    deferredMixToWarnings.add(walletId);
+                }
+                startWhirlpool(event.getWallet(), whirlpool, !mixToReopening);
             }
 
             Whirlpool mixFromWhirlpool = whirlpoolMap.entrySet().stream()

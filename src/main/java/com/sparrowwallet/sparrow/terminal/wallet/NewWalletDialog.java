@@ -20,6 +20,7 @@ import com.sparrowwallet.sparrow.net.ElectrumServer;
 import com.sparrowwallet.sparrow.terminal.ModalDialog;
 import com.sparrowwallet.sparrow.terminal.SparrowTerminal;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
+import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import org.slf4j.Logger;
@@ -115,6 +116,10 @@ public abstract class NewWalletDialog extends WalletDialog {
 
     private void addWhirlpoolAccounts(final Wallet wallet) {
         setWalletForm(new WalletForm(new Storage(Storage.getWalletFile(wallet.getName())), wallet));
+        //Whirlpool needs the seed, so a watch-only wallet can't mix, and setting it up would only fail
+        if (!WhirlpoolServices.canWalletMix(wallet)) {
+            return;
+        }
         for (StandardAccount account : WHIRLPOOL_ACCOUNTS) {
             addAccount(wallet, account, null, true);
         }
