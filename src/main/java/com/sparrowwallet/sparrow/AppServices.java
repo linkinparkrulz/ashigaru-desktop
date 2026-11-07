@@ -112,6 +112,8 @@ public class AppServices {
 
     private final Map<Window, List<WalletTabData>> walletWindows = new LinkedHashMap<>();
 
+    private static final Set<File> reopeningWalletFiles = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     private TrayManager trayManager;
 
     private static Image windowIcon;
@@ -1333,6 +1335,32 @@ public class AppServices {
         }
     }
 
+    /**
+     * Marks wallets that are being reopened on launch but are not open yet, so they are kept in the recent wallet list.
+     */
+    public static void setReopeningWalletFiles(Collection<File> walletFiles) {
+        reopeningWalletFiles.clear();
+        reopeningWalletFiles.addAll(walletFiles);
+    }
+
+    /**
+     * Ends the reopen of a wallet, whether it opened or not. A wallet that did not open (prompt cancelled, wrong
+     * password, load error) is dropped from the recent wallet list, as if the user had locked it.
+     */
+    public static void finishReopeningWalletFile(File walletFile, boolean opened) {
+        reopeningWalletFiles.remove(walletFile);
+        if(!opened) {
+            List<File> recentWalletFiles = Config.get().getRecentWalletFiles() == null ? new ArrayList<>() : new ArrayList<>(Config.get().getRecentWalletFiles());
+            if(recentWalletFiles.remove(walletFile)) {
+                Config.get().setRecentWalletFiles(recentWalletFiles);
+            }
+        }
+    }
+
+    public static boolean isReopeningWalletFile(File walletFile) {
+        return walletFile != null && reopeningWalletFiles.contains(walletFile);
+    }
+
     @Subscribe
     public void openWallets(OpenWalletsEvent event) {
         if(event.getWalletTabDataList().isEmpty()) {
@@ -1348,7 +1376,10 @@ public class AppServices {
 
         Platform.runLater(() -> {
             if(!Window.getWindows().isEmpty()) {
-                List<File> walletFiles = allWallets.stream().filter(walletTabData -> walletTabData.getWallet().getMasterWallet() == null).map(walletTabData -> walletTabData.getStorage().getWalletFile()).filter(File::exists).collect(Collectors.toList());
+                List<File> walletFiles = allWallets.stream().filter(walletTabData -> walletTabData.getWallet().getMasterWallet() == null).map(walletTabData -> walletTabData.getStorage().getWalletFile()).filter(File::exists).collect(Collectors.toCollection(ArrayList::new));
+                //Wallets still being reopened from the last run (e.g. waiting at a password prompt) stay recorded, so
+                //a restart before they are unlocked does not forget them
+                reopeningWalletFiles.stream().filter(File::exists).filter(file -> !walletFiles.contains(file)).forEach(walletFiles::add);
                 Config.get().setRecentWalletFiles(Config.get().isLoadRecentWallets() ? walletFiles : Collections.emptyList());
             }
         });

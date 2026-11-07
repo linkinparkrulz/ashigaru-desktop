@@ -10,6 +10,7 @@ import com.sparrowwallet.drongo.wallet.Keystore;
 import com.sparrowwallet.drongo.wallet.StandardAccount;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.sparrow.AppServices;
+import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.Mode;
 import com.sparrowwallet.sparrow.control.SeedDisplayDialog;
@@ -912,9 +913,9 @@ public class AshigaruMainController implements Initializable {
     }
 
     /**
-     * Called on startup for each recent wallet file — does NOT prompt for a password.
-     * Unencrypted wallets load immediately; encrypted wallets appear in the dropdown
-     * with a lock icon and are only decrypted when the user explicitly selects them.
+     * Called on startup for each known wallet file. Only lists the wallet in the dropdown as locked;
+     * it does not load it or prompt for a password. Wallets that were open when Ashigaru last closed
+     * are loaded afterwards by {@link #reopenWallets(List, Runnable)}.
      */
     public void addRecentWalletFile(File file) {
         unloadedWalletFiles.add(file);
@@ -968,7 +969,100 @@ public class AshigaruMainController implements Initializable {
         return dialog;
     }
 
+    /**
+     * Reopens, one at a time, the wallets that were open when Ashigaru last closed, so mixing resumes after a
+     * restart. Unencrypted wallets open unattended; encrypted ones prompt for their password, and a cancelled
+     * prompt leaves the wallet locked in the dropdown without holding up the others. The first wallet that
+     * opens is selected. {@code onAllDone} runs once every wallet has opened, failed or been skipped.
+     */
+    public void reopenWallets(List<File> walletFiles, Runnable onAllDone) {
+        if (walletFiles.isEmpty()) {
+            onAllDone.run();
+            return;
+        }
+
+        AppServices.setReopeningWalletFiles(walletFiles);
+        reopenNext(new ArrayDeque<>(walletFiles), new boolean[]{false}, () -> {
+            WhirlpoolServices whirlpoolServices = AppServices.getWhirlpoolServices();
+            if (whirlpoolServices != null) {
+                whirlpoolServices.showDeferredMixToWarnings();
+            }
+            onAllDone.run();
+        });
+    }
+
+    private void reopenNext(Deque<File> queue, boolean[] selected, Runnable onAllDone) {
+        File file = queue.poll();
+        if (file == null) {
+            onAllDone.run();
+            return;
+        }
+
+        Runnable next = () -> Platform.runLater(() -> reopenNext(queue, selected, onAllDone));
+        if (isWalletFileLoaded(file)) {
+            //Already opened another way, e.g. from the command line
+            AppServices.finishReopeningWalletFile(file, true);
+            next.run();
+            return;
+        }
+
+        Storage storage = new Storage(file);
+        Runnable onDone = () -> {
+            boolean opened = isWalletFileLoaded(file);
+            AppServices.finishReopeningWalletFile(file, opened);
+            if (opened) {
+                selected[0] = true;
+                log.info("Reopened wallet {}", file.getName());
+            } else {
+                if (file.equals(pendingSelectFile)) {
+                    pendingSelectFile = null;
+                }
+                log.info("Wallet {} was not reopened and stays locked", file.getName());
+            }
+            next.run();
+        };
+
+        try {
+            SecureString password = null;
+            if (storage.isEncrypted()) {
+                log.info("Asking for the password to reopen wallet {}", file.getName());
+                Optional<String> result = buildPasswordDialog(storage.getWalletName(null)).showAndWait();
+                if (result.isEmpty() || result.get() == null) {
+                    onDone.run();
+                    return;
+                }
+                password = new SecureString(result.get());
+            } else {
+                log.info("Reopening wallet {}", file.getName());
+            }
+
+            if (!selected[0]) {
+                pendingSelectFile = file;
+            }
+            runLoadService(storage, password, onDone, true);
+        } catch (Exception e) {
+            log.error("Could not reopen wallet " + file.getName(), e);
+            onDone.run();
+        }
+    }
+
+    private boolean isWalletFileLoaded(File file) {
+        return AshigaruGui.get().getWalletForms().values().stream()
+                .anyMatch(form -> form.getWallet().isMasterWallet() && file.equals(form.getStorage().getWalletFile()));
+    }
+
     private void runLoadService(Storage storage, SecureString password) {
+        runLoadService(storage, password, () -> {}, false);
+    }
+
+    /**
+     * Loads a wallet and adds it and its child wallets.
+     *
+     * @param onDone   runs once when this load has finished: opened, failed, or a retry prompt was cancelled
+     * @param reopening true when reopening on launch, where a cancelled BIP39 passphrase prompt just leaves the
+     *                  wallet locked instead of showing an error
+     */
+    private void runLoadService(Storage storage, SecureString password, Runnable onDone, boolean reopening) {
         Storage.LoadWalletService svc = password == null
                 ? new Storage.LoadWalletService(storage)
                 : new Storage.LoadWalletService(storage, password);
@@ -985,7 +1079,7 @@ public class AshigaruMainController implements Initializable {
                     if (passphraseCancelled) {
                         log.info("Wallet not opened — BIP39 passphrase prompt was cancelled: {}",
                                 storage.getWalletFile().getName());
-                        showWizardError("WALLET NOT OPENED", "Passphrase required",
+                        if (!reopening) showWizardError("WALLET NOT OPENED", "Passphrase required",
                                 "The BIP39 passphrase is required to open this wallet. "
                                         + "No passphrase was entered, so the wallet was not opened.");
                     } else {
@@ -995,7 +1089,9 @@ public class AshigaruMainController implements Initializable {
                                 "This file is not a complete wallet on its own. "
                                         + "If it's a Premix, Postmix or Badbank file, open the parent wallet instead and use the tabs.");
                     }
-                    Platform.runLater(() -> walletSelector.getSelectionModel().select(PLACEHOLDER));
+                    if (!reopening) {
+                        Platform.runLater(() -> walletSelector.getSelectionModel().select(PLACEHOLDER));
+                    }
                     return;
                 }
                 AshigaruGui.addWallet(storage, wak.getWallet());
@@ -1010,6 +1106,7 @@ public class AshigaruMainController implements Initializable {
                 showError("Error Opening Wallet", ex.getMessage());
             } finally {
                 wak.clear();
+                onDone.run();
             }
         });
         svc.setOnFailed(e -> {
@@ -1021,12 +1118,22 @@ public class AshigaruMainController implements Initializable {
                 if (retry.isPresent() && retry.get() == ButtonType.OK) {
                     Platform.runLater(() -> {
                         Dialog<String> d = buildPasswordDialog(storage.getWalletName(null));
-                        d.showAndWait().ifPresent(pw -> runLoadService(storage, new SecureString(pw)));
+                        Optional<String> pw = d.showAndWait();
+                        if (pw.isPresent() && pw.get() != null) {
+                            //The retried load reports completion itself
+                            runLoadService(storage, new SecureString(pw.get()), onDone, reopening);
+                        } else {
+                            onDone.run();
+                        }
                     });
+                    return;
                 }
             } else if (ex instanceof StorageException) {
                 showError("Error Opening Wallet", ex.getMessage());
+            } else {
+                log.error("Error opening wallet " + storage.getWalletFile().getName(), ex);
             }
+            onDone.run();
         });
         svc.start();
     }
