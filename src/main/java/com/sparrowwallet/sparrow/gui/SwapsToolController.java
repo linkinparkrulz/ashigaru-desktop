@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.io.Config;
+import com.sparrowwallet.sparrow.swap.SwapCopy;
 import com.sparrowwallet.sparrow.swap.SwapEngine.Quote;
 import com.sparrowwallet.sparrow.swap.SwapProgress;
 import com.sparrowwallet.sparrow.swap.SwapService;
@@ -203,8 +204,8 @@ public class SwapsToolController implements Initializable {
         provider.setTooltip(new Tooltip(quote.peerId() + "\n" + quote.multiaddr()));
 
         double ratio = quote.refundRatio();
-        Label refund = new Label(ratio == 0 ? "Full refund if cancelled"
-                : String.format(Locale.ROOT, "If cancelled, the maker may keep %.0f%% as a deposit", ratio * 100));
+        Label refund = new Label(ratio == 0 ? "No deduction if cancelled (network fees still apply)"
+                : String.format(Locale.ROOT, "If cancelled, the maker may keep %.0f%% of your BTC as a deposit", ratio * 100));
         refund.getStyleClass().add("card-faint");
         refund.setWrapText(true);
 
@@ -622,8 +623,9 @@ public class SwapsToolController implements Initializable {
     static boolean confirmQuitDuringSwap(Window owner) {
         Alert alert = new Alert(Alert.AlertType.WARNING,
                 "A swap is still running. If Ashigaru is closed, the swap pauses: the maker can still finish its side, "
-                        + "and if the swap was cancelled the refund must be claimed in time. Reopen Ashigaru soon - with "
-                        + "swaps on, it picks unfinished swaps back up.\n\nQuit anyway?",
+                        + "and nothing cancels or refunds your BTC until Ashigaru runs again. Reopen it soon. With swaps on, "
+                        + "it picks unfinished swaps back up and, if one fails, cancels and refunds it for you. A refund must "
+                        + "be published within " + SwapCopy.refundWindow() + " of the cancel confirming.\n\nQuit anyway?",
                 ButtonType.CANCEL, ButtonType.YES);
         alert.setTitle("Swap running");
         alert.setHeaderText("A swap is running");

@@ -42,6 +42,34 @@ class SwapServiceTest {
         assertNull(service.coinProperty().get());
     }
 
+    private static com.google.gson.JsonObject timelockEvent(String timelock) {
+        return com.google.gson.JsonParser.parseString("{\"event\":\"TimelockChange\",\"payload\":{\"channelName\":\"TimelockChange\","
+                + "\"event\":{\"swap_id\":\"abc\",\"timelock\":" + timelock + "}}}").getAsJsonObject();
+    }
+
+    @Test
+    void timelockEventsAreKeptPerSwapAndTellTheScreens() throws Exception {
+        SwapService service = newService();
+        java.util.concurrent.atomic.AtomicInteger notified = new java.util.concurrent.atomic.AtomicInteger();
+        service.addSwapListener(notified::incrementAndGet);
+        assertNull(service.getTimelock("abc"));
+
+        service.notification("event", timelockEvent("{\"type\":\"None\",\"content\":{\"blocks_left\":13}}"));
+        assertEquals(SwapTimelock.Phase.BEFORE_CANCEL, service.getTimelock("abc").phase());
+        assertEquals(13, service.getTimelock("abc").blocksLeft());
+        assertEquals(1, notified.get());
+        assertNull(service.getTimelock("other"));
+
+        //The chain moves on
+        service.notification("event", timelockEvent("{\"type\":\"Cancel\",\"content\":{\"blocks_left\":140}}"));
+        assertEquals(SwapTimelock.Phase.CANCEL_OPEN, service.getTimelock("abc").phase());
+
+        //A null timelock, sent once a swap is over, clears it
+        service.notification("event", timelockEvent("null"));
+        assertNull(service.getTimelock("abc"));
+        assertEquals(3, notified.get());
+    }
+
     @Test
     void walletRequestsAreRefusedWhenNoSwapIsBeingSetUp() throws Exception {
         SwapService service = newService();

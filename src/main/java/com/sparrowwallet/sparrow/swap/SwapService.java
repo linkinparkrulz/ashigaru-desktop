@@ -76,6 +76,8 @@ public class SwapService implements SwapHost {
     private final Set<String> runningSwaps = ConcurrentHashMap.newKeySet();
     //Each swap's latest step, as reported by the engine; the swap being set up is the latest started
     private final Map<String, SwapProgress.Status> progress = new ConcurrentHashMap<>();
+    //Each swap's latest timelock state, from the engine's TimelockChange events: blocks left until cancel or punish
+    private final Map<String, SwapTimelock> timelocks = new ConcurrentHashMap<>();
     private String currentSwapId;
     private final StringBuilder logText = new StringBuilder();
     private final List<Consumer<String>> logListeners = new CopyOnWriteArrayList<>();
@@ -108,6 +110,11 @@ public class SwapService implements SwapHost {
     /** The latest step of a swap, or null when nothing is known about it yet */
     public SwapProgress.Status getProgress(String swapId) {
         return swapId == null ? null : progress.get(swapId);
+    }
+
+    /** Where a swap stands against its timelocks, or null when the engine has not said (or the swap is over) */
+    public SwapTimelock getTimelock(String swapId) {
+        return swapId == null ? null : timelocks.get(swapId);
     }
 
     /** The swap started or resumed most recently, to show first */
@@ -441,7 +448,7 @@ public class SwapService implements SwapHost {
         Platform.runLater(() -> notification(kind, payload));
     }
 
-    private void notification(String kind, JsonObject payload) {
+    void notification(String kind, JsonObject payload) {
         if("log".equals(kind)) {
             String level = payload.has("level") ? payload.get("level").getAsString() : "INFO";
             String message = ("INFO".equals(level) ? "" : level + " ") + (payload.has("message") ? payload.get("message").getAsString() : "");
@@ -473,6 +480,20 @@ public class SwapService implements SwapHost {
         //Log lines and peer discovery are frequent and add nothing to a swap's progress
         if("CliLog".equals(channel) || "P2P".equals(channel) || "BackgroundProgress".equals(channel)) {
             return;
+        }
+        //The timelock moves with every block, so it updates the screens and nothing else
+        if("TimelockChange".equals(channel) && body != null && body.isJsonObject()) {
+            String swapId = SwapTimelock.swapId(body.getAsJsonObject());
+            if(swapId != null) {
+                SwapTimelock timelock = SwapTimelock.read(body.getAsJsonObject(), java.time.Instant.now());
+                if(timelock == null) {
+                    timelocks.remove(swapId);
+                } else {
+                    timelocks.put(swapId, timelock);
+                }
+                swapListeners.forEach(Runnable::run);
+                return;
+            }
         }
         String text = body == null ? "" : body.toString();
         String raw = channel + ": " + (text.length() > MAX_EVENT_CHARS ? text.substring(0, MAX_EVENT_CHARS) + "…" : text);

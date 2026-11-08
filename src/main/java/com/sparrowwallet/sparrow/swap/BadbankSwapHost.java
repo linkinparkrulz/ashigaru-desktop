@@ -283,19 +283,13 @@ public class BadbankSwapHost {
             throw new IllegalStateException("The lock amount does not match any lock transaction Ashigaru built");
         }
 
-        String refundTerms = fullRefund || amnesty == 0
-                ? "If the swap fails, the full amount comes back to Badbank, less network fees."
-                : "If the swap fails, " + btc(lockAmount - amnesty) + " BTC comes back to Badbank by itself. The maker holds "
-                + btc(amnesty) + " BTC (" + percent(amnesty, lockAmount) + ") as an anti-spam deposit, returned only with its cooperation.";
         ButtonType approveButton = new ButtonType("Approve", ButtonBar.ButtonData.OK_DONE);
         ButtonType rejectButton = new ButtonType("Reject", ButtonBar.ButtonData.CANCEL_CLOSE);
         Alert alert = alert(Alert.AlertType.CONFIRMATION, "Approve the swap?",
                 "Lock: " + btc(lockAmount) + " BTC from Badbank\n"
                         + "Network fee: " + networkFee + " sats\n"
                         + "You receive: " + xmr(piconero) + " XMR\n\n"
-                        + refundTerms + "\n\n"
-                        + "Once locked, the swap can only be cancelled after about 4 hours, and the refund must then be "
-                        + "claimed within about 24 hours. Keep Ashigaru open until the swap finishes.\n\n"
+                        + recoveryTerms(lockAmount, amnesty, fullRefund) + "\n\n"
                         + "This closes as a rejection in " + APPROVAL_DIALOG_SECS + " seconds.",
                 approveButton, rejectButton);
         PauseTransition expiry = new PauseTransition(Duration.seconds(APPROVAL_DIALOG_SECS));
@@ -341,7 +335,19 @@ public class BadbankSwapHost {
         return String.format(Locale.ROOT, "%.12f", piconero / 1_000_000_000_000d);
     }
 
-    private static String percent(long part, long whole) {
+    /**
+     * What happens to the BTC if the swap fails, in the words every swap screen uses. The refund is an
+     * estimate (the amount less any anti-spam deposit, then less network fees); a deposit the maker may
+     * keep is stated first, in its own paragraph, because it is the consequence most easily missed.
+     */
+    static String recoveryTerms(long lockAmount, long amnesty, boolean fullRefund) {
+        boolean deposit = !fullRefund && amnesty > 0;
+        String refund = SwapCopy.refundTerms(btc(deposit ? lockAmount - amnesty : lockAmount));
+        String terms = deposit ? SwapCopy.depositTerms(btc(amnesty), percent(amnesty, lockAmount)) + "\n\n" + refund : refund;
+        return terms + "\n\n" + SwapCopy.keepRunning();
+    }
+
+    static String percent(long part, long whole) {
         return String.format(Locale.ROOT, "%.1f%%", whole == 0 ? 0 : 100d * part / whole);
     }
 }

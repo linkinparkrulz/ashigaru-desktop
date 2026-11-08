@@ -27,15 +27,15 @@ public final class SwapProgress {
         LOCK_CONFIRM("Your BTC lock is confirming", "Waiting for the lock transaction to confirm.",
                 "Once it does, the maker locks the XMR.", Duration.ofMinutes(60)),
         MAKER_LOCK("Waiting for the maker's XMR", "The maker is locking the XMR; checking it pays the agreed amount.",
-                "If the maker never locks, the swap is cancelled and refunded after the timelock.", Duration.ofMinutes(30)),
+                "If the maker never locks, Ashigaru cancels the swap and refunds your BTC " + SwapCopy.cancelAfter() + " after your lock confirms.", Duration.ofMinutes(30)),
         MAKER_CONFIRM("The maker's XMR is confirming", "Every Monero node must see the maker's lock fully confirmed.",
                 "Then Ashigaru releases its side so the maker can take the BTC.", Duration.ofMinutes(40)),
         RELEASE("Releasing your side", "Handing the maker the key to the BTC, now that the XMR is safely locked.",
                 "The maker takes the BTC, which reveals the key to the XMR.", Duration.ofMinutes(30)),
         CLAIM("Claiming your XMR", "Sending the XMR to your address.", "Done once it is published.", Duration.ofMinutes(30)),
         DONE("Done: XMR sent to your address", "The swap is complete.", "", null),
-        REFUND_WAIT("Waiting to cancel", "The swap did not complete. It can be cancelled once the timelock expires, about 4 hours after the lock.",
-                "Then the BTC is refunded to Badbank.", null),
+        REFUND_WAIT("Waiting to cancel", "The swap did not complete. Ashigaru cancels it once the timelock expires, " + SwapCopy.cancelAfter() + " after the lock confirms.",
+                "Then the BTC is refunded to Badbank, minus network fees.", null),
         REFUNDING("Refunding to Badbank", "Cancelling the swap and refunding the BTC to Badbank.",
                 "Done once the refund confirms.", Duration.ofMinutes(60)),
         REFUNDED("Refunded to Badbank", "The BTC came back to Badbank.", "", null),
@@ -177,7 +177,8 @@ public final class SwapProgress {
         boolean beforeLock = previous == null || previous.step().ordinal() <= Step.APPROVAL.ordinal();
         String consequence = beforeLock
                 ? "Nothing was locked: the coin is still in Badbank and can be swapped again."
-                : "Your BTC is locked. It is refunded to Badbank after the timelock; reopen Ashigaru with swaps on to let it continue.";
+                : "Your BTC is locked. Reopen Ashigaru with swaps on to resume the swap. If it cannot complete, it is cancelled and refunded to Badbank "
+                + "(minus network fees) after the timelock, or you can cancel it yourself from Your swaps once the timelock has expired.";
         return error + "\n\n" + consequence;
     }
 

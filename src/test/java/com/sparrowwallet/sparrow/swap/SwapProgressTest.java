@@ -75,7 +75,9 @@ class SwapProgressTest {
         assertTrue(stopped.detail().contains("Nothing was locked"));
 
         SwapProgress.Status locked = SwapProgress.read(event("BtcLockTxInMempool", "{\"btc_lock_txid\":\"aa\",\"btc_lock_confirmations\":1}"), null, T0);
-        assertTrue(SwapProgress.stopped(stop, locked, T0).detail().contains("refunded to Badbank after the timelock"));
+        String afterLock = SwapProgress.stopped(stop, locked, T0).detail();
+        assertTrue(afterLock.contains("cancelled and refunded to Badbank"));
+        assertTrue(afterLock.contains("minus network fees"));
     }
 
     @Test
