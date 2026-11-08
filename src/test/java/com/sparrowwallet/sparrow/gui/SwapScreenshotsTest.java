@@ -300,4 +300,147 @@ class SwapScreenshotsTest {
         });
         assertNull(pane.expiryText());
     }
+
+    // ---------------------------------------------------------------- dashboard
+
+    private static final String SWAP_ID = "3f9a21c0-7b64-4d3e-9a10-0c2b7d1e4f55";
+    private static final com.sparrowwallet.sparrow.swap.SwapDetails TERMS = new com.sparrowwallet.sparrow.swap.SwapDetails(4_998_760, 1_240,
+            14_816_324_640_000L, 99_975, false, ADDRESS, "12D3KooW…b3f9");
+    private static final Instant WAS = Instant.now().minusSeconds(12 * 60);
+
+    private static com.sparrowwallet.sparrow.swap.SwapDashboard dashboard(com.sparrowwallet.sparrow.swap.SwapProgress.Status status,
+                                                                          com.sparrowwallet.sparrow.swap.SwapTimelock timelock, boolean running) {
+        return com.sparrowwallet.sparrow.swap.SwapDashboard.of(new com.sparrowwallet.sparrow.swap.SwapDashboard.Input(SWAP_ID, status, timelock, running,
+                TERMS, false, Instant.now()));
+    }
+
+    private static final SwapDashboardPane.Connections HEALTHY = new SwapDashboardPane.Connections(List.of("Tor", "Bitcoin server", "Swap engine"), List.of());
+
+    private SwapDashboardPane draw(com.sparrowwallet.sparrow.swap.SwapDashboard dashboard, SwapDashboardPane.Connections connections, boolean expandDetails) throws Exception {
+        SwapDashboardPane pane = onFx(SwapDashboardPane::new);
+        onFx(() -> {
+            pane.show(SWAP_ID, dashboard, connections);
+            return null;
+        });
+        return pane;
+    }
+
+    private static com.sparrowwallet.sparrow.swap.SwapProgress.Status at(com.sparrowwallet.sparrow.swap.SwapProgress.Step step, String detail) {
+        return new com.sparrowwallet.sparrow.swap.SwapProgress.Status(step, detail, WAS, step == com.sparrowwallet.sparrow.swap.SwapProgress.Step.DONE);
+    }
+
+    private static com.sparrowwallet.sparrow.swap.SwapTimelock before(int blocks) {
+        return new com.sparrowwallet.sparrow.swap.SwapTimelock(com.sparrowwallet.sparrow.swap.SwapTimelock.Phase.BEFORE_CANCEL, blocks, Instant.now());
+    }
+
+    private static com.sparrowwallet.sparrow.swap.SwapTimelock open(int blocks) {
+        return new com.sparrowwallet.sparrow.swap.SwapTimelock(com.sparrowwallet.sparrow.swap.SwapTimelock.Phase.CANCEL_OPEN, blocks, Instant.now());
+    }
+
+    @Test
+    void dashboardShowsEachStateAndOffersOneAction() throws Exception {
+        record Case(String name, com.sparrowwallet.sparrow.swap.SwapDashboard dashboard, SwapDashboardPane.Connections connections) {}
+        List<Case> cases = List.of(
+                new Case("dash-1-lock-confirming", dashboard(at(com.sparrowwallet.sparrow.swap.SwapProgress.Step.LOCK_CONFIRM, "1 confirmation · 9c1f4a2e…77e0a1b3"), before(13), true), HEALTHY),
+                new Case("dash-2-maker-confirming", dashboard(at(com.sparrowwallet.sparrow.swap.SwapProgress.Step.MAKER_CONFIRM, "6 of 10 confirmations"), before(9), true),
+                        new SwapDashboardPane.Connections(List.of("Tor", "Bitcoin server"), List.of("The swap engine is off, so the swap is paused. Turn swaps on in Settings → Swaps."))),
+                new Case("dash-3-recovery-automatic", dashboard(at(com.sparrowwallet.sparrow.swap.SwapProgress.Step.REFUND_WAIT, null), open(120), true), HEALTHY),
+                new Case("dash-4-recovery-needs-you", dashboard(new com.sparrowwallet.sparrow.swap.SwapProgress.Status(com.sparrowwallet.sparrow.swap.SwapProgress.Step.STOPPED,
+                        "The swap stopped.", WAS, true, com.sparrowwallet.sparrow.swap.SwapProgress.Step.MAKER_CONFIRM), open(140), false), HEALTHY),
+                new Case("dash-5-recovery-not-yet", dashboard(new com.sparrowwallet.sparrow.swap.SwapProgress.Status(com.sparrowwallet.sparrow.swap.SwapProgress.Step.STOPPED,
+                        "The swap stopped.", WAS, true, com.sparrowwallet.sparrow.swap.SwapProgress.Step.MAKER_CONFIRM), before(13), false), HEALTHY),
+                new Case("dash-6-complete", dashboard(at(com.sparrowwallet.sparrow.swap.SwapProgress.Step.DONE, "XMR transaction 5e07b1d4…c29a7f60"), null, false), HEALTHY));
+        for(Case c : cases) {
+            SwapDashboardPane pane = draw(c.dashboard(), c.connections(), false);
+            shoot(pane, 845, 1100, c.name() + "-845");
+            //A long value such as the full address must wrap and never force the page wider than its window
+            double minWidth = onFx(() -> pane.minWidth(-1));
+            //713px is what Swaps gets at the smallest window (1200) with the Tools menu open
+            assertTrue(minWidth <= 700, c.name() + " needs at least " + minWidth + "px");
+        }
+
+        //The one action is the banner's button, and it is only enabled when it can work
+        List<com.sparrowwallet.sparrow.swap.SwapDashboard.Action> pressed = new ArrayList<>();
+        SwapDashboardPane needsYou = draw(cases.get(3).dashboard(), HEALTHY, false);
+        onFx(() -> {
+            needsYou.setOnAction(pressed::add);
+            needsYou.show(SWAP_ID, cases.get(3).dashboard(), HEALTHY);
+            return null;
+        });
+        shoot(needsYou, 845, 1100, "dash-4-recovery-needs-you-again");
+        Button cancel = onFx(() -> button(needsYou, "Cancel and refund"));
+        assertNotNull(cancel);
+        assertFalse(onFx(cancel::isDisabled));
+        onFx(() -> {
+            cancel.fire();
+            return null;
+        });
+        assertEquals(List.of(com.sparrowwallet.sparrow.swap.SwapDashboard.Action.CANCEL_AND_REFUND), pressed);
+
+        SwapDashboardPane notYet = draw(cases.get(4).dashboard(), HEALTHY, false);
+        shoot(notYet, 845, 1100, "dash-5-recovery-not-yet-again");
+        Button disabled = onFx(() -> button(notYet, "Cancel and refund"));
+        assertTrue(onFx(disabled::isDisabled), "cancelling is not open yet, so the button says when and cannot be pressed");
+
+        SwapDashboardPane automatic = draw(cases.get(2).dashboard(), HEALTHY, false);
+        shoot(automatic, 845, 1100, "dash-3-recovery-automatic-again");
+        assertNull(onFx(() -> button(automatic, "Cancel and refund")), "a running swap is refunded by Ashigaru itself, so there is no button");
+    }
+
+    @Test
+    void theSwapsPageFollowsTheEnginesEventsToTheDashboard() throws Exception {
+        javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(SwapScreenshotsTest.class.getResource("/com/sparrowwallet/sparrow/gui/swaps.fxml"));
+        Node page = onFx(() -> {
+            try {
+                return loader.load();
+            } catch(java.io.IOException e) {
+                throw new IllegalStateException(e);
+            }
+        });
+        SwapsToolController controller = loader.getController();
+        AtomicReference<Stage> stage = new AtomicReference<>();
+        onFx(() -> {
+            Scene scene = new Scene((javafx.scene.Parent)page, 925, 800);
+            scene.getStylesheets().add(SwapScreenshotsTest.class.getResource("/com/sparrowwallet/sparrow/darktheme.css").toExternalForm());
+            scene.getStylesheets().add(SwapScreenshotsTest.class.getResource("/com/sparrowwallet/sparrow/gui/ashigaru.css").toExternalForm());
+            Stage s = new Stage();
+            s.setScene(scene);
+            s.show();
+            stage.set(s);
+            return null;
+        });
+        Thread.sleep(500);
+
+        String id = "aaaaaaaa-0000-4000-8000-000000000001";
+        com.sparrowwallet.sparrow.swap.SwapService service = onFx(com.sparrowwallet.sparrow.swap.SwapService::get);
+        //Exactly the shape the engine sends: a progress event, then a timelock change
+        service.onNotification("event", com.google.gson.JsonParser.parseString("{\"event\":\"SwapProgress\",\"payload\":{\"channelName\":\"SwapProgress\","
+                + "\"event\":{\"swap_id\":\"" + id + "\",\"event\":{\"type\":\"BtcLockTxInMempool\",\"content\":{\"btc_lock_txid\":\"9c1f4a2e0000000000000000000000000000000000000000000000000077e0a1b3\",\"btc_lock_confirmations\":1}}}}}").getAsJsonObject());
+        service.onNotification("event", com.google.gson.JsonParser.parseString("{\"event\":\"TimelockChange\",\"payload\":{\"channelName\":\"TimelockChange\","
+                + "\"event\":{\"swap_id\":\"" + id + "\",\"timelock\":{\"type\":\"None\",\"content\":{\"blocks_left\":13}}}}}").getAsJsonObject());
+        Thread.sleep(400);
+        onFx(() -> {
+            controller.showSwapId(id);
+            return null;
+        });
+        Thread.sleep(400);
+
+        Node dash = onFx(() -> page.lookup("#dashboardBox"));
+        assertTrue(onFx(dash::isVisible), "the dashboard shows for a swap that has reported progress");
+        Node offers = onFx(() -> page.lookup("#offersView"));
+        assertFalse(onFx(offers::isVisible), "while a swap runs it is all the page shows");
+        assertEquals("Nothing for you to do", onFx(() -> ((javafx.scene.control.Label)page.lookup(".dash-banner-title")).getText()));
+        //The countdown came from the timelock event: 13 blocks is about 2 h 10 min
+        assertTrue(onFx(() -> page.lookupAll(".dash-body-text").stream().anyMatch(n -> n instanceof javafx.scene.control.Label l && l.getText().contains("about 2 h 10 min"))));
+        Path dir = Path.of(System.getenv("SWAP_SCREENSHOTS"));
+        onFx(() -> {
+            try {
+                ImageIO.write(SwingFXUtils.fromFXImage(stage.get().getScene().snapshot(null), null), "png", new File(dir.toFile(), "swaps-page-dashboard-925.png"));
+            } catch(Exception e) {
+                throw new IllegalStateException(e);
+            }
+            stage.get().close();
+            return null;
+        });
+    }
 }

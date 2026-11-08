@@ -6,6 +6,7 @@ import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.swap.ReviewPresenter;
 import com.sparrowwallet.sparrow.swap.SwapCopy;
+import com.sparrowwallet.sparrow.swap.SwapDashboard;
 import com.sparrowwallet.sparrow.swap.SwapEngine.Quote;
 import com.sparrowwallet.sparrow.swap.SwapProgress;
 import com.sparrowwallet.sparrow.swap.SwapReview;
@@ -35,9 +36,11 @@ import java.net.URL;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.Set;
 
 /**
  * Tools - Swaps. Shows the offers that can take the Badbank coin chosen in the wallet view, takes
@@ -62,17 +65,7 @@ public class SwapsToolController implements Initializable {
     @FXML private Button refreshBtn;
     @FXML private Label messageLabel;
     @FXML private TableView<JsonObject> swapsTable;
-    @FXML private VBox progressCard;
-    @FXML private Label progressSwapId;
-    @FXML private Label progressElapsed;
-    @FXML private Label progressStep;
-    @FXML private Label progressDoing;
-    @FXML private Label progressDetail;
-    @FXML private Label progressNext;
-    @FXML private Label progressSlow;
-    @FXML private ProgressBar stepProgress;
-    @FXML private Label stepCount;
-    @FXML private HBox progressDone;
+    @FXML private VBox dashboardBox;
 
     private final ObservableList<Quote> quotes = FXCollections.observableArrayList();
     private final ObservableList<JsonObject> swaps = FXCollections.observableArrayList();
@@ -88,6 +81,13 @@ public class SwapsToolController implements Initializable {
     private String shownSwapId;
     //A finished swap the user has gone back to offers from
     private String dismissedSwapId;
+    //The dashboard is drawn again only when something it shows has changed
+    private SwapDashboardPane dashboardPane;
+    private SwapDashboard lastDashboard;
+    private SwapDashboardPane.Connections lastConnections;
+    private String lastDashboardSwap;
+    //Swaps being cancelled and refunded now: the engine's call blocks until the refund is published
+    private final Set<String> refunding = new HashSet<>();
 
     //The final review, drawn over the page while the swap asks for a decision
     private SwapReviewPane reviewPane;
@@ -131,6 +131,10 @@ public class SwapsToolController implements Initializable {
         setUpSwapsTable();
         offersView.managedProperty().bind(offersView.visibleProperty());
         mainView.managedProperty().bind(mainView.visibleProperty());
+        dashboardBox.managedProperty().bind(dashboardBox.visibleProperty());
+        dashboardPane = new SwapDashboardPane();
+        dashboardPane.setOnAction(this::onDashboardAction);
+        dashboardBox.getChildren().add(dashboardPane);
         reviewPane = new SwapReviewPane();
         reviewPane.setVisible(false);
         reviewPane.managedProperty().bind(reviewPane.visibleProperty());
@@ -338,25 +342,25 @@ public class SwapsToolController implements Initializable {
         TableColumn<JsonObject, JsonObject> action = new TableColumn<>("");
         action.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue()));
         action.setCellFactory(column -> new TableCell<>() {
-            private final Button refund = new Button("Refund");
+            private final Button refund = new Button("View recovery");
 
             {
                 refund.getStyleClass().add("secondary-btn");
                 refund.setMinWidth(Button.USE_PREF_SIZE);
-                refund.setOnAction(event -> onRefund(getItem()));
+                refund.setOnAction(event -> showSwap(getItem()));
             }
 
             @Override
             protected void updateItem(JsonObject swap, boolean empty) {
                 super.updateItem(swap, empty);
-                //A running swap refunds by itself once its timelock allows; a stopped, unfinished one is refunded here
-                //A past identity's swap is only shown: no engine holds its database to act on it
+                //A running swap refunds by itself once its timelock allows; a stopped, unfinished one is cancelled from its
+                //recovery screen, which this opens. A past identity's swap is only shown: no engine holds its database to act on it
                 boolean canRefund = !empty && swap != null && !swap.get("complete").getAsBoolean() && !swap.get("running").getAsBoolean()
                         && !(swap.has("past") && swap.get("past").getAsBoolean());
                 setGraphic(canRefund ? refund : null);
             }
         });
-        action.setPrefWidth(100);
+        action.setPrefWidth(130);
         swapsTable.getColumns().setAll(List.of(started, id, state, progress, action));
         swapsTable.setItems(swaps);
     }
@@ -537,57 +541,65 @@ public class SwapsToolController implements Initializable {
     }
 
     /**
-     * Shows the card for the chosen swap, or the latest one, with where it is and what comes next.
-     * While that swap is unfinished, or until the user goes back from a finished one, the card is
-     * all the page shows.
+     * Shows the dashboard for the chosen swap, or the latest one: where it is, whether the user must act,
+     * where the funds are, and what happens if it stalls. While that swap is unfinished, or until the user
+     * goes back from a finished one, the dashboard is all the page shows. It is worked out by
+     * {@link SwapDashboard} and drawn again only when something it shows has changed.
      */
     private void updateProgress() {
         SwapService service = SwapService.get();
         String swapId = shownSwapId != null ? shownSwapId : service.getCurrentSwapId();
         SwapProgress.Status status = swapId == null || swapId.equals(dismissedSwapId) ? null : service.getProgress(swapId);
         boolean show = status != null;
-        progressCard.setVisible(show);
-        progressCard.setManaged(show);
+        dashboardBox.setVisible(show);
         offersView.setVisible(!show);
         if(!show) {
+            lastDashboard = null;
+            lastDashboardSwap = null;
             return;
         }
 
-        SwapProgress.Step step = status.step();
-        progressSwapId.setText("YOUR SWAP  ·  " + swapId.substring(0, Math.min(8, swapId.length())));
-        Instant now = Instant.now();
-        long seconds = java.time.Duration.between(status.since(), now).getSeconds();
-        progressElapsed.setText(status.finished() ? "" : "on this step for " + elapsed(seconds));
-        progressStep.setText(step.getTitle());
-        boolean stopped = step == SwapProgress.Step.STOPPED;
-        setText(progressDoing, stopped ? null : step.getDoing());
-        setText(progressDetail, status.detail());
-        setText(progressNext, step.getNext().isEmpty() ? null : step.getNext());
-        boolean slow = status.isSlow(now);
-        progressSlow.setVisible(slow);
-        progressSlow.setManaged(slow);
-        if(slow) {
-            progressSlow.setText(step == SwapProgress.Step.NODES
-                    ? "This is taking longer than usual: a Monero node may be unreachable through Tor. Tools → Logs → Swap engine says which; if one keeps failing, untick it in Settings → Swaps. Nothing is locked yet."
-                    : "This is taking longer than usual (normally under " + step.getUsual().toMinutes() + " minutes). Tools → Logs → Swap engine shows what it is waiting for.");
+        SwapDashboard dashboard = SwapDashboard.of(new SwapDashboard.Input(swapId, status, service.getTimelock(swapId), service.isSwapRunning(swapId),
+                service.getDetails(swapId), refunding.contains(swapId), Instant.now()));
+        SwapDashboardPane.Connections connections = connections(service);
+        if(!swapId.equals(lastDashboardSwap) || !dashboard.equals(lastDashboard) || !connections.equals(lastConnections)) {
+            dashboardPane.show(swapId, dashboard, connections);
+            lastDashboard = dashboard;
+            lastConnections = connections;
+            lastDashboardSwap = swapId;
         }
+    }
 
-        boolean refundPath = step.ordinal() >= SwapProgress.Step.REFUND_WAIT.ordinal() && step != SwapProgress.Step.WORKING && !stopped;
-        List<SwapProgress.Step> path = refundPath
-                ? List.of(SwapProgress.Step.REFUND_WAIT, SwapProgress.Step.REFUNDING, SwapProgress.Step.REFUNDED)
-                : SwapProgress.MAIN_STEPS;
-        int current = path.indexOf(step);
-        boolean showBar = current >= 0;
-        stepProgress.setVisible(showBar);
-        stepCount.setVisible(showBar);
-        if(showBar) {
-            int done = current + (status.finished() ? 1 : 0);
-            stepProgress.setProgress((double)Math.max(done, 1) / path.size());
-            stepCount.setText((refundPath ? "Refund step " : "Step ") + (current + 1) + " of " + path.size());
+    /** The services a swap depends on, as far as Ashigaru can tell, and what is wrong with the ones that are down */
+    private static SwapDashboardPane.Connections connections(SwapService service) {
+        List<String> working = new ArrayList<>();
+        List<String> problems = new ArrayList<>();
+        if(AppServices.getTorProxy() != null) {
+            working.add("Tor");
+        } else {
+            problems.add("Tor is not running: the swap cannot reach makers or Monero nodes until it is.");
         }
+        if(AppServices.isConnected()) {
+            working.add("Bitcoin server");
+        } else {
+            problems.add("Not connected to a Bitcoin server: a lock cannot be published or confirmed until you are.");
+        }
+        if(service.runningProperty().get()) {
+            working.add("Swap engine");
+        } else {
+            problems.add("The swap engine is off, so the swap is paused. Turn swaps on in Settings → Swaps.");
+        }
+        return new SwapDashboardPane.Connections(working, problems);
+    }
 
-        progressDone.setVisible(status.finished());
-        progressDone.setManaged(status.finished());
+    private void onDashboardAction(SwapDashboard.Action action) {
+        switch(action) {
+            case BACK_TO_OFFERS -> onBackToOffers();
+            case CANCEL_AND_REFUND -> {
+                SwapService service = SwapService.get();
+                refund(shownSwapId != null ? shownSwapId : service.getCurrentSwapId());
+            }
+        }
     }
 
     @FXML
@@ -596,28 +608,14 @@ public class SwapsToolController implements Initializable {
         dismissedSwapId = shownSwapId != null ? shownSwapId : service.getCurrentSwapId();
         shownSwapId = null;
         swapsTable.getSelectionModel().clearSelection();
+        dashboardPane.setMessage(null);
         updateProgress();
         refreshAll();
     }
 
-    private static void setText(Label label, String text) {
-        boolean show = text != null && !text.isBlank();
-        label.setText(show ? text : "");
-        label.setVisible(show);
-        label.setManaged(show);
-    }
-
-    private static String elapsed(long seconds) {
-        if(seconds < 60) {
-            return seconds + "s";
-        }
-        long minutes = seconds / 60;
-        return minutes < 60 ? minutes + " min" : (minutes / 60) + " h " + (minutes % 60) + " min";
-    }
-
     /** The card sits at the top: bring it into view after Take */
     private void scrollToTop() {
-        javafx.scene.Node node = progressCard;
+        javafx.scene.Node node = dashboardBox;
         while(node != null && !(node instanceof ScrollPane)) {
             node = node.getParent();
         }
@@ -626,14 +624,40 @@ public class SwapsToolController implements Initializable {
         }
     }
 
-    private void onRefund(JsonObject swap) {
-        if(swap == null) {
+    /**
+     * Cancels and refunds a swap that is not running. The engine publishes the cancel and then the refund
+     * and blocks until done, so the dashboard shows it as under way; a failure is shown under the banner.
+     */
+    private void refund(String swapId) {
+        if(swapId == null) {
             return;
         }
-        String swapId = swap.get("swapId").getAsString();
-        messageLabel.setText("Cancelling and refunding " + swapId + "…");
-        SwapService.get().refund(swapId, state -> messageLabel.setText("Refund published to Badbank."),
-                e -> messageLabel.setText("Could not refund yet: " + e.getMessage()));
+        refunding.add(swapId);
+        dashboardPane.setMessage(null);
+        updateProgress();
+        SwapService.get().refund(swapId, state -> {
+            refunding.remove(swapId);
+            refreshSwaps();
+            updateProgress();
+        }, e -> {
+            refunding.remove(swapId);
+            dashboardPane.setMessage("Could not cancel and refund yet: " + e.getMessage());
+            lastDashboard = null;
+            updateProgress();
+        });
+    }
+
+    /** Opens a swap's dashboard from the table */
+    private void showSwap(JsonObject swap) {
+        if(swap != null) {
+            showSwapId(swap.get("swapId").getAsString());
+        }
+    }
+
+    void showSwapId(String swapId) {
+        shownSwapId = swapId;
+        dismissedSwapId = null;
+        updateProgress();
     }
 
     private static final java.time.format.DateTimeFormatter STARTED =

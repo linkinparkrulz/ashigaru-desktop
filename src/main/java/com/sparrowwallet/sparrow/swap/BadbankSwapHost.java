@@ -58,6 +58,8 @@ public class BadbankSwapHost {
     private Supplier<ReviewPresenter> presenters = () -> null;
     //The dialog form of the review now in the Swaps screen, used if that screen goes away before it is answered
     private volatile Runnable dialogFallback;
+    //Told the maker's terms when they reach the approval, so they are kept with the swap
+    private TermsListener termsListener = (piconero, amnestySats, fullRefund) -> {};
     //What the final review shows about this swap
     private String xmrAddress = "";
     private String maker = "";
@@ -74,6 +76,15 @@ public class BadbankSwapHost {
     /** Reviews go to the presenter this supplies while it is showing, and to dialogs otherwise */
     public void setPresenterSource(Supplier<ReviewPresenter> presenters) {
         this.presenters = presenters;
+    }
+
+    /** Hears the terms the maker offers, before the user decides */
+    public interface TermsListener {
+        void terms(long piconero, long amnestySats, boolean fullRefund);
+    }
+
+    public void setTermsListener(TermsListener listener) {
+        this.termsListener = listener;
     }
 
     /** Where the XMR goes and who the maker is, for the final review */
@@ -360,6 +371,7 @@ public class BadbankSwapHost {
             throw new IllegalStateException("The lock amount does not match any lock transaction Ashigaru built");
         }
 
+        termsListener.terms(piconero, amnesty, fullRefund);
         ReviewPresenter presenter = presenters.get();
         if(presenter == null) {
             approveWithDialog(lockAmount, networkFee, piconero, amnesty, fullRefund, APPROVAL_DIALOG_SECS, answer);

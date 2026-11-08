@@ -95,4 +95,42 @@ class SwapProgressTest {
         assertEquals(SwapProgress.Step.TERMS, unknown.step());
         assertEquals("SomethingNew", unknown.detail());
     }
+
+    @Test
+    void aSwapFoundAgainAfterARestartIsPlacedFromTheEnginesRecord() {
+        SwapProgress.Status running = SwapProgress.fromState("btc is locked", false, true, T0);
+        assertEquals(SwapProgress.Step.LOCK_CONFIRM, running.step());
+        assertFalse(running.finished());
+
+        //Not running and not over: it stopped where it got to, so its recovery can be shown
+        SwapProgress.Status stopped = SwapProgress.fromState("xmr lock transaction seen", false, false, T0);
+        assertEquals(SwapProgress.Step.STOPPED, stopped.step());
+        assertEquals(SwapProgress.Step.MAKER_CONFIRM, stopped.stoppedAfter());
+        assertTrue(stopped.finished());
+
+        assertEquals(SwapProgress.Step.DONE, SwapProgress.fromState("xmr is redeemed", true, false, T0).step());
+        assertEquals(SwapProgress.Step.REFUNDED, SwapProgress.fromState("btc is refunded", true, false, T0).step());
+        assertEquals(SwapProgress.Step.REFUND_WAIT, SwapProgress.fromState("waiting for cancel timelock expiration", false, true, T0).step());
+        assertEquals(SwapProgress.Step.REFUNDING, SwapProgress.fromState("btc cancel is published", false, true, T0).step());
+        assertEquals(SwapProgress.Step.TERMS, SwapProgress.fromState("quote has been requested", false, true, T0).step());
+    }
+
+    @Test
+    void aPunishedSwapIsSaidPlainlyAndAnUnknownStateIsNotInvented() {
+        SwapProgress.Status punished = SwapProgress.fromState("btc is punished", true, false, T0);
+        assertEquals(SwapProgress.Step.STOPPED, punished.step());
+        assertTrue(punished.detail().contains("maker took the BTC"));
+        assertEquals(SwapProgress.Step.WORKING, SwapProgress.fromState("something new", false, true, T0).step());
+        assertEquals(SwapProgress.Step.WORKING, SwapProgress.fromState(null, false, true, T0).step());
+    }
+
+    @Test
+    void whereASwapStoppedIsKeptAcrossMoreThanOneStopNotice() {
+        SwapProgress.Status locked = SwapProgress.read(event("XmrLockTxInMempool", "{\"xmr_lock_tx_confirmations\":2,\"xmr_lock_tx_target_confirmations\":10}"), null, T0);
+        JsonObject stop = JsonParser.parseString("{\"swapId\":\"x\",\"error\":\"boom\"}").getAsJsonObject();
+        SwapProgress.Status first = SwapProgress.stopped(stop, locked, T0);
+        assertEquals(SwapProgress.Step.MAKER_CONFIRM, first.stoppedAfter());
+        SwapProgress.Status second = SwapProgress.stopped(stop, first, T0);
+        assertEquals(SwapProgress.Step.MAKER_CONFIRM, second.stoppedAfter(), "a second notice does not forget where it stopped");
+    }
 }

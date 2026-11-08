@@ -76,10 +76,17 @@ public final class SwapProgress {
     public static final List<Step> MAIN_STEPS = List.of(Step.NODES, Step.TERMS, Step.APPROVAL, Step.LOCK_PUBLISH,
             Step.LOCK_CONFIRM, Step.MAKER_LOCK, Step.MAKER_CONFIRM, Step.RELEASE, Step.CLAIM, Step.DONE);
 
-    /** A swap's latest step, what is known about it, and since when */
-    public record Status(Step step, String detail, Instant since, boolean finished) {
+    /**
+     * A swap's latest step, what is known about it, and since when. For a swap that stopped,
+     * {@code stoppedAfter} is the step it had reached, so the screens can say where it stopped.
+     */
+    public record Status(Step step, String detail, Instant since, boolean finished, Step stoppedAfter) {
+        public Status(Step step, String detail, Instant since, boolean finished) {
+            this(step, detail, since, finished, null);
+        }
+
         public Status withDetail(String newDetail) {
-            return new Status(step, newDetail, since, finished);
+            return new Status(step, newDetail, since, finished, stoppedAfter);
         }
 
         /** True when the step has gone on well past its usual length */
@@ -156,16 +163,74 @@ public final class SwapProgress {
         return new Status(step, detail, since, finished);
     }
 
+    /**
+     * Where a swap stands from the engine's own record of it, for a swap that has sent no progress events,
+     * such as one found again after Ashigaru restarted. {@code state} is eigenwallet's name for the swap's
+     * state ("btc is locked", "btc is refunded"). A swap that is not running and not finished is shown as
+     * stopped at the step it reached, which is what lets its recovery be shown.
+     */
+    public static Status fromState(String state, boolean complete, boolean running, Instant now) {
+        String s = state == null ? "" : state.toLowerCase(Locale.ROOT);
+        Step step;
+        String detail = null;
+        if(s.contains("xmr is redeemed")) {
+            step = Step.DONE;
+        } else if(s.equals("btc is refunded") || s.equals("btc is early refunded")) {
+            step = Step.REFUNDED;
+        } else if(s.contains("partially refunded")) {
+            step = Step.REFUNDED;
+            detail = "Part of the BTC came back; the maker may hold its deposit.";
+        } else if(s.contains("withheld")) {
+            step = Step.REFUNDED;
+            detail = "The maker kept its deposit.";
+        } else if(s.contains("amnesty is confirmed")) {
+            step = Step.REFUNDED;
+            detail = "All of the deposit came back too";
+        } else if(s.contains("punished")) {
+            return new Status(Step.STOPPED, "The refund was not published in time, and the maker took the BTC.", now, true, Step.REFUND_WAIT);
+        } else if(s.contains("safely aborted")) {
+            return new Status(Step.STOPPED, "The swap was safely aborted. Nothing was locked.", now, true, Step.TERMS);
+        } else if(s.contains("waiting for cancel timelock") || s.contains("cancel timelock is expired")) {
+            step = Step.REFUND_WAIT;
+        } else if(s.contains("cancel is published") || s.contains("is cancelled") || s.contains("refund is published") || s.contains("refund timelock")
+                || s.contains("partial refund is published") || s.contains("withhold is published") || s.contains("amnesty is published")) {
+            step = Step.REFUNDING;
+        } else if(s.contains("redeem tx") || s.equals("btc is redeemed")) {
+            step = Step.CLAIM;
+        } else if(s.contains("encrypted signature") || s.equals("xmr is locked")) {
+            step = Step.RELEASE;
+        } else if(s.contains("xmr lock transaction seen")) {
+            step = Step.MAKER_CONFIRM;
+        } else if(s.contains("xmr lock transaction candidate")) {
+            step = Step.MAKER_LOCK;
+        } else if(s.equals("btc is locked")) {
+            step = Step.LOCK_CONFIRM;
+        } else if(s.contains("btc lock ready to publish")) {
+            step = Step.LOCK_PUBLISH;
+        } else if(s.contains("quote has been requested") || s.contains("execution setup done")) {
+            step = Step.TERMS;
+        } else {
+            step = Step.WORKING;
+        }
+        boolean finished = step == Step.DONE || step == Step.REFUNDED;
+        if(finished || running) {
+            return new Status(step, detail, now, finished);
+        }
+        //Not running and not over: it stopped at the step it reached
+        return new Status(Step.STOPPED, "The swap is not running.", now, true, step);
+    }
+
     /** The status of a swap that stopped, from its swap_stopped notification */
     public static Status stopped(JsonObject payload, Status previous, Instant now) {
+        Step reached = previous == null ? null : previous.step() == Step.STOPPED ? previous.stoppedAfter() : previous.step();
         if(payload.has("error")) {
-            return new Status(Step.STOPPED, stopReason(payload.get("error").getAsString(), previous), now, true);
+            return new Status(Step.STOPPED, stopReason(payload.get("error").getAsString(), previous), now, true, reached);
         }
         if(previous != null && previous.finished()) {
             return previous;
         }
         String state = payload.has("state") ? payload.get("state").getAsString() : "";
-        return new Status(Step.STOPPED, state.isEmpty() ? "The swap stopped." : "Stopped at: " + state, now, true);
+        return new Status(Step.STOPPED, state.isEmpty() ? "The swap stopped." : "Stopped at: " + state, now, true, reached);
     }
 
     /** The engine's error, with what it means for the user's coin */

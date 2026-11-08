@@ -18,26 +18,8 @@
         <Label fx:id="engineStatus" wrapText="true" minHeight="-Infinity" styleClass="card-faint" HBox.hgrow="ALWAYS"/>
     </HBox>
 
-    <!-- The running (or chosen) swap. While it runs it is all the page shows. -->
-    <VBox fx:id="progressCard" styleClass="ag-card, swaps-progress" spacing="12" visible="false" managed="false">
-        <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
-        <HBox spacing="10" alignment="BASELINE_LEFT">
-            <Label fx:id="progressSwapId" styleClass="swaps-stat-label" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
-            <Label fx:id="progressElapsed" styleClass="card-faint"/>
-        </HBox>
-        <Label fx:id="progressStep" wrapText="true" minHeight="-Infinity" styleClass="swaps-step-title"/>
-        <HBox spacing="10" alignment="CENTER_LEFT">
-            <ProgressBar fx:id="stepProgress" styleClass="swaps-step-bar" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
-            <Label fx:id="stepCount" styleClass="card-faint" minWidth="-Infinity"/>
-        </HBox>
-        <Label fx:id="progressDoing" wrapText="true" minHeight="-Infinity" styleClass="swaps-doing"/>
-        <Label fx:id="progressDetail" wrapText="true" minHeight="-Infinity" styleClass="card-faint"/>
-        <Label fx:id="progressNext" wrapText="true" minHeight="-Infinity" styleClass="card-faint"/>
-        <Label fx:id="progressSlow" wrapText="true" minHeight="-Infinity" styleClass="swaps-slow" visible="false" managed="false"/>
-        <HBox fx:id="progressDone" alignment="CENTER_RIGHT" visible="false" managed="false">
-            <Button text="Back to offers" onAction="#onBackToOffers" styleClass="secondary-btn" minWidth="-Infinity"/>
-        </HBox>
-    </VBox>
+    <!-- The running (or chosen) swap, as the dashboard. While it runs it is all the page shows. The controller fills it. -->
+    <VBox fx:id="dashboardBox" spacing="16" visible="false" managed="false"/>
 
     <!-- Everything else; hidden while a swap runs -->
     <VBox fx:id="offersView" spacing="16">

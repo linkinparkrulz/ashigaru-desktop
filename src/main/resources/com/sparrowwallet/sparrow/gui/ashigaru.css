@@ -1423,3 +1423,105 @@
 .review-address-group { -fx-text-fill: -ag-text-dim; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 14px; }
 .review-address-edge { -fx-text-fill: -ag-text; }
 .review-primary { -fx-font-size: 15px; -fx-padding: 12 24 12 24; }
+
+/* ── Swap dashboard ────────────────────────────────────────────────────────────
+   Banner: what the user must do. Milestones: named stages, never a percentage. Then the current step
+   beside the summary of the swap. Neutral marks normal progress, amber means attention, green is
+   reserved for done; red stays on primary buttons. */
+.dash-eyebrow { -fx-text-fill: -ag-text-dim; -fx-font-family: "Roboto Medium"; -fx-font-size: 12px; }
+.dash-banner {
+    -fx-background-color: -ag-bg-light;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 14 18 14 18;
+}
+.dash-banner-warn { -fx-background-color: #241a05; -fx-border-color: #6b4d08; }
+.dash-banner-good { -fx-background-color: #0f1d11; -fx-border-color: #245a29; }
+.dash-banner-title { -fx-font-family: "Nikkyou Sans"; -fx-font-size: 17px; -fx-text-fill: -ag-text; }
+.dash-banner-text { -fx-text-fill: -ag-text-dim; -fx-font-size: 14px; }
+.dash-banner-icon {
+    -fx-background-color: -ag-bg-raised;
+    -fx-background-radius: 999;
+    -fx-text-fill: -ag-text;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 16px;
+    -fx-min-width: 32; -fx-pref-width: 32; -fx-max-width: 32;
+    -fx-min-height: 32; -fx-pref-height: 32; -fx-max-height: 32;
+    -fx-alignment: center;
+}
+.dash-banner-warn .dash-banner-icon { -fx-background-color: #3a2a05; -fx-text-fill: -ag-warn; }
+.dash-banner-good .dash-banner-icon { -fx-background-color: #16301a; -fx-text-fill: #7bd07f; }
+.dash-message { -fx-text-fill: -ag-warn; -fx-font-size: 14px; }
+.dash-node {
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-border-width: 2;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 13px;
+    -fx-min-width: 32; -fx-pref-width: 32; -fx-max-width: 32;
+    -fx-min-height: 32; -fx-pref-height: 32; -fx-max-height: 32;
+    -fx-alignment: center;
+}
+.dash-node-todo { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border-strong; -fx-text-fill: -ag-text-dim; }
+.dash-node-done { -fx-background-color: -ag-green; -fx-border-color: -ag-green; -fx-text-fill: #0E0F12; }
+.dash-node-current { -fx-background-color: -ag-bg-raised; -fx-border-color: -ag-text; -fx-text-fill: -ag-text; }
+.dash-node-warn { -fx-background-color: -ag-bg-raised; -fx-border-color: -ag-warn; -fx-text-fill: -ag-warn; }
+.dash-node-stop { -fx-background-color: #3a2a05; -fx-border-color: -ag-warn; -fx-text-fill: -ag-warn; }
+.dash-line { -fx-background-color: -ag-border-strong; }
+.dash-line-done { -fx-background-color: -ag-green; }
+.dash-line-warn { -fx-background-color: #6b4d08; }
+.dash-ms-name { -fx-text-fill: -ag-text-dim; -fx-font-size: 14px; }
+.dash-ms-name-on { -fx-text-fill: -ag-text; -fx-font-size: 14px; }
+.dash-fine { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
+.dash-body { -fx-text-fill: -ag-text-dim; -fx-font-size: 14px; }
+.dash-body-text { -fx-text-fill: -ag-text; -fx-font-size: 14px; }
+.dash-doing { -fx-text-fill: -ag-text; -fx-font-size: 15px; }
+.dash-slow { -fx-text-fill: -ag-warn; -fx-font-size: 13px; }
+.dash-facts {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 12 14 12 14;
+}
+.dash-fact-key { -fx-text-fill: -ag-text-dim; }
+.dash-fact-value { -fx-text-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 13px; }
+.dash-context { -fx-border-color: -ag-border; -fx-border-width: 1 0 0 0; -fx-padding: 14 0 0 0; }
+.dash-chip-warn {
+    -fx-background-color: #3a2a05;
+    -fx-text-fill: -ag-warn;
+    -fx-background-radius: 999;
+    -fx-padding: 3 11 3 11;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 12px;
+}
+.dash-section { -fx-border-color: -ag-border; -fx-border-width: 1 0 0 0; -fx-padding: 14 0 6 0; }
+.dash-pill-good, .dash-pill-warn {
+    -fx-background-radius: 999;
+    -fx-padding: 3 11 3 11;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 12px;
+}
+.dash-pill-good { -fx-background-color: #16301a; -fx-text-fill: #7bd07f; }
+.dash-pill-warn { -fx-background-color: #3a2a05; -fx-text-fill: -ag-warn; }
+.dash-dot { -fx-background-radius: 999; }
+.dash-dot-good { -fx-background-color: -ag-green; }
+.dash-dot-warn { -fx-background-color: -ag-warn; }
+.dash-step-now { -fx-text-fill: -ag-text; -fx-font-family: "Roboto Medium"; }
+.dash-step-done { -fx-text-fill: -ag-text-dim; }
+.dash-step-todo { -fx-text-fill: -ag-text-dim; -fx-opacity: 0.7; }
+.dash-spinner { -fx-progress-color: -ag-text; }
+.dash-track { -fx-background-color: -ag-bg-raised; -fx-background-radius: 2; }
+.dash-track-fill { -fx-background-color: -ag-warn; -fx-background-radius: 2; }
+.dash-point {
+    -fx-background-color: -ag-bg-light;
+    -fx-border-color: -ag-border-strong;
+    -fx-border-width: 2;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+}
+.dash-point-on { -fx-background-color: -ag-warn; -fx-border-color: -ag-warn; }
+.dash-details > .title { -fx-background-color: -ag-bg-light; -fx-background-radius: 6; -fx-padding: 12 18 12 18; }
+.dash-details > .title > .text { -fx-fill: -ag-text; -fx-font-size: 14px; }
+.dash-details > .content { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border; -fx-border-width: 0 1 1 1; -fx-padding: 8 18 8 18; }

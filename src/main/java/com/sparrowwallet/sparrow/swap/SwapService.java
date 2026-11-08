@@ -80,6 +80,8 @@ public class SwapService implements SwapHost {
     private final Map<String, SwapTimelock> timelocks = new ConcurrentHashMap<>();
     //The Swaps screen, while it can show a swap's reviews
     private volatile ReviewPresenter reviewPresenter;
+    //What was agreed for each swap of this identity: amounts, address, maker. Opened when the engine starts.
+    private volatile SwapDetails.Store detailsStore;
     private String currentSwapId;
     private final StringBuilder logText = new StringBuilder();
     private final List<Consumer<String>> logListeners = new CopyOnWriteArrayList<>();
@@ -137,6 +139,24 @@ public class SwapService implements SwapHost {
     public ReviewPresenter getReviewPresenter() {
         ReviewPresenter presenter = reviewPresenter;
         return presenter != null && presenter.isShowing() ? presenter : null;
+    }
+
+    /** What was agreed for a swap, or null when this identity has no record of it */
+    public SwapDetails getDetails(String swapId) {
+        SwapDetails.Store store = detailsStore;
+        return store == null ? null : store.get(swapId);
+    }
+
+    private void saveDetails(String swapId, SwapDetails details) {
+        SwapDetails.Store store = detailsStore;
+        if(store != null && swapId != null) {
+            store.put(swapId, details);
+        }
+    }
+
+    /** True while the engine is running this swap, as opposed to a swap that stopped and waits to be resumed or cancelled */
+    public boolean isSwapRunning(String swapId) {
+        return swapId != null && runningSwaps.contains(swapId);
     }
 
     /** Where a swap stands against its timelocks, or null when the engine has not said (or the swap is over) */
@@ -284,6 +304,7 @@ public class SwapService implements SwapHost {
                 loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes,
                     SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
             }
+            detailsStore = new SwapDetails.Store(identity.getDataDir());
             return resumed;
         }, resumed -> {
             starting = false;
@@ -391,6 +412,15 @@ public class SwapService implements SwapHost {
         BadbankSwapHost host = new BadbankSwapHost(chosen.badbank(), chosen.outpoint(), AshigaruGui.get().getMainStage());
         host.setPresenterSource(this::getReviewPresenter);
         host.setSwapContext(xmrAddress, SwapReview.shortId(maker.peerId()));
+        //The XMR amount and any deposit are only known once the maker's terms reach the approval
+        host.setTermsListener((piconero, amnestySats, fullRefund) -> {
+            String id = currentSwapId;
+            SwapDetails known = getDetails(id);
+            if(known != null) {
+                saveDetails(id, known.withTerms(piconero, amnestySats, fullRefund));
+                swapListeners.forEach(Runnable::run);
+            }
+        });
         long fee;
         try {
             fee = host.estimateLockFee();
@@ -404,6 +434,7 @@ public class SwapService implements SwapHost {
         runInBackground(() -> engine.startSwap(maker, sats, fee, xmrAddress, refundAddress), swapId -> {
             runningSwaps.add(swapId);
             currentSwapId = swapId;
+            saveDetails(swapId, SwapDetails.started(sats, fee, xmrAddress, SwapReview.shortId(maker.peerId())));
             progress.putIfAbsent(swapId, new SwapProgress.Status(SwapProgress.Step.NODES, null, java.time.Instant.now(), false));
             coin.set(null);
             appendLog("Swap " + swapId + " started: " + BadbankSwapHost.btc(sats) + " BTC from " + chosen.walletName()
@@ -439,12 +470,46 @@ public class SwapService implements SwapHost {
     }
 
     public void listSwaps(Consumer<JsonArray> onSuccess, Consumer<Throwable> onFailure) {
-        runInBackground(engine::listSwaps, onSuccess, onFailure);
+        runInBackground(engine::listSwaps, list -> {
+            noteListedSwaps(list);
+            onSuccess.accept(list);
+        }, onFailure);
+    }
+
+    /**
+     * A swap that sent no progress events in this run, such as one found again after a restart, is placed
+     * from the engine's record of it, so it can be shown and, if it stopped, recovered. A swap that has
+     * already reported progress is left as it is: its own events know better.
+     */
+    void noteListedSwaps(JsonArray swaps) {
+        java.time.Instant now = java.time.Instant.now();
+        for(JsonElement element : swaps) {
+            JsonObject swap = element.getAsJsonObject();
+            if(swap.has("past") && swap.get("past").getAsBoolean() || !swap.has("swapId")) {
+                continue;
+            }
+            String swapId = swap.get("swapId").getAsString();
+            SwapProgress.Status known = progress.get(swapId);
+            boolean running = swap.has("running") && swap.get("running").getAsBoolean();
+            boolean complete = swap.has("complete") && swap.get("complete").getAsBoolean();
+            //A swap that stopped in this run has its own status, with the reason; a finished one is final
+            if(known != null && (known.finished() || running)) {
+                continue;
+            }
+            String state = swap.has("state") ? swap.get("state").getAsString() : "";
+            SwapProgress.Status placed = SwapProgress.fromState(state, complete, running, now);
+            if(known == null || known.step() != SwapProgress.Step.STOPPED) {
+                progress.put(swapId, placed);
+            }
+        }
     }
 
     public void refund(String swapId, Consumer<String> onSuccess, Consumer<Throwable> onFailure) {
         runInBackground(() -> engine.cancelAndRefund(swapId), state -> {
             appendLog("Swap " + swapId + " refunded: " + state);
+            //A manual refund sends no progress events, so the screens are told it is done
+            progress.put(swapId, new SwapProgress.Status(SwapProgress.Step.REFUNDED, "Refund published to Badbank.", java.time.Instant.now(), true));
+            timelocks.remove(swapId);
             swapListeners.forEach(Runnable::run);
             onSuccess.accept(state);
         }, onFailure);
