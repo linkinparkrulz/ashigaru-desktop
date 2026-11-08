@@ -689,4 +689,62 @@ class SwapScreenshotsTest {
             }
         }
     }
+
+    @Test
+    void theApproveBarStaysPinnedInsideToolsOwnScrollPane() throws Exception {
+        //Exactly how ToolsController hosts a tool: a scroll pane that fits its content to the width and the height
+        javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(SwapScreenshotsTest.class.getResource("/com/sparrowwallet/sparrow/gui/swaps.fxml"));
+        javafx.scene.control.ScrollPane tools = onFx(() -> {
+            try {
+                Node page = loader.load();
+                javafx.scene.control.ScrollPane scroll = new javafx.scene.control.ScrollPane(page);
+                scroll.setFitToWidth(true);
+                scroll.setFitToHeight(true);
+                scroll.getStyleClass().add("preferences-scroll");
+                return scroll;
+            } catch(java.io.IOException e) {
+                throw new IllegalStateException(e);
+            }
+        });
+        Node page = onFx(() -> tools.getContent());
+        AtomicReference<Stage> stage = new AtomicReference<>();
+        onFx(() -> {
+            Scene scene = new Scene(tools, 845, 714);
+            scene.getStylesheets().add(SwapScreenshotsTest.class.getResource("/com/sparrowwallet/sparrow/darktheme.css").toExternalForm());
+            scene.getStylesheets().add(SwapScreenshotsTest.class.getResource("/com/sparrowwallet/sparrow/gui/ashigaru.css").toExternalForm());
+            Stage s = new Stage();
+            s.setScene(scene);
+            s.show();
+            stage.set(s);
+            return null;
+        });
+        Thread.sleep(500);
+        com.sparrowwallet.sparrow.swap.ReviewPresenter presenter = onFx(() -> com.sparrowwallet.sparrow.swap.SwapService.get().getReviewPresenter());
+        assertNotNull(presenter);
+        onFx(() -> {
+            presenter.present(commit(99_975, false));
+            return null;
+        });
+        Thread.sleep(500);
+
+        SwapReviewPane review = onFx(() -> (SwapReviewPane)((StackPane)page).getChildren().stream().filter(n -> n instanceof SwapReviewPane).findFirst().orElseThrow());
+        double viewport = onFx(() -> tools.getViewportBounds().getHeight());
+        double paneHeight = onFx(review::getHeight);
+        assertEquals(viewport, paneHeight, 1.0, "the review fills the viewport instead of growing past it, so the bar can be pinned");
+        //The bar sits on the bottom edge of what is visible, whatever the body holds
+        double barBottom = onFx(() -> review.getBottom().localToScene(review.getBottom().getLayoutBounds()).getMaxY());
+        assertEquals(viewport, barBottom, 2.0, "Approve is at the bottom of the window");
+        assertFalse(onFx(() -> tools.getVbarPolicy() == javafx.scene.control.ScrollPane.ScrollBarPolicy.ALWAYS), "the outer pane does not need to scroll");
+        Path dir = Path.of(System.getenv("SWAP_SCREENSHOTS"));
+        onFx(() -> {
+            try {
+                ImageIO.write(SwingFXUtils.fromFXImage(stage.get().getScene().snapshot(null), null), "png", new File(dir.toFile(), "review-inside-tools-845.png"));
+            } catch(Exception e) {
+                throw new IllegalStateException(e);
+            }
+            presenter.dismiss();
+            stage.get().close();
+            return null;
+        });
+    }
 }
