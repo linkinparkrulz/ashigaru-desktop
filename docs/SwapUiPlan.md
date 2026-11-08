@@ -57,6 +57,12 @@ features. It is making the swap easier to read, harder to misunderstand, and hon
 - A completed swap says "XMR sent". Spendability is general Monero guidance, not a live count.
 - "Priced below market" is not user wording. Hidden offers are "offering more XMR than the market pays".
 
+## Status
+
+Built, in this order: the engine-backed data and wording, the shell (window size and typography), the
+in-page final review, the dashboard and the offers screen. Each is its own commit. Every state of every
+screen is rendered and checked by `SwapScreenshotsTest` (see `docs/DEVELOPMENT.md`).
+
 ## Build order
 
 1. Engine-backed data and wording: read timelock events, shared copy, fix the confirmed dialog text.
@@ -65,6 +71,20 @@ features. It is making the swap easier to read, harder to misunderstand, and hon
 4. Dashboard: milestones, summary, three recovery variants, completion receipt.
 5. Offers: table, notice, empty states, address field.
 6. Tests, release notes, merge cleanup.
+
+## To check on a real swap
+
+These need the swap engine, Tor and live makers, which the automated tests cannot reach:
+
+- Sign and approve in the page, the password dialog opening over it, and the countdown reaching the
+  engine's own 180 second timeout.
+- Leaving the Swaps screen mid-review: the same request must come up as a dialog, with only the
+  remaining time.
+- A swap that stops after the lock: Ashigaru restarted, the swap found again and shown, the notice above
+  the offers, and Cancel and refund working once the cancel timelock has expired. The engine's call blocks
+  until the refund is published.
+- A swap running through the cancel timelock: Ashigaru cancels and refunds by itself, with no button.
+- The countdown against real blocks, and that the `TimelockChange` events arrive.
 
 ## Still to verify
 

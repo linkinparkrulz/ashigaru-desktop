@@ -1,3 +1,52 @@
+# Unreleased
+
+The swap screens are reworked so that the important facts are easier to read and harder to
+misunderstand, and the interface typeface changes across the whole app.
+
+## Swaps
+
+- **The final review is a proper screen.** Signing and approving are two stages of one panel in the
+  Swaps screen instead of separate dialogs. It leads with what you send and receive (the XMR to
+  twelve decimals), the destination address, and the maker's anti-spam deposit in its own callout,
+  then the recovery terms, with the fee breakdown and the full address below. Approve and Reject stay
+  in view under the scrolling body, and the real approval deadline shows as a countdown. If the
+  Swaps screen is not showing when the request arrives, or you leave it, the same decision is asked
+  in a dialog, with only the time that is left. The wallet password stays its own dialog.
+- **A dashboard replaces the progress card.** It says where your funds are, whether you need to do
+  anything, whether you can close Ashigaru, what happens if the swap stalls and when recovery
+  opens. Five named stages (Review and authorize, Lock BTC, Verify the maker's XMR, Claim XMR,
+  Complete) replace the percentage bar, which read as nearly finished during waits of unknown
+  length. Protocol steps and identifiers are in a collapsed section, and a finished swap shows a
+  receipt.
+- **Recovery says what actually happens.** A running swap is cancelled and refunded by Ashigaru
+  itself once the timelock allows; you only need to keep Ashigaru running. Only a swap that is not
+  running, after its cancel timelock has expired, has a Cancel and refund button, and before that
+  the button is shown disabled with when it opens. The countdown is worked out from the engine's
+  timelock events, and every time is shown as "about". Refunds are stated as estimates ("up to",
+  minus network fees).
+- **Offers are a comparison.** A table led by the estimated XMR for your coin and what the maker may
+  keep if the swap is cancelled, then the maker and rate, with the gaps to the best offer and to
+  the market in one quiet line. Sorting is explicit. The market rate is a reference, apart from
+  the offers. Take is now Review offer, with the reason shown while it is unavailable, and with no
+  coin chosen there is a button to Choose coin from Badbank. The receiving address has a
+  permanent label and a live check.
+- **Unfinished swaps come first.** A swap that holds your BTC and is not running is shown above the
+  offers with a way to its recovery screen. After a restart, a swap is placed from the engine's own
+  record, and the amounts, address and maker are kept with it, so its recovery screen still says what
+  is at stake.
+- **Consistent wording.** The offer card, the approval, the progress text and the quit prompt used
+  to describe refunds in different ways. They now share one account.
+
+## Window and typography
+
+- **The interface typeface is Roboto**, at 14 pixels for anything you need to understand and 13 for
+  supporting detail. Nikkyou Sans is kept for titles and key headings, and Roboto Mono for
+  amounts, addresses and transaction ids. Labels smaller than 13 pixels were raised, apart from small
+  uppercase headings.
+- **The window starts at 1280 pixels wide and cannot be made narrower than 1200**, both capped at
+  your screen. Swaps sits beside two menus, and the offers table needs room to be read. On a
+  smaller screen the table folds the maker and rate under the amount.
+
 # Ashigaru Desktop 1.5.1
 
 *Released 2026-10-29*
