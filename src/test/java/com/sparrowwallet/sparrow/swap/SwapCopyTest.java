@@ -46,6 +46,17 @@ class SwapCopyTest {
     }
 
     @Test
+    void theReviewColumnsTellTheSameStoryAsTheDialogs() {
+        assertTrue(SwapCopy.cancelAndRefundSteps("0.04898785").contains("about 4 hours after the lock confirms"));
+        assertTrue(SwapCopy.cancelAndRefundSteps("0.04898785").contains("up to 0.04898785 BTC"));
+        assertTrue(SwapCopy.keepRunningDetail().contains("within about 24 hours of the cancel confirming"));
+        assertTrue(SwapCopy.keepRunning().endsWith(SwapCopy.keepRunningDetail()));
+        assertTrue(SwapCopy.approveEffect("0.04998760").contains("0.04998760 BTC is committed"));
+        //The headline and the detail together are the whole deposit statement
+        assertEquals(SwapCopy.depositHeadline("0.00099975", "2.0%") + " " + SwapCopy.depositDetail(), SwapCopy.depositTerms("0.00099975", "2.0%"));
+    }
+
+    @Test
     void noDepositMeansTheWholeLockIsRefundable() {
         String none = BadbankSwapHost.recoveryTerms(4_998_760, 0, false);
         assertFalse(none.contains("anti-spam"));

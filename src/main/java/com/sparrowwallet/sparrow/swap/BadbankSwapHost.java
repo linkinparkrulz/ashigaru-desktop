@@ -25,9 +25,12 @@ import javafx.scene.control.ButtonType;
 import javafx.stage.Window;
 import javafx.util.Duration;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /**
  * Answers the swap engine for one swap of one Badbank coin. The lock transaction spends exactly that
@@ -51,6 +54,13 @@ public class BadbankSwapHost {
     private final Window owner;
     //Lock transactions this host built, by txid: the only ones it will sign
     private final Map<Sha256Hash, FundedLock> funded = new ConcurrentHashMap<>();
+    //Where reviews are shown, asked each time because the Swaps screen comes and goes: null means ask in a dialog
+    private Supplier<ReviewPresenter> presenters = () -> null;
+    //The dialog form of the review now in the Swaps screen, used if that screen goes away before it is answered
+    private volatile Runnable dialogFallback;
+    //What the final review shows about this swap
+    private String xmrAddress = "";
+    private String maker = "";
 
     public BadbankSwapHost(Wallet badbank, BlockTransactionHashIndex coin, Window owner) {
         if(badbank.getStandardAccountType() != StandardAccount.WHIRLPOOL_BADBANK) {
@@ -59,6 +69,29 @@ public class BadbankSwapHost {
         this.badbank = badbank;
         this.coin = coin;
         this.owner = owner;
+    }
+
+    /** Reviews go to the presenter this supplies while it is showing, and to dialogs otherwise */
+    public void setPresenterSource(Supplier<ReviewPresenter> presenters) {
+        this.presenters = presenters;
+    }
+
+    /** Where the XMR goes and who the maker is, for the final review */
+    public void setSwapContext(String xmrAddress, String maker) {
+        this.xmrAddress = xmrAddress == null ? "" : xmrAddress;
+        this.maker = maker == null ? "" : maker;
+    }
+
+    /**
+     * The Swaps screen went away with a review on it. Ask in a dialog instead, so the request is not
+     * left waiting for a screen nobody is looking at.
+     */
+    public void reviewPresenterGone() {
+        Runnable fallback = dialogFallback;
+        dialogFallback = null;
+        if(fallback != null) {
+            Platform.runLater(fallback);
+        }
     }
 
     public Wallet getBadbank() {
@@ -216,6 +249,46 @@ public class BadbankSwapHost {
         }
         PSBT ours = lock.psbt();
 
+        ReviewPresenter presenter = presenters.get();
+        if(presenter == null) {
+            signWithDialog(lock, ours, answer);
+            return;
+        }
+
+        AtomicBoolean answered = new AtomicBoolean();
+        SwapReview review = SwapReview.prepare(coin.getValue(), lock.amount(), lock.fee(), badbank.isEncrypted(), new SwapReview.Decision() {
+            @Override
+            public void confirm() {
+                if(answered.compareAndSet(false, true)) {
+                    dialogFallback = null;
+                    presenter.dismiss();
+                    signWithWallet(ours, answer);
+                }
+            }
+
+            @Override
+            public void decline() {
+                if(answered.compareAndSet(false, true)) {
+                    dialogFallback = null;
+                    presenter.dismiss();
+                    answer.completeExceptionally(new IllegalStateException("Signing cancelled"));
+                }
+            }
+        });
+        dialogFallback = () -> {
+            if(answered.compareAndSet(false, true)) {
+                try {
+                    signWithDialog(lock, ours, answer);
+                } catch(Exception e) {
+                    answer.completeExceptionally(e);
+                }
+            }
+        };
+        presenter.present(review);
+    }
+
+    /** The dialog form of the signing request, used when the Swaps screen is not showing */
+    private void signWithDialog(FundedLock lock, PSBT ours, CompletableFuture<JsonElement> answer) {
         Alert confirm = alert(Alert.AlertType.CONFIRMATION, "Sign the swap lock?",
                 "Ashigaru built a transaction locking " + btc(lock.amount()) + " BTC from Badbank, with a network fee of "
                         + lock.fee() + " sats.\n\nSigning does not publish it. You will see the final terms, including "
@@ -226,7 +299,11 @@ public class BadbankSwapHost {
             answer.completeExceptionally(new IllegalStateException("Signing cancelled"));
             return;
         }
+        signWithWallet(ours, answer);
+    }
 
+    /** Signs the lock with the Badbank keys, asking for the wallet password in its own dialog when there is one */
+    private void signWithWallet(PSBT ours, CompletableFuture<JsonElement> answer) {
         if(!badbank.isEncrypted()) {
             completeSigned(badbank, ours, answer, false);
             return;
@@ -283,6 +360,52 @@ public class BadbankSwapHost {
             throw new IllegalStateException("The lock amount does not match any lock transaction Ashigaru built");
         }
 
+        ReviewPresenter presenter = presenters.get();
+        if(presenter == null) {
+            approveWithDialog(lockAmount, networkFee, piconero, amnesty, fullRefund, APPROVAL_DIALOG_SECS, answer);
+            return;
+        }
+
+        AtomicBoolean answered = new AtomicBoolean();
+        Instant expiresAt = Instant.now().plusSeconds(APPROVAL_DIALOG_SECS);
+        PauseTransition expiry = new PauseTransition(Duration.seconds(APPROVAL_DIALOG_SECS));
+        SwapReview.Decision decision = new SwapReview.Decision() {
+            @Override
+            public void confirm() {
+                finish(true);
+            }
+
+            @Override
+            public void decline() {
+                finish(false);
+            }
+
+            private void finish(boolean approved) {
+                if(answered.compareAndSet(false, true)) {
+                    expiry.stop();
+                    dialogFallback = null;
+                    presenter.dismiss();
+                    answer.complete(new JsonPrimitive(approved));
+                }
+            }
+        };
+        //An unanswered approval is a rejection, a little before the engine's own timeout
+        expiry.setOnFinished(event -> decision.decline());
+        dialogFallback = () -> {
+            if(answered.compareAndSet(false, true)) {
+                expiry.stop();
+                //Only the time that is left: the engine's clock kept running while the review was on screen
+                long left = Math.max(1, java.time.Duration.between(Instant.now(), expiresAt).getSeconds());
+                approveWithDialog(lockAmount, networkFee, piconero, amnesty, fullRefund, (int)left, answer);
+            }
+        };
+        expiry.play();
+        presenter.present(SwapReview.commit(coin.getValue(), lockAmount, networkFee, piconero, amnesty, fullRefund, xmrAddress, maker, expiresAt, decision));
+    }
+
+    /** The dialog form of the final approval, used when the Swaps screen is not showing */
+    private void approveWithDialog(long lockAmount, long networkFee, long piconero, long amnesty, boolean fullRefund, int seconds,
+                                   CompletableFuture<JsonElement> answer) {
         ButtonType approveButton = new ButtonType("Approve", ButtonBar.ButtonData.OK_DONE);
         ButtonType rejectButton = new ButtonType("Reject", ButtonBar.ButtonData.CANCEL_CLOSE);
         Alert alert = alert(Alert.AlertType.CONFIRMATION, "Approve the swap?",
@@ -290,9 +413,9 @@ public class BadbankSwapHost {
                         + "Network fee: " + networkFee + " sats\n"
                         + "You receive: " + xmr(piconero) + " XMR\n\n"
                         + recoveryTerms(lockAmount, amnesty, fullRefund) + "\n\n"
-                        + "This closes as a rejection in " + APPROVAL_DIALOG_SECS + " seconds.",
+                        + "This closes as a rejection in " + seconds + " seconds.",
                 approveButton, rejectButton);
-        PauseTransition expiry = new PauseTransition(Duration.seconds(APPROVAL_DIALOG_SECS));
+        PauseTransition expiry = new PauseTransition(Duration.seconds(seconds));
         expiry.setOnFinished(event -> {
             alert.setResult(rejectButton);
             alert.close();

@@ -1346,3 +1346,80 @@
     -fx-border-width: 0 0 0 3;
     -fx-padding: 8 20 8 20;
 }
+
+/* ── Swap final review ─────────────────────────────────────────────────────────
+   Drawn in the Swaps screen instead of a dialog: amounts first, the deposit and recovery terms before
+   the breakdown, and the decision pinned below the scrolling body. Roboto for sentences, Roboto Mono
+   for amounts and addresses, Nikkyou Sans for headings only. */
+.review-pane { -fx-background-color: transparent; }
+.review-scroll, .review-scroll > .viewport { -fx-background-color: transparent; -fx-background: transparent; }
+.review-content { -fx-padding: 22; }
+.review-bar {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 14 22 14 22;
+}
+.review-card { -fx-padding: 16 20 16 20; }
+.review-hero { -fx-padding: 22 24 22 24; }
+.review-eyebrow { -fx-text-fill: -ag-text-dim; -fx-font-family: "Roboto Medium"; -fx-font-size: 12px; }
+.review-heading { -fx-font-family: "Nikkyou Sans"; -fx-font-size: 20px; -fx-text-fill: -ag-text; }
+.review-subheading { -fx-font-family: "Nikkyou Sans"; -fx-font-size: 16px; -fx-text-fill: -ag-text; }
+.review-body { -fx-text-fill: -ag-text-dim; -fx-font-size: 14px; }
+.review-fine { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
+.review-dim { -fx-text-fill: -ag-text-dim; }
+.review-arrow { -fx-text-fill: -ag-text-dim; -fx-font-size: 22px; }
+.review-row { -fx-padding: 8 0 8 0; -fx-border-color: -ag-border; -fx-border-width: 0 0 1 0; }
+.review-row-last { -fx-border-width: 0; }
+.review-row-total { -fx-border-color: -ag-border-strong; -fx-border-width: 1 0 0 0; }
+.review-key { -fx-text-fill: -ag-text-dim; }
+.review-value { -fx-text-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
+.review-row-total .review-key { -fx-text-fill: -ag-text; -fx-font-family: "Roboto Medium"; }
+.review-amount-lead { -fx-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 28px; }
+.review-amount-tail { -fx-fill: -ag-text-dim; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 28px; }
+.review-amount-unit { -fx-fill: -ag-text-dim; -fx-font-size: 15px; }
+.review-callout {
+    -fx-background-color: #241a05;
+    -fx-border-color: #6b4d08;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 12 14 12 14;
+}
+.review-callout-icon {
+    -fx-background-color: #3a2a05;
+    -fx-background-radius: 999;
+    -fx-text-fill: -ag-warn;
+    -fx-font-family: "Roboto Medium";
+    -fx-min-width: 22; -fx-pref-width: 22; -fx-max-width: 22;
+    -fx-min-height: 22; -fx-pref-height: 22; -fx-max-height: 22;
+    -fx-alignment: center;
+}
+.review-callout-title { -fx-text-fill: -ag-text; -fx-font-family: "Roboto Medium"; -fx-font-size: 14px; }
+.review-line {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 10 14 10 14;
+}
+.review-info-dot { -fx-text-fill: -ag-blue; }
+.review-chip {
+    -fx-background-color: -ag-bg-raised;
+    -fx-text-fill: -ag-text-dim;
+    -fx-background-radius: 999;
+    -fx-padding: 3 11 3 11;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 12px;
+}
+.review-chip-done { -fx-background-color: #16301a; -fx-text-fill: #7bd07f; }
+.review-chip-current { -fx-background-color: -ag-accent-faint; -fx-text-fill: #ff8a8a; }
+.review-chip-warn { -fx-background-color: #3a2a05; -fx-text-fill: -ag-warn; }
+.review-address {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+.review-address-group { -fx-text-fill: -ag-text-dim; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 14px; }
+.review-address-edge { -fx-text-fill: -ag-text; }
+.review-primary { -fx-font-size: 15px; -fx-padding: 12 24 12 24; }

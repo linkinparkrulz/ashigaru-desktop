@@ -78,6 +78,8 @@ public class SwapService implements SwapHost {
     private final Map<String, SwapProgress.Status> progress = new ConcurrentHashMap<>();
     //Each swap's latest timelock state, from the engine's TimelockChange events: blocks left until cancel or punish
     private final Map<String, SwapTimelock> timelocks = new ConcurrentHashMap<>();
+    //The Swaps screen, while it can show a swap's reviews
+    private volatile ReviewPresenter reviewPresenter;
     private String currentSwapId;
     private final StringBuilder logText = new StringBuilder();
     private final List<Consumer<String>> logListeners = new CopyOnWriteArrayList<>();
@@ -110,6 +112,31 @@ public class SwapService implements SwapHost {
     /** The latest step of a swap, or null when nothing is known about it yet */
     public SwapProgress.Status getProgress(String swapId) {
         return swapId == null ? null : progress.get(swapId);
+    }
+
+    /**
+     * The Swaps screen registers here to show the swap's reviews in the page. A review only goes to it
+     * while it is showing; at any other time Ashigaru asks in a dialog, so a request cannot wait unseen.
+     */
+    public void setReviewPresenter(ReviewPresenter presenter) {
+        reviewPresenter = presenter;
+    }
+
+    /** The Swaps screen is going away: a review still on it moves to a dialog */
+    public void clearReviewPresenter(ReviewPresenter presenter) {
+        if(reviewPresenter == presenter) {
+            reviewPresenter = null;
+            BadbankSwapHost host = activeHost;
+            if(host != null) {
+                host.reviewPresenterGone();
+            }
+        }
+    }
+
+    /** The presenter to show a review in, or null when none is on screen and a dialog is needed */
+    public ReviewPresenter getReviewPresenter() {
+        ReviewPresenter presenter = reviewPresenter;
+        return presenter != null && presenter.isShowing() ? presenter : null;
     }
 
     /** Where a swap stands against its timelocks, or null when the engine has not said (or the swap is over) */
@@ -362,6 +389,8 @@ public class SwapService implements SwapHost {
         }
 
         BadbankSwapHost host = new BadbankSwapHost(chosen.badbank(), chosen.outpoint(), AshigaruGui.get().getMainStage());
+        host.setPresenterSource(this::getReviewPresenter);
+        host.setSwapContext(xmrAddress, SwapReview.shortId(maker.peerId()));
         long fee;
         try {
             fee = host.estimateLockFee();

@@ -4,9 +4,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.io.Config;
+import com.sparrowwallet.sparrow.swap.ReviewPresenter;
 import com.sparrowwallet.sparrow.swap.SwapCopy;
 import com.sparrowwallet.sparrow.swap.SwapEngine.Quote;
 import com.sparrowwallet.sparrow.swap.SwapProgress;
+import com.sparrowwallet.sparrow.swap.SwapReview;
 import com.sparrowwallet.sparrow.swap.SwapService;
 import com.sparrowwallet.sparrow.swap.XmrPrice;
 import javafx.animation.KeyFrame;
@@ -24,6 +26,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 import javafx.util.Duration;
@@ -42,6 +45,8 @@ import java.util.ResourceBundle;
  * The engine itself lives in {@link SwapService}, so leaving this page never stops a swap.
  */
 public class SwapsToolController implements Initializable {
+    @FXML private StackPane swapsRoot;
+    @FXML private VBox mainView;
     @FXML private Label engineStatus;
     @FXML private VBox offersView;
     @FXML private Label offersTitle;
@@ -84,6 +89,25 @@ public class SwapsToolController implements Initializable {
     //A finished swap the user has gone back to offers from
     private String dismissedSwapId;
 
+    //The final review, drawn over the page while the swap asks for a decision
+    private SwapReviewPane reviewPane;
+    private final ReviewPresenter presenter = new ReviewPresenter() {
+        @Override
+        public boolean isShowing() {
+            return swapsRoot.getScene() != null && swapsRoot.getScene().getWindow() != null && swapsRoot.getScene().getWindow().isShowing();
+        }
+
+        @Override
+        public void present(SwapReview review) {
+            showReview(review);
+        }
+
+        @Override
+        public void dismiss() {
+            hideReview();
+        }
+    };
+
     private final Runnable swapListener = () -> {
         refreshSwaps();
         updateProgress();
@@ -106,6 +130,12 @@ public class SwapsToolController implements Initializable {
 
         setUpSwapsTable();
         offersView.managedProperty().bind(offersView.visibleProperty());
+        mainView.managedProperty().bind(mainView.visibleProperty());
+        reviewPane = new SwapReviewPane();
+        reviewPane.setVisible(false);
+        reviewPane.managedProperty().bind(reviewPane.visibleProperty());
+        swapsRoot.getChildren().add(reviewPane);
+        service.setReviewPresenter(presenter);
 
         //Refresh while the page is shown; stop, and let go of the service, when it is closed
         refresher = new Timeline(new KeyFrame(Duration.seconds(20), event -> refreshQuotes()));
@@ -138,10 +168,26 @@ public class SwapsToolController implements Initializable {
         SwapService service = SwapService.get();
         refresher.stop();
         ticker.stop();
+        //A review still on this page moves to a dialog, so the request is not left waiting
+        service.clearReviewPresenter(presenter);
+        reviewPane.clear();
         service.removeSwapListener(swapListener);
         service.runningProperty().removeListener(runningListener);
         service.coinProperty().removeListener(coinListener);
         engineStatus.textProperty().unbind();
+    }
+
+    private void showReview(SwapReview review) {
+        reviewPane.show(review);
+        mainView.setVisible(false);
+        reviewPane.setVisible(true);
+    }
+
+    private void hideReview() {
+        reviewPane.clear();
+        reviewPane.setVisible(false);
+        mainView.setVisible(true);
+        updateProgress();
     }
 
     /** Rebuilds the offer cards: only offers that can take this coin, best rate first */

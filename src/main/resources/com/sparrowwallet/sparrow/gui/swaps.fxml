@@ -4,12 +4,13 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox xmlns="http://javafx.com/javafx"
+<!-- The page and, over it while the swap asks for a decision, the final review. The review is added by the controller. -->
+<StackPane fx:id="swapsRoot" xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.sparrowwallet.sparrow.gui.SwapsToolController"
       stylesheets="@ashigaru.css, @../darktheme.css"
-      styleClass="verifier-panel, swaps-panel"
-      spacing="16">
+      styleClass="verifier-panel, swaps-panel">
+<VBox fx:id="mainView" styleClass="verifier-panel, swaps-panel" spacing="16">
     <padding><Insets top="22" right="22" bottom="22" left="22"/></padding>
 
     <HBox spacing="12" alignment="BASELINE_LEFT">
@@ -81,3 +82,4 @@
         </VBox>
     </VBox>
 </VBox>
+</StackPane>

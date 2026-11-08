@@ -57,13 +57,39 @@ public final class SwapCopy {
 
     /** The consequence a user is most likely to miss: the maker's anti-spam deposit */
     public static String depositTerms(String depositBtc, String percent) {
-        return "If this swap fails, the maker may keep " + percent + " of your locked BTC (" + depositBtc + " BTC) as an anti-spam deposit. "
-                + "It is held for a short time after a refund. The maker can withhold it; otherwise you can claim it back.";
+        return depositHeadline(depositBtc, percent) + " " + depositDetail();
+    }
+
+    /** The deposit in one sentence, for the line that stands out */
+    public static String depositHeadline(String depositBtc, String percent) {
+        return "If this swap fails, the maker may keep " + percent + " of your locked BTC (" + depositBtc + " BTC) as an anti-spam deposit.";
+    }
+
+    /** What the deposit is and how it comes back */
+    public static String depositDetail() {
+        return "It is held for a short time after a refund. The maker can withhold it; otherwise you can claim it back.";
+    }
+
+    /** What pressing Approve does */
+    public static String approveEffect(String lockBtc) {
+        return "Publishes the signed lock to the Bitcoin network. From then, " + lockBtc
+                + " BTC is committed to this swap until it finishes or is cancelled.";
+    }
+
+    /** The same recovery story as {@link #refundTerms}, for a section already titled "If the maker does not complete" */
+    public static String cancelAndRefundSteps(String refundBtc) {
+        return "You can cancel " + cancelAfter() + " after the lock confirms. Ashigaru then publishes the cancel and the refund for you, "
+                + "returning up to " + refundBtc + " BTC to Badbank, minus network fees.";
     }
 
     /** Why Ashigaru has to stay open until a swap finishes */
     public static String keepRunning() {
-        return "Keep Ashigaru running until the swap finishes. A refund must be published within " + refundWindow()
-                + " of the cancel confirming, and Ashigaru does this while it is open.";
+        return "Keep Ashigaru running until the swap finishes. " + keepRunningDetail();
+    }
+
+    /** The deadline behind keeping Ashigaru open, for a section already titled "Keep Ashigaru running" */
+    public static String keepRunningDetail() {
+        return "A refund must be published within " + refundWindow() + " of the cancel confirming. Ashigaru does this while it is open, "
+                + "so keep it running until the swap finishes.";
     }
 }
