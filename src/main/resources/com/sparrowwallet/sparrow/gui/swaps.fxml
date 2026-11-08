@@ -23,36 +23,8 @@
 
     <!-- Everything else; hidden while a swap runs -->
     <VBox fx:id="offersView" spacing="16">
-        <!-- What is being swapped -->
-        <GridPane styleClass="ag-card" hgap="16" vgap="10">
-            <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
-            <columnConstraints>
-                <ColumnConstraints percentWidth="60"/>
-                <ColumnConstraints percentWidth="40"/>
-            </columnConstraints>
-            <Label text="Spend" styleClass="swaps-stat-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-            <Label text="Expected return" styleClass="swaps-stat-label" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-            <Label fx:id="spendAmount" text="—" styleClass="swaps-amount" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-            <Label fx:id="expectedReturn" text="—" styleClass="swaps-amount" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-            <Label fx:id="spendDetail" wrapText="true" minHeight="-Infinity" styleClass="card-faint" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-            <Label fx:id="returnDetail" wrapText="true" minHeight="-Infinity" styleClass="card-faint" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-            <TextField fx:id="xmrAddressField" promptText="Your XMR address (receives the swap)" GridPane.rowIndex="3" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
-        </GridPane>
-
-        <!-- Offers -->
-        <VBox spacing="10">
-            <HBox spacing="10" alignment="CENTER_LEFT">
-                <VBox spacing="2" HBox.hgrow="ALWAYS">
-                    <Label fx:id="offersTitle" text="Offers" styleClass="step-title"/>
-                    <Label fx:id="marketLine" styleClass="card-faint"/>
-                </VBox>
-                <Button minWidth="-Infinity" fx:id="refreshBtn" text="Refresh" onAction="#onRefresh" styleClass="secondary-btn"/>
-            </HBox>
-            <FlowPane fx:id="offerCards" hgap="12" vgap="12"/>
-            <Label fx:id="offersEmpty" wrapText="true" minHeight="-Infinity" styleClass="field-label"/>
-            <Label fx:id="offersFooter" wrapText="true" minHeight="-Infinity" styleClass="card-faint"/>
-            <Label fx:id="messageLabel" wrapText="true" minHeight="-Infinity" styleClass="field-label"/>
-        </VBox>
+        <!-- Everything about choosing an offer: attention notice, what is spent and received, the address, the comparison. The controller fills it. -->
+        <VBox fx:id="offersBox" spacing="16"/>
 
         <!-- Swaps -->
         <VBox spacing="8">

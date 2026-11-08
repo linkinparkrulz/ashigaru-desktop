@@ -6,6 +6,7 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
@@ -36,7 +37,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @EnabledIfEnvironmentVariable(named = "SWAP_SCREENSHOTS", matches = ".+")
 class SwapScreenshotsTest {
-    static final String ADDRESS = "4qRsDBoPDju5bT9fVyMjsF7VfVRbqMKuDbwoZHP33BdRRFZP3mjo9jP3f53MyMqbFRRVohPyPDFRD5ZBoQXfo7FPHRwym";
+    //Shaped like a mainnet address (95 characters starting with 4) but not a real one
+    static final String ADDRESS = "4q2Dkq6ozw8yQ3t9g3QygMp3xMYfnw6f2mr16unD8uzXkyQBS7As25AhCje1UdemiPgTYu21LugRY98q6ZvjEKvdgq2mtVY";
 
     @BeforeAll
     static void startToolkit() throws Exception {
@@ -442,5 +444,249 @@ class SwapScreenshotsTest {
             stage.get().close();
             return null;
         });
+    }
+
+    // ---------------------------------------------------------------- offers
+
+    private static final double[] RATES = {297.35, 296.90, 296.40, 296.10, 295.60, 295.20, 294.70, 293.90, 292.50};
+    private static final double[] DEPOSITS = {0.02, 0, 0, 0.05, 0, 0.02, 0, 0.10, 0};
+
+    private static List<com.sparrowwallet.sparrow.swap.SwapEngine.Quote> makers() {
+        List<com.sparrowwallet.sparrow.swap.SwapEngine.Quote> quotes = new ArrayList<>();
+        for(int i = 0; i < RATES.length; i++) {
+            String policy = DEPOSITS[i] == 0 ? "{\"type\":\"FullRefund\"}"
+                    : "{\"type\":\"PartialRefund\",\"content\":{\"anti_spam_deposit_ratio\":" + DEPOSITS[i] + "}}";
+            quotes.add(new com.sparrowwallet.sparrow.swap.SwapEngine.Quote("12D3KooWMaker" + i + "abcdefghijklmnopqrstuvwxyz", "/ip4/10.0.0." + (i + 1) + "/tcp/9939", "4.16.1",
+                    (long)(1e8 / RATES[i]), 100_000, 100_000_000, policy));
+        }
+        return quotes;
+    }
+
+    private SwapOffersPane.State offersState(boolean coin, String requesting, String working, boolean attention, SwapOffersPane pane) {
+        return new SwapOffersPane.State(
+                attention ? com.sparrowwallet.sparrow.swap.SwapAttention.of(com.google.gson.JsonParser.parseString(
+                        "[{\"swapId\":\"c20e9a17-0000-4000-8000-000000000000\",\"state\":\"waiting for cancel timelock expiration\",\"complete\":false,\"running\":false,\"past\":false}]").getAsJsonArray(), Instant.now()) : List.of(),
+                coin, coin ? 5_000_000 : 0, coin ? "Main" : "", coin ? 4_998_760 : 0, 1_240, null, makers(),
+                "Not shown: 3 offering more XMR than the market pays (makers that undercut the market refuse swaps)" + (coin ? ", 2 that cannot take 0.04998760 BTC" : "") + ", 1 running outdated software.",
+                "Market 1 BTC ≈ 298.80 XMR (Kraken, over Tor). Not an offer you can take.", 1 / 298.80, true, null,
+                quote -> !coin ? "Choose a Badbank coin first" : !SwapsToolController.isMainnetMoneroAddress(pane.getAddress()) ? "Enter your receiving XMR address first" : null,
+                working, requesting, Instant.now());
+    }
+
+    private SwapOffersPane offers(boolean coin, String address, String requesting, String working, boolean attention, List<String> pressed) throws Exception {
+        AtomicReference<SwapOffersPane> holder = new AtomicReference<>();
+        SwapOffersPane pane = onFx(() -> {
+            SwapOffersPane p = new SwapOffersPane(new SwapOffersPane.Listener() {
+                @Override
+                public void review(com.sparrowwallet.sparrow.swap.SwapEngine.Quote quote) {
+                    pressed.add("review " + quote.peerId());
+                }
+
+                @Override
+                public void chooseCoin() {
+                    pressed.add("choose");
+                }
+
+                @Override
+                public void viewRecovery(String swapId) {
+                    pressed.add("recovery " + swapId);
+                }
+
+                @Override
+                public void refresh() {
+                    pressed.add("refresh");
+                }
+            });
+            holder.set(p);
+            return p;
+        });
+        onFx(() -> {
+            pane.show(offersState(coin, requesting, working, attention, pane));
+            return null;
+        });
+        if(address != null) {
+            typeAddress(pane, address);
+        }
+        return pane;
+    }
+
+    /** Types into the pane's address field, which redraws the table as the real field would */
+    private static void typeAddress(SwapOffersPane pane, String address) throws Exception {
+        onFx(() -> {
+            javafx.scene.control.TextField field = (javafx.scene.control.TextField)findOne(pane, javafx.scene.control.TextField.class);
+            field.setText(address);
+            return null;
+        });
+    }
+
+    private static Node findOne(Node root, Class<? extends Node> type) {
+        if(type.isInstance(root)) {
+            return root;
+        }
+        if(root instanceof javafx.scene.Parent parent) {
+            for(Node child : parent.getChildrenUnmodifiable()) {
+                Node found = findOne(child, type);
+                if(found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static List<Button> reviewButtons(Node root) {
+        List<Button> buttons = new ArrayList<>();
+        for(Node node : root.lookupAll(".offer-review")) {
+            if(node instanceof Button button) {
+                buttons.add(button);
+            }
+        }
+        return buttons;
+    }
+
+    @Test
+    void offersAreReadyToReviewOnceThereIsACoinAndAnAddress() throws Exception {
+        List<String> pressed = new ArrayList<>();
+        SwapOffersPane pane = offers(true, ADDRESS, null, null, true, pressed);
+        shoot(pane, 845, 1500, "offers-ready-845");
+        List<Button> buttons = onFx(() -> reviewButtons(pane));
+        assertEquals(9, buttons.size(), "nine offers, nine ways to review one");
+        assertTrue(buttons.stream().noneMatch(Button::isDisable));
+        //The first is the one with the most XMR, and it is marked as such
+        assertEquals(1, onFx(() -> pane.lookupAll(".offer-chip").stream().filter(n -> n instanceof javafx.scene.control.Label l && l.getText().equals("Most XMR")).count()));
+        assertEquals(1, onFx(() -> pane.lookupAll(".offer-chip").stream().filter(n -> n instanceof javafx.scene.control.Label l && l.getText().equals("Best refund")).count()));
+        //The unfinished swap comes first, with a way to its recovery
+        Button recovery = onFx(() -> {
+            for(Node node : pane.lookupAll(".button")) {
+                if(node instanceof Button b && "View recovery".equals(b.getText())) {
+                    return b;
+                }
+            }
+            return null;
+        });
+        assertNotNull(recovery);
+        onFx(() -> {
+            recovery.fire();
+            return null;
+        });
+        assertEquals(List.of("recovery c20e9a17-0000-4000-8000-000000000000"), pressed);
+
+        onFx(() -> {
+            buttons.get(1).fire();
+            return null;
+        });
+        assertTrue(pressed.get(1).startsWith("review "));
+        //Primary text is never shortened to fit
+        assertEquals(0, onFx(() -> pane.lookupAll(".offer-review").stream().filter(n -> n instanceof Button b && b.getText().endsWith("…")).count()));
+    }
+
+    @Test
+    void withoutACoinThereIsAButtonAndTheOffersCannotBeReviewed() throws Exception {
+        List<String> pressed = new ArrayList<>();
+        SwapOffersPane pane = offers(false, null, null, null, false, pressed);
+        shoot(pane, 845, 1300, "offers-no-coin-845");
+        Button choose = onFx(() -> {
+            for(Node node : pane.lookupAll(".button")) {
+                if(node instanceof Button b && "Choose coin from Badbank".equals(b.getText())) {
+                    return b;
+                }
+            }
+            return null;
+        });
+        assertNotNull(choose, "a clear action, not only instructional text");
+        onFx(() -> {
+            choose.fire();
+            return null;
+        });
+        assertEquals(List.of("choose"), pressed);
+        assertTrue(onFx(() -> reviewButtons(pane)).stream().allMatch(Button::isDisable));
+        //With no coin the footer never mentions an amount
+        assertEquals(0, onFx(() -> pane.lookupAll(".review-fine").stream().filter(n -> n instanceof javafx.scene.control.Label l && l.getText().contains("cannot take 0.")).count()));
+    }
+
+    @Test
+    void typingAValidAddressEnablesTheOffers() throws Exception {
+        SwapOffersPane pane = offers(true, null, null, null, false, new ArrayList<>());
+        shoot(pane, 845, 1300, "offers-no-address-845");
+        assertTrue(onFx(() -> reviewButtons(pane)).stream().allMatch(Button::isDisable), "no address, no review");
+        typeAddress(pane, "4abc");
+        assertTrue(onFx(() -> reviewButtons(pane)).stream().allMatch(Button::isDisable), "a short address is not enough");
+        assertTrue(onFx(() -> pane.lookupAll(".offer-status-warn").stream().anyMatch(n -> n instanceof javafx.scene.control.Label l && l.getText().contains("This one has 4"))));
+        typeAddress(pane, ADDRESS);
+        assertTrue(onFx(() -> reviewButtons(pane)).stream().noneMatch(Button::isDisable), "a valid address enables every offer");
+        assertEquals(ADDRESS, onFx(pane::getAddress));
+    }
+
+    @Test
+    void sortingReordersAndDetailsExpand() throws Exception {
+        SwapOffersPane pane = offers(true, ADDRESS, null, null, false, new ArrayList<>());
+        shoot(pane, 845, 1500, "offers-sorted-845");
+        java.util.function.Supplier<String> firstMaker = () -> {
+            try {
+                return onFx(() -> ((javafx.scene.control.Label)pane.lookupAll(".offer-maker").iterator().next()).getText());
+            } catch(Exception e) {
+                throw new IllegalStateException(e);
+            }
+        };
+        String byXmr = firstMaker.get();
+        assertEquals("10.0.0.1:9939", byXmr, "most XMR first");
+        onFx(() -> {
+            for(Node node : pane.lookupAll(".offer-seg-btn")) {
+                if(node instanceof javafx.scene.control.ToggleButton b && b.getText().equals("Lowest deduction")) {
+                    b.fire();
+                }
+            }
+            return null;
+        });
+        assertEquals("10.0.0.2:9939", firstMaker.get(), "no deduction first, then the most XMR");
+
+        assertEquals(0, onFx(() -> pane.lookupAll(".offer-details").size()));
+        onFx(() -> {
+            for(Node node : pane.lookupAll(".offer-caret")) {
+                ((Button)node).fire();
+                break;
+            }
+            return null;
+        });
+        assertEquals(1, onFx(() -> pane.lookupAll(".offer-details").size()), "protocol version and limits are one click away");
+        shoot(pane, 845, 1500, "offers-details-845");
+    }
+
+    @Test
+    void whileASwapIsBeingSetUpOtherOffersAreHeld() throws Exception {
+        String maker = makers().get(1).peerId();
+        SwapOffersPane pane = offers(true, ADDRESS, maker, "Setting up the swap with the maker. This takes a few minutes, and nothing is locked yet.", false, new ArrayList<>());
+        shoot(pane, 845, 1500, "offers-requesting-845");
+        List<Button> buttons = onFx(() -> reviewButtons(pane));
+        assertEquals(8, buttons.size(), "the maker being contacted shows a spinner in place of its button");
+        assertTrue(buttons.stream().allMatch(Button::isDisable));
+    }
+
+    @Test
+    void theTableFoldsWhenThereIsNotRoomForAllColumns() throws Exception {
+        SwapOffersPane pane = offers(true, ADDRESS, null, null, false, new ArrayList<>());
+        shoot(pane, 640, 1700, "offers-narrow-640");
+        double minWidth = onFx(() -> pane.minWidth(-1));
+        if(minWidth > 640) {
+            //Say which part is too wide, so the fix goes where the problem is
+            StringBuilder widest = new StringBuilder();
+            onFx(() -> {
+                describeWide(pane, "", widest);
+                return null;
+            });
+            fail("folded offers need " + minWidth + "px; wide parts:\n" + widest);
+        }
+    }
+
+    private static void describeWide(Node node, String indent, StringBuilder out) {
+        double min = node.minWidth(-1);
+        if(min > 560) {
+            out.append(indent).append(node.getClass().getSimpleName()).append(' ').append(node.getStyleClass()).append(" min=").append(Math.round(min)).append('\n');
+            if(node instanceof javafx.scene.Parent parent) {
+                for(Node child : parent.getChildrenUnmodifiable()) {
+                    describeWide(child, indent + "  ", out);
+                }
+            }
+        }
     }
 }

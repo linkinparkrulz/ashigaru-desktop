@@ -1525,3 +1525,97 @@
 .dash-details > .title { -fx-background-color: -ag-bg-light; -fx-background-radius: 6; -fx-padding: 12 18 12 18; }
 .dash-details > .title > .text { -fx-fill: -ag-text; -fx-font-size: 14px; }
 .dash-details > .content { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border; -fx-border-width: 0 1 1 1; -fx-padding: 8 18 8 18; }
+
+/* ── Swap offers ───────────────────────────────────────────────────────────────
+   A comparison. Primary: the estimated XMR and what the maker may keep if cancelled. Secondary: the maker
+   and rate. Tertiary: the gaps to the best offer and to the market, one quiet line. Nothing is made
+   fainter to save room. The market rate sits in a dashed strip: a reference, not an offer. */
+.offer-divider { -fx-background-color: -ag-border; }
+.offer-field-label { -fx-text-fill: -ag-text; -fx-font-family: "Roboto Medium"; -fx-font-size: 14px; }
+.offer-address {
+    -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
+    -fx-font-size: 14px;
+    -fx-text-fill: -ag-text;
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border-strong;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 10 12 10 12;
+}
+.offer-address:focused { -fx-border-color: -ag-blue; }
+.offer-address-bad, .offer-address-bad:focused { -fx-border-color: -ag-warn; }
+.offer-status-ok { -fx-text-fill: #7bd07f; }
+.offer-status-warn { -fx-text-fill: -ag-warn; }
+.button.offer-link {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -ag-text-dim;
+    -fx-font-family: "Roboto";
+    -fx-font-size: 13px;
+    -fx-underline: true;
+    -fx-padding: 0;
+}
+.button.offer-link:hover { -fx-background-color: transparent; -fx-text-fill: -ag-text; }
+.offer-figure-small { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 18px; -fx-text-fill: -ag-text; }
+.offer-figure-dim { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 18px; -fx-text-fill: -ag-text-dim; }
+.offer-ref {
+    -fx-border-color: -ag-border-strong;
+    -fx-border-style: dashed;
+    -fx-border-radius: 6;
+    -fx-padding: 10 14 10 14;
+}
+.offer-ref-chip {
+    -fx-border-color: -ag-border-strong;
+    -fx-border-style: dashed;
+    -fx-border-radius: 999;
+    -fx-text-fill: -ag-text-dim;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 12px;
+    -fx-padding: 2 10 2 10;
+}
+.offer-seg { -fx-background-color: -ag-bg-mid; -fx-border-color: -ag-border; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 3; }
+.toggle-button.offer-seg-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -ag-text-dim;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 13px;
+    -fx-background-radius: 6;
+    -fx-padding: 6 12 6 12;
+}
+.toggle-button.offer-seg-btn:hover { -fx-text-fill: -ag-text; -fx-background-color: transparent; }
+.toggle-button.offer-seg-btn:selected { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
+.offer-dot-info { -fx-background-color: -ag-blue; }
+.offer-head { -fx-background-color: -ag-bg-mid; -fx-border-color: -ag-border-strong; -fx-border-width: 1 0 1 0; }
+.offer-row { -fx-border-color: transparent transparent -ag-border transparent; -fx-border-width: 0 0 1 3; }
+.offer-row:hover { -fx-background-color: -ag-bg-mid; }
+.offer-row-best { -fx-border-color: transparent transparent -ag-border -ag-text; }
+.offer-amount { -fx-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 18px; }
+.offer-tick { -fx-text-fill: #7bd07f; -fx-font-family: "Roboto Medium"; }
+.offer-deduction { -fx-text-fill: -ag-text; -fx-font-size: 15px; }
+.offer-maker { -fx-text-fill: -ag-text-dim; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 14px; }
+.button.offer-review {
+    -fx-background-color: transparent;
+    -fx-border-color: -ag-border-strong;
+    -fx-text-fill: -ag-text;
+    -fx-padding: 8 14 8 14;
+}
+.button.offer-review:hover { -fx-background-color: -ag-accent; -fx-border-color: -ag-accent-dark; -fx-text-fill: #fff; }
+.button.offer-review:disabled { -fx-opacity: 0.4; }
+.button.offer-caret {
+    -fx-background-color: transparent;
+    -fx-border-color: -ag-border;
+    -fx-text-fill: -ag-text-dim;
+    -fx-padding: 8 10 8 10;
+}
+.button.offer-caret:hover { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
+.offer-chip {
+    -fx-background-color: -ag-bg-raised;
+    -fx-text-fill: -ag-text-dim;
+    -fx-background-radius: 999;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 12px;
+    -fx-padding: 3 11 3 11;
+}
+.offer-details { -fx-background-color: -ag-bg; -fx-border-color: -ag-border; -fx-border-width: 0 0 1 0; }
+.offer-detail-value { -fx-text-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 13px; }

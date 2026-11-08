@@ -839,6 +839,17 @@ public class AshigaruMainController implements Initializable {
         }
     }
 
+    /**
+     * Leaves Tools for the open wallet's Badbank, where a coin is ticked to swap. With no wallet open there
+     * is no Badbank to show, so it only leaves Tools.
+     */
+    public void openBadbank() {
+        closeTool();
+        if(badbankBtn.isVisible() && badbankBtn.isManaged() && !badbankBtn.isSelected()) {
+            badbankBtn.fire();
+        }
+    }
+
     private void closeTool() {
         contentPane.setUserData(null);
         WalletListItem selected = walletSelector.getSelectionModel().getSelectedItem();

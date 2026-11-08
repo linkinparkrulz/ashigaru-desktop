@@ -156,6 +156,14 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
         return new Milestones(MAIN, index, attention, false, null, notes);
     }
 
+    /** The named stage a step belongs to ("Lock BTC"), or null for a step outside the main path */
+    public static String milestone(SwapProgress.Step step) {
+        return switch(step) {
+            case NODES, TERMS, APPROVAL, LOCK_PUBLISH, LOCK_CONFIRM, MAKER_LOCK, MAKER_CONFIRM, RELEASE, CLAIM, DONE -> MAIN.get(mainIndex(step));
+            default -> null;
+        };
+    }
+
     private static int mainIndex(SwapProgress.Step step) {
         return switch(step) {
             case NODES, TERMS, APPROVAL, WORKING, STOPPED -> 0;

@@ -520,9 +520,9 @@ public class AshigaruWalletController implements Initializable {
         swapBanner.setVisible(show);
         swapBanner.setManaged(show);
         if(show) {
-            int index = SwapProgress.MAIN_STEPS.indexOf(status.step());
-            swapBannerLabel.setText("Swap to XMR in progress: " + (index >= 0 ? "step " + (index + 1) + " of " + SwapProgress.MAIN_STEPS.size() + ", " : "")
-                    + status.step().getTitle().toLowerCase(java.util.Locale.ROOT) + ".");
+            //A named stage, not "step 3 of 10": a count reads as nearly finished however long the waits ahead are
+            String milestone = com.sparrowwallet.sparrow.swap.SwapDashboard.milestone(status.step());
+            swapBannerLabel.setText("Swap to XMR in progress: " + (milestone != null ? milestone + ", " : "") + status.step().getTitle().toLowerCase(java.util.Locale.ROOT) + ".");
         }
     }
 
