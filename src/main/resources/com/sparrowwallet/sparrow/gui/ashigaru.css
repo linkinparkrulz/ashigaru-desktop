@@ -57,7 +57,7 @@
 .ag-chip {
     -fx-background-color: -ag-bg-raised;
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 11px;
+    -fx-font-size: 12px;
     -fx-padding: 3 9 3 9;
     -fx-background-radius: 999;
 }
@@ -69,12 +69,14 @@
     -fx-background:       -ag-bg;
     -fx-control-inner-background: -ag-bg-mid;
     -fx-text-fill:        -ag-text;
-    /* Nikkyou Sans is the application face. Anything that must stay monospaced - amounts,
-       addresses, hashes, typed input, anything that lines up in a column - pins the family
-       back explicitly below. Defaulting this way round means a screen added later is on the
-       right font without anyone remembering to say so. */
-    -fx-font-family:      "Nikkyou Sans";
-    -fx-font-size:        13px;
+    /* Roboto is the interface face, 14px for anything a user must understand and 13px for supporting
+       detail, never smaller (small uppercase labels are the one exception, 12px). Nikkyou Sans is for
+       screen titles and key headings only, and each of those classes opts in below. Anything that must
+       stay monospaced - amounts, addresses, hashes, typed input, anything that lines up in a column -
+       pins Roboto Mono explicitly. Defaulting to Roboto means a screen added later is readable without
+       anyone remembering to say so. */
+    -fx-font-family:      "Roboto";
+    -fx-font-size:        14px;
     /* Replace Modena's blue accent/focus with our red */
     -fx-accent:           -ag-accent;
     -fx-focus-color:      -ag-accent;
@@ -94,15 +96,19 @@
 
 /* Nikkyou Sans on the display-sized text only. It ships a single weight, so -fx-font-weight is
    deliberately absent wherever it is applied: JavaFX would synthesise a fake bold and smear the
-   letterforms. Body text, the 10px wizard eyebrow and the type-card titles keep the system face,
-   where a poster letterform costs legibility for no gain. */
+   letterforms. Body text, eyebrow labels and the type-card titles keep Roboto, where a poster
+   letterform costs legibility for no gain. */
+.app-title, .app-title-sub, .welcome-title, .wizard-title, .splash-title, .splash-subtitle,
+.verifier-hero-title, .tour-step-title, .swaps-title, .swaps-step-title {
+    -fx-font-family: "Nikkyou Sans";
+}
 .app-title {
     -fx-text-fill: -ag-text;
     -fx-font-size: 16px;
 }
 .app-title-sub {
     -fx-text-fill: -ag-accent;
-    -fx-font-size: 10px;
+    -fx-font-size: 12px;
     -fx-padding: 3 0 0 0;
 }
 .header-logo-frame {
@@ -115,7 +121,7 @@
 }
 
 .network-label {
-    -fx-font-size: 11px;
+    -fx-font-size: 12px;
     -fx-padding: 3 8 3 8;
     -fx-background-radius: -ag-radius;
 }
@@ -125,7 +131,7 @@
 .header-info {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;  /* block height */
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 
 .connected    { -fx-text-fill: -ag-green !important; }
@@ -158,7 +164,7 @@
 
 .sidebar-section-title {
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 10px;
+    -fx-font-size: 12px;
 }
 
 .wallet-list {
@@ -185,10 +191,11 @@
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
-/* Nikkyou Sans on the chrome. Every Button carries .button, so this covers the sidebar nav, Tools,
-   Settings, the wizard and the dialog button bars in one place. Data keeps the RobotoMono base set
-   on .root - addresses, xpubs, amounts and the log view stay monospaced and aligned. */
+/* Roboto Medium on the chrome. Every Button carries .button, so this covers the sidebar nav, Tools,
+   Settings, the wizard and the dialog button bars in one place. Data keeps Roboto Mono, set where
+   it is shown - addresses, xpubs, amounts and the log view stay monospaced and aligned. */
 .button {
+    -fx-font-family: "Roboto Medium";
     -fx-background-color: -ag-bg-light;
     -fx-text-fill: -ag-text;
     -fx-border-color: -ag-border;
@@ -225,7 +232,7 @@
     -fx-text-fill: -ag-text-dim;
     -fx-border-color: transparent;
     -fx-alignment: CENTER_LEFT;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
     -fx-padding: 5 10 5 10;
     -fx-cursor: hand;
 }
@@ -244,12 +251,12 @@
 .nav-btn:hover { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
 
 .mix-btn { -fx-min-width: 140; }
-.refresh-btn { -fx-font-size: 11px; -fx-padding: 4 10 4 10; }
+.refresh-btn { -fx-font-size: 13px; -fx-padding: 4 10 4 10; }
 .delete-btn {
     -fx-background-color: derive(-ag-accent, -70%);
     -fx-text-fill: #fff;
     -fx-border-color: -ag-accent-dark;
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
     -fx-padding: 4 10 4 10;
 }
 .delete-btn:hover { -fx-background-color: derive(-ag-accent, -55%); }
@@ -286,7 +293,7 @@
     -fx-font-size: 22px;
 }
 .welcome-sub   { -fx-text-fill: -ag-text-dim;   -fx-font-size: 14px; }
-.welcome-hint  { -fx-text-fill: -ag-text-faint; -fx-font-size: 12px; -fx-text-alignment: center; }
+.welcome-hint  { -fx-text-fill: -ag-text-faint; -fx-font-size: 13px; -fx-text-alignment: center; }
 .welcome-hint.mono { -fx-font-family: monospace; -fx-text-fill: -ag-accent; }
 
 /* ── Wallet panel ─────────────────────────────────────────────────────────── */
@@ -347,7 +354,7 @@
 }
 .balance-caption {
     -fx-text-fill: -ag-text-faint;
-    -fx-font-size: 10px;
+    -fx-font-size: 12px;
 }
 .balance-value           {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;  /* wallet balance */ -fx-text-fill: -ag-text;     -fx-font-size: 20px; -fx-font-weight: bold; }
@@ -366,7 +373,7 @@
 }
 .utxo-table .column-header-background .label {
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
     -fx-alignment: CENTER_LEFT;
 }
 .utxo-table .table-row-cell {
@@ -382,7 +389,7 @@
 .utxo-table .table-cell {
     -fx-text-fill: -ag-text;
     -fx-padding: 6 10 6 10;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
     -fx-alignment: CENTER_LEFT;
 }
 .table-placeholder { -fx-text-fill: -ag-text-faint; }
@@ -413,8 +420,8 @@
 .card-value     { -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
                   -fx-text-fill: -ag-text;       -fx-font-size: 16px; -fx-font-weight: bold; }
 .card-secondary { -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
-                  -fx-text-fill: -ag-text-dim;   -fx-font-size: 12px; }
-.card-faint     { -fx-text-fill: -ag-text-faint; -fx-font-size: 11px; }
+                  -fx-text-fill: -ag-text-dim;   -fx-font-size: 13px; }
+.card-faint     { -fx-text-fill: -ag-text-faint; -fx-font-size: 13px; }
 
 /* Whirlpool Stats chart: orange (first pool) + yellow (second pool) series */
 .stats-chart .default-color0.chart-series-line { -fx-stroke: #ff9500; -fx-stroke-width: 2px; }
@@ -425,7 +432,7 @@
 /* Inline link inside a card (e.g. Stats tx explorer / exposure links) */
 .card-link {
     -fx-text-fill: -ag-accent;
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
     -fx-padding: 0;
     -fx-border-color: transparent;
 }
@@ -440,7 +447,7 @@
 .paynym-code {
     -fx-text-fill: -ag-text-dim;
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
 }
 /* Neutral disc shown behind the avatar while it loads (and if unavailable) */
 .avatar-placeholder {
@@ -482,7 +489,7 @@
     -fx-prompt-text-fill: -ag-text-faint;
     -fx-border-color: transparent;
     -fx-padding: 2 0 2 0;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .card-label-field:focused {
     -fx-background-color: -ag-bg-light;
@@ -498,7 +505,7 @@
     -fx-background-color: -ag-bg-raised;
     -fx-background-radius: 999;
 }
-.mix-badge .mix-badge-text { -fx-text-fill: -ag-text-dim; -fx-font-size: 11px;}
+.mix-badge .mix-badge-text { -fx-text-fill: -ag-text-dim; -fx-font-size: 12px;}
 .mix-badge.active          { -fx-background-color: -ag-accent-faint; }
 .mix-badge.active .mix-badge-text { -fx-text-fill: -ag-accent; }
 .mix-badge.done            { -fx-background-color: derive(-ag-green, -65%); }
@@ -519,7 +526,7 @@
 }
 .status-label {
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
 }
 
 /* ── Dialogs (Tx0, Mix To) ────────────────────────────────────────────────── */
@@ -539,7 +546,7 @@
 
 .section-title {
     -fx-text-fill: -ag-accent;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 
 /* Tx0 broadcast animation overlay */
@@ -603,9 +610,9 @@
     -fx-border-color: -ag-border;
     -fx-border-width: 0 0 1 0;
 }
-.wizard-eyebrow  { -fx-text-fill: -ag-accent;    -fx-font-size: 10px;}
+.wizard-eyebrow  { -fx-text-fill: -ag-accent;    -fx-font-size: 12px;}
 .wizard-title    { -fx-text-fill: -ag-text; -fx-font-size: 18px; }
-.wizard-subtitle { -fx-text-fill: -ag-text-dim;  -fx-font-size: 12px; -fx-padding: 2 0 0 0; }
+.wizard-subtitle { -fx-text-fill: -ag-text-dim;  -fx-font-size: 13px; -fx-padding: 2 0 0 0; }
 
 /* Large selectable choice cards (wallet type / seed length) */
 .type-card {
@@ -621,7 +628,7 @@
     -fx-border-color: -ag-accent;
 }
 .type-card-title { -fx-text-fill: -ag-text; -fx-font-size: 14px; }
-.type-card-desc  { -fx-text-fill: -ag-text-dim; -fx-font-size: 12px; }
+.type-card-desc  { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
 
 /* ── Toggle buttons ───────────────────────────────────────────────────────── */
 .toggle-button {
@@ -677,7 +684,7 @@
     -fx-border-width: 0 0 1 0;
 }
 .badbank-warning-icon { -fx-text-fill: -ag-testnet; -fx-font-size: 14px; }
-.badbank-info-text    { -fx-text-fill: -ag-testnet; -fx-font-size: 11px; }
+.badbank-info-text    { -fx-text-fill: -ag-testnet; -fx-font-size: 13px; }
 
 /* ── Coordinator-unreachable warning bar ──────────────────────────────────── */
 .coordinator-warning-bar {
@@ -686,7 +693,7 @@
     -fx-border-width: 0 0 1 0;
 }
 .coordinator-warning-icon { -fx-text-fill: -ag-accent; -fx-font-size: 14px; }
-.coordinator-warning-text { -fx-text-fill: -ag-accent; -fx-font-size: 11px; }
+.coordinator-warning-text { -fx-text-fill: -ag-accent; -fx-font-size: 13px; }
 
 /* ── Syncing bar (wallet history refreshing) ──────────────────────────────── */
 .syncing-bar {
@@ -694,7 +701,7 @@
     -fx-border-color: -ag-blue;
     -fx-border-width: 0 0 1 0;
 }
-.syncing-text { -fx-text-fill: -ag-blue; -fx-font-size: 11px; }
+.syncing-text { -fx-text-fill: -ag-blue; -fx-font-size: 13px; }
 .syncing-spinner { -fx-progress-color: -ag-blue; }
 .syncing-spinner .percentage { visibility: hidden; }
 
@@ -758,12 +765,12 @@
 }
 .splash-caption {
     -fx-text-fill: -ag-text-faint;
-    -fx-font-size: 10px;
+    -fx-font-size: 12px;
 }
 .splash-chip {
     -fx-background-color: derive(-ag-accent, -70%);
     -fx-text-fill: -ag-accent;
-    -fx-font-size: 10px;
+    -fx-font-size: 12px;
     -fx-padding: 3 7 3 7;
     -fx-background-radius: 3;
 }
@@ -774,7 +781,7 @@
 /* Startup steps. Pending is deliberately quiet so the eye lands on whatever is happening now. */
 .splash-step {
     -fx-text-fill: -ag-text-faint;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .splash-step-active { -fx-text-fill: -ag-text; }
 .splash-step-done   { -fx-text-fill: -ag-green; }
@@ -841,7 +848,7 @@
 }
 .menu-item .label {
     -fx-text-fill: -ag-text;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .menu-item:hover, .menu-item:focused {
     -fx-background-color: derive(-ag-accent, -65%);
@@ -881,7 +888,7 @@
 }
 .wallet-selector .list-cell {
     -fx-text-fill: -ag-text;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .wallet-selector .wallet-selector-placeholder {
     -fx-text-fill: -ag-text-faint;
@@ -941,7 +948,7 @@
     -fx-text-fill: -ag-text-dim;
     -fx-border-color: transparent;
     -fx-padding: 2 8 2 0;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .prefs-back-btn:hover {
     -fx-background-color: transparent;
@@ -980,7 +987,7 @@
 .seed-word-grid .label {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;  /* seed word numbering */
     -fx-text-fill: -ag-text-faint;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .seed-word-grid .text-field {
     -fx-background-color: -ag-bg-light;
@@ -1011,21 +1018,21 @@
     -fx-border-radius: 999;
 }
 /* No font properties here: CSS font rules re-derive the font from the inherited family
-   (Nikkyou Sans), which has none of the icon codepoints — the Glyph would render invisible.
+   (Roboto), which has none of the icon codepoints — the Glyph would render invisible.
    The Glyph's own fontSize attribute sizes the icon instead. */
 .verifier-hero-glyph { -fx-text-fill: -ag-accent; }
 .verifier-hero-title { -fx-text-fill: -ag-text;   -fx-font-size: 18px;}
-.verifier-hero-sub   { -fx-text-fill: -ag-text-dim; -fx-font-size: 12px; }
+.verifier-hero-sub   { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
 
 .step-chip   { -fx-min-width: 22; -fx-alignment: CENTER; }
 .step-title  { -fx-text-fill: -ag-text; -fx-font-size: 13px;}
-.step-optional { -fx-text-fill: -ag-text-faint; -fx-font-size: 11px; -fx-font-style: italic; }
+.step-optional { -fx-text-fill: -ag-text-faint; -fx-font-size: 13px; -fx-font-style: italic; }
 
 .verify-btn { -fx-font-size: 14px; -fx-padding: 10 16 10 16; }
 
 .verifier-panel .text-area {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .verifier-result-box {
     -fx-background-color: -ag-bg-mid;
@@ -1076,11 +1083,11 @@
 }
 .tour-eyebrow {
     -fx-text-fill: -ag-accent;
-    -fx-font-size: 10px;
+    -fx-font-size: 12px;
 }
 .tour-progress {
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .tour-step-title {
     -fx-text-fill: -ag-text;
@@ -1148,11 +1155,11 @@
 }
 #tourPopover .tour-pop-counter {
     -fx-text-fill: -ag-text-faint;
-    -fx-font-size: 11px;
+    -fx-font-size: 12px;
     -fx-font-weight: normal;
 }
 #tourPopover .button {
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
     -fx-font-weight: normal;
     -fx-padding: 6 14 6 14;
 }
@@ -1182,7 +1189,7 @@
 /* ── Diceware passphrase helper ─────────────────────────────────────────────── */
 .diceware-instruction {
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .diceware-index {
     -fx-text-fill: -ag-text-faint;
@@ -1215,7 +1222,7 @@
 /* Advisory (never blocking) warning for a weak hand-typed passphrase */
 .passphrase-weakness {
     -fx-text-fill: -ag-testnet;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 
 /* Serious "write this down or lose your funds" warning on the dice review screen */
@@ -1320,7 +1327,7 @@
     -fx-border-color: -ag-red;
 }
 .swaps-badge {
-    -fx-font-size: 10px;
+    -fx-font-size: 12px;
     -fx-text-fill: -ag-text;
     -fx-background-color: -ag-accent-tint;
     -fx-background-radius: 8;

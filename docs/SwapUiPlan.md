@@ -22,8 +22,9 @@ features. It is making the swap easier to read, harder to misunderstand, and hon
   anything a user must understand, 13px for supporting detail, nothing smaller), Roboto Mono for amounts,
   addresses and ids. This applies across the app, not only to swaps.
 - **Window size.** Minimum 1200 and default 1280 (always clamped to the screen). Swaps sits inside Tools,
-  which adds a 190px menu beside the 236px sidebar, so at today's 1100px window Swaps gets about 613px.
-  The offers table needs about 700px.
+  which adds a 190px menu beside the 236px sidebar, so at today's 1100px window Swaps gets about 613px
+  with the menu open. The menu starts collapsed (58px) and most users keep it so, which gives about 745px
+  at 1100 and 925px at 1280. The offers table needs about 700px.
 
 ## Engine facts (mainnet, pinned `EIGENWALLET_REV`)
 

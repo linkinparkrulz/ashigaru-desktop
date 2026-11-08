@@ -67,7 +67,11 @@ public class AshigaruGui extends Application {
         this.mainStage = stage;
 
         Font.loadFont(AppServices.class.getResourceAsStream("/font/RobotoMono-Regular.ttf"), 13);
-        //Registers the family name "Nikkyou Sans" for the splash title. Loaded here rather than
+        //Roboto is the interface face: Regular and Bold register as "Roboto", Medium as "Roboto Medium"
+        Font.loadFont(AppServices.class.getResourceAsStream("/font/Roboto-Regular.ttf"), 14);
+        Font.loadFont(AppServices.class.getResourceAsStream("/font/Roboto-Medium.ttf"), 14);
+        Font.loadFont(AppServices.class.getResourceAsStream("/font/Roboto-Bold.ttf"), 14);
+        //Registers the family name "Nikkyou Sans" for titles and key headings. Loaded here rather than
         //lazily because the splash is built further down this same method and would otherwise
         //fall back to the default face without any error.
         Font.loadFont(AppServices.class.getResourceAsStream("/font/NikkyouSans.ttf"), 13);
@@ -81,15 +85,15 @@ public class AshigaruGui extends Application {
         //the panel cover the bottom of the window, so neither the minimum nor the initial size may
         //exceed it. The sidebar scrolls instead of setting the minimum height.
         Rectangle2D visualBounds = Screen.getPrimary().getVisualBounds();
-        Scene scene = new Scene(root, Math.min(1100, visualBounds.getWidth()), Math.min(800, visualBounds.getHeight()));
+        Scene scene = new Scene(root, WindowSizing.width(visualBounds.getWidth()), WindowSizing.height(visualBounds.getHeight()));
         AppServices.addAshigaruStylesheets(scene.getStylesheets());
         //The scene fill also becomes the native window background, which is what shows in the area a
         //resize exposes before the next layout pass. Left at the default white it flashes on every drag.
         scene.setFill(APP_BACKGROUND);
 
         stage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION);
-        stage.setMinWidth(Math.min(720, visualBounds.getWidth()));
-        stage.setMinHeight(Math.min(520, visualBounds.getHeight()));
+        stage.setMinWidth(WindowSizing.minWidth(visualBounds.getWidth()));
+        stage.setMinHeight(WindowSizing.minHeight(visualBounds.getHeight()));
         stage.setScene(scene);
 
         // Set app icon (window + macOS Dock). Use the padded variant: the full-bleed circle logo
