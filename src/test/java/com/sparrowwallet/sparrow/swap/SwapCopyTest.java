@@ -25,7 +25,7 @@ class SwapCopyTest {
         assertTrue(terms.contains("up to 0.04898785 BTC"));
         assertTrue(terms.contains("minus network fees"));
         assertTrue(terms.contains("by itself while it is running"));
-        assertTrue(terms.contains("about 4 hours"));
+        assertTrue(terms.contains("about 5 hours"));
     }
 
     @Test
@@ -47,7 +47,7 @@ class SwapCopyTest {
 
     @Test
     void theReviewColumnsTellTheSameStoryAsTheDialogs() {
-        assertTrue(SwapCopy.cancelAndRefundSteps("0.04898785").contains("about 4 hours after the lock confirms"));
+        assertTrue(SwapCopy.cancelAndRefundSteps("0.04898785").contains("about 5 hours after the lock confirms"));
         assertTrue(SwapCopy.cancelAndRefundSteps("0.04898785").contains("up to 0.04898785 BTC"));
         assertTrue(SwapCopy.keepRunningDetail().contains("within about 24 hours of the cancel confirming"));
         assertTrue(SwapCopy.keepRunning().endsWith(SwapCopy.keepRunningDetail()));

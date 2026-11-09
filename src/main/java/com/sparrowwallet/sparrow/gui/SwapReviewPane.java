@@ -21,11 +21,10 @@ import java.time.Instant;
 import java.util.Locale;
 
 /**
- * The swap's final review, drawn in the Swaps screen instead of a dialog. Two stages: "prepare" (sign
- * the lock transaction on this computer, nothing is published) and "commit" (the final terms, then
- * approve and publish the BTC lock). The action bar of the commit stage is pinned below a scrolling
- * body, so Approve and Reject stay in view however much of the terms is scrolled; the bar says what
- * is below. It only draws a {@link SwapReview} and reports the user's choice through its decision.
+ * The swap's final review, drawn in the Swaps screen instead of a dialog: the final terms, then approve
+ * and publish the BTC lock. The action bar is pinned below a scrolling body, so Approve and Reject stay
+ * in view however much of the terms is scrolled; the bar says what is below. It only draws a
+ * {@link SwapReview} and reports the user's choice through its decision.
  */
 public class SwapReviewPane extends BorderPane {
     private static final String TITLE = "Send BTC  →  Receive XMR";
@@ -55,11 +54,7 @@ public class SwapReviewPane extends BorderPane {
         content.getChildren().clear();
         bar.getChildren().clear();
         setBottom(null);
-        if(review.stage() == SwapReview.Stage.PREPARE) {
-            buildPrepare(review);
-        } else {
-            buildCommit(review);
-        }
+        buildReview(review);
         scroll.setVvalue(0);
     }
 
@@ -78,49 +73,8 @@ public class SwapReviewPane extends BorderPane {
         return expiryChip == null ? null : expiryChip.getText();
     }
 
-    private void buildPrepare(SwapReview review) {
-        content.getChildren().add(titleRow(1));
-
-        VBox card = card();
-        card.setMaxWidth(680);
-        Label eyebrow = eyebrow("Step 1 of 2 · Nothing is published");
-        Label heading = label("Sign the lock on this computer", "review-heading");
-        Label intro = wrapped("Ashigaru built the transaction that locks your coin into the swap. Signing only prepares it. Next you will see the "
-                + "final terms, including exactly how much XMR you receive, and nothing is published unless you approve them.", "review-body");
-
-        VBox rows = new VBox();
-        rows.getChildren().addAll(
-                row("Coin from Badbank", review.coinBtc() + " BTC", false),
-                row("Locked in the swap", review.lockBtc() + " BTC", false),
-                row("Network fee, taken from the coin", sats(review.feeSats()) + " sats", false),
-                row("Change returned to Badbank", "None", true));
-
-        HBox notice = new HBox(10, label("●", "review-info-dot"),
-                wrapped("After you sign, you have about 3 minutes to review and approve the final terms. If that time runs out, nothing is published.", "review-body"));
-        notice.getStyleClass().add("review-line");
-        notice.setAlignment(Pos.CENTER_LEFT);
-
-        Button sign = button(review.passwordNeeded() ? "Sign with wallet password" : "Sign the lock", "primary-btn", "review-primary");
-        Button cancel = button("Cancel swap", "secondary-btn");
-        sign.setOnAction(event -> {
-            sign.setDisable(true);
-            cancel.setDisable(true);
-            review.decision().confirm();
-        });
-        cancel.setOnAction(event -> {
-            sign.setDisable(true);
-            cancel.setDisable(true);
-            review.decision().decline();
-        });
-        HBox buttons = new HBox(12, sign, cancel);
-        buttons.setAlignment(Pos.CENTER_LEFT);
-
-        card.getChildren().addAll(new VBox(6, eyebrow, heading), intro, rows, notice, buttons);
-        content.getChildren().add(card);
-    }
-
-    private void buildCommit(SwapReview review) {
-        content.getChildren().add(titleRow(2));
+    private void buildReview(SwapReview review) {
+        content.getChildren().add(titleRow());
 
         //What you send and what you receive, the two figures the decision is about
         HBox hero = new HBox(20);
@@ -228,17 +182,14 @@ public class SwapReviewPane extends BorderPane {
         startCountdown(review.expiresAt());
     }
 
-    /** The title with where the user is in the two stages, and for the commit stage the real deadline */
-    private HBox titleRow(int stage) {
+    /** The title, and the real deadline for the decision */
+    private HBox titleRow() {
         Label title = label(TITLE, "swaps-title");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        Label prepare = chip(stage > 1 ? "✓ Prepare" : "1 Prepare", stage > 1 ? "review-chip-done" : "review-chip-current");
-        Label arrow = label("→", "review-dim");
-        Label commit = chip("2 Commit", stage == 2 ? "review-chip-current" : "review-chip");
-        HBox row = new HBox(12, title, spacer, prepare, arrow, commit);
+        HBox row = new HBox(12, title, spacer);
         row.setAlignment(Pos.CENTER_LEFT);
-        if(stage == 2 && review != null && review.expiresAt() != null) {
+        if(review != null && review.expiresAt() != null) {
             expiryChip = chip("Review expires in " + SwapReview.countdown(java.time.Duration.between(Instant.now(), review.expiresAt())), "review-chip-warn");
             row.getChildren().add(expiryChip);
         }

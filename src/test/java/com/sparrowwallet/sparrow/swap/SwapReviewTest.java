@@ -52,14 +52,6 @@ class SwapReviewTest {
     }
 
     @Test
-    void thePrepareStageHasNoDeposit() {
-        SwapReview prepare = SwapReview.prepare(5_000_000, 4_998_760, 1_240, true, NONE);
-        assertEquals(SwapReview.Stage.PREPARE, prepare.stage());
-        assertFalse(prepare.hasDeposit());
-        assertTrue(prepare.passwordNeeded());
-    }
-
-    @Test
     void thePriceIsWorkedOutFromTheTerms() {
         assertEquals(296.4, commit(0, false).xmrPerBtc(), 0.01);
     }

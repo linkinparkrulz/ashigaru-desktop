@@ -5,10 +5,10 @@ features. It is making the swap easier to read, harder to misunderstand, and hon
 
 ## Decisions
 
-- **Final review is a proper screen.** Signing ("Prepare") and approving ("Commit") are two stages of one
-  in-page panel with a pinned action bar. Only the wallet password stays a focused dialog. If the Swaps
-  screen is not visible when a request arrives, it falls back to a modal so a request cannot expire
-  unseen.
+- **Final review is a proper screen.** Approving ("Commit") is an in-page panel with a pinned action bar.
+  The wallet password is asked once, earlier, when the swap is started (see "Engine facts": eigenwallet 5
+  needs the keys during setup), so there is no separate signing stage. If the Swaps screen is not visible
+  when a request arrives, it falls back to a modal so a request cannot expire unseen.
 - **The dashboard answers five questions:** where are my funds, do I need to act, can I close Ashigaru,
   what if it stalls, when does recovery open. Five named milestones replace the continuous bar:
   Review and authorize, Lock BTC, Verify the maker's XMR, Claim XMR, Complete. Protocol steps stay in a
@@ -28,9 +28,16 @@ features. It is making the swap easier to read, harder to misunderstand, and hon
 
 ## Engine facts (mainnet, pinned `EIGENWALLET_REV`)
 
-- Cancel timelock 24 blocks (about 4 hours). Punish timelock 144 blocks (about 24 hours), counted from
-  the cancel confirming. (`docs/SwapEngineSpike.md` says 72; the code says 144.)
-- The 180 second approval timeout starts when the final approval is requested, after signing.
+- Cancel timelock 30 blocks (about 5 hours; 24 blocks on eigenwallet 4). Punish timelock 144 blocks (about
+  24 hours), counted from the cancel confirming. A remaining-refund timelock of 2 blocks (about 20 minutes)
+  governs the anti-spam deposit window. (`docs/SwapEngineSpike.md` says 72; the code says 144.)
+- The approval timeout is 90 seconds (180 on eigenwallet 4) and starts when the final approval is requested.
+  Ashigaru's review closes as a rejection at 85 seconds. The maker also keeps the setup open for at most 180
+  seconds after it completes.
+- Setup, in order: the maker's terms, the lock built and its input ownership proved, the lock signed, then
+  the approval. The proof and the signature both need the wallet keys, so Ashigaru unlocks once when the
+  swap is started and wipes the keys as soon as the lock is signed (or after 15 minutes). The setup stays
+  open with the maker until the commit; after a restart it is gone and the swap aborts safely.
 - A **running** swap cancels and refunds by itself once the timelock allows. The engine refuses a manual
   cancel while the swap runs, and before the cancel timelock expires.
 - Every unfinished swap resumes automatically whenever the engine starts.
@@ -76,8 +83,8 @@ screen is rendered and checked by `SwapScreenshotsTest` (see `docs/DEVELOPMENT.m
 
 These need the swap engine, Tor and live makers, which the automated tests cannot reach:
 
-- Sign and approve in the page, the password dialog opening over it, and the countdown reaching the
-  engine's own 180 second timeout.
+- The password dialog after Review offer, the ownership proof and signing happening without a second
+  prompt, and the approval in the page with the countdown reaching the engine's own 90 second timeout.
 - Leaving the Swaps screen mid-review: the same request must come up as a dialog, with only the
   remaining time.
 - A swap that stops after the lock: Ashigaru restarted, the swap found again and shown, the notice above
@@ -86,24 +93,17 @@ These need the swap engine, Tor and live makers, which the automated tests canno
 - A swap running through the cancel timelock: Ashigaru cancels and refunds by itself, with no button.
 - The countdown against real blocks, and that the `TimelockChange` events arrive.
 
-## Known limit: the engine is on eigenwallet 4.16
+## Engine: eigenwallet 5.0.2
 
-eigenwallet 5.0.1 (2026-10-30) made breaking protocol changes: takers prove they own the lock's inputs, the
-cancel and refund transactions were changed against pinning, and **both peers must upgrade to start a new
-swap**. Makers are moving to 5.x. Ashigaru's engine (`swap-engine/EIGENWALLET_REV`, with five patches) is
-still on a 4.16 revision, so it cannot set up a swap with a 5.x maker: the setup fails with "no protocols
-could be agreed upon" after about two minutes of retries. Offers from makers on 5.x or later are therefore
-left out of the table and counted in the "not shown" line, and a setup that fails this way says why.
+The engine moved from 4.16.1 to 5.0.2 (`swap-engine/EIGENWALLET_REV`, six patches). The scope, the reasons
+and the risks are in `docs/EngineUpgrade5x.md`. Makers on version 4 are now the incompatible ones
+(`SwapEngine.Quote.MIN_MAKER_VERSION` is 5.0.0), and a maker at 6.0.0 or later is left out until the engine
+is checked against it (`FIRST_UNSUPPORTED_MAKER_VERSION`). When the engine moves again, re-read the timelocks
+(`SwapTimelock`, `SwapCopy`) and the approval timeout (`BadbankSwapHost.APPROVAL_SECS`) from the pinned source.
 
-As more makers upgrade, fewer offers remain. **The engine needs updating to 5.x**, which means rebasing the
-patches and checking the shim against the new API. The work, risks and an estimate are in
-`docs/EngineUpgrade5x.md`. When it does:
-
-- The mainnet cancel timelock becomes 30 blocks, not 24. `SwapTimelock.CANCEL_BLOCKS` and the "about 4
-  hours" wording that comes from it (`SwapCopy.cancelAfter()`) must change, and `FIRST_UNSUPPORTED_MAKER_VERSION`
-  and the version check in `SwapEngine.Quote` must move with the engine.
-- Re-read the timelock values (including the punish timelock) from the pinned source before trusting the
-  "about 24 hours" refund window.
+The upgrade has been built from reading the code and has **not** yet run against a real maker. Before it is
+released: a swap against a 5.x maker (proof, signing, approval, lock), a cancel and refund (the new TRUC
+transactions), `TimelockChange` at 30 blocks, and a version 4 swap record resumed by the new engine.
 
 ## Still to verify
 

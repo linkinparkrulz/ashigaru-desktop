@@ -19,9 +19,9 @@ public final class SwapProgress {
         NODES("Checking the Monero nodes", "Making sure every Monero node can be reached through Tor.",
                 "Next, the terms are agreed with the maker.", Duration.ofMinutes(2)),
         TERMS("Agreeing terms with the maker", "Exchanging the swap's keys and signatures with the maker over Tor.",
-                "Next, Ashigaru asks you to sign the lock, then to approve the final terms.", Duration.ofMinutes(5)),
-        APPROVAL("Waiting for you", "Ashigaru is asking you to sign the lock and approve the final terms.",
-                "Nothing is locked until you approve.", Duration.ofMinutes(3)),
+                "Next, you review the final terms and approve them.", Duration.ofMinutes(5)),
+        APPROVAL("Waiting for you", "Ashigaru is asking you to approve the final terms.",
+                "Nothing is locked until you approve.", Duration.ofSeconds(90)),
         LOCK_PUBLISH("Publishing your BTC lock", "Sending your signed lock transaction to the Bitcoin network.",
                 "Next, the lock confirms on the Bitcoin chain.", Duration.ofMinutes(5)),
         LOCK_CONFIRM("Your BTC lock is confirming", "Waiting for the lock transaction to confirm.",
@@ -240,8 +240,8 @@ public final class SwapProgress {
                     + "or unreachable over Tor; try another maker.\n\nThe engine said: " + error;
         }
         if(error.contains("no protocols could be agreed upon") || error.contains("may not support the swap setup protocol")) {
-            error = "This maker does not speak the same swap protocol as this version of Ashigaru, most likely because it runs newer software "
-                    + "(eigenwallet 5 changed the protocol, and Ashigaru's engine is still on version 4). Choose a maker running version 4.\n\n"
+            error = "This maker does not speak the same swap protocol as this version of Ashigaru, most likely because it still runs eigenwallet 4 "
+                    + "(version 5 changed the protocol and both sides must run it). Choose a maker running version 5.\n\n"
                     + "The engine said: " + error;
         }
         boolean beforeLock = previous == null || previous.step().ordinal() <= Step.APPROVAL.ordinal();

@@ -14,6 +14,7 @@ swap = { path = "../swap" }
 swap-env = { path = "../swap-env" }
 swap-p2p = { path = "../swap-p2p" }
 bitcoin-wallet = { path = "../bitcoin-wallet" }
+utxo-ownership-proof = { path = "../utxo-ownership-proof" }
 
 anyhow = { workspace = true }
 async-trait = { workspace = true }

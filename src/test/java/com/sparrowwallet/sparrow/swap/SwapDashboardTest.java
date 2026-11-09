@@ -78,7 +78,7 @@ class SwapDashboardTest {
     @Test
     void withoutTimelockDataRecoveryIsStatedPlainly() {
         SwapDashboard d = of(at(Step.LOCK_CONFIRM, null), null, true, null);
-        assertTrue(d.summary().recoveryText().startsWith("Cancellation opens about 4 hours after your lock confirms."));
+        assertTrue(d.summary().recoveryText().startsWith("Cancellation opens about 5 hours after your lock confirms."));
         assertNull(d.summary().timeline());
     }
 
@@ -133,7 +133,7 @@ class SwapDashboardTest {
     void aStoppedSwapWithNoTimelockYetSaysWhenCancelNormallyOpens() {
         SwapDashboard d = of(stopped(Step.LOCK_CONFIRM), null, false, TERMS);
         assertFalse(d.banner().cta().enabled());
-        assertTrue(d.banner().cta().note().contains("about 4 hours"));
+        assertTrue(d.banner().cta().note().contains("about 5 hours"));
     }
 
     @Test

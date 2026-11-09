@@ -81,13 +81,13 @@ class SwapProgressTest {
     }
 
     @Test
-    void aMakerOnANewerProtocolIsExplainedNotJustQuoted() {
-        //From the field: a v5.0.1 maker, which this version's engine cannot negotiate a swap with
+    void aMakerOnAnotherProtocolIsExplainedNotJustQuoted() {
+        //From the field: a v5.0.1 maker, which the version 4 engine of the time could not negotiate a swap with
         JsonObject stop = JsonParser.parseString("{\"swapId\":\"x\",\"error\":\"Failed to setup swap after retries: A network error occurred while setting up the swap: "
                 + "Dial upgrade error during swap setup. The peer may not support the swap setup protocol.: no protocols could be agreed upon\"}").getAsJsonObject();
         SwapProgress.Status stopped = SwapProgress.stopped(stop, SwapProgress.read(event("ReceivedQuote", null), null, T0), T0);
         assertTrue(stopped.detail().contains("does not speak the same swap protocol"));
-        assertTrue(stopped.detail().contains("Choose a maker running version 4"));
+        assertTrue(stopped.detail().contains("Choose a maker running version 5"));
         assertTrue(stopped.detail().contains("no protocols could be agreed upon"), "the engine's own words stay available");
         assertTrue(stopped.detail().contains("Nothing was locked"));
     }

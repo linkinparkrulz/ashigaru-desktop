@@ -271,18 +271,18 @@ public class SwapEngine {
     public record Quote(String peerId, String multiaddr, String version, long priceSats, long minSats, long maxSats,
                         String refundPolicy) {
         /**
-         * Makers older than this cannot complete a swap with eigenwallet 4.16: 4.13 changed the
-         * cross-curve proof. eigenwallet's own GUI marks them "Incompatible software — will not work".
+         * Makers older than this cannot complete a swap with eigenwallet 5. Version 5.0.1 made breaking protocol
+         * changes ("both peers must upgrade to start a new swap": takers prove ownership of the lock's inputs, and
+         * the cancel and refund transactions changed). A version 4 maker answers a swap request with "no protocols
+         * could be agreed upon" and the setup fails after retrying for two minutes.
          */
-        public static final String MIN_MAKER_VERSION = "4.13.0";
+        public static final String MIN_MAKER_VERSION = "5.0.0";
 
         /**
-         * The first maker version this engine cannot swap with. eigenwallet 5.0.1 made breaking protocol changes
-         * ("both peers must upgrade to start a new swap": takers prove ownership of the lock's inputs, and the
-         * cancel and refund transactions changed), and Ashigaru's engine is still on 4.16. Such a maker answers a
-         * swap request with "no protocols could be agreed upon" and the setup fails after retrying for two minutes.
+         * The first maker version this engine has not been checked against. eigenwallet changes its protocol at a
+         * major version, so a maker at 6.0.0 or later is left out until Ashigaru's engine has moved to match.
          */
-        public static final String FIRST_UNSUPPORTED_MAKER_VERSION = "5.0.0";
+        public static final String FIRST_UNSUPPORTED_MAKER_VERSION = "6.0.0";
 
         /**
          * Offers this much cheaper than the market are left out. No honest maker sells XMR below the

@@ -34,11 +34,11 @@ class SwapsToolControllerTest {
         String full = "{\"type\":\"FullRefund\"}";
         String partial = "{\"type\":\"PartialRefund\",\"content\":{\"anti_spam_deposit_ratio\":0.1}}";
         double market = 0.0070; //BTC per XMR
-        Quote fair = offer("fair", "4.16.1", 705_000, 10_000, 1_000_000, partial);
-        Quote fullRefund = offer("full", "4.16.1", 712_000, 10_000, 1_000_000, full);
-        Quote fake = offer("fake", "4.16.1", 650_000, 10_000, 10_000_000_000L, full);
-        Quote outdated = offer("old", "4.12.0", 700_000, 10_000, 1_000_000, full);
-        Quote tooSmall = offer("big", "4.16.1", 704_000, 1_000_000, 5_000_000, full);
+        Quote fair = offer("fair", "5.0.2", 705_000, 10_000, 1_000_000, partial);
+        Quote fullRefund = offer("full", "5.0.2", 712_000, 10_000, 1_000_000, full);
+        Quote fake = offer("fake", "5.0.2", 650_000, 10_000, 10_000_000_000L, full);
+        Quote outdated = offer("old", "4.16.1", 700_000, 10_000, 1_000_000, full);
+        Quote tooSmall = offer("big", "5.0.2", 704_000, 1_000_000, 5_000_000, full);
 
         SwapsToolController.Offers offers = SwapsToolController.Offers.of(List.of(fake, fullRefund, outdated, fair, tooSmall), 373_000, market);
         assertEquals(List.of(fair, fullRefund), offers.shown());
@@ -64,15 +64,16 @@ class SwapsToolControllerTest {
     @Test
     void makersOnTheNewerProtocolAreLeftOutAndSaidSo() {
         String full = "{\"type\":\"FullRefund\"}";
-        Quote old = offer("a", "4.16.1", 705_000, 10_000, 1_000_000, full);
-        Quote newer = offer("b", "5.0.1", 704_000, 10_000, 1_000_000, full);
-        SwapsToolController.Offers offers = SwapsToolController.Offers.of(List.of(old, newer), 373_000, 0.0070);
-        assertEquals(List.of(old), offers.shown());
+        Quote current = offer("a", "5.0.2", 705_000, 10_000, 1_000_000, full);
+        Quote newer = offer("b", "6.0.0", 704_000, 10_000, 1_000_000, full);
+        Quote old = offer("c", "4.16.1", 703_000, 10_000, 1_000_000, full);
+        SwapsToolController.Offers offers = SwapsToolController.Offers.of(List.of(current, newer, old), 373_000, 0.0070);
+        assertEquals(List.of(current), offers.shown());
         assertEquals(1, offers.newer());
-        assertEquals(0, offers.outdated(), "a newer maker is not outdated");
+        assertEquals(1, offers.outdated());
         String footer = offers.footer(true, "0.00373000");
         assertTrue(footer.contains("1 running newer swap software than this version of Ashigaru supports"), footer);
-        assertFalse(footer.contains("outdated"));
+        assertTrue(footer.contains("1 running eigenwallet 4 or older"), footer);
     }
 
     @Test

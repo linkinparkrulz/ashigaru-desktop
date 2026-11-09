@@ -100,7 +100,7 @@ server through Tor. Fee estimates should come from the same source Ashigaru alre
   `x86_64-unknown-linux-gnu`, `aarch64-apple-darwin`, `x86_64-apple-darwin` and
   `x86_64-pc-windows-gnu` (`.github/workflows/build-release-binaries.yml:22-39`). Those are exactly
   our four targets, so their build recipe can be reused.
-- **Toolchain.** Rust 1.90.0 (`rust-toolchain.toml`).
+- **Toolchain.** Rust 1.90.0 (`rust-toolchain.toml`); 1.92.0 from 5.0.2, which is what Ashigaru builds with now.
 - **Release pace.** Releases are frequent, roughly weekly in 2026 (`CHANGELOG.md`: 4.6.x in May
   through 4.16.1 on Oct 13).
 - **Breaking protocol changes are rarer.** The latest is 4.0.0 (2026-03-16: timelocks and the

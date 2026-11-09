@@ -127,7 +127,7 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
         return switch(step) {
             case NODES -> new Banner(Tone.INFO, "Nothing for you to do", "Ashigaru is checking the Monero nodes through Tor.", null);
             case TERMS -> new Banner(Tone.INFO, "Nothing for you to do", "Ashigaru is agreeing the terms with the maker over Tor.", null);
-            case APPROVAL -> new Banner(Tone.WARN, "Waiting for you", "Ashigaru is asking you to sign the lock and approve the final terms. Nothing is locked until you approve.", null);
+            case APPROVAL -> new Banner(Tone.WARN, "Waiting for you", "Ashigaru is asking you to approve the final terms. Nothing is locked until you approve.", null);
             case LOCK_PUBLISH -> new Banner(Tone.INFO, "Nothing for you to do", "Ashigaru is sending your signed lock to the Bitcoin network.", null);
             case LOCK_CONFIRM -> new Banner(Tone.INFO, "Nothing for you to do", "Keep Ashigaru open while your lock confirms.", null);
             case MAKER_LOCK -> new Banner(Tone.INFO, "Nothing for you to do", "Keep Ashigaru open. The maker is locking its XMR.", null);

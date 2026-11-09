@@ -19,7 +19,7 @@ class SwapOffersTest {
     }
 
     private static Quote offer(String host, long priceSats, String refund) {
-        return new Quote("peer-" + host, "/ip4/" + host + "/tcp/9939", "4.16.1", priceSats, 10_000, 100_000_000, refund);
+        return new Quote("peer-" + host, "/ip4/" + host + "/tcp/9939", "5.0.2", priceSats, 10_000, 100_000_000, refund);
     }
 
     //Prices are sats per XMR: a lower price gives more XMR. Market 0.0033 BTC per XMR.

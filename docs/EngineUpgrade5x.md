@@ -1,5 +1,9 @@
 # Scope: moving the swap engine from eigenwallet 4.16.1 to 5.0.2
 
+**Status: implemented on `xmr-swap` (option A, one password prompt at Review offer), not yet run against a
+real maker.** The pin, toolchain, sixth patch, shim and the Java side are in. This note is kept as the
+reasoning and the checklist for the real-swap verification.
+
 Why: makers are moving to 5.x, and a 4.x taker cannot set up a swap with them ("no protocols could be
 agreed upon"). Today Ashigaru hides those offers and says why. The longer this waits, the fewer offers
 there are. This note scopes the upgrade. Nothing has been changed yet.

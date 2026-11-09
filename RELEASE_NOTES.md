@@ -5,13 +5,25 @@ misunderstand, and the interface typeface changes across the whole app.
 
 ## Swaps
 
-- **The final review is a proper screen.** Signing and approving are two stages of one panel in the
-  Swaps screen instead of separate dialogs. It leads with what you send and receive (the XMR to
-  twelve decimals), the destination address, and the maker's anti-spam deposit in its own callout,
-  then the recovery terms, with the fee breakdown and the full address below. Approve and Reject stay
-  in view under the scrolling body, and the real approval deadline shows as a countdown. If the
-  Swaps screen is not showing when the request arrives, or you leave it, the same decision is asked
-  in a dialog, with only the time that is left. The wallet password stays its own dialog.
+- **The swap engine is eigenwallet 5.0.2.** Makers are moving to version 5, which changed the swap
+  protocol: both sides must run it, so a version 4 engine could not swap with them. Ashigaru now
+  can, and offers from makers still on version 4 are left out and counted in the "not shown" line.
+  Version 5 makes a taker prove, while the swap is set up, that it controls the coin. Ashigaru
+  therefore asks for your wallet password **once, when you press Review offer**, signs that proof and
+  the lock together, and wipes the keys as soon as the lock is signed (or after 15 minutes if the
+  swap fails first). Nothing is published until you approve the final terms, which is asked
+  separately. Other protocol changes you will notice: the cancel timelock is 30 blocks (about 5
+  hours instead of 4), and the final approval now closes after about 90 seconds instead of 3
+  minutes, shown as a countdown. A swap that was still being set up when Ashigaru closed is
+  abandoned safely, with nothing locked. Finish or refund any swap started on the previous version
+  before updating.
+- **The final review is a proper screen.** The approval is a panel in the Swaps screen instead of a
+  dialog. It leads with what you send and receive (the XMR to twelve decimals), the destination
+  address, and the maker's anti-spam deposit in its own callout, then the recovery terms, with the
+  fee breakdown and the full address below. Approve and Reject stay in view under the scrolling body,
+  and the real approval deadline shows as a countdown. If the Swaps screen is not showing when the
+  request arrives, or you leave it, the same decision is asked in a dialog, with only the time that is
+  left.
 - **A dashboard replaces the progress card.** It says where your funds are, whether you need to do
   anything, whether you can close Ashigaru, what happens if the swap stalls and when recovery
   opens. Five named stages (Review and authorize, Lock BTC, Verify the maker's XMR, Claim XMR,

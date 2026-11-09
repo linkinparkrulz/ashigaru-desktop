@@ -12,11 +12,13 @@ use anyhow::{Context, Result, bail};
 use bdk_wallet::Balance;
 use bdk_wallet::export::FullyNodedExport;
 use bitcoin::FeeRate;
+use bitcoin::secp256k1::{PublicKey, ecdsa::Signature};
 use bitcoin_wallet::{
     Address, Amount, BitcoinWallet, Network, Psbt, ScriptStatus, Subscription, Txid, Watchable,
     Weight,
 };
 use serde_json::{Value, json};
+use utxo_ownership_proof::{Challenge, OwnershipProof};
 
 use crate::bridge;
 
@@ -44,6 +46,7 @@ impl BitcoinWallet for QuoteOnlyWallet {
         _amount: Amount,
         _spending_fee: Amount,
         _change_override: Option<Address>,
+        _max_inputs: Option<usize>,
     ) -> Result<Psbt> {
         bail!(NOT_YET)
     }
@@ -53,6 +56,7 @@ impl BitcoinWallet for QuoteOnlyWallet {
         _address: Address,
         _amount: Amount,
         _change_override: Option<Address>,
+        _max_inputs: Option<usize>,
     ) -> Result<Psbt> {
         bail!(NOT_YET)
     }
@@ -62,6 +66,10 @@ impl BitcoinWallet for QuoteOnlyWallet {
     }
 
     async fn sign_and_finalize(&self, _psbt: Psbt) -> Result<bitcoin::Transaction> {
+        bail!(NOT_YET)
+    }
+
+    fn prove_utxo_ownership(&self, _psbt: &Psbt, _challenge: Challenge) -> Result<Vec<OwnershipProof>> {
         bail!(NOT_YET)
     }
 
@@ -98,7 +106,11 @@ impl BitcoinWallet for QuoteOnlyWallet {
         Ok(None)
     }
 
-    async fn max_giveable(&self, _locking_script_size: usize) -> Result<(Amount, Amount)> {
+    async fn max_giveable(
+        &self,
+        _locking_script_size: usize,
+        _max_inputs: Option<usize>,
+    ) -> Result<(Amount, Amount)> {
         Ok((Amount::ZERO, Amount::ZERO))
     }
 
@@ -107,6 +119,10 @@ impl BitcoinWallet for QuoteOnlyWallet {
         _weight: Weight,
         _transfer_amount: Option<Amount>,
     ) -> Result<Amount> {
+        bail!(NOT_YET)
+    }
+
+    async fn swap_fee_rate(&self) -> Result<FeeRate> {
         bail!(NOT_YET)
     }
 
@@ -145,6 +161,16 @@ impl HybridWallet {
         }
     }
 
+    /// Ashigaru's own fee rate rather than eigenwallet's estimator, which also asks mempool.space
+    async fn fee_rates(&self) -> Result<(FeeRate, FeeRate)> {
+        let rates = bridge::ask("fee_rate", json!({}), QUICK).await?;
+        let rate = FeeRate::from_sat_per_vb(rates["satPerVb"].as_u64().context("No fee rate")?)
+            .context("Fee rate out of range")?;
+        let min_relay = FeeRate::from_sat_per_vb(rates["minRelaySatPerVb"].as_u64().unwrap_or(1))
+            .context("Minimum relay fee out of range")?;
+        Ok((rate, min_relay))
+    }
+
     async fn badbank(&self) -> Result<Value> {
         bridge::ask("wallet_info", json!({}), QUICK).await
     }
@@ -155,6 +181,7 @@ impl HybridWallet {
         amount: Amount,
         fee: Option<Amount>,
         change: Option<Address>,
+        max_inputs: Option<usize>,
     ) -> Result<Psbt> {
         let answer = bridge::ask(
             "fund_lock",
@@ -163,21 +190,65 @@ impl HybridWallet {
                 "amountSats": amount.to_sat(),
                 "feeSats": fee.map(Amount::to_sat),
                 "changeAddress": change.map(|a| a.to_string()),
+                "maxInputs": max_inputs,
             }),
             QUICK,
         )
         .await?;
         let bytes = hex::decode(answer["psbtHex"].as_str().context("No PSBT returned")?)?;
         let psbt = Psbt::deserialize(&bytes).context("Ashigaru returned an unreadable PSBT")?;
-        check_lock_psbt(&psbt, &address, amount)?;
+        check_lock_psbt(&psbt, &address, amount, max_inputs)?;
         Ok(psbt)
     }
 }
 
+/// `{"proofs": [{"publicKey": <33 byte hex>, "signature": <64 byte compact hex>}, ...]}`, one per input
+fn parse_proofs(answer: &Value) -> Result<Vec<OwnershipProof>> {
+    answer["proofs"]
+        .as_array()
+        .context("No proofs returned")?
+        .iter()
+        .map(|proof| {
+            let key = hex::decode(proof["publicKey"].as_str().context("Proof without a public key")?)?;
+            let signature = hex::decode(proof["signature"].as_str().context("Proof without a signature")?)?;
+            Ok(OwnershipProof {
+                public_key: PublicKey::from_slice(&key).context("Unreadable proof public key")?,
+                signature: Signature::from_compact(&signature).context("Unreadable proof signature")?,
+            })
+        })
+        .collect()
+}
+
 /// The maker checks the lock transaction before taking part (`TxLock::from_psbt`): at most two
-/// outputs, exactly one of them paying the agreed amount to the shared output. Checking here as
-/// well means a mistake on Ashigaru's side is caught before anything is signed.
-pub fn check_lock_psbt(psbt: &Psbt, lock_address: &Address, amount: Amount) -> Result<()> {
+/// outputs, exactly one of them paying the agreed amount to the shared output, and (from eigenwallet
+/// 5) every input a P2WPKH output the taker can prove it owns, at most `max_inputs` of them.
+/// Checking here as well means a mistake on Ashigaru's side is caught before anything is signed.
+pub fn check_lock_psbt(
+    psbt: &Psbt,
+    lock_address: &Address,
+    amount: Amount,
+    max_inputs: Option<usize>,
+) -> Result<()> {
+    let inputs = psbt.unsigned_tx.input.len();
+    if inputs == 0 {
+        bail!("Lock transaction has no inputs");
+    }
+    if let Some(max) = max_inputs {
+        if inputs > max {
+            bail!("Lock transaction has {inputs} inputs; at most {max} are allowed");
+        }
+    }
+    if psbt.inputs.len() != inputs {
+        bail!("Lock PSBT has {} input maps for {inputs} inputs", psbt.inputs.len());
+    }
+    for (index, input) in psbt.inputs.iter().enumerate() {
+        let Some(utxo) = &input.witness_utxo else {
+            bail!("Lock input {index} does not say which output it spends");
+        };
+        if !utxo.script_pubkey.is_p2wpkh() {
+            bail!("Lock input {index} is not a native segwit (P2WPKH) output, which the maker cannot accept");
+        }
+    }
     let outputs = &psbt.unsigned_tx.output;
     if outputs.len() > 2 {
         bail!("Lock transaction has {} outputs; at most 2 are allowed", outputs.len());
@@ -220,8 +291,9 @@ impl BitcoinWallet for HybridWallet {
         amount: Amount,
         spending_fee: Amount,
         change_override: Option<Address>,
+        max_inputs: Option<usize>,
     ) -> Result<Psbt> {
-        self.fund(address, amount, Some(spending_fee), change_override).await
+        self.fund(address, amount, Some(spending_fee), change_override, max_inputs).await
     }
 
     async fn send_to_address_dynamic_fee(
@@ -229,8 +301,9 @@ impl BitcoinWallet for HybridWallet {
         address: Address,
         amount: Amount,
         change_override: Option<Address>,
+        max_inputs: Option<usize>,
     ) -> Result<Psbt> {
-        self.fund(address, amount, None, change_override).await
+        self.fund(address, amount, None, change_override, max_inputs).await
     }
 
     async fn sweep_balance_to_address_dynamic_fee(&self, _address: Address) -> Result<Psbt> {
@@ -246,6 +319,24 @@ impl BitcoinWallet for HybridWallet {
             bail!("The signed transaction is not the one that was asked for");
         }
         Ok(tx)
+    }
+
+    /// Ashigaru signs the challenge with the key behind each input, in the same wallet unlock that
+    /// started the swap. The engine calls this synchronously in the middle of the swap setup, with the
+    /// maker waiting, so it blocks this worker thread (the runtime is multi-threaded) until the answer
+    /// is back. Proofs are checked here as well, so a mistake on Ashigaru's side is an error the user
+    /// can read and not a maker rejecting the setup.
+    fn prove_utxo_ownership(&self, psbt: &Psbt, challenge: Challenge) -> Result<Vec<OwnershipProof>> {
+        let request = json!({
+            "psbtHex": hex::encode(psbt.serialize()),
+            "challengeHex": hex::encode(challenge.as_bytes()),
+        });
+        let handle = tokio::runtime::Handle::try_current().context("Ownership proofs need the engine's runtime")?;
+        let answer = tokio::task::block_in_place(|| handle.block_on(bridge::ask("prove", request, QUICK)))?;
+        let proofs = parse_proofs(&answer)?;
+        utxo_ownership_proof::verify_psbt(psbt, &proofs, challenge)
+            .context("Ashigaru's ownership proofs for the lock inputs do not verify")?;
+        Ok(proofs)
     }
 
     async fn ensure_broadcasted(
@@ -289,8 +380,17 @@ impl BitcoinWallet for HybridWallet {
         self.client.get_tx(txid).await
     }
 
-    async fn max_giveable(&self, locking_script_size: usize) -> Result<(Amount, Amount)> {
-        let answer = bridge::ask("max_giveable", json!({ "scriptSize": locking_script_size }), QUICK).await?;
+    async fn max_giveable(
+        &self,
+        locking_script_size: usize,
+        max_inputs: Option<usize>,
+    ) -> Result<(Amount, Amount)> {
+        let answer = bridge::ask(
+            "max_giveable",
+            json!({ "scriptSize": locking_script_size, "maxInputs": max_inputs }),
+            QUICK,
+        )
+        .await?;
         Ok((
             Amount::from_sat(answer["amountSats"].as_u64().context("No amount")?),
             Amount::from_sat(answer["feeSats"].as_u64().context("No fee")?),
@@ -302,13 +402,15 @@ impl BitcoinWallet for HybridWallet {
         weight: Weight,
         transfer_amount: Option<Amount>,
     ) -> Result<Amount> {
-        // Ashigaru's own fee rate rather than eigenwallet's estimator, which also asks mempool.space
-        let rates = bridge::ask("fee_rate", json!({}), QUICK).await?;
-        let rate = FeeRate::from_sat_per_vb(rates["satPerVb"].as_u64().context("No fee rate")?)
-            .context("Fee rate out of range")?;
-        let min_relay = FeeRate::from_sat_per_vb(rates["minRelaySatPerVb"].as_u64().unwrap_or(1))
-            .context("Minimum relay fee out of range")?;
+        let (rate, min_relay) = self.fee_rates().await?;
         bitcoin_wallet::estimate_fee(weight, transfer_amount, rate, min_relay)
+    }
+
+    /// The rate the presigned swap transactions are checked against: Ashigaru's own estimate, never
+    /// below the relay minimum. The engine accepts the maker's rate within a band around this.
+    async fn swap_fee_rate(&self) -> Result<FeeRate> {
+        let (rate, min_relay) = self.fee_rates().await?;
+        Ok(rate.max(min_relay))
     }
 
     fn network(&self) -> Network {
@@ -345,7 +447,10 @@ mod tests {
                 .map(|(script_pubkey, sats)| TxOut { value: Amount::from_sat(sats), script_pubkey })
                 .collect(),
         };
-        Psbt::from_unsigned_tx(tx).unwrap()
+        let mut psbt = Psbt::from_unsigned_tx(tx).unwrap();
+        // The coin being spent: a native segwit output, as the maker requires
+        psbt.inputs[0].witness_utxo = Some(TxOut { value: Amount::from_sat(100_000), script_pubkey: change_address().script_pubkey() });
+        psbt
     }
 
     fn lock_address() -> Address {
@@ -368,7 +473,7 @@ mod tests {
             (lock_address().script_pubkey(), 50_000),
             (change_address().script_pubkey(), 12_345),
         ]);
-        check_lock_psbt(&psbt, &lock_address(), Amount::from_sat(50_000)).unwrap();
+        check_lock_psbt(&psbt, &lock_address(), Amount::from_sat(50_000), Some(1)).unwrap();
     }
 
     #[test]
@@ -378,15 +483,49 @@ mod tests {
         let amount = Amount::from_sat(50_000);
 
         let wrong_amount = psbt_paying(vec![(lock.clone(), 49_999)]);
-        assert!(check_lock_psbt(&wrong_amount, &lock_address(), amount).is_err());
+        assert!(check_lock_psbt(&wrong_amount, &lock_address(), amount, Some(1)).is_err());
 
         let three_outputs = psbt_paying(vec![(lock.clone(), 50_000), (change.clone(), 1_000), (change.clone(), 1_000)]);
-        assert!(check_lock_psbt(&three_outputs, &lock_address(), amount).is_err());
+        assert!(check_lock_psbt(&three_outputs, &lock_address(), amount, Some(1)).is_err());
 
         let paid_twice = psbt_paying(vec![(lock.clone(), 50_000), (lock, 50_000)]);
-        assert!(check_lock_psbt(&paid_twice, &lock_address(), amount).is_err());
+        assert!(check_lock_psbt(&paid_twice, &lock_address(), amount, Some(1)).is_err());
 
         let no_lock = psbt_paying(vec![(change, 50_000)]);
-        assert!(check_lock_psbt(&no_lock, &lock_address(), amount).is_err());
+        assert!(check_lock_psbt(&no_lock, &lock_address(), amount, Some(1)).is_err());
+    }
+
+    #[test]
+    fn inputs_the_maker_cannot_take_are_refused() {
+        let amount = Amount::from_sat(50_000);
+        let lock = lock_address().script_pubkey();
+
+        // Not a P2WPKH output (this is a P2WSH script): the ownership proof cannot be made for it
+        let mut not_p2wpkh = psbt_paying(vec![(lock.clone(), 50_000)]);
+        not_p2wpkh.inputs[0].witness_utxo = Some(TxOut { value: Amount::from_sat(100_000), script_pubkey: lock_address().script_pubkey() });
+        assert!(check_lock_psbt(&not_p2wpkh, &lock_address(), amount, Some(1)).is_err());
+
+        // Which output is being spent is unknown
+        let mut unknown = psbt_paying(vec![(lock.clone(), 50_000)]);
+        unknown.inputs[0].witness_utxo = None;
+        assert!(check_lock_psbt(&unknown, &lock_address(), amount, Some(1)).is_err());
+
+        // Over the cap on inputs
+        let ok = psbt_paying(vec![(lock, 50_000)]);
+        assert!(check_lock_psbt(&ok, &lock_address(), amount, Some(0)).is_err());
+        check_lock_psbt(&ok, &lock_address(), amount, None).unwrap();
+    }
+
+    #[test]
+    fn proofs_are_read_from_ashigarus_answer() {
+        let secret = bitcoin::secp256k1::SecretKey::from_slice(&[7; 32]).unwrap();
+        let proof = utxo_ownership_proof::sign(&secret, utxo_ownership_proof::challenge(b"test"));
+        let answer = json!({ "proofs": [{
+            "publicKey": hex::encode(proof.public_key.serialize()),
+            "signature": hex::encode(proof.signature.serialize_compact()),
+        }]});
+        assert_eq!(parse_proofs(&answer).unwrap(), vec![proof]);
+        assert!(parse_proofs(&json!({})).is_err());
+        assert!(parse_proofs(&json!({ "proofs": [{ "publicKey": "00", "signature": "00" }] })).is_err());
     }
 }

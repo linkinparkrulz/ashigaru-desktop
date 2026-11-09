@@ -133,7 +133,7 @@ class SwapScreenshotsTest {
     private static SwapReview commit(long amnestySats, boolean fullRefund) {
         //0.05 BTC coin, 1,240 sats fee, 2% deposit, 14.816324640000 XMR
         return SwapReview.commit(5_000_000, 4_998_760, 1_240, 14_816_324_640_000L, amnestySats, fullRefund, ADDRESS, "12D3KooW…b3f9",
-                Instant.now().plusSeconds(161), recorder());
+                Instant.now().plusSeconds(81), recorder());
     }
 
     private static Button button(Node root, String text) {
@@ -153,7 +153,7 @@ class SwapScreenshotsTest {
             return null;
         });
         assertNotNull(onFx(() -> pane.getBottom()), "the action bar is pinned in the commit stage");
-        assertTrue(pane.expiryText().startsWith("Review expires in 2:"), pane.expiryText());
+        assertTrue(pane.expiryText().startsWith("Review expires in 1:"), pane.expiryText());
         shoot(pane, 845, 714, "review-commit-deposit-845");
         //Searching only works once the scroll pane has been shown, so it comes after the picture
         assertEquals(1, onFx(() -> pane.lookupAll(".review-callout").size()), "the deposit has its own callout");
@@ -200,31 +200,6 @@ class SwapScreenshotsTest {
             return null;
         });
         assertEquals(List.of("decline"), decisions);
-    }
-
-    @Test
-    void prepareStageHasNoPinnedBarAndSignsOnRequest() throws Exception {
-        SwapReviewPane pane = onFx(SwapReviewPane::new);
-        onFx(() -> {
-            pane.show(SwapReview.prepare(5_000_000, 4_998_760, 1_240, true, recorder()));
-            return null;
-        });
-        assertNull(onFx(() -> pane.getBottom()));
-        shoot(pane, 845, 714, "review-prepare-845");
-        Button sign = onFx(() -> button(pane, "Sign with wallet password"));
-        assertNotNull(sign, "an encrypted wallet asks for its password");
-        onFx(() -> {
-            sign.fire();
-            return null;
-        });
-        assertEquals(List.of("confirm"), decisions);
-
-        onFx(() -> {
-            pane.show(SwapReview.prepare(5_000_000, 4_998_760, 1_240, false, recorder()));
-            return null;
-        });
-        shoot(pane, 845, 714, "review-prepare-nopassword-845");
-        assertNotNull(onFx(() -> button(pane, "Sign the lock")), "an unencrypted wallet has no password to ask for");
     }
 
     @Test
@@ -485,7 +460,7 @@ class SwapScreenshotsTest {
         for(int i = 0; i < RATES.length; i++) {
             String policy = DEPOSITS[i] == 0 ? "{\"type\":\"FullRefund\"}"
                     : "{\"type\":\"PartialRefund\",\"content\":{\"anti_spam_deposit_ratio\":" + DEPOSITS[i] + "}}";
-            quotes.add(new com.sparrowwallet.sparrow.swap.SwapEngine.Quote("12D3KooWMaker" + i + "abcdefghijklmnopqrstuvwxyz", "/ip4/10.0.0." + (i + 1) + "/tcp/9939", "4.16.1",
+            quotes.add(new com.sparrowwallet.sparrow.swap.SwapEngine.Quote("12D3KooWMaker" + i + "abcdefghijklmnopqrstuvwxyz", "/ip4/10.0.0." + (i + 1) + "/tcp/9939", "5.0.2",
                     (long)(1e8 / RATES[i]), 100_000, 100_000_000, policy));
         }
         return quotes;

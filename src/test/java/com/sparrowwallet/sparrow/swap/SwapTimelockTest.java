@@ -57,7 +57,7 @@ class SwapTimelockTest {
 
     @Test
     void theMainnetTimelocksAreAboutFourAndTwentyFourHours() {
-        assertEquals("about 4 hours", SwapCopy.cancelAfter());
+        assertEquals("about 5 hours", SwapCopy.cancelAfter());
         assertEquals("about 24 hours", SwapCopy.refundWindow());
     }
 }

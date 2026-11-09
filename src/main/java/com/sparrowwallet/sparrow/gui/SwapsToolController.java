@@ -223,8 +223,10 @@ public class SwapsToolController implements Initializable {
         String empty = !offers.shown().isEmpty() ? null
                 : !running ? "Swaps are not running. Turn them on in Settings → Swaps."
                 : quotes.isEmpty() ? "No makers yet. They are found over a minute or two after swaps start."
+                : offers.outdated() > 0 && offers.outdated() == quotes.size() ? "Every maker found still runs eigenwallet 4 or older, which this version of Ashigaru cannot swap with. "
+                        + "eigenwallet 5 changed the protocol and both sides must run it. Makers are upgrading, so try again later."
                 : offers.newer() > 0 && offers.newer() == quotes.size() ? "Every maker found runs newer swap software than this version of Ashigaru can swap with yet. "
-                        + "eigenwallet 5 changed the protocol, and Ashigaru needs an update before it can swap with those makers."
+                        + "Ashigaru needs an update before it can swap with those makers."
                 : swapSats > 0 ? "No maker can take this coin right now." : "No usable offers right now.";
         offersPane.show(new SwapOffersPane.State(attention, coin != null, coin == null ? 0 : coin.outpoint().getValue(), coin == null ? "" : coin.walletName(),
                 swapSats, lockFee, coinProblem, offers.shown(), offers.footer(market != null, swapSats > 0 ? btc(swapSats) : null), marketText, market, running,
@@ -279,10 +281,10 @@ public class SwapsToolController implements Initializable {
                 hidden.add(soldOut + " with no XMR to sell right now");
             }
             if(outdated > 0) {
-                hidden.add(outdated + " running outdated software");
+                hidden.add(outdated + " running eigenwallet 4 or older, which cannot swap with this version (eigenwallet 5 changed the protocol)");
             }
             if(newer > 0) {
-                hidden.add(newer + " running newer swap software than this version of Ashigaru supports (eigenwallet 5 changed the protocol)");
+                hidden.add(newer + " running newer swap software than this version of Ashigaru supports");
             }
             String text = hidden.isEmpty() ? "" : "Not shown: " + String.join(", ", hidden) + ".";
             if(!marketKnown && (shown.size() + wrongSize) > 0) {
@@ -480,7 +482,8 @@ public class SwapsToolController implements Initializable {
                         + String.join("\n", unreachable));
                 return;
             }
-            working = "Setting up the swap with the maker. This takes a few minutes, and nothing is locked yet.";
+            working = "Setting up the swap with the maker. If Ashigaru asks for your wallet password, it is to prove to the maker that you own the coin and to sign the lock; "
+                    + "nothing is locked or sent until you approve the final terms. The setup takes a few minutes.";
             renderOffers();
             SwapService.get().startSwap(quote, offersPane.getAddress(), swapId -> {
                 endTaking();

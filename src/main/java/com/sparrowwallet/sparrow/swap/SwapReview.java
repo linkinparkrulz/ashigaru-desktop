@@ -4,47 +4,41 @@ import java.time.Duration;
 import java.time.Instant;
 
 /**
- * One request for the user's decision during a swap, shown in the Swaps screen: first "prepare"
- * (sign the lock transaction on this computer, nothing is published) and then "commit" (the final
- * terms, and approval to publish the BTC lock). The screen only draws it and reports the decision;
- * the host decides what a decision means.
+ * The final review of a swap, shown in the Swaps screen: the terms the maker agreed and a request to
+ * approve and publish the BTC lock. (The wallet password and the signing happen before this, when the
+ * swap is started, so the clock here is only for reading and deciding.) The screen only draws it and
+ * reports the decision; the host decides what a decision means.
  *
  * @param coinSats       the Badbank coin the lock spends, in sats
  * @param lockSats       what is locked in the swap, in sats
  * @param feeSats        the network fee, taken from the coin, in sats
- * @param piconero       the XMR the user receives, in piconero (commit only)
- * @param amnestySats    the anti-spam deposit the maker may keep if the swap fails, in sats (commit only)
+ * @param piconero       the XMR the user receives, in piconero
+ * @param amnestySats    the anti-spam deposit the maker may keep if the swap fails, in sats
  * @param fullRefund     true when the maker has signed for a full refund, so no deposit applies
- * @param passwordNeeded true when signing needs the wallet password (prepare only)
- * @param xmrAddress     where the XMR goes (commit only)
- * @param maker          a short label for the maker (commit only)
- * @param expiresAt      when an unanswered approval is rejected, which is a real deadline (commit only)
+ * @param xmrAddress     where the XMR goes
+ * @param maker          a short label for the maker
+ * @param expiresAt      when an unanswered approval is rejected, which is a real deadline
  */
-public record SwapReview(Stage stage, long coinSats, long lockSats, long feeSats, long piconero, long amnestySats,
-                         boolean fullRefund, boolean passwordNeeded, String xmrAddress, String maker, Instant expiresAt, Decision decision) {
-    public enum Stage { PREPARE, COMMIT }
+public record SwapReview(long coinSats, long lockSats, long feeSats, long piconero, long amnestySats,
+                         boolean fullRefund, String xmrAddress, String maker, Instant expiresAt, Decision decision) {
 
     /** What the user chose; the host answers the engine accordingly. Either is safe to call more than once. */
     public interface Decision {
-        /** Sign (prepare) or approve and publish the lock (commit) */
+        /** Approve and publish the lock */
         void confirm();
 
-        /** Cancel the swap (prepare) or reject it (commit) */
+        /** Reject the swap: nothing is published */
         void decline();
-    }
-
-    public static SwapReview prepare(long coinSats, long lockSats, long feeSats, boolean passwordNeeded, Decision decision) {
-        return new SwapReview(Stage.PREPARE, coinSats, lockSats, feeSats, 0, 0, false, passwordNeeded, null, null, null, decision);
     }
 
     public static SwapReview commit(long coinSats, long lockSats, long feeSats, long piconero, long amnestySats, boolean fullRefund,
                                     String xmrAddress, String maker, Instant expiresAt, Decision decision) {
-        return new SwapReview(Stage.COMMIT, coinSats, lockSats, feeSats, piconero, amnestySats, fullRefund, false, xmrAddress, maker, expiresAt, decision);
+        return new SwapReview(coinSats, lockSats, feeSats, piconero, amnestySats, fullRefund, xmrAddress, maker, expiresAt, decision);
     }
 
     /** True when the maker may keep part of the BTC if the swap fails */
     public boolean hasDeposit() {
-        return stage == Stage.COMMIT && !fullRefund && amnestySats > 0;
+        return !fullRefund && amnestySats > 0;
     }
 
     /** The most that can come back to Badbank if the swap fails, in sats: the lock less any deposit */

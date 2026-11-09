@@ -27,7 +27,7 @@
         <Fieldset inputGrow="SOMETIMES" text="Badbank to XMR" styleClass="wideLabelFieldSet">
             <Field text="Enable swaps:">
                 <UnlabeledToggleSwitch fx:id="swapsEnabled" />
-                <HelpLabel helpText="Adds Swap to XMR to every wallet's Badbank account and Swaps to Tools. A swap locks one Badbank coin in a shared output with a market maker; if the swap does not complete, it can be cancelled after about 4 hours and the BTC refunded to Badbank, which must be claimed within about 24 hours. Some makers keep part of a refund as an anti-spam deposit; Ashigaru shows this before you approve."/>
+                <HelpLabel helpText="Adds Swap to XMR to every wallet's Badbank account and Swaps to Tools. A swap locks one Badbank coin in a shared output with a market maker; if the swap does not complete, it can be cancelled after about 5 hours and the BTC refunded to Badbank, which must be claimed within about 24 hours. Some makers keep part of a refund as an anti-spam deposit; Ashigaru shows this before you approve."/>
             </Field>
             <Field text="Status:">
                 <Label fx:id="engineStatus" wrapText="true" minHeight="-Infinity" styleClass="field-value" />

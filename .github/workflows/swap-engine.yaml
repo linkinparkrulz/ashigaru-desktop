@@ -53,8 +53,8 @@ jobs:
       - name: Fetch eigenwallet and apply patches
         run: swap-engine/fetch.sh
 
-      - name: Install Rust 1.90
-        uses: dtolnay/rust-toolchain@1.90
+      - name: Install Rust 1.92
+        uses: dtolnay/rust-toolchain@1.92
         with:
           targets: ${{ matrix.target }}
 

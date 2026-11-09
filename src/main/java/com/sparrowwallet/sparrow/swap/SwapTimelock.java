@@ -28,8 +28,8 @@ public record SwapTimelock(Phase phase, int blocksLeft, Instant seen) {
 
     /** Bitcoin's target block time; every time shown from a block count is an estimate built on it */
     public static final int MINUTES_PER_BLOCK = 10;
-    /** The mainnet cancel timelock, in blocks (about 4 hours) */
-    public static final int CANCEL_BLOCKS = 24;
+    /** The mainnet cancel timelock, in blocks (about 5 hours) */
+    public static final int CANCEL_BLOCKS = 30;
     /** The mainnet punish timelock, in blocks, counted from the cancel confirming (about 24 hours) */
     public static final int PUNISH_BLOCKS = 144;
 

@@ -14,7 +14,7 @@ import java.time.Duration;
 public final class SwapCopy {
     private SwapCopy() {}
 
-    /** How long until the swap can be cancelled, from the mainnet cancel timelock: "about 4 hours" */
+    /** How long until the swap can be cancelled, from the mainnet cancel timelock: "about 5 hours" */
     public static String cancelAfter() {
         return aboutHours(SwapTimelock.CANCEL_BLOCKS);
     }

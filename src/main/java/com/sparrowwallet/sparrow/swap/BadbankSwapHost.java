@@ -1,5 +1,6 @@
 package com.sparrowwallet.sparrow.swap;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
@@ -8,8 +9,11 @@ import com.sparrowwallet.drongo.SecureString;
 import com.sparrowwallet.drongo.Utils;
 import com.sparrowwallet.drongo.address.Address;
 import com.sparrowwallet.drongo.address.P2WSHAddress;
+import com.sparrowwallet.drongo.crypto.ECDSASignature;
+import com.sparrowwallet.drongo.crypto.ECKey;
 import com.sparrowwallet.drongo.protocol.Sha256Hash;
 import com.sparrowwallet.drongo.protocol.Transaction;
+import com.sparrowwallet.drongo.protocol.TransactionInput;
 import com.sparrowwallet.drongo.protocol.TransactionOutput;
 import com.sparrowwallet.drongo.psbt.PSBT;
 import com.sparrowwallet.drongo.wallet.*;
@@ -25,6 +29,7 @@ import javafx.scene.control.ButtonType;
 import javafx.stage.Window;
 import javafx.util.Duration;
 
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -35,15 +40,26 @@ import java.util.function.Supplier;
 /**
  * Answers the swap engine for one swap of one Badbank coin. The lock transaction spends exactly that
  * coin and pays it all into the lock, less the network fee: no change, so nothing of the coin stays
- * behind. It signs only the transaction it built, asks before signing and asks again before the lock
- * is published. Anything it does not recognise is refused.
+ * behind.
+ *
+ * <p>The wallet password is asked once, when the swap is started ({@link #unlock}). From eigenwallet 5
+ * the maker wants proof, during the setup, that the taker controls the coin, so the keys are needed
+ * before the final terms exist. They are held only until the lock is signed (or the swap fails), and
+ * are used for two things: an ownership proof for the one coin (a signature over a challenge that can
+ * never be a transaction), and the signature of the one lock transaction this host built. Nothing is
+ * published until the user approves the final terms, which is asked separately. Anything the host does
+ * not recognise is refused.
  *
  * <p>All wallet work happens on the JavaFX thread, where the rest of Ashigaru touches the wallet.
  */
 public class BadbankSwapHost {
-    //Seconds the engine waits for the lock approval (PRE_BTC_LOCK_APPROVAL_TIMEOUT_SECS is 180);
-    //the dialog closes, as a rejection, a little before so the answer is never late
-    private static final int APPROVAL_DIALOG_SECS = 170;
+    /**
+     * Seconds the engine waits for the lock approval (PRE_BTC_LOCK_APPROVAL_TIMEOUT_SECS, 90 in eigenwallet 5);
+     * the review closes, as a rejection, a little before so the answer is never late
+     */
+    static final int APPROVAL_SECS = 85;
+    /** The keys are never held longer than this, whatever happens to the swap */
+    private static final int KEYS_HELD_MAX_MINUTES = 15;
     /** eigenwallet's absolute minimum transaction fee, the lowest a maker accepts for the lock */
     static final long MIN_LOCK_FEE_SATS = 1000;
     /** eigenwallet's dust limit: the lock must be worth more than this */
@@ -52,6 +68,11 @@ public class BadbankSwapHost {
     private final Wallet badbank;
     private final BlockTransactionHashIndex coin;
     private final Window owner;
+    //The wallet with its keys decrypted, from the password at the start until the lock is signed
+    private Wallet signer;
+    //Whether signer is a copy this host made, and so must be wiped
+    private boolean signerIsCopy;
+    private PauseTransition keysExpiry;
     //Lock transactions this host built, by txid: the only ones it will sign
     private final Map<Sha256Hash, FundedLock> funded = new ConcurrentHashMap<>();
     //Where reviews are shown, asked each time because the Swaps screen comes and goes: null means ask in a dialog
@@ -126,6 +147,7 @@ public class BadbankSwapHost {
                     case "fund_lock" -> answer.complete(fundLock(payload));
                     case "max_giveable" -> answer.complete(maxGiveable());
                     case "fee_rate" -> answer.complete(feeRate());
+                    case "prove" -> answer.complete(prove(payload));
                     case "sign" -> sign(payload, answer);
                     case "approve" -> approve(payload, answer);
                     default -> answer.completeExceptionally(new IllegalArgumentException("Unknown request " + kind));
@@ -187,6 +209,10 @@ public class BadbankSwapHost {
     private JsonObject fundLock(JsonObject payload) throws Exception {
         Address lockAddress = Address.fromString(payload.get("address").getAsString());
         long amount = payload.get("amountSats").getAsLong();
+        //The maker accepts a limited number of inputs; this lock has exactly one
+        if(payload.has("maxInputs") && !payload.get("maxInputs").isJsonNull() && payload.get("maxInputs").getAsLong() < 1) {
+            throw new IllegalStateException("The maker does not accept any inputs");
+        }
         long fee = payload.has("feeSats") && !payload.get("feeSats").isJsonNull()
                 ? payload.get("feeSats").getAsLong() : coin.getValue() - amount;
         //The whole coin goes in: lock plus fee must be exactly its value, so there is no change
@@ -252,91 +278,159 @@ public class BadbankSwapHost {
         return answer;
     }
 
+    /**
+     * Asks for the wallet password, once, and holds the decrypted keys for this swap's setup. The
+     * returned future completes when they are ready, and fails if the user cancels or the password is
+     * wrong. A wallet without a password needs no asking.
+     */
+    public CompletableFuture<Void> unlock() {
+        CompletableFuture<Void> unlocked = new CompletableFuture<>();
+        Platform.runLater(() -> {
+            if(signer != null) {
+                unlocked.complete(null);
+                return;
+            }
+            if(!badbank.isEncrypted()) {
+                hold(badbank, false);
+                unlocked.complete(null);
+                return;
+            }
+
+            WalletPasswordDialog dialog = new WalletPasswordDialog(badbank.getMasterName(), WalletPasswordDialog.PasswordRequirement.LOAD);
+            dialog.initOwner(owner);
+            Optional<SecureString> password = dialog.showAndWait();
+            if(password.isEmpty()) {
+                unlocked.completeExceptionally(new IllegalStateException("Cancelled"));
+                return;
+            }
+            Storage.DecryptWalletService decrypt = new Storage.DecryptWalletService(badbank.copy(), password.get());
+            decrypt.setOnSucceeded(event -> {
+                hold(decrypt.getValue(), true);
+                unlocked.complete(null);
+            });
+            decrypt.setOnFailed(event -> {
+                AppServices.showErrorDialog("Incorrect Password", decrypt.getException().getMessage());
+                unlocked.completeExceptionally(decrypt.getException());
+            });
+            decrypt.start();
+        });
+        return unlocked;
+    }
+
+    private void hold(Wallet unlocked, boolean copy) {
+        signer = unlocked;
+        signerIsCopy = copy;
+        keysExpiry = new PauseTransition(Duration.minutes(KEYS_HELD_MAX_MINUTES));
+        keysExpiry.setOnFinished(event -> release());
+        keysExpiry.play();
+    }
+
+    /** Wipes the keys held for this swap. Safe to call more than once, from any thread. */
+    public void release() {
+        Runnable wipe = () -> {
+            if(keysExpiry != null) {
+                keysExpiry.stop();
+                keysExpiry = null;
+            }
+            if(signer != null && signerIsCopy) {
+                signer.clearPrivate();
+            }
+            signer = null;
+            signerIsCopy = false;
+        };
+        if(Platform.isFxApplicationThread()) {
+            wipe.run();
+        } else {
+            Platform.runLater(wipe);
+        }
+    }
+
+    /** True while the keys are held */
+    boolean isUnlocked() {
+        return signer != null;
+    }
+
+    /**
+     * Proves to the maker that this wallet controls the coin the lock spends, by signing the 32 byte
+     * challenge the engine gives with the key behind each input. The challenge is a hash the engine
+     * derived from the swap, both parties' keys and the lock transaction's id, so a proof is of no use
+     * for anything else. Only inputs of the lock this host built are proved, and only native segwit.
+     */
+    private JsonObject prove(JsonObject payload) throws Exception {
+        if(signer == null) {
+            throw new IllegalStateException("The wallet is locked");
+        }
+        PSBT requested = new PSBT(Utils.hexToBytes(payload.get("psbtHex").getAsString()));
+        if(!funded.containsKey(requested.getTransaction().getTxId())) {
+            throw new IllegalStateException("Not a lock transaction Ashigaru built");
+        }
+        byte[] challenge = Utils.hexToBytes(payload.get("challengeHex").getAsString());
+
+        Map<BlockTransactionHashIndex, WalletNode> txos = spendableTxos();
+        JsonArray proofs = new JsonArray();
+        for(TransactionInput input : requested.getTransaction().getInputs()) {
+            WalletNode node = txos.entrySet().stream()
+                    .filter(entry -> entry.getKey().getHash().equals(input.getOutpoint().getHash()) && entry.getKey().getIndex() == input.getOutpoint().getIndex())
+                    .map(Map.Entry::getValue).findFirst()
+                    .orElseThrow(() -> new IllegalStateException("A lock input is not a coin of Badbank"));
+            ECKey key = signer.getKeystores().get(0).getKey(node);
+            proofs.add(ownershipProof(key, challenge, node.getOutputScript().getProgram()));
+        }
+        JsonObject answer = new JsonObject();
+        answer.add("proofs", proofs);
+        return answer;
+    }
+
+    /**
+     * An ECDSA signature over the challenge with the key that controls a native segwit output, and that
+     * key, as the maker expects them: a compressed public key and the 64 byte compact signature (low S,
+     * which drongo produces). The key must hash to the output's script, or nothing is proved.
+     */
+    static JsonObject ownershipProof(ECKey key, byte[] challenge, byte[] outputScript) {
+        if(challenge.length != 32) {
+            throw new IllegalArgumentException("The challenge must be 32 bytes");
+        }
+        byte[] pubKey = key.getPubKey(true);
+        byte[] expected = Arrays.copyOfRange(outputScript, 2, outputScript.length);
+        if(outputScript.length != 22 || outputScript[0] != 0 || outputScript[1] != 20 || !Arrays.equals(expected, Utils.sha256hash160(pubKey))) {
+            throw new IllegalStateException("The coin is not a native segwit output of this key");
+        }
+        ECDSASignature signature = key.signEcdsa(Sha256Hash.wrap(challenge));
+        byte[] compact = new byte[64];
+        System.arraycopy(toFixed(signature.r), 0, compact, 0, 32);
+        System.arraycopy(toFixed(signature.s), 0, compact, 32, 32);
+        JsonObject proof = new JsonObject();
+        proof.addProperty("publicKey", Utils.bytesToHex(pubKey));
+        proof.addProperty("signature", Utils.bytesToHex(compact));
+        return proof;
+    }
+
+    private static byte[] toFixed(BigInteger value) {
+        byte[] raw = value.toByteArray();
+        byte[] fixed = new byte[32];
+        int length = Math.min(raw.length, 32);
+        System.arraycopy(raw, raw.length - length, fixed, 32 - length, length);
+        return fixed;
+    }
+
+    /**
+     * Signs the lock this host built, with the keys unlocked when the swap was started. The signed
+     * transaction goes back to the engine, which holds it until the user approves the final terms and
+     * only then publishes it. The keys are wiped as soon as it is signed.
+     */
     private void sign(JsonObject payload, CompletableFuture<JsonElement> answer) throws Exception {
         PSBT requested = new PSBT(Utils.hexToBytes(payload.get("psbtHex").getAsString()));
         FundedLock lock = funded.get(requested.getTransaction().getTxId());
         if(lock == null) {
             throw new IllegalStateException("Not a lock transaction Ashigaru built");
         }
-        PSBT ours = lock.psbt();
-
-        ReviewPresenter presenter = presenters.get();
-        if(presenter == null) {
-            signWithDialog(lock, ours, answer);
-            return;
+        if(signer == null) {
+            throw new IllegalStateException("The wallet is locked");
         }
-
-        AtomicBoolean answered = new AtomicBoolean();
-        SwapReview review = SwapReview.prepare(coin.getValue(), lock.amount(), lock.fee(), badbank.isEncrypted(), new SwapReview.Decision() {
-            @Override
-            public void confirm() {
-                if(answered.compareAndSet(false, true)) {
-                    dialogFallback = null;
-                    presenter.dismiss();
-                    signWithWallet(ours, answer);
-                }
-            }
-
-            @Override
-            public void decline() {
-                if(answered.compareAndSet(false, true)) {
-                    dialogFallback = null;
-                    presenter.dismiss();
-                    answer.completeExceptionally(new IllegalStateException("Signing cancelled"));
-                }
-            }
-        });
-        dialogFallback = () -> {
-            if(answered.compareAndSet(false, true)) {
-                try {
-                    signWithDialog(lock, ours, answer);
-                } catch(Exception e) {
-                    answer.completeExceptionally(e);
-                }
-            }
-        };
-        presenter.present(review);
+        completeSigned(signer, lock.psbt(), answer);
     }
 
-    /** The dialog form of the signing request, used when the Swaps screen is not showing */
-    private void signWithDialog(FundedLock lock, PSBT ours, CompletableFuture<JsonElement> answer) {
-        Alert confirm = alert(Alert.AlertType.CONFIRMATION, "Sign the swap lock?",
-                "Ashigaru built a transaction locking " + btc(lock.amount()) + " BTC from Badbank, with a network fee of "
-                        + lock.fee() + " sats.\n\nSigning does not publish it. You will see the final terms, including "
-                        + "how much XMR you receive, and nothing is locked unless you approve them.",
-                new ButtonType("Sign", ButtonBar.ButtonData.OK_DONE), ButtonType.CANCEL);
-        Optional<ButtonType> choice = confirm.showAndWait();
-        if(choice.isEmpty() || choice.get().getButtonData() != ButtonBar.ButtonData.OK_DONE) {
-            answer.completeExceptionally(new IllegalStateException("Signing cancelled"));
-            return;
-        }
-        signWithWallet(ours, answer);
-    }
-
-    /** Signs the lock with the Badbank keys, asking for the wallet password in its own dialog when there is one */
-    private void signWithWallet(PSBT ours, CompletableFuture<JsonElement> answer) {
-        if(!badbank.isEncrypted()) {
-            completeSigned(badbank, ours, answer, false);
-            return;
-        }
-
-        WalletPasswordDialog dialog = new WalletPasswordDialog(badbank.getMasterName(), WalletPasswordDialog.PasswordRequirement.LOAD);
-        dialog.initOwner(owner);
-        Optional<SecureString> password = dialog.showAndWait();
-        if(password.isEmpty()) {
-            answer.completeExceptionally(new IllegalStateException("Signing cancelled"));
-            return;
-        }
-        Storage.DecryptWalletService decrypt = new Storage.DecryptWalletService(badbank.copy(), password.get());
-        decrypt.setOnSucceeded(event -> completeSigned(decrypt.getValue(), ours, answer, true));
-        decrypt.setOnFailed(event -> {
-            AppServices.showErrorDialog("Incorrect Password", decrypt.getException().getMessage());
-            answer.completeExceptionally(decrypt.getException());
-        });
-        decrypt.start();
-    }
-
-    private void completeSigned(Wallet signingWallet, PSBT unsigned, CompletableFuture<JsonElement> answer, boolean clear) {
+    private void completeSigned(Wallet signingWallet, PSBT unsigned, CompletableFuture<JsonElement> answer) {
         try {
             //Sign a copy so a failure leaves the funded PSBT as it was
             PSBT psbt = new PSBT(unsigned.serialize());
@@ -348,9 +442,7 @@ public class BadbankSwapHost {
         } catch(Exception e) {
             answer.completeExceptionally(e);
         } finally {
-            if(clear) {
-                signingWallet.clearPrivate();
-            }
+            release();
         }
     }
 
@@ -374,13 +466,13 @@ public class BadbankSwapHost {
         termsListener.terms(piconero, amnesty, fullRefund);
         ReviewPresenter presenter = presenters.get();
         if(presenter == null) {
-            approveWithDialog(lockAmount, networkFee, piconero, amnesty, fullRefund, APPROVAL_DIALOG_SECS, answer);
+            approveWithDialog(lockAmount, networkFee, piconero, amnesty, fullRefund, APPROVAL_SECS, answer);
             return;
         }
 
         AtomicBoolean answered = new AtomicBoolean();
-        Instant expiresAt = Instant.now().plusSeconds(APPROVAL_DIALOG_SECS);
-        PauseTransition expiry = new PauseTransition(Duration.seconds(APPROVAL_DIALOG_SECS));
+        Instant expiresAt = Instant.now().plusSeconds(APPROVAL_SECS);
+        PauseTransition expiry = new PauseTransition(Duration.seconds(APPROVAL_SECS));
         SwapReview.Decision decision = new SwapReview.Decision() {
             @Override
             public void confirm() {

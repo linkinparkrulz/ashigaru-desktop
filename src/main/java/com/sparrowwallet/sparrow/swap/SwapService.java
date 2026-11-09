@@ -36,6 +36,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
@@ -431,21 +432,31 @@ public class SwapService implements SwapHost {
         long sats = chosen.outpoint().getValue() - fee;
         String refundAddress = host.getFreshAddress();
         activeHost = host;
-        runInBackground(() -> engine.startSwap(maker, sats, fee, xmrAddress, refundAddress), swapId -> {
-            runningSwaps.add(swapId);
-            currentSwapId = swapId;
-            saveDetails(swapId, SwapDetails.started(sats, fee, xmrAddress, SwapReview.shortId(maker.peerId())));
-            progress.putIfAbsent(swapId, new SwapProgress.Status(SwapProgress.Step.NODES, null, java.time.Instant.now(), false));
-            coin.set(null);
-            appendLog("Swap " + swapId + " started: " + BadbankSwapHost.btc(sats) + " BTC from " + chosen.walletName()
-                    + "'s Badbank coin to " + xmrAddress + ", network fee " + fee + " sats, refunds to " + refundAddress
-                    + ", with maker " + maker.peerId() + (maker.version() == null ? "" : " v" + maker.version()) + " at " + maker.multiaddr());
-            swapListeners.forEach(Runnable::run);
-            onSuccess.accept(swapId);
-        }, e -> {
-            activeHost = null;
-            onFailure.accept(e);
-        });
+        //The wallet password is asked once, here: the maker wants proof of the coin during the setup, and the
+        //lock is signed straight after, so the keys are held (and then wiped) until the lock is signed or the swap fails
+        host.unlock().whenComplete((ignored, unlockFailure) -> Platform.runLater(() -> {
+            if(unlockFailure != null) {
+                activeHost = null;
+                onFailure.accept(unlockFailure instanceof CompletionException && unlockFailure.getCause() != null ? unlockFailure.getCause() : unlockFailure);
+                return;
+            }
+            runInBackground(() -> engine.startSwap(maker, sats, fee, xmrAddress, refundAddress), swapId -> {
+                runningSwaps.add(swapId);
+                currentSwapId = swapId;
+                saveDetails(swapId, SwapDetails.started(sats, fee, xmrAddress, SwapReview.shortId(maker.peerId())));
+                progress.putIfAbsent(swapId, new SwapProgress.Status(SwapProgress.Step.NODES, null, java.time.Instant.now(), false));
+                coin.set(null);
+                appendLog("Swap " + swapId + " started: " + BadbankSwapHost.btc(sats) + " BTC from " + chosen.walletName()
+                        + "'s Badbank coin to " + xmrAddress + ", network fee " + fee + " sats, refunds to " + refundAddress
+                        + ", with maker " + maker.peerId() + (maker.version() == null ? "" : " v" + maker.version()) + " at " + maker.multiaddr());
+                swapListeners.forEach(Runnable::run);
+                onSuccess.accept(swapId);
+            }, e -> {
+                host.release();
+                activeHost = null;
+                onFailure.accept(e);
+            });
+        }));
     }
 
     /** Asks each Monero node for its height through Tor, so a dead one is found before a swap needs it */
@@ -521,7 +532,7 @@ public class SwapService implements SwapHost {
         if(host == null) {
             return CompletableFuture.failedFuture(new IllegalStateException("No swap is being set up"));
         }
-        if("sign".equals(kind) || "approve".equals(kind)) {
+        if("approve".equals(kind)) {
             //The user is being asked: show it as the swap's current step
             Platform.runLater(() -> {
                 String swapId = currentSwapId;
@@ -529,7 +540,7 @@ public class SwapService implements SwapHost {
                     SwapProgress.Status previous = progress.get(swapId);
                     java.time.Instant since = previous != null && previous.step() == SwapProgress.Step.APPROVAL ? previous.since() : java.time.Instant.now();
                     progress.put(swapId, new SwapProgress.Status(SwapProgress.Step.APPROVAL,
-                            "sign".equals(kind) ? "Sign the lock in the dialog" : "Approve or reject the final terms in the dialog", since, false));
+                            "Approve or reject the final terms", since, false));
                     swapListeners.forEach(Runnable::run);
                 }
             });
@@ -557,6 +568,9 @@ public class SwapService implements SwapHost {
         if("swap_stopped".equals(kind)) {
             String swapId = payload.get("swapId").getAsString();
             runningSwaps.remove(swapId);
+            if(activeHost != null) {
+                activeHost.release();
+            }
             activeHost = null;
             SwapProgress.Status status = SwapProgress.stopped(payload, progress.get(swapId), java.time.Instant.now());
             progress.put(swapId, status);
