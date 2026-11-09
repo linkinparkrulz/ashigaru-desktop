@@ -96,7 +96,8 @@ could be agreed upon" after about two minutes of retries. Offers from makers on 
 left out of the table and counted in the "not shown" line, and a setup that fails this way says why.
 
 As more makers upgrade, fewer offers remain. **The engine needs updating to 5.x**, which means rebasing the
-patches and checking the shim against the new API. When it does:
+patches and checking the shim against the new API. The work, risks and an estimate are in
+`docs/EngineUpgrade5x.md`. When it does:
 
 - The mainnet cancel timelock becomes 30 blocks, not 24. `SwapTimelock.CANCEL_BLOCKS` and the "about 4
   hours" wording that comes from it (`SwapCopy.cancelAfter()`) must change, and `FIRST_UNSUPPORTED_MAKER_VERSION`
