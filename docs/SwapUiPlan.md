@@ -86,6 +86,24 @@ These need the swap engine, Tor and live makers, which the automated tests canno
 - A swap running through the cancel timelock: Ashigaru cancels and refunds by itself, with no button.
 - The countdown against real blocks, and that the `TimelockChange` events arrive.
 
+## Known limit: the engine is on eigenwallet 4.16
+
+eigenwallet 5.0.1 (2026-10-30) made breaking protocol changes: takers prove they own the lock's inputs, the
+cancel and refund transactions were changed against pinning, and **both peers must upgrade to start a new
+swap**. Makers are moving to 5.x. Ashigaru's engine (`swap-engine/EIGENWALLET_REV`, with five patches) is
+still on a 4.16 revision, so it cannot set up a swap with a 5.x maker: the setup fails with "no protocols
+could be agreed upon" after about two minutes of retries. Offers from makers on 5.x or later are therefore
+left out of the table and counted in the "not shown" line, and a setup that fails this way says why.
+
+As more makers upgrade, fewer offers remain. **The engine needs updating to 5.x**, which means rebasing the
+patches and checking the shim against the new API. When it does:
+
+- The mainnet cancel timelock becomes 30 blocks, not 24. `SwapTimelock.CANCEL_BLOCKS` and the "about 4
+  hours" wording that comes from it (`SwapCopy.cancelAfter()`) must change, and `FIRST_UNSUPPORTED_MAKER_VERSION`
+  and the version check in `SwapEngine.Quote` must move with the engine.
+- Re-read the timelock values (including the punish timelock) from the pinned source before trusting the
+  "about 24 hours" refund window.
+
 ## Still to verify
 
 - Exactly how the deposit is released after a partial refund (wording is deliberately "may keep").

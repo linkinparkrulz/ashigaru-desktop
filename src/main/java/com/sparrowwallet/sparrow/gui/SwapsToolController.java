@@ -223,6 +223,8 @@ public class SwapsToolController implements Initializable {
         String empty = !offers.shown().isEmpty() ? null
                 : !running ? "Swaps are not running. Turn them on in Settings → Swaps."
                 : quotes.isEmpty() ? "No makers yet. They are found over a minute or two after swaps start."
+                : offers.newer() > 0 && offers.newer() == quotes.size() ? "Every maker found runs newer swap software than this version of Ashigaru can swap with yet. "
+                        + "eigenwallet 5 changed the protocol, and Ashigaru needs an update before it can swap with those makers."
                 : swapSats > 0 ? "No maker can take this coin right now." : "No usable offers right now.";
         offersPane.show(new SwapOffersPane.State(attention, coin != null, coin == null ? 0 : coin.outpoint().getValue(), coin == null ? "" : coin.walletName(),
                 swapSats, lockFee, coinProblem, offers.shown(), offers.footer(market != null, swapSats > 0 ? btc(swapSats) : null), marketText, market, running,
@@ -234,12 +236,14 @@ public class SwapsToolController implements Initializable {
      * that cannot take the coin and offers below the market are never shown: none of them can
      * complete a swap.
      */
-    record Offers(List<Quote> shown, Quote bestRate, Quote bestRefund, int outdated, int wrongSize, int belowMarket, int soldOut) {
+    record Offers(List<Quote> shown, Quote bestRate, Quote bestRefund, int outdated, int wrongSize, int belowMarket, int soldOut, int newer) {
         static Offers of(List<Quote> quotes, long swapSats, Double marketBtcPerXmr) {
             List<Quote> shown = new ArrayList<>();
-            int outdated = 0, wrongSize = 0, belowMarket = 0, soldOut = 0;
+            int outdated = 0, wrongSize = 0, belowMarket = 0, soldOut = 0, newer = 0;
             for(Quote quote : quotes) {
-                if(quote.isIncompatible()) {
+                if(quote.isTooNew()) {
+                    newer++;
+                } else if(quote.isOutdated()) {
                     outdated++;
                 } else if(quote.isBelowMarket(marketBtcPerXmr)) {
                     belowMarket++;
@@ -255,7 +259,7 @@ public class SwapsToolController implements Initializable {
             Quote bestRate = shown.isEmpty() ? null : shown.get(0);
             //Lowest deposit the maker may keep; the better rate wins a tie
             Quote bestRefund = shown.stream().min(Comparator.comparingDouble(Quote::refundRatio)).orElse(null);
-            return new Offers(List.copyOf(shown), bestRate, bestRefund, outdated, wrongSize, belowMarket, soldOut);
+            return new Offers(List.copyOf(shown), bestRate, bestRefund, outdated, wrongSize, belowMarket, soldOut, newer);
         }
 
         /**
@@ -276,6 +280,9 @@ public class SwapsToolController implements Initializable {
             }
             if(outdated > 0) {
                 hidden.add(outdated + " running outdated software");
+            }
+            if(newer > 0) {
+                hidden.add(newer + " running newer swap software than this version of Ashigaru supports (eigenwallet 5 changed the protocol)");
             }
             String text = hidden.isEmpty() ? "" : "Not shown: " + String.join(", ", hidden) + ".";
             if(!marketKnown && (shown.size() + wrongSize) > 0) {

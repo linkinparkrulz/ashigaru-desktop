@@ -16,7 +16,15 @@ class QuoteTest {
         assertTrue(quote("4.13.0-rc.1").isIncompatible());
         assertFalse(quote("4.13.0").isIncompatible());
         assertFalse(quote("4.16.1").isIncompatible());
-        assertFalse(quote("5.0.0").isIncompatible());
+        //eigenwallet 5 changed the protocol: a 5.x maker cannot be swapped with by this engine, which is on 4.16
+        assertTrue(quote("5.0.0").isIncompatible());
+        assertTrue(quote("5.0.1").isIncompatible());
+        assertTrue(quote("v5.0.2").isIncompatible());
+        assertTrue(quote("6.1.0").isTooNew());
+        assertTrue(quote("4.12.3").isOutdated());
+        assertFalse(quote("4.12.3").isTooNew());
+        assertFalse(quote("4.16.1").isTooNew());
+        assertFalse(quote("5.0.1").isOutdated());
     }
 
     private static SwapEngine.Quote at(String multiaddr, String refundPolicy) {

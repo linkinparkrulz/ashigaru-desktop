@@ -46,6 +46,7 @@ class SwapsToolControllerTest {
         assertSame(fullRefund, offers.bestRefund());
         assertEquals(1, offers.belowMarket());
         assertEquals(1, offers.outdated());
+        assertEquals(0, offers.newer());
         assertEquals(1, offers.wrongSize());
         String footer = offers.footer(true, "0.00373000");
         assertTrue(footer.contains("1 offering more XMR than the market pays"), footer);
@@ -58,6 +59,20 @@ class SwapsToolControllerTest {
         SwapsToolController.Offers early = SwapsToolController.Offers.of(List.of(fake, fair), 373_000, null);
         assertEquals(List.of(fake, fair), early.shown());
         assertTrue(early.footer(false, null).contains("once the market price has loaded"));
+    }
+
+    @Test
+    void makersOnTheNewerProtocolAreLeftOutAndSaidSo() {
+        String full = "{\"type\":\"FullRefund\"}";
+        Quote old = offer("a", "4.16.1", 705_000, 10_000, 1_000_000, full);
+        Quote newer = offer("b", "5.0.1", 704_000, 10_000, 1_000_000, full);
+        SwapsToolController.Offers offers = SwapsToolController.Offers.of(List.of(old, newer), 373_000, 0.0070);
+        assertEquals(List.of(old), offers.shown());
+        assertEquals(1, offers.newer());
+        assertEquals(0, offers.outdated(), "a newer maker is not outdated");
+        String footer = offers.footer(true, "0.00373000");
+        assertTrue(footer.contains("1 running newer swap software than this version of Ashigaru supports"), footer);
+        assertFalse(footer.contains("outdated"));
     }
 
     @Test

@@ -239,6 +239,11 @@ public final class SwapProgress {
             error = "The maker did not answer the swap request. It may be out of XMR, running software that does not work with this one, "
                     + "or unreachable over Tor; try another maker.\n\nThe engine said: " + error;
         }
+        if(error.contains("no protocols could be agreed upon") || error.contains("may not support the swap setup protocol")) {
+            error = "This maker does not speak the same swap protocol as this version of Ashigaru, most likely because it runs newer software "
+                    + "(eigenwallet 5 changed the protocol, and Ashigaru's engine is still on version 4). Choose a maker running version 4.\n\n"
+                    + "The engine said: " + error;
+        }
         boolean beforeLock = previous == null || previous.step().ordinal() <= Step.APPROVAL.ordinal();
         String consequence = beforeLock
                 ? "Nothing was locked: the coin is still in Badbank and can be swapped again."

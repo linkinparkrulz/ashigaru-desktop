@@ -277,6 +277,14 @@ public class SwapEngine {
         public static final String MIN_MAKER_VERSION = "4.13.0";
 
         /**
+         * The first maker version this engine cannot swap with. eigenwallet 5.0.1 made breaking protocol changes
+         * ("both peers must upgrade to start a new swap": takers prove ownership of the lock's inputs, and the
+         * cancel and refund transactions changed), and Ashigaru's engine is still on 4.16. Such a maker answers a
+         * swap request with "no protocols could be agreed upon" and the setup fails after retrying for two minutes.
+         */
+        public static final String FIRST_UNSUPPORTED_MAKER_VERSION = "5.0.0";
+
+        /**
          * Offers this much cheaper than the market are left out. No honest maker sells XMR below the
          * market; such offers draw takers in and then refuse the swap, and none is on eigenwallet's
          * liquidity list.
@@ -327,7 +335,17 @@ public class SwapEngine {
 
         /** True when the maker reports a version known not to work. An unknown version is given a chance, as in eigenwallet. */
         public boolean isIncompatible() {
+            return isOutdated() || isTooNew();
+        }
+
+        /** True when the maker runs software older than this engine can swap with */
+        public boolean isOutdated() {
             return version != null && !version.isBlank() && compareVersions(version, MIN_MAKER_VERSION) < 0;
+        }
+
+        /** True when the maker runs a newer protocol than this engine speaks, so a swap with it cannot be set up */
+        public boolean isTooNew() {
+            return version != null && !version.isBlank() && compareVersions(version, FIRST_UNSUPPORTED_MAKER_VERSION) >= 0;
         }
 
         /** Compares semantic versions; a pre-release (4.13.0-rc.1) comes before its release */
