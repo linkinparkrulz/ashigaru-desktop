@@ -137,10 +137,13 @@ class SwapDashboardTest {
     }
 
     @Test
-    void aSwapThatStoppedBeforeTheLockLockedNothing() {
+    void aSwapThatStoppedBeforeTheLockLockedNothingAndLeadsBackToTheOffers() {
         SwapDashboard d = of(stopped(Step.TERMS), null, false, null);
         assertEquals("This swap stopped", d.banner().title());
-        assertNull(d.banner().cta());
+        //The way to choose another offer is the main action, so the user is never stranded on this screen
+        assertEquals(Action.BACK_TO_OFFERS, d.banner().cta().action());
+        assertTrue(d.banner().cta().enabled());
+        assertTrue(d.canLeave());
         assertEquals(Tone.GOOD, d.summary().closing().tone());
         assertEquals("Nothing is locked yet, so there is nothing to recover.", d.summary().recoveryText());
     }
@@ -168,6 +171,20 @@ class SwapDashboardTest {
         assertTrue(d.milestones().recovery());
         assertEquals(RECOVERY.size(), d.milestones().current());
         assertEquals("Back in Badbank.", d.summary().funds());
+    }
+
+    @Test
+    void theUserCanAlwaysLeaveASwapThatIsOverOrNotRunning() {
+        //Over
+        assertTrue(of(at(Step.DONE, null), null, false, TERMS).canLeave());
+        assertTrue(of(at(Step.REFUNDED, null), null, false, TERMS).canLeave());
+        //Stopped, whatever its recovery needs: they can start another swap while it waits
+        assertTrue(of(stopped(Step.MAKER_CONFIRM), open(140), false, TERMS).canLeave());
+        assertTrue(of(stopped(Step.MAKER_CONFIRM), before(13), false, TERMS).canLeave());
+        assertTrue(of(stopped(Step.LOCK_CONFIRM), null, false, TERMS).canLeave());
+        //A swap Ashigaru is running looks after itself and keeps the page
+        assertFalse(of(at(Step.MAKER_CONFIRM, null), before(9), true, TERMS).canLeave());
+        assertFalse(of(at(Step.REFUND_WAIT, null), open(120), true, TERMS).canLeave());
     }
 
     @Test

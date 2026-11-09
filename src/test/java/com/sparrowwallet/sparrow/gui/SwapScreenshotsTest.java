@@ -390,6 +390,35 @@ class SwapScreenshotsTest {
     }
 
     @Test
+    void aStoppedSwapAlwaysHasAWayBackToTheOffers() throws Exception {
+        //Exactly the case in the field: the swap stopped during setup, before anything was locked
+        var stoppedEarly = dashboard(new com.sparrowwallet.sparrow.swap.SwapProgress.Status(com.sparrowwallet.sparrow.swap.SwapProgress.Step.STOPPED,
+                "Failed to setup swap after retries: no protocols could be agreed upon", WAS, true, com.sparrowwallet.sparrow.swap.SwapProgress.Step.TERMS), null, false);
+        List<com.sparrowwallet.sparrow.swap.SwapDashboard.Action> pressed = new ArrayList<>();
+        SwapDashboardPane pane = onFx(SwapDashboardPane::new);
+        onFx(() -> {
+            pane.setOnAction(pressed::add);
+            pane.show(SWAP_ID, stoppedEarly, HEALTHY);
+            return null;
+        });
+        shoot(pane, 845, 800, "dash-stopped-early-845");
+        Button back = onFx(() -> button(pane, "Back to offers"));
+        assertNotNull(back);
+        onFx(() -> {
+            back.fire();
+            return null;
+        });
+        assertEquals(List.of(com.sparrowwallet.sparrow.swap.SwapDashboard.Action.BACK_TO_OFFERS), pressed);
+
+        //A stopped swap that holds BTC keeps its recovery button and still offers the way back
+        SwapDashboardPane recovery = draw(dashboard(new com.sparrowwallet.sparrow.swap.SwapProgress.Status(com.sparrowwallet.sparrow.swap.SwapProgress.Step.STOPPED,
+                "The swap stopped.", WAS, true, com.sparrowwallet.sparrow.swap.SwapProgress.Step.MAKER_CONFIRM), open(140), false), HEALTHY, false);
+        shoot(recovery, 845, 1100, "dash-recovery-with-back-845");
+        assertNotNull(onFx(() -> button(recovery, "Cancel and refund")));
+        assertNotNull(onFx(() -> button(recovery, "← Back to offers")));
+    }
+
+    @Test
     void theSwapsPageFollowsTheEnginesEventsToTheDashboard() throws Exception {
         javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(SwapScreenshotsTest.class.getResource("/com/sparrowwallet/sparrow/gui/swaps.fxml"));
         Node page = onFx(() -> {

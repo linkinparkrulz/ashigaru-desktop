@@ -52,7 +52,18 @@ public class SwapDashboardPane extends VBox {
     public void show(String swapId, SwapDashboard dashboard, Connections connections) {
         getChildren().clear();
         Label eyebrow = label("YOUR SWAP  ·  " + swapId.substring(0, Math.min(8, swapId.length())), "dash-eyebrow");
-        getChildren().add(eyebrow);
+        Region gap = new Region();
+        HBox.setHgrow(gap, Priority.ALWAYS);
+        HBox top = new HBox(12, eyebrow, gap);
+        top.setAlignment(Pos.CENTER_LEFT);
+        //A way back that is always there once the swap is over or stopped; the banner's own button already does this for a finished one
+        boolean bannerLeaves = dashboard.banner().cta() != null && dashboard.banner().cta().action() == Action.BACK_TO_OFFERS;
+        if(dashboard.canLeave() && !bannerLeaves) {
+            Button back = button("← Back to offers", "secondary-btn");
+            back.setOnAction(event -> onAction.accept(Action.BACK_TO_OFFERS));
+            top.getChildren().add(back);
+        }
+        getChildren().add(top);
         getChildren().add(banner(dashboard.banner()));
         if(message != null && !message.isBlank()) {
             getChildren().add(wrapped(message, "dash-message"));
@@ -315,6 +326,13 @@ public class SwapDashboardPane extends VBox {
     }
 
     /** A name and its value on one line; either wraps when the card is narrow, so a long value never widens the page */
+    private static Button button(String text, String... styles) {
+        Button button = new Button(text);
+        button.getStyleClass().addAll(styles);
+        button.setMinWidth(Region.USE_PREF_SIZE);
+        return button;
+    }
+
     private static HBox factRow(String label, String value) {
         Label k = wrapped(label, "dash-fact-key");
         Label v = wrapped(value, "dash-fact-value");

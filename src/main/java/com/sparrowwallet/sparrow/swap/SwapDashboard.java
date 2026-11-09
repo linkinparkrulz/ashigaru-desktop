@@ -17,7 +17,7 @@ import java.util.List;
  * Ashigaru itself once the timelock allows, so the user has nothing to do except keep it running. Only
  * a swap that is not running, after its cancel timelock has expired, is cancelled by the user.
  */
-public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summary summary, List<String> protocolSteps, int protocolCurrent) {
+public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summary summary, List<String> protocolSteps, int protocolCurrent, boolean canLeave) {
     public enum Tone { INFO, WARN, GOOD }
 
     public enum Action { CANCEL_AND_REFUND, BACK_TO_OFFERS }
@@ -78,7 +78,10 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
         }
         SwapProgress.Step shown = reached == null ? step : reached;
         int protocolCurrent = SwapProgress.MAIN_STEPS.indexOf(shown);
-        return new SwapDashboard(banner, milestones, now, summary, steps, protocolCurrent);
+        //A swap that is over, or that Ashigaru is not running, never traps the user on its screen: they can go back to
+        //the offers, and the swap stays in the list and in the notice above the offers if it still needs them
+        boolean canLeave = in.status().finished() || !in.running();
+        return new SwapDashboard(banner, milestones, now, summary, steps, protocolCurrent, canLeave);
     }
 
     private static Banner banner(Input in, SwapProgress.Step step, boolean locked, boolean cancelOpen, boolean needsYou, boolean automatic,
@@ -118,7 +121,8 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
             return new Banner(Tone.WARN, "This swap has stopped, and cancelling is not open yet.", text, cta);
         }
         if(stopped) {
-            return new Banner(Tone.WARN, "This swap stopped", "Nothing was locked: your coin is still in Badbank and can be swapped again.", null);
+            return new Banner(Tone.WARN, "This swap stopped", "Nothing was locked: your coin is still in Badbank and can be swapped again.",
+                    new Cta(Action.BACK_TO_OFFERS, "Back to offers", true, null));
         }
         return switch(step) {
             case NODES -> new Banner(Tone.INFO, "Nothing for you to do", "Ashigaru is checking the Monero nodes through Tor.", null);
@@ -214,7 +218,8 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
             return recoveryNow(in, step, cancelOpen, needsYou, automatic, stopped);
         }
         if(stopped) {
-            return new Now("This swap stopped", in.status().detail(), List.of(), null, null, null, null, null);
+            //The banner already says it stopped; this says why
+            return new Now("Why it stopped", in.status().detail(), List.of(), null, null, null, null, null);
         }
         Duration waited = minutes(Duration.between(in.status().since(), in.now()));
         boolean network = step != SwapProgress.Step.APPROVAL && step != SwapProgress.Step.WORKING && !in.status().finished();
