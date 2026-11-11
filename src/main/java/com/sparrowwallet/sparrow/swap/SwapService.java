@@ -83,6 +83,8 @@ public class SwapService implements SwapHost {
     private volatile ReviewPresenter reviewPresenter;
     //What was agreed for each swap of this identity: amounts, address, maker. Opened when the engine starts.
     private volatile SwapDetails.Store detailsStore;
+    //Earlier identities' records, read only: a finished swap stays in the list under the identity it ran as
+    private volatile List<SwapDetails.Store> pastDetailsStores = List.of();
     private String currentSwapId;
     private final StringBuilder logText = new StringBuilder();
     private final List<Consumer<String>> logListeners = new CopyOnWriteArrayList<>();
@@ -142,10 +144,17 @@ public class SwapService implements SwapHost {
         return presenter != null && presenter.isShowing() ? presenter : null;
     }
 
-    /** What was agreed for a swap, or null when this identity has no record of it */
+    /** What was agreed for a swap, or null when no identity has a record of it */
     public SwapDetails getDetails(String swapId) {
         SwapDetails.Store store = detailsStore;
-        return store == null ? null : store.get(swapId);
+        SwapDetails found = store == null ? null : store.get(swapId);
+        for(SwapDetails.Store past : pastDetailsStores) {
+            if(found != null) {
+                break;
+            }
+            found = past.get(swapId);
+        }
+        return found;
     }
 
     private void saveDetails(String swapId, SwapDetails details) {
@@ -319,6 +328,7 @@ public class SwapService implements SwapHost {
                     SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
             }
             detailsStore = new SwapDetails.Store(identity.getDataDir());
+            pastDetailsStores = SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()).stream().map(SwapDetails.Store::new).toList();
             return resumed;
         }, resumed -> {
             starting = false;
