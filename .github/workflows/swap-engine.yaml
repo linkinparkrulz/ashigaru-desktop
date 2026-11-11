@@ -124,6 +124,18 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/out"
           cp "$lib" "$GITHUB_WORKSPACE/out/"
 
+      # A library built on a new macOS runner can require that macOS or later, and then fails to load on an older Mac
+      - name: Record the macOS version the library needs
+        if: contains(matrix.target, 'apple')
+        run: |
+          lib="out/${{ matrix.lib }}"
+          build=$(otool -l "$lib" | grep -A4 -E 'LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX')
+          echo "$build"
+          minos=$(echo "$build" | awk '$1 == "minos" || $1 == "version" {print $2; exit}')
+          echo "- needs macOS ${minos:-unknown} or later" >> "$GITHUB_STEP_SUMMARY"
+          echo "Imports of $(basename "$lib"):"
+          otool -L "$lib"
+
       # Windows does not have MinGW's runtime DLLs, so ship the ones the library imports beside it,
       # as eigenwallet's own Windows app does; Ashigaru loads them before the engine
       - name: Ship MinGW runtime DLLs (Windows cross-build)

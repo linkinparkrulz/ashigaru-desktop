@@ -29,6 +29,11 @@ misunderstand, and the interface typeface changes across the whole app.
   got out. The dashboard, the notice above the offers and the stop message now say exactly that, point
   you to Badbank (if the coin is still there, nothing was locked), and do not show a Cancel and refund
   that cannot open.
+- **Bug reports say what the swap engine is doing.** If the engine cannot be loaded (for example on a Mac
+  older than the build supports), the reason is now written to the swap engine's log, so the Logs
+  screen shows the Swap engine source and the saved report carries it. The report's header also says
+  whether swaps are on, whether the engine loaded and running, and what the Swaps screen reports,
+  with the home folder shortened to `~`.
 - **The final review is a proper screen.** The approval is a panel in the Swaps screen instead of a
   dialog. It leads with what you send and receive (the XMR to twelve decimals), the destination
   address, and the maker's anti-spam deposit in its own callout, then the recovery terms, with the

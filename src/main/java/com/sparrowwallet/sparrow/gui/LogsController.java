@@ -5,6 +5,7 @@ import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.AshigaruTerminal;
 import com.sparrowwallet.sparrow.io.Storage;
+import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.swap.SwapService;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -440,6 +441,9 @@ public class LogsController implements Initializable {
         builder.append("Java:     ").append(System.getProperty("java.version")).append("\n");
         builder.append("Network:  ").append(Network.get().getName()).append("\n");
         builder.append("Proxy:    ").append(AppServices.getProxy() != null ? "enabled" : "disabled").append("\n");
+        if(Config.get().isSwapsEnabled()) {
+            builder.append(SwapService.get().diagnostics());
+        }
         builder.append("Redacted: ").append(rawCheck.isSelected() ? "no - this log contains addresses and wallet identifiers" : "yes").append("\n");
         builder.append("----------------------------\n");
         return builder.toString();

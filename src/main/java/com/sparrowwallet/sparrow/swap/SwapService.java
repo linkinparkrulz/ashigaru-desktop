@@ -182,6 +182,19 @@ public class SwapService implements SwapHost {
         return coin.getReadOnlyProperty();
     }
 
+    /**
+     * What a bug report needs to know about swaps: whether they are on, whether the engine loaded, and what the
+     * Swaps screen says. Paths under the user's home folder are shortened so the report does not carry the user name.
+     */
+    public String diagnostics() {
+        String home = System.getProperty("user.home");
+        String text = "Swaps:    " + (Config.get().isSwapsEnabled() ? "on" : "off") + ", engine "
+                + (engine != null ? "loaded" : loadError != null ? "not loaded (" + loadError + ")" : "not loaded yet")
+                + (running.get() ? ", running" : ", not running") + "\n"
+                + "          " + status.get() + "\n";
+        return home == null || home.isEmpty() ? text : text.replace(home, "~");
+    }
+
     public String getLog() {
         return logText.toString();
     }
@@ -693,6 +706,8 @@ public class SwapService implements SwapHost {
                 engine = override != null ? SwapEngine.load(override) : SwapEngine.loadBundled();
             } catch(SwapEngineException e) {
                 loadError = e.getMessage();
+                //In the swap engine's log too, which is what a bug report carries
+                appendLog("The swap engine could not be loaded: " + e.getMessage());
                 if(e.getCause() != null) {
                     log.warn("Swap engine not available: " + e.getMessage(), e.getCause());
                 } else {
