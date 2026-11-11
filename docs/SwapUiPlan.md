@@ -112,3 +112,10 @@ transactions), `TimelockChange` at 30 blocks, and a version 4 swap record resume
   the cancel starts the refund window without Ashigaru's action.
 - Whether the displayed XMR estimate also nets Monero's claim fee.
 - Whether a stopped, unresolved swap should block starting a new one (today only a running swap does).
+- A swap stopped at "Publishing your BTC lock" (the signed lock is saved before the engine tries to publish it,
+  so a failure leaves it in a state the engine will keep retrying on every start). The engine gives up the maker
+  side after about 10 minutes (`bitcoin_lock_mempool_timeout`), so a lock published much later ends in a cancel
+  and refund. Ashigaru has no way yet to discard such a swap when the coin is still in Badbank; resuming it
+  after fixing the Bitcoin server locks the BTC for a swap the maker has left.
+- Whether an `ssl://` Electrum server on the local network with a self-signed certificate works through the
+  engine's client (a plain `tcp://` one is expected to).

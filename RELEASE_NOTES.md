@@ -17,6 +17,18 @@ misunderstand, and the interface typeface changes across the whole app.
   minutes, shown as a countdown. A swap that was still being set up when Ashigaru closed is
   abandoned safely, with nothing locked. Finish or refund any swap started on the previous version
   before updating.
+- **A Bitcoin server on your own network works with swaps.** The swap engine used to reach every
+  Electrum server through Tor, and Tor refuses private addresses, so a Dojo or Electrum server at
+  192.168.x.x, on this computer or at a `.local` name could never publish the swap's lock: the swap
+  stopped right after you approved. Such a server is now reached directly (nothing leaves your own
+  network); any other server still goes through Tor only. Starting a swap now also checks that the
+  engine can reach the Bitcoin server, as it already did for the Monero nodes, and says so before
+  anything is asked of you if it cannot.
+- **A swap that stopped while publishing the lock no longer says your BTC is locked.** The engine
+  saves the signed lock before trying to publish it, so after a failure it cannot say whether the lock
+  got out. The dashboard, the notice above the offers and the stop message now say exactly that, point
+  you to Badbank (if the coin is still there, nothing was locked), and do not show a Cancel and refund
+  that cannot open.
 - **The final review is a proper screen.** The approval is a panel in the Swaps screen instead of a
   dialog. It leads with what you send and receive (the XMR to twelve decimals), the destination
   address, and the maker's anti-spam deposit in its own callout, then the recovery terms, with the

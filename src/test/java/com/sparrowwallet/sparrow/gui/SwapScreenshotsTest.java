@@ -365,6 +365,21 @@ class SwapScreenshotsTest {
     }
 
     @Test
+    void aSwapThatStoppedWhilePublishingTheLockSaysItMayNotHaveBeenPublished() throws Exception {
+        //From the field: the Bitcoin server could not be reached. The old screen said the BTC was locked and showed a Cancel and refund that never opens
+        var publishing = dashboard(new com.sparrowwallet.sparrow.swap.SwapProgress.Status(com.sparrowwallet.sparrow.swap.SwapProgress.Step.STOPPED,
+                "Failed to publish Bitcoin lock transaction: general SOCKS server failure", WAS, true, com.sparrowwallet.sparrow.swap.SwapProgress.Step.LOCK_PUBLISH), null, false);
+        SwapDashboardPane pane = onFx(SwapDashboardPane::new);
+        onFx(() -> {
+            pane.show(SWAP_ID, publishing, HEALTHY);
+            return null;
+        });
+        shoot(pane, 845, 900, "dash-stopped-publishing-845");
+        assertNull(onFx(() -> button(pane, "Cancel and refund")), "there is nothing to cancel");
+        assertNotNull(onFx(() -> button(pane, "Back to offers")));
+    }
+
+    @Test
     void aStoppedSwapAlwaysHasAWayBackToTheOffers() throws Exception {
         //Exactly the case in the field: the swap stopped during setup, before anything was locked
         var stoppedEarly = dashboard(new com.sparrowwallet.sparrow.swap.SwapProgress.Status(com.sparrowwallet.sparrow.swap.SwapProgress.Step.STOPPED,

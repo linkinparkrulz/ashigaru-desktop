@@ -56,7 +56,9 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
     public static SwapDashboard of(Input in) {
         SwapProgress.Step step = in.status().step();
         SwapProgress.Step reached = step == SwapProgress.Step.STOPPED ? in.status().stoppedAfter() : step;
-        boolean locked = reached != null && reached.ordinal() >= SwapProgress.Step.LOCK_PUBLISH.ordinal() && reached != SwapProgress.Step.WORKING
+        //A timelock reading proves the lock confirmed, so the swap is then locked whatever step it stopped at
+        boolean stoppedPublishing = step == SwapProgress.Step.STOPPED && reached == SwapProgress.Step.LOCK_PUBLISH && in.timelock() == null;
+        boolean locked = reached != null && reached.ordinal() >= SwapProgress.Step.LOCK_PUBLISH.ordinal() && reached != SwapProgress.Step.WORKING && !stoppedPublishing
                 || step == SwapProgress.Step.REFUND_WAIT || step == SwapProgress.Step.REFUNDING || step == SwapProgress.Step.REFUNDED;
         SwapTimelock timelock = in.timelock();
         boolean cancelOpen = timelock != null && timelock.cancelOpen();
@@ -111,6 +113,12 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
             return new Banner(Tone.WARN, "This swap has stopped. You can cancel it now.",
                     "Ashigaru is not running this swap, so it will not refund by itself. Cancelling publishes the cancel and then the refund.",
                     new Cta(Action.CANCEL_AND_REFUND, "Cancel and refund", true, null));
+        }
+        if(stoppedPublishing(step, in)) {
+            return new Banner(Tone.WARN, "The lock may not have been published",
+                    "This swap stopped while publishing the BTC lock, usually because the Bitcoin server could not be reached. Ashigaru cannot tell whether the lock got out. "
+                            + "Check Badbank: if the coin is still there, nothing was locked.",
+                    new Cta(Action.BACK_TO_OFFERS, "Back to offers", true, null));
         }
         if(stopped && locked) {
             Cta cta = new Cta(Action.CANCEL_AND_REFUND, "Cancel and refund", false,
@@ -273,6 +281,11 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
         return new Now(step.getTitle(), step.getDoing(), facts, null, null, null, step.getNext(), null);
     }
 
+    /** Stopped while publishing the lock: the engine saves the signed lock first, so whether it got out is not known */
+    private static boolean stoppedPublishing(SwapProgress.Step step, Input in) {
+        return step == SwapProgress.Step.STOPPED && in.status().stoppedAfter() == SwapProgress.Step.LOCK_PUBLISH && in.timelock() == null;
+    }
+
     private static Summary summary(Input in, SwapProgress.Step step, boolean locked, boolean cancelOpen, boolean needsYou, boolean automatic,
                                    boolean complete, boolean refunded, boolean stopped) {
         SwapDetails details = in.details();
@@ -298,6 +311,9 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
         } else if(refunded) {
             funds = "Back in Badbank.";
             closing = new Closing(Tone.GOOD, "Safe to close", "Your BTC is back in Badbank.");
+        } else if(stoppedPublishing(step, in)) {
+            funds = "Probably still in Badbank: the lock was not confirmed as published. Check your Badbank balance.";
+            closing = new Closing(Tone.WARN, "Check Badbank", "If the coin has left Badbank the lock was published, so keep Ashigaru open to let the swap resume. If it is still there, nothing was locked.");
         } else if(!locked) {
             funds = stopped ? "Still in Badbank. Nothing was locked." : "Still in Badbank. Nothing is locked yet.";
             closing = new Closing(Tone.GOOD, "Safe to close", stopped ? "Nothing was locked. Your coin is still in Badbank."
@@ -333,6 +349,10 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
             recovery = "Not needed. The swap is complete.";
         } else if(refunded) {
             recovery = "Not needed. The refund is complete.";
+        } else if(stoppedPublishing(step, in)) {
+            recoveryTitle = "If the lock was published";
+            recovery = "Cancellation opens " + SwapCopy.cancelAfter() + " after the lock confirms. If it was not published there is nothing to recover. "
+                    + "The maker waits only about 10 minutes for the lock, so a lock published much later ends in a cancel and refund, minus network fees.";
         } else if(!locked) {
             recovery = "Nothing is locked yet, so there is nothing to recover.";
         } else if(timelock != null && timelock.phase() == SwapTimelock.Phase.CANCEL_OPEN) {

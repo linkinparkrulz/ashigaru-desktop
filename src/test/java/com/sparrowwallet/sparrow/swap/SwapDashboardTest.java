@@ -230,4 +230,26 @@ class SwapDashboardTest {
         assertEquals(SwapProgress.MAIN_STEPS.size(), d.protocolSteps().size());
         assertEquals(SwapProgress.MAIN_STEPS.indexOf(Step.MAKER_LOCK), d.protocolCurrent());
     }
+
+    @Test
+    void aSwapThatStoppedWhilePublishingTheLockDoesNotSayTheBtcIsLocked() {
+        //From the field: Ashigaru could not reach the Bitcoin server, so the lock may never have been published
+        SwapDashboard d = of(stopped(Step.LOCK_PUBLISH), null, false, TERMS);
+        assertEquals("The lock may not have been published", d.banner().title());
+        assertEquals(Action.BACK_TO_OFFERS, d.banner().cta().action(), "there is nothing to cancel, so it never offers a disabled Cancel and refund");
+        assertFalse(d.milestones().recovery());
+        assertEquals(1, d.milestones().current(), "shown at Lock BTC");
+        assertTrue(d.summary().funds().startsWith("Probably still in Badbank"), d.summary().funds());
+        assertEquals("Check Badbank", d.summary().closing().label());
+        assertFalse(d.summary().recoveryText().contains("Nothing is locked yet"));
+        assertTrue(d.summary().recoveryText().contains("If it was not published there is nothing to recover"));
+        assertTrue(d.canLeave());
+    }
+
+    @Test
+    void aTimelockReadingProvesTheLockConfirmedSoTheSwapIsLockedAfterAll() {
+        SwapDashboard d = of(stopped(Step.LOCK_PUBLISH), before(20), false, TERMS);
+        assertEquals("This swap has stopped, and cancelling is not open yet.", d.banner().title());
+        assertTrue(d.summary().funds().startsWith("Locked on Bitcoin"));
+    }
 }

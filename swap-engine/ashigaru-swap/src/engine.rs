@@ -243,13 +243,24 @@ impl Engine {
         if config.electrum_urls.is_empty() {
             bail!("No Electrum server configured");
         }
-        let electrum = bitcoin_wallet::Client::new_with_socks5(
-            &config.electrum_urls,
-            env_config.bitcoin_sync_interval(),
-            socks_proxy.to_string(),
-        )
-        .await
-        .context("Could not connect to the Electrum server through Tor")?;
+        // Tor refuses to connect to a private address ("Rejecting SOCKS request for anonymous connection
+        // to private address"), so a server on the user's own network (a Dojo or Electrum server at
+        // 192.168.x.x, or on this computer) is reached directly. Nothing leaves the user's own network
+        // that way. Any other server is reached through Tor and nothing else.
+        let electrum = if config.electrum_urls.iter().all(|url| is_local_server(url)) {
+            tracing::info!("The Electrum server is on this network or this computer: connecting directly, not through Tor");
+            bitcoin_wallet::Client::new(&config.electrum_urls, env_config.bitcoin_sync_interval())
+                .await
+                .context("Could not connect to the Electrum server on your network")?
+        } else {
+            bitcoin_wallet::Client::new_with_socks5(
+                &config.electrum_urls,
+                env_config.bitcoin_sync_interval(),
+                socks_proxy.to_string(),
+            )
+            .await
+            .context("Could not connect to the Electrum server through Tor")?
+        };
         let bitcoin_wallet = Arc::new(HybridWallet::new(
             Arc::new(electrum),
             env_config.bitcoin_finality_confirmations,
@@ -456,15 +467,30 @@ impl Engine {
                 Err(_) => json!({ "ok": false, "error": "No answer within 60 seconds" }),
             }
         }));
-        let (main, witnesses) = tokio::join!(main, witnesses);
-        let results = std::iter::once(main)
-            .chain(witnesses)
-            .zip(&parts.monero_nodes)
-            .map(|(mut result, node)| {
-                result["node"] = json!(node);
-                result
-            })
-            .collect();
+        // The Bitcoin server is where the lock is published and watched. A swap that cannot reach it
+        // stops at the worst moment (after the user approved), so it is checked first
+        let bitcoin = async {
+            match tokio::time::timeout(NODE_CHECK_TIMEOUT, parts.bitcoin_wallet.health_check()).await {
+                Ok(Ok(())) => json!({ "ok": true }),
+                Ok(Err(e)) => json!({ "ok": false, "error": format!("{e:#}") }),
+                Err(_) => json!({ "ok": false, "error": "No answer within 60 seconds" }),
+            }
+        };
+        let (bitcoin, main, witnesses) = tokio::join!(bitcoin, main, witnesses);
+        let mut results: Vec<Value> = vec![{
+            let mut result = bitcoin;
+            result["node"] = json!("Bitcoin server (Electrum)");
+            result
+        }];
+        results.extend(
+            std::iter::once(main)
+                .chain(witnesses)
+                .zip(&parts.monero_nodes)
+                .map(|(mut result, node)| {
+                    result["node"] = json!(node);
+                    result
+                }),
+        );
         Value::Array(results)
     }
 
@@ -555,4 +581,72 @@ async fn read_past_swaps(dirs: &[PathBuf], current: &std::path::Path) -> Vec<Val
         }
     }
     swaps
+}
+
+/// True when an Electrum URL (`tcp://host:port`, `ssl://host:port`) names a machine on the user's own
+/// network or this computer: `localhost`, a `.local` name, or a loopback, private or link-local address.
+/// Onion and ordinary internet hosts are not local.
+pub fn is_local_server(url: &str) -> bool {
+    use std::net::IpAddr;
+
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let authority = rest.split(['/', '?']).next().unwrap_or(rest);
+    let authority = authority.rsplit_once('@').map_or(authority, |(_, host)| host);
+    let host = match authority.strip_prefix('[') {
+        // [::1]:50001
+        Some(bracketed) => bracketed.split(']').next().unwrap_or(bracketed),
+        None => authority.rsplit_once(':').map_or(authority, |(host, _)| host),
+    }
+    .to_ascii_lowercase();
+
+    if host == "localhost" || host.ends_with(".local") || host.ends_with(".localhost") {
+        return true;
+    }
+    match host.parse::<IpAddr>() {
+        Ok(IpAddr::V4(ip)) => ip.is_loopback() || ip.is_private() || ip.is_link_local(),
+        Ok(IpAddr::V6(ip)) => {
+            let first = ip.segments()[0];
+            ip.is_loopback() || (first & 0xfe00) == 0xfc00 || (first & 0xffc0) == 0xfe80
+        }
+        Err(_) => false,
+    }
+}
+
+#[cfg(test)]
+mod local_server_tests {
+    use super::is_local_server;
+
+    #[test]
+    fn servers_on_the_users_own_network_are_local() {
+        for url in [
+            "tcp://127.0.0.1:50001",
+            "ssl://localhost:50002",
+            "tcp://192.168.1.20:50001",
+            "ssl://10.0.0.5:50002",
+            "tcp://172.16.4.2:50001",
+            "tcp://[::1]:50001",
+            "tcp://[fd12:3456::1]:50001",
+            "tcp://169.254.1.9:50001",
+            "ssl://dojo.local:50002",
+            "tcp://user@192.168.0.2:50001",
+            "192.168.1.20:50001",
+        ] {
+            assert!(is_local_server(url), "{url} is local");
+        }
+    }
+
+    #[test]
+    fn onion_and_internet_servers_are_not_local() {
+        for url in [
+            "tcp://abcdefghijklmnopqrstuvwxyz234567abcdefghijklmnopqrstuvwx.onion:50001",
+            "ssl://electrum.blockstream.info:50002",
+            "tcp://8.8.8.8:50001",
+            "tcp://172.32.0.1:50001",
+            "tcp://[2001:db8::1]:50001",
+            "ssl://localhost.example.com:50002",
+            "",
+        ] {
+            assert!(!is_local_server(url), "{url} is not local");
+        }
+    }
 }

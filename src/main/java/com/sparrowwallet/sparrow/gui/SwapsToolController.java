@@ -471,15 +471,13 @@ public class SwapsToolController implements Initializable {
         }
         offersPane.setMessage(null);
         requesting = quote.peerId();
-        working = "Checking that every Monero node answers through Tor…";
+        working = "Checking that the Bitcoin server and every Monero node answer…";
         renderOffers();
         SwapService.get().checkNodes(check -> {
             List<String> unreachable = SwapService.unreachable(check);
             if(!unreachable.isEmpty()) {
                 endTaking();
-                offersPane.setMessage("Not started: " + (unreachable.size() == 1 ? "a Monero node" : unreachable.size() + " Monero nodes")
-                        + " did not answer. Untick it in Settings → Swaps (keeping at least two public nodes) or add your own node, then try again.\n"
-                        + String.join("\n", unreachable));
+                offersPane.setMessage(SwapService.notStartedMessage(unreachable));
                 return;
             }
             working = "Setting up the swap with the maker. If Ashigaru asks for your wallet password, it is to prove to the maker that you own the coin and to sign the lock; "

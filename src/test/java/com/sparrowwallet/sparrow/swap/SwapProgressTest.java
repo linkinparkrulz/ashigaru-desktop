@@ -145,4 +145,18 @@ class SwapProgressTest {
         SwapProgress.Status second = SwapProgress.stopped(stop, first, T0);
         assertEquals(SwapProgress.Step.MAKER_CONFIRM, second.stoppedAfter(), "a second notice does not forget where it stopped");
     }
+
+    @Test
+    void aStopWhilePublishingTheLockDoesNotClaimTheBtcIsLocked() {
+        SwapProgress.Status publishing = SwapProgress.read(event("BtcLockPublishInflight", null), null, T0);
+        assertEquals(SwapProgress.Step.LOCK_PUBLISH, publishing.step());
+        JsonObject stop = JsonParser.parseString("{\"swapId\":\"x\",\"error\":\"Failed to publish Bitcoin lock transaction: general SOCKS server failure\"}").getAsJsonObject();
+        SwapProgress.Status stopped = SwapProgress.stopped(stop, publishing, T0);
+        assertEquals(SwapProgress.Step.LOCK_PUBLISH, stopped.stoppedAfter());
+        assertTrue(stopped.detail().contains("general SOCKS server failure"));
+        assertTrue(stopped.detail().contains("cannot tell whether the lock reached the Bitcoin network"), stopped.detail());
+        assertTrue(stopped.detail().contains("Settings → Server"));
+        assertFalse(stopped.detail().contains("Your BTC is locked"), stopped.detail());
+        assertFalse(stopped.detail().contains("Nothing was locked: the coin"), stopped.detail());
+    }
 }

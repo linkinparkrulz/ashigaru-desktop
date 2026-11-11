@@ -468,6 +468,26 @@ public class SwapService implements SwapHost {
         runInBackground(engine::checkNodes, onSuccess, onFailure);
     }
 
+    /** How the engine's check names the Bitcoin server, which it asks before the Monero nodes */
+    public static final String BITCOIN_SERVER = "Bitcoin server (Electrum)";
+
+    /**
+     * Why a swap was not started, from the lines {@link #unreachable} found. The Bitcoin server comes first: the lock is
+     * published and watched through it, so a swap that cannot reach it would stop after the user had approved.
+     */
+    public static String notStartedMessage(List<String> unreachable) {
+        boolean bitcoin = unreachable.stream().anyMatch(line -> line.startsWith(BITCOIN_SERVER));
+        long monero = unreachable.stream().filter(line -> !line.startsWith(BITCOIN_SERVER)).count();
+        String lines = String.join("\n", unreachable);
+        if(bitcoin) {
+            return "Not started: the swap engine cannot reach your Bitcoin server. The BTC lock is published through it, so a swap started now would "
+                    + "stop after you approve. Check the server in Settings → Server, then try again. A server on your own network or this computer "
+                    + "is reached directly; any other server is reached through Tor.\n" + lines;
+        }
+        return "Not started: " + (monero == 1 ? "a Monero node" : monero + " Monero nodes")
+                + " did not answer. Untick it in Settings → Swaps (keeping at least two public nodes) or add your own node, then try again.\n" + lines;
+    }
+
     /** The unreachable nodes in a check, as one line each, or an empty list when all answered */
     public static List<String> unreachable(JsonArray check) {
         List<String> problems = new ArrayList<>();

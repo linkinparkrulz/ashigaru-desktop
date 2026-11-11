@@ -157,4 +157,17 @@ class SwapOffersTest {
         assertTrue(SwapAttention.text(needing).startsWith("Swap 11111111 and 1 more is not running"));
         assertTrue(SwapAttention.text(needing).endsWith("locked in them."));
     }
+
+    @Test
+    void aSwapThatStoppedWhilePublishingTheLockDoesNotClaimToHoldBtc() {
+        //From the field: the Bitcoin server could not be reached, so the signed lock may never have left the computer
+        JsonArray list = swaps("[{\"swapId\":\"3e8a8d9a-1997\",\"state\":\"btc lock ready to publish\",\"complete\":false,\"running\":false,\"past\":false}]");
+        List<SwapAttention> needing = SwapAttention.of(list, Instant.now());
+        assertEquals(1, needing.size());
+        assertTrue(needing.get(0).lockUnconfirmed());
+        String text = SwapAttention.text(needing);
+        assertFalse(text.contains("still locked"), text);
+        assertTrue(text.contains("cannot tell whether the lock got out"), text);
+        assertTrue(text.contains("if the coin is still there, nothing was locked"), text);
+    }
 }

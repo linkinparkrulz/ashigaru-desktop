@@ -96,4 +96,17 @@ class SwapServiceTest {
         swaps.add(current);
         org.junit.jupiter.api.Assertions.assertTrue(SwapService.usedByThisIdentity(swaps));
     }
+
+    @Test
+    void aSwapIsNotStartedWhenTheBitcoinServerCannotBeReached() {
+        //From the field: the engine could not reach the tester's own server, and the swap stopped after the user had approved
+        String message = SwapService.notStartedMessage(java.util.List.of("Bitcoin server (Electrum): general SOCKS server failure", "abc.onion:18081: No answer"));
+        assertTrue(message.startsWith("Not started: the swap engine cannot reach your Bitcoin server"), message);
+        assertTrue(message.contains("Settings → Server"));
+        assertTrue(message.contains("general SOCKS server failure"));
+
+        String monero = SwapService.notStartedMessage(java.util.List.of("abc.onion:18081: No answer"));
+        assertTrue(monero.startsWith("Not started: a Monero node did not answer"), monero);
+        assertTrue(SwapService.notStartedMessage(java.util.List.of("a: x", "b: y")).startsWith("Not started: 2 Monero nodes"));
+    }
 }
