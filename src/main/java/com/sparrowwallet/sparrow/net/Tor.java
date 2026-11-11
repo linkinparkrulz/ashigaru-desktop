@@ -111,6 +111,12 @@ public class Tor {
 
             b.observerStatic(RuntimeEvent.LISTENERS.INSTANCE, OnEvent.Executor.Immediate.INSTANCE, listeners -> {
                 socksAddress = listeners.socks.isEmpty() ? null : listeners.socks.iterator().next();
+                log.info("Tor socks listener: " + (socksAddress == null ? "gone" : socksAddress));
+            });
+
+            //A Tor that dies without a word leaves only this to say when and how
+            b.observerStatic(RuntimeEvent.STATE.INSTANCE, OnEvent.Executor.Immediate.INSTANCE, state -> {
+                log.info("Tor state: " + state);
             });
 
             b.required(TorEvent.ERR.INSTANCE);
@@ -209,6 +215,12 @@ public class Tor {
         }
 
         return HostAndPort.fromParts(address.address.value, address.port.value);
+    }
+
+    /** Where Tor's socks proxy listens, or null while the daemon is starting or has stopped */
+    public HostAndPort findProxyHostAndPort() {
+        IPSocketAddress address = socksAddress;
+        return address == null ? null : HostAndPort.fromParts(address.address.value, address.port.value);
     }
 
     public static boolean isRunningExternally() {

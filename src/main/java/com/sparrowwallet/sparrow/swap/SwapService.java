@@ -284,7 +284,7 @@ public class SwapService implements SwapHost {
         if(nodes != null) {
             return nodes;
         }
-        if(AppServices.getTorProxy() == null) {
+        if(AppServices.getTorProxyIfUp() == null) {
             return "Waiting for Tor. Swaps only connect through Tor.";
         }
         return null;
@@ -295,7 +295,7 @@ public class SwapService implements SwapHost {
      * swap finished, or at start when the last identity's swaps are all finished.
      */
     private void start(boolean renewIdentity) {
-        HostAndPort torProxy = AppServices.getTorProxy();
+        HostAndPort torProxy = AppServices.getTorProxyIfUp();
         engineProxy = torProxy;
         List<String> electrumUrls = List.of(Config.get().getServer().getUrl());
         List<String> moneroNodes = MoneroNodes.forEngine(MoneroNodes.getSelected());
@@ -344,7 +344,7 @@ public class SwapService implements SwapHost {
         }, e -> {
             starting = false;
             status.set("Could not start: " + e.getMessage());
-            if(!Objects.equals(AppServices.getTorProxy(), engineProxy)) {
+            if(!Objects.equals(AppServices.getTorProxyIfUp(), engineProxy)) {
                 followTor();
             }
         });
@@ -382,7 +382,7 @@ public class SwapService implements SwapHost {
         if(!Config.get().isSwapsEnabled()) {
             return;
         }
-        HostAndPort proxy = AppServices.getTorProxy();
+        HostAndPort proxy = AppServices.getTorProxyIfUp();
         if(proxy == null) {
             appendLog("Tor is gone; stopping the swap engine until it is back");
             SwapEngine stopping = engine;

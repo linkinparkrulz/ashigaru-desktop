@@ -613,6 +613,15 @@ public class AppServices {
         return httpClientService;
     }
 
+    /**
+     * Like {@link #getTorProxy()}, but null when the built-in Tor is running with no socks listener,
+     * as while it starts or after its daemon died. Only for code that waits for Tor: anything that
+     * would fall back to a direct connection on null must keep using getTorProxy, which throws then.
+     */
+    public static HostAndPort getTorProxyIfUp() {
+        return AppServices.isTorRunning() ? Tor.getDefault().findProxyHostAndPort() : getTorProxy();
+    }
+
     public static HostAndPort getTorProxy() {
         return AppServices.isTorRunning() ?
                 Tor.getDefault().getProxyHostAndPort() :

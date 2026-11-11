@@ -404,7 +404,7 @@ public class SwapsToolController implements Initializable {
     }
 
     private void refreshPrice() {
-        if(AppServices.getTorProxy() == null) {
+        if(AppServices.getTorProxyIfUp() == null) {
             marketText = "Market price unavailable until Tor is running";
             renderOffers();
             return;
@@ -534,7 +534,7 @@ public class SwapsToolController implements Initializable {
     private static SwapDashboardPane.Connections connections(SwapService service) {
         List<String> working = new ArrayList<>();
         List<String> problems = new ArrayList<>();
-        if(AppServices.getTorProxy() != null) {
+        if(AppServices.getTorProxyIfUp() != null) {
             working.add("Tor");
         } else {
             problems.add("Tor is not running: the swap cannot reach makers or Monero nodes until it is.");

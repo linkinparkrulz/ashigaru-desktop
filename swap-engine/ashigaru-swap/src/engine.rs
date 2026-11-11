@@ -388,6 +388,16 @@ impl Engine {
                 continue;
             }
 
+            match self.close_stale_lock(swap_id, &bob_state).await {
+                Ok(false) => {}
+                Ok(true) => continue,
+                Err(e) => {
+                    // Skipping the swap could orphan one whose lock is public, and with it the refund,
+                    // so a swap that cannot be judged resumes as it always did
+                    tracing::warn!(%swap_id, "Could not tell whether a late Bitcoin lock was published, so the swap resumes: {e:#}");
+                }
+            }
+
             let mut event_loop = self.event_loop.lock().await;
             for address in self.db.get_addresses(peer_id).await? {
                 event_loop.queue_peer_address(peer_id, address).await?;
@@ -413,6 +423,52 @@ impl Engine {
             resumed.push(swap_id);
         }
         Ok(resumed)
+    }
+
+    /// A swap that stopped while publishing its Bitcoin lock republishes the lock whenever the engine
+    /// next starts, however late. The maker stops waiting for it after about ten minutes, so by then
+    /// the lock would only tie up the BTC until the cancel timelock and cost network fees. When the
+    /// deadline is past and the Bitcoin servers have never seen the lock, nobody can have it, so the
+    /// swap is closed instead. Returns true when it was; an error means the servers could not say, and the
+    /// swap is then resumed like any other.
+    async fn close_stale_lock(&self, swap_id: Uuid, state: &BobState) -> Result<bool> {
+        let BobState::BtcLockReadyToPublish {
+            btc_lock_tx_signed,
+            publish_deadline: Some(deadline),
+            ..
+        } = state
+        else {
+            return Ok(false);
+        };
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|elapsed| elapsed.as_secs() as i64)
+            .unwrap_or(0);
+        if now <= *deadline {
+            return Ok(false);
+        }
+
+        let lock_txid = btc_lock_tx_signed.compute_txid();
+        let seen = self
+            .parts()?
+            .bitcoin_wallet
+            .get_raw_transaction(lock_txid)
+            .await
+            .context("Could not ask the Bitcoin server whether the lock was published")?;
+        if seen.is_some() {
+            // It is public after all, so the swap carries on and refunds if it must
+            return Ok(false);
+        }
+
+        tracing::warn!(%swap_id, %lock_txid, "The Bitcoin lock was never published and is too late now, so the swap is closed and no BTC is locked");
+        self.db
+            .insert_latest_state(swap_id, State::Bob(BobState::SafelyAborted))
+            .await?;
+        crate::bridge::notify(
+            "swap_stopped",
+            &json!({ "swapId": swap_id, "state": BobState::SafelyAborted.to_string() }),
+        );
+        Ok(true)
     }
 
     async fn is_running(&self, swap_id: Uuid) -> bool {

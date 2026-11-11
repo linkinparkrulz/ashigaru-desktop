@@ -29,7 +29,7 @@ public final class XmrPrice {
 
     /** Blocks; call off the JavaFX thread */
     public static Snapshot fetch() throws Exception {
-        if(AppServices.getTorProxy() == null) {
+        if(AppServices.getTorProxyIfUp() == null) {
             throw new IllegalStateException("The XMR price is only fetched through Tor");
         }
         HttpClientService http = AppServices.getHttpClientService();
