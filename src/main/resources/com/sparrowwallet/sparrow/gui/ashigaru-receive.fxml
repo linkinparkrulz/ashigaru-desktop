@@ -24,7 +24,7 @@
             <!-- Where these coins land on the pipeline, and in what state -->
             <PipelineStrip/>
             <Label text="Coins sent to this address arrive in Deposit and stay unmixed until you run a Tx0."
-                   styleClass="ag-read" wrapText="true"/>
+                   styleClass="ag-read" wrapText="true" minHeight="-Infinity"/>
 
             <GridPane hgap="14" vgap="12">
                 <columnConstraints>

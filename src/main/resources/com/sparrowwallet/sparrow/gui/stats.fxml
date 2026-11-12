@@ -36,6 +36,12 @@
 
             <!-- Summary cards -->
             <HBox spacing="12" alignment="CENTER_LEFT">
+                <VBox fx:id="yourPoolCard" spacing="6" styleClass="ag-card, your-pool-card" HBox.hgrow="ALWAYS" visible="false" managed="false">
+                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                    <Label fx:id="yourPoolTitle" text="YOUR POOL" styleClass="hero-eyebrow"/>
+                    <Label fx:id="yourPoolValue" text="—" styleClass="card-value"/>
+                    <Label fx:id="yourPoolSub" text="—" styleClass="card-faint"/>
+                </VBox>
                 <VBox fx:id="totalCard" spacing="6" styleClass="ag-card balance-card primary" HBox.hgrow="ALWAYS">
                     <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
                     <Label text="TOTAL BTC IN POOLS" styleClass="card-faint"/>

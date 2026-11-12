@@ -28,12 +28,13 @@
 
     <VBox GridPane.columnIndex="0" GridPane.rowIndex="0" spacing="6">
         <Label text="General" styleClass="preferences-section-title" />
-        <Label text="Control wallet defaults, fee sources, coin selection, and notifications." wrapText="true" styleClass="preferences-section-subtitle" />
+        <Label text="Wallet defaults, and the outside services each option talks to." wrapText="true" styleClass="preferences-section-subtitle" />
     </VBox>
 
     <Form GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="preferences-form">
         <Fieldset inputGrow="SOMETIMES" text="Bitcoin" styleClass="wideLabelFieldSet">
             <Field text="Fee rates source:">
+                <VBox spacing="6">
                 <ComboBox fx:id="feeRatesSource">
                     <items>
                         <FXCollections fx:factory="observableArrayList">
@@ -43,41 +44,56 @@
                         </FXCollections>
                     </items>
                 </ComboBox>
-                <HelpLabel helpText="Recommended fee rates can be sourced from your connected Electrum server, or an external source."/>
+                <Label text="Where recommended fee rates come from. Server asks only the server you already use; mempool.space is a third party." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                </VBox>
             </Field>
             <Field text="Block explorer:">
+                <VBox spacing="6">
                 <ComboBox fx:id="blockExplorers" />
-                <HelpLabel helpText="An external block explorer can be configured to open a transaction from any transaction tab."/>
+                <Label text="Used by explorer links on transactions. They open in your browser, outside Tor, so the explorer sees your IP address and the transaction." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                </VBox>
             </Field>
             <Field text="Am I Exposed:">
+                <VBox spacing="6">
                 <ComboBox fx:id="amIExposedServers" />
-                <HelpLabel helpText="An Am I Exposed instance can be configured to check a transaction's privacy exposure. If present, the characters {0} in a custom URL will be replaced with the txid."/>
+                <Label text="Used by exposure links. They open in your browser, outside Tor. In a custom URL, {0} is replaced with the transaction id." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                </VBox>
             </Field>
         </Fieldset>
         <Fieldset inputGrow="SOMETIMES" text="Wallet" styleClass="wideLabelFieldSet">
             <Field text="Load recent wallets:">
+                <VBox spacing="6">
                 <UnlabeledToggleSwitch fx:id="loadRecentWallets" />
-                <HelpLabel helpText="Keep a record of open wallets, and reopen them on startup."/>
+                <Label text="Keep a record of open wallets, and reopen them on startup." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                </VBox>
             </Field>
             <Field text="Validate derivations:">
+                <VBox spacing="6">
                 <UnlabeledToggleSwitch fx:id="validateDerivationPaths" />
-                <HelpLabel helpText="Disallow keystores to have derivation paths that match the defaults for other script types and networks."/>
+                <Label text="Disallow keystores to have derivation paths that match the defaults for other script types and networks." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                </VBox>
             </Field>
         </Fieldset>
         <Fieldset inputGrow="SOMETIMES" text="Coin Selection" styleClass="wideLabelFieldSet">
             <Field text="Group by address:">
+                <VBox spacing="6">
                 <UnlabeledToggleSwitch fx:id="groupByAddress" />
-                <HelpLabel helpText="Group UTXOs by address when sending to improve privacy by only sending from an address once."/>
+                <Label text="Group UTXOs by address when sending to improve privacy by only sending from an address once." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                </VBox>
             </Field>
             <Field text="Allow unconfirmed:">
+                <VBox spacing="6">
                 <UnlabeledToggleSwitch fx:id="includeMempoolOutputs" />
-                <HelpLabel helpText="Allow a wallet to spend UTXOs that are still in the mempool."/>
+                <Label text="Allow a wallet to spend UTXOs that are still in the mempool." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                </VBox>
             </Field>
         </Fieldset>
         <Fieldset inputGrow="SOMETIMES" text="Notifications" styleClass="wideLabelFieldSet">
             <Field text="New transactions:">
+                <VBox spacing="6">
                 <UnlabeledToggleSwitch fx:id="notifyNewTransactions" />
-                <HelpLabel helpText="Show system notifications on new wallet transactions?"/>
+                <Label text="Show system notifications on new wallet transactions?" styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                </VBox>
             </Field>
         </Fieldset>
     </Form>

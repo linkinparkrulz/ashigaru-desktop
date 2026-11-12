@@ -415,11 +415,12 @@
                   -fx-text-fill: -ag-text-dim;   -fx-font-size: 12px; }
 .card-faint     { -fx-text-fill: -ag-text-faint; -fx-font-size: 11px; }
 
-/* Whirlpool Stats chart: orange (first pool) + yellow (second pool) series */
-.stats-chart .default-color0.chart-series-line { -fx-stroke: #ff9500; -fx-stroke-width: 2px; }
-.stats-chart .default-color1.chart-series-line { -fx-stroke: #ffcc00; -fx-stroke-width: 2px; }
-.stats-chart .default-color0.chart-legend-item-symbol { -fx-background-color: #ff9500; }
-.stats-chart .default-color1.chart-legend-item-symbol { -fx-background-color: #ffcc00; }
+/* Whirlpool Stats chart: brand ink (first pool) and light grey (second pool). They differ in
+   lightness as well as hue, and the pool pills in the recent list reuse them */
+.stats-chart .default-color0.chart-series-line { -fx-stroke: -ag-accent-ink; -fx-stroke-width: 2px; }
+.stats-chart .default-color1.chart-series-line { -fx-stroke: #C9CAD0; -fx-stroke-width: 2px; }
+.stats-chart .default-color0.chart-legend-item-symbol { -fx-background-color: -ag-accent-ink; }
+.stats-chart .default-color1.chart-legend-item-symbol { -fx-background-color: #C9CAD0; }
 
 /* Inline link inside a card (e.g. Stats tx explorer / exposure links) */
 .card-link {
@@ -1480,3 +1481,9 @@
     -fx-text-fill: -ag-text;
     -fx-border-color: transparent transparent -ag-accent transparent;
 }
+
+/* ── Statistics: pool pills and the "your pool" tile ───────────────────── */
+.pool-pill { -fx-background-color: derive(-ag-accent, -55%); -fx-text-fill: -ag-accent-ink; -fx-padding: 2 9 2 9; -fx-background-radius: 999; -fx-font-size: 11px; }
+.pool-pill.second { -fx-background-color: -ag-bg-raised; -fx-text-fill: #C9CAD0; }
+.your-pool-card { -fx-border-color: derive(-ag-accent, -35%); -fx-background-color: linear-gradient(to bottom, #1f1819, -ag-bg-mid); }
+.preferences-section-subtitle { -fx-font-family: "Inter", sans-serif; -fx-font-size: 13px; -fx-text-fill: -ag-text-dim; }

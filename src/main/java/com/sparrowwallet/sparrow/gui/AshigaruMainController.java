@@ -248,12 +248,11 @@ public class AshigaruMainController implements Initializable {
         }
         maybeReconnectOnLeavingPrefs();
         contentPane.setCenter(welcomePane);
-        currentWalletForm = null;
         walletMenuBtn.setVisible(false);
         walletMenuBtn.setManaged(false);
         noWalletBox.setVisible(true);
         noWalletBox.setManaged(true);
-        updateCrumb(null);
+        crumbLabel.setText("ASHIGARU");
         // walletSelector stays visible in the sidebar at all times
         accountButtonsBox.setVisible(false);
         accountButtonsBox.setManaged(false);
@@ -934,8 +933,9 @@ public class AshigaruMainController implements Initializable {
         try {
             FXMLLoader loader = new FXMLLoader(AppServices.class.getResource("gui/tools.fxml"));
             Node toolsPanel = loader.load();
+            crumbLabel.setText("TOOLS");
 
-            Button backBtn = new Button("← Back");
+            Button backBtn = new Button("Back");
             backBtn.setOnAction(e -> closeTool());
             backBtn.getStyleClass().add("prefs-back-btn");
 
@@ -974,12 +974,13 @@ public class AshigaruMainController implements Initializable {
         try {
             FXMLLoader loader = new FXMLLoader(AppServices.class.getResource("preferences/preferences.fxml"));
             Node prefsPanel = loader.load();
+            crumbLabel.setText("SETTINGS");
             PreferencesController prefsController = loader.getController();
             prefsController.initializeView(Config.get());
             prefsController.reconnectOnClosingProperty().set(AppServices.isConnecting() || AppServices.isConnected());
             prefsController.selectGroup(PreferenceGroup.GENERAL);
 
-            Button backBtn = new Button("← Back");
+            Button backBtn = new Button("Back");
             backBtn.setOnAction(e -> closePreferences());
             backBtn.getStyleClass().add("prefs-back-btn");
 

@@ -1,5 +1,8 @@
 package com.sparrowwallet.sparrow.gui;
 
+import com.sparrowwallet.drongo.wallet.BlockTransactionHashIndex;
+import com.sparrowwallet.drongo.wallet.StandardAccount;
+import com.sparrowwallet.sparrow.wallet.WalletForm;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -48,6 +51,11 @@ public class StatsController implements Initializable {
     @FXML private Button refreshBtn;
     @FXML private Label statusLabel;
     @FXML private Label totalBtcLabel;
+    @FXML private VBox totalCard;
+    @FXML private VBox yourPoolCard;
+    @FXML private Label yourPoolTitle;
+    @FXML private Label yourPoolValue;
+    @FXML private Label yourPoolSub;
     @FXML private Label totalsSubLabel;
     @FXML private Label blockRangeLabel;
     @FXML private Label syncLabel;
@@ -176,8 +184,45 @@ public class StatsController implements Initializable {
         renderPoolCard(data, "0.025_BTC_Pool", pool025SizeBadge, pool025EnteredLabel, pool025CyclesLabel, pool025Tx0CountLabel);
         renderPoolCard(data, "0.25_BTC_Pool", pool25SizeBadge, pool25EnteredLabel, pool25CyclesLabel, pool25Tx0CountLabel);
 
+        renderYourPool(data);
         renderSelectedChart();
         txListView.getItems().setAll(data.recentTxs);
+    }
+
+    /**
+     * Leads with the crowd the open wallets' own coins sit in: how many coins are unspent in that
+     * pool and how many of them are yours. A mix count means little without the crowd behind it.
+     * Both numbers already exist, one in the stats feed and one in the wallet.
+     */
+    private void renderYourPool(StatsData data) {
+        long small = 0, large = 0;
+        for(WalletForm master : AshigaruGui.get().getWalletForms().values()) {
+            for(WalletForm nested : master.getNestedWalletForms()) {
+                if(nested.getWallet().getStandardAccountType() != StandardAccount.WHIRLPOOL_POSTMIX) {
+                    continue;
+                }
+                for(BlockTransactionHashIndex utxo : nested.getWallet().getWalletUtxos().keySet()) {
+                    if(utxo.getValue() == 2_500_000L) small++;
+                    else if(utxo.getValue() == 25_000_000L) large++;
+                }
+            }
+        }
+        boolean has = small + large > 0;
+        yourPoolCard.setVisible(has);
+        yourPoolCard.setManaged(has);
+        totalCard.getStyleClass().remove("primary");
+        if(!has) {
+            totalCard.getStyleClass().add("primary");
+            return;
+        }
+        boolean smallPool = small >= large;
+        long yours = smallPool ? small : large;
+        String poolName = smallPool ? "0.025_BTC_Pool" : "0.25_BTC_Pool";
+        PoolSummary pool = data.pools.stream().filter(ps -> ps.poolName().equals(poolName)).findFirst().orElse(null);
+        yourPoolTitle.setText("YOUR POOL \u00b7 " + (smallPool ? "0.025" : "0.25") + " BTC");
+        yourPoolValue.setText(pool == null ? "\u2014" : String.format(Locale.ROOT, "%,d coins unspent", pool.unspentUtxos()));
+        yourPoolSub.setText(String.format(Locale.ROOT, "%,d of them %s yours", yours, yours == 1 ? "is" : "are")
+                + (pool == null ? "" : String.format(Locale.ROOT, "  \u00b7  %,d cycles so far", pool.cycles())));
     }
 
     private void renderPoolCard(StatsData data, String poolName, Label sizeBadge, Label enteredLabel,
@@ -452,8 +497,12 @@ public class StatsController implements Initializable {
 
             // Row 1: pool badge (left) — block height (right)
             poolBadge.setText(row.poolLabel());
-            poolBadge.setStyle("-fx-background-color: " + row.poolColor()
-                    + "; -fx-text-fill: black; -fx-padding: 2 8 2 8; -fx-background-radius: 10; -fx-font-size: 11px;");
+            //The feed's own colour is not used: pills take the same two token colours as the chart.
+            poolBadge.getStyleClass().removeAll("pool-pill", "second");
+            poolBadge.getStyleClass().add("pool-pill");
+            if(row.poolLabel() != null && row.poolLabel().startsWith("0.25")) {
+                poolBadge.getStyleClass().add("second");
+            }
             blockLabel.setText("Block " + String.format(Locale.ROOT, "%,d", row.blockHeight()));
             Region topSpacer = new Region();
             HBox.setHgrow(topSpacer, Priority.ALWAYS);
