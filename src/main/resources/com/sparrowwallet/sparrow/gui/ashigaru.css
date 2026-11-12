@@ -1487,3 +1487,13 @@
 .pool-pill.second { -fx-background-color: -ag-bg-raised; -fx-text-fill: #C9CAD0; }
 .your-pool-card { -fx-border-color: derive(-ag-accent, -35%); -fx-background-color: linear-gradient(to bottom, #1f1819, -ag-bg-mid); }
 .preferences-section-subtitle { -fx-font-family: "Inter", sans-serif; -fx-font-size: 13px; -fx-text-fill: -ag-text-dim; }
+
+/* ── Dice passphrase review ─────────────────────────────────────────────── */
+.dice-card { -fx-background-color: -ag-bg; -fx-border-color: -ag-border; -fx-border-radius: -ag-radius; -fx-background-radius: -ag-radius; -fx-padding: 10 12 10 12; }
+.dice-card-index { -fx-text-fill: -ag-text-faint; -fx-font-size: 9px; }
+.dice-card-word  { -fx-text-fill: -ag-text; -fx-font-size: 14px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
+.warning-box { -fx-background-color: derive(-ag-warn, -80%); -fx-border-color: derive(-ag-warn, -35%); -fx-border-radius: -ag-radius; -fx-background-radius: -ag-radius; -fx-padding: 12 14 12 14; }
+.warning-title { -fx-text-fill: -ag-warn-ink; -fx-font-size: 13px; }
+.warning-title .ag-icon { -fx-text-fill: -ag-warn-ink; }
+.warning-line { -fx-text-fill: #E8D9B5; -fx-font-size: 12.5px; }
+.ack-check { -fx-text-fill: -ag-text; -fx-font-family: "Inter", sans-serif; -fx-font-size: 13px; }
