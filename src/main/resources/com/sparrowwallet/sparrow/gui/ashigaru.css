@@ -1408,3 +1408,75 @@
 .exposure-warning  { -fx-text-fill: #E8D9B5; }
 .exposure-warning .ag-icon { -fx-text-fill: -ag-warn-ink; }
 .badbank-warning-icon .ag-icon, .coordinator-warning-icon .ag-icon { -fx-text-fill: -ag-warn-ink; }
+.sidebar-accounts .account-btn:selected,
+.sidebar-accounts .account-btn:selected:hover { -fx-background-color: -ag-bg-light; }
+.first-run { -fx-padding: 22 24 22 24; }
+.first-run .card-link, .first-run .card-link:visited { -fx-text-fill: -ag-text-dim; -fx-font-family: "Inter", sans-serif; }
+
+/* ── Mix count on every coin row ────────────────────────────────────────── */
+.mix-pip {
+    -fx-min-width: 9; -fx-min-height: 9; -fx-max-width: 9; -fx-max-height: 9;
+    -fx-background-radius: 999; -fx-border-radius: 999;
+    -fx-border-color: -ag-border-strong; -fx-border-width: 1.5;
+}
+.mix-pip:filled { -fx-background-color: #C9CAD0; -fx-border-color: #C9CAD0; }
+.mix-pips:private .mix-pip:filled { -fx-background-color: -ag-green; -fx-border-color: -ag-green; }
+.mix-badge.done { -fx-background-color: -ag-bg-raised; }
+
+/* ── Pipeline strip (Receive, Mix To) ───────────────────────────────────── */
+.pipeline-strip {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: -ag-radius;
+    -fx-background-radius: -ag-radius;
+    -fx-padding: 11 14 11 14;
+}
+.strip-stop { -fx-text-fill: -ag-text-faint; -fx-font-size: 10px; }
+.strip-node {
+    -fx-min-width: 9; -fx-min-height: 9; -fx-max-width: 9; -fx-max-height: 9;
+    -fx-background-radius: 999; -fx-border-radius: 999;
+    -fx-border-color: -ag-border-strong; -fx-border-width: 1.5;
+}
+.strip-stop.on { -fx-text-fill: -ag-text; }
+.strip-stop.on .strip-node { -fx-background-color: -ag-accent; -fx-border-color: -ag-accent; }
+.strip-stop.done { -fx-text-fill: -ag-green-ink; }
+.strip-stop.done .strip-node { -fx-background-color: -ag-green; -fx-border-color: -ag-green; }
+.strip-stop.gate .strip-node { -fx-background-radius: 1; -fx-border-radius: 1; -fx-rotate: 45; }
+.strip-line { -fx-min-height: 1; -fx-max-height: 1; -fx-background-color: -ag-border-strong; -fx-background-insets: 0 9 0 9; }
+.strip-line.active { -fx-background-color: -ag-accent-ink; }
+
+.outside-tor-tag {
+    -fx-text-fill: -ag-warn-ink;
+    -fx-background-color: derive(-ag-warn, -78%);
+    -fx-background-radius: 999;
+    -fx-font-size: 9px;
+    -fx-padding: 3 8 3 8;
+}
+
+/* ── Tools and Settings: tabs, not a second sidebar ─────────────────────── */
+.preferences-tabs {
+    -fx-padding: 0 24 0 24;
+    -fx-border-color: transparent transparent -ag-border transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-background-color: transparent;
+}
+.preferences-tabs .preferences-nav-item,
+.preferences-tabs .preferences-nav-item:hover,
+.preferences-tabs .preferences-nav-item:selected,
+.preferences-tabs .preferences-nav-item:selected:hover {
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-padding: 13 0 11 0;
+    -fx-font-size: 12px;
+    -fx-text-fill: -ag-text-faint;
+    -fx-cursor: hand;
+}
+.preferences-tabs .preferences-nav-item:hover { -fx-text-fill: -ag-text-dim; }
+.preferences-tabs .preferences-nav-item:selected,
+.preferences-tabs .preferences-nav-item:selected:hover {
+    -fx-text-fill: -ag-text;
+    -fx-border-color: transparent transparent -ag-accent transparent;
+}

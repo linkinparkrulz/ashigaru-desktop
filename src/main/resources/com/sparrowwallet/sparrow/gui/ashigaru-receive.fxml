@@ -5,11 +5,12 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
+<?import com.sparrowwallet.sparrow.gui.PipelineStrip?>
 
 <DialogPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.sparrowwallet.sparrow.gui.AshigaruReceiveController"
-            prefWidth="500" prefHeight="520"
+            prefWidth="500" prefHeight="590"
             stylesheets="@ashigaru.css, @../darktheme.css"
             styleClass="receive-pane">
 
@@ -20,7 +21,10 @@
             <padding><Insets top="16" right="20" bottom="8" left="20"/></padding>
 
             <Label text="RECEIVE BITCOIN" styleClass="section-title"/>
-            <Separator/>
+            <!-- Where these coins land on the pipeline, and in what state -->
+            <PipelineStrip/>
+            <Label text="Coins sent to this address arrive in Deposit and stay unmixed until you run a Tx0."
+                   styleClass="ag-read" wrapText="true"/>
 
             <GridPane hgap="14" vgap="12">
                 <columnConstraints>

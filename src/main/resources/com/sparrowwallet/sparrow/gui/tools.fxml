@@ -5,10 +5,10 @@
 <?import org.controlsfx.glyphfont.Glyph?>
 
 <BorderPane stylesheets="@../general.css, @ashigaru.css, @../darktheme.css, @../preferences/preferences.css" styleClass="preferences-root" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.sparrowwallet.sparrow.gui.ToolsController">
-    <left>
-        <VBox styleClass="preferences-sidebar" spacing="6">
-            <Label text="TOOLS" styleClass="preferences-sidebar-title" />
-            <ToggleButton fx:id="tourButton" text="Guided Tour" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" maxWidth="Infinity" toggleGroup="$toolsMenu">
+    <!-- Sections are tabs across the top. As a second sidebar they left the page about 600px. -->
+    <top>
+        <HBox styleClass="preferences-tabs" spacing="26" alignment="BOTTOM_LEFT">
+            <ToggleButton fx:id="tourButton" text="Guided Tour" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" toggleGroup="$toolsMenu">
                 <toggleGroup>
                     <ToggleGroup fx:id="toolsMenu" />
                 </toggleGroup>
@@ -16,23 +16,23 @@
                     <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="QUESTION_CIRCLE" />
                 </graphic>
             </ToggleButton>
-            <ToggleButton fx:id="bip47VerifierButton" text="Verifier" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" maxWidth="Infinity" toggleGroup="$toolsMenu">
+            <ToggleButton fx:id="bip47VerifierButton" text="Verifier" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" toggleGroup="$toolsMenu">
                 <graphic>
                     <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="CHECK_CIRCLE" />
                 </graphic>
             </ToggleButton>
-            <ToggleButton fx:id="statsButton" text="Statistics" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" maxWidth="Infinity" toggleGroup="$toolsMenu">
+            <ToggleButton fx:id="statsButton" text="Statistics" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" toggleGroup="$toolsMenu">
                 <graphic>
                     <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="CHART_BAR" />
                 </graphic>
             </ToggleButton>
-            <ToggleButton fx:id="logsButton" text="Logs" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" maxWidth="Infinity" toggleGroup="$toolsMenu">
+            <ToggleButton fx:id="logsButton" text="Logs" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" toggleGroup="$toolsMenu">
                 <graphic>
                     <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="FILE_ALT" />
                 </graphic>
             </ToggleButton>
-        </VBox>
-    </left>
+        </HBox>
+    </top>
     <center>
         <StackPane fx:id="toolsPane" styleClass="preferences-content">
 

@@ -6,10 +6,10 @@
 <?import org.controlsfx.glyphfont.Glyph?>
 
 <BorderPane stylesheets="@../general.css, @../gui/ashigaru.css, @preferences.css" styleClass="preferences-root" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.sparrowwallet.sparrow.preferences.PreferencesController">
-    <left>
-        <VBox styleClass="preferences-sidebar" spacing="6">
-            <Label text="PREFERENCES" styleClass="preferences-sidebar-title" />
-            <ToggleButton fx:id="generalPrefsBtn" text="General" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" maxWidth="Infinity" toggleGroup="$preferencesMenu">
+    <!-- Sections are tabs across the top. As a second sidebar they left the page about 600px. -->
+    <top>
+        <HBox styleClass="preferences-tabs" spacing="26" alignment="BOTTOM_LEFT">
+            <ToggleButton fx:id="generalPrefsBtn" text="General" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" toggleGroup="$preferencesMenu">
                 <toggleGroup>
                     <ToggleGroup fx:id="preferencesMenu" />
                 </toggleGroup>
@@ -20,7 +20,7 @@
                     <PreferenceGroup fx:constant="GENERAL"/>
                 </userData>
             </ToggleButton>
-            <ToggleButton fx:id="serverPrefsBtn" text="Server" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" maxWidth="Infinity" toggleGroup="$preferencesMenu">
+            <ToggleButton fx:id="serverPrefsBtn" text="Server" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" toggleGroup="$preferencesMenu">
                 <graphic>
                     <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="SERVER" />
                 </graphic>
@@ -28,7 +28,7 @@
                     <PreferenceGroup fx:constant="SERVER"/>
                 </userData>
             </ToggleButton>
-            <ToggleButton fx:id="updatePrefsBtn" text="Update" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" maxWidth="Infinity" toggleGroup="$preferencesMenu">
+            <ToggleButton fx:id="updatePrefsBtn" text="Update" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" toggleGroup="$preferencesMenu">
                 <graphic>
                     <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="ARROW_CIRCLE_DOWN" />
                 </graphic>
@@ -36,8 +36,8 @@
                     <PreferenceGroup fx:constant="UPDATE"/>
                 </userData>
             </ToggleButton>
-        </VBox>
-    </left>
+        </HBox>
+    </top>
     <center>
         <StackPane fx:id="preferencesPane" styleClass="preferences-content">
 
