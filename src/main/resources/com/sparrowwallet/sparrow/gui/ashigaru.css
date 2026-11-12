@@ -20,10 +20,14 @@
     /* Text */
     -ag-text:          #ECECEC;
     -ag-text-dim:      #A6A7AD;
-    -ag-text-faint:    #6E7077;
+    -ag-text-faint:    #8B8D95;
 
     /* Brand + semantic — hues preserved (identity) */
     -ag-accent:        #cc1111;   /* Ashigaru red */
+    -ag-accent-ink:    #FF5A4D;   /* small red type: 6.2:1 on the canvas, where #cc1111 is 3.3:1 */
+    -ag-green-ink:     #6BCB77;   /* live, private, verified */
+    -ag-warn-ink:      #F2B53A;   /* attention, offline, errors */
+    -ag-on-accent:     #ffffff;   /* text on a filled red button */
     -ag-accent-hover:  #e11414;
     -ag-accent-dark:   #991010;
     -ag-accent-tint:   derive(#cc1111, -62%);   /* selection fills   */
@@ -56,7 +60,7 @@
     -fx-padding: 3 9 3 9;
     -fx-background-radius: 999;
 }
-.ag-chip.accent { -fx-background-color: -ag-accent-faint; -fx-text-fill: -ag-accent; }
+.ag-chip.accent { -fx-background-color: -ag-accent-faint; -fx-text-fill: -ag-accent-ink; }
 
 /* ── Root / Scene ─────────────────────────────────────────────────────────── */
 .root {
@@ -96,7 +100,7 @@
     -fx-font-size: 16px;
 }
 .app-title-sub {
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-font-size: 10px;
     -fx-padding: 3 0 0 0;
 }
@@ -123,9 +127,9 @@
     -fx-font-size: 12px;
 }
 
-.connected    { -fx-text-fill: -ag-green !important; }
-.disconnected { -fx-text-fill: -ag-red !important; }
-.connecting   { -fx-text-fill: -ag-warn !important; }
+.connected    { -fx-text-fill: -ag-green-ink !important; }
+.disconnected { -fx-text-fill: -ag-warn-ink !important; }
+.connecting   { -fx-text-fill: -ag-warn-ink !important; }
 .connection-toggle { -fx-cursor: hand; }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────────── */
@@ -172,7 +176,7 @@
 }
 .wallet-list .list-cell:selected {
     -fx-background-color: derive(-ag-accent, -60%);
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
 }
 
 .sidebar-actions {
@@ -198,10 +202,10 @@
 
 .primary-btn {
     -fx-background-color: -ag-accent;
-    -fx-text-fill: #fff;
+    -fx-text-fill: -ag-on-accent;
     -fx-border-color: -ag-accent-dark;
 }
-.primary-btn:hover { -fx-background-color: -ag-accent-hover; -fx-text-fill: #fff; }
+.primary-btn:hover { -fx-background-color: -ag-accent-hover; -fx-text-fill: -ag-on-accent; }
 .primary-btn:armed { -fx-background-color: -ag-accent-dark; }
 
 .secondary-btn {
@@ -242,7 +246,7 @@
 .refresh-btn { -fx-font-size: 11px; -fx-padding: 4 10 4 10; }
 .delete-btn {
     -fx-background-color: derive(-ag-accent, -70%);
-    -fx-text-fill: #fff;
+    -fx-text-fill: -ag-on-accent;
     -fx-border-color: -ag-accent-dark;
     -fx-font-size: 11px;
     -fx-padding: 4 10 4 10;
@@ -282,7 +286,7 @@
 }
 .welcome-sub   { -fx-text-fill: -ag-text-dim;   -fx-font-size: 14px; }
 .welcome-hint  { -fx-text-fill: -ag-text-faint; -fx-font-size: 12px; -fx-text-alignment: center; }
-.welcome-hint.mono { -fx-font-family: monospace; -fx-text-fill: -ag-accent; }
+.welcome-hint.mono { -fx-font-family: monospace; -fx-text-fill: -ag-accent-ink; }
 
 /* ── Wallet panel ─────────────────────────────────────────────────────────── */
 .wallet-panel {
@@ -316,7 +320,7 @@
 }
 .account-tabs .tab:selected {
     -fx-background-color: -ag-bg;
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-border-color: -ag-accent;
     -fx-border-width: 0 0 2 0;
 }
@@ -346,7 +350,7 @@
 }
 .balance-value           {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;  /* wallet balance */ -fx-text-fill: -ag-text;     -fx-font-size: 20px; -fx-font-weight: bold; }
-.balance-card.primary .balance-value { -fx-text-fill: #fff; }
+.balance-card.primary .balance-value { -fx-text-fill: -ag-on-accent; }
 .balance-value.secondary {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;  /* secondary balance */ -fx-text-fill: -ag-text-dim; -fx-font-size: 16px; }
 
@@ -419,13 +423,13 @@
 
 /* Inline link inside a card (e.g. Stats tx explorer / exposure links) */
 .card-link {
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-font-size: 11px;
     -fx-padding: 0;
     -fx-border-color: transparent;
 }
 .card-link:hover { -fx-underline: true; }
-.card-link:visited { -fx-text-fill: -ag-accent; }
+.card-link:visited { -fx-text-fill: -ag-accent-ink; }
 
 /* Sender PayNym name + abbreviated payment code on an incoming-payment transaction card */
 .paynym-name {
@@ -455,7 +459,7 @@
     -fx-font-size: 16px;
 }
 .tx-icon.received { -fx-text-fill: -ag-green; }
-.tx-icon.sent     { -fx-text-fill: -ag-accent; }
+.tx-icon.sent     { -fx-text-fill: -ag-accent-ink; }
 
 /* Read-only master fingerprint shown on the unlock / passphrase dialog */
 .fingerprint-hex {
@@ -495,7 +499,7 @@
 }
 .mix-badge .mix-badge-text { -fx-text-fill: -ag-text-dim; -fx-font-size: 11px;}
 .mix-badge.active          { -fx-background-color: -ag-accent-faint; }
-.mix-badge.active .mix-badge-text { -fx-text-fill: -ag-accent; }
+.mix-badge.active .mix-badge-text { -fx-text-fill: -ag-accent-ink; }
 .mix-badge.done            { -fx-background-color: derive(-ag-green, -65%); }
 .mix-badge.done .mix-badge-text   { -fx-text-fill: -ag-green; }
 
@@ -533,7 +537,7 @@
 .dialog-pane .button-bar .button-bar { -fx-background-color: -ag-bg; }
 
 .section-title {
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-font-size: 12px;
 }
 
@@ -555,7 +559,7 @@
 .field-label  { -fx-text-fill: -ag-text-dim; }
 .field-value  { -fx-text-fill: -ag-text;     -fx-font-family: monospace; }
 .total-label  { -fx-text-fill: -ag-text;}
-.total-value  { -fx-text-fill: -ag-accent;   -fx-font-weight: bold; -fx-font-family: monospace; }
+.total-value  { -fx-text-fill: -ag-accent-ink;   -fx-font-weight: bold; -fx-font-family: monospace; }
 
 /* Tx0 preview breakdown panel */
 .preview-grid {
@@ -583,7 +587,7 @@
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;  /* server URLs */ -fx-text-fill: -ag-text; -fx-background-color: -ag-bg; }
 .combo-box-popup .list-view { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border; }
 .combo-box-popup .list-cell:hover { -fx-background-color: -ag-bg-raised; }
-.combo-box-popup .list-cell:selected { -fx-background-color: derive(-ag-accent, -60%); -fx-text-fill: -ag-accent; }
+.combo-box-popup .list-cell:selected { -fx-background-color: derive(-ag-accent, -60%); -fx-text-fill: -ag-accent-ink; }
 
 /* Monospace text area (seed / descriptor entry) */
 .mono-area {
@@ -598,7 +602,7 @@
     -fx-border-color: -ag-border;
     -fx-border-width: 0 0 1 0;
 }
-.wizard-eyebrow  { -fx-text-fill: -ag-accent;    -fx-font-size: 10px;}
+.wizard-eyebrow  { -fx-text-fill: -ag-accent-ink;    -fx-font-size: 10px;}
 .wizard-title    { -fx-text-fill: -ag-text; -fx-font-size: 18px; }
 .wizard-subtitle { -fx-text-fill: -ag-text-dim;  -fx-font-size: 12px; -fx-padding: 2 0 0 0; }
 
@@ -631,7 +635,7 @@
 .toggle-button:hover  { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
 .toggle-button:selected {
     -fx-background-color: derive(-ag-accent, -65%);
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-border-color: -ag-accent;
 }
 .toggle-button:selected:hover { -fx-background-color: derive(-ag-accent, -60%); }
@@ -656,7 +660,7 @@
 }
 .view-toggle-bar .toggle-button:selected {
     -fx-border-color: transparent transparent -ag-accent transparent;
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-background-color: transparent;
 }
 .view-toggle-bar .toggle-button:selected:hover {
@@ -665,21 +669,21 @@
 
 /* ── Badbank info bar ─────────────────────────────────────────────────────── */
 .badbank-info-bar {
-    -fx-background-color: derive(-ag-testnet, -75%);
-    -fx-border-color: -ag-testnet;
+    -fx-background-color: derive(-ag-warn, -78%);
+    -fx-border-color: -ag-warn;
     -fx-border-width: 0 0 1 0;
 }
-.badbank-warning-icon { -fx-text-fill: -ag-testnet; -fx-font-size: 14px; }
-.badbank-info-text    { -fx-text-fill: -ag-testnet; -fx-font-size: 11px; }
+.badbank-warning-icon { -fx-text-fill: -ag-warn-ink; -fx-font-size: 14px; }
+.badbank-info-text    { -fx-text-fill: -ag-warn-ink; -fx-font-size: 12px; }
 
 /* ── Coordinator-unreachable warning bar ──────────────────────────────────── */
 .coordinator-warning-bar {
-    -fx-background-color: -ag-accent-faint;
-    -fx-border-color: -ag-accent;
+    -fx-background-color: derive(-ag-warn, -78%);
+    -fx-border-color: -ag-warn;
     -fx-border-width: 0 0 1 0;
 }
-.coordinator-warning-icon { -fx-text-fill: -ag-accent; -fx-font-size: 14px; }
-.coordinator-warning-text { -fx-text-fill: -ag-accent; -fx-font-size: 11px; }
+.coordinator-warning-icon { -fx-text-fill: -ag-warn-ink; -fx-font-size: 14px; }
+.coordinator-warning-text { -fx-text-fill: -ag-warn-ink; -fx-font-size: 12px; }
 
 /* ── Syncing bar (wallet history refreshing) ──────────────────────────────── */
 .syncing-bar {
@@ -687,7 +691,7 @@
     -fx-border-color: -ag-blue;
     -fx-border-width: 0 0 1 0;
 }
-.syncing-text { -fx-text-fill: -ag-blue; -fx-font-size: 11px; }
+.syncing-text { -fx-text-fill: -ag-blue; -fx-font-size: 12px; }
 .syncing-spinner { -fx-progress-color: -ag-blue; }
 .syncing-spinner .percentage { visibility: hidden; }
 
@@ -706,7 +710,7 @@
 }
 .copy-icon-btn:hover {
     -fx-background-color: -ag-bg-raised;
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-border-radius: 3;
     -fx-background-radius: 3;
 }
@@ -742,7 +746,7 @@
 /* Nikkyou Sans ships a single weight, so no -fx-font-weight here: JavaFX would synthesise a fake
    bold and smear the letterforms. The display face also needs more size than the old 30px to read. */
 .splash-title {
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-font-size: 46px;
 }
 .splash-subtitle {
@@ -755,7 +759,7 @@
 }
 .splash-chip {
     -fx-background-color: derive(-ag-accent, -70%);
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-font-size: 10px;
     -fx-padding: 3 7 3 7;
     -fx-background-radius: 3;
@@ -771,7 +775,7 @@
 }
 .splash-step-active { -fx-text-fill: -ag-text; }
 .splash-step-done   { -fx-text-fill: -ag-green; }
-.splash-step-failed { -fx-text-fill: -ag-accent;}
+.splash-step-failed { -fx-text-fill: -ag-warn-ink;}
 .splash-progress .track {
     -fx-background-color: -ag-bg-raised;
     -fx-background-radius: 999;
@@ -840,7 +844,7 @@
     -fx-background-color: derive(-ag-accent, -65%);
 }
 .menu-item:hover .label, .menu-item:focused .label {
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
 }
 
 /* ── Account buttons (sidebar) ───────────────────────────────────────────── */
@@ -858,7 +862,7 @@
 .account-btn:hover { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
 .account-btn:selected, .account-btn.account-selected {
     -fx-background-color: -ag-bg-raised;
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-border-color: transparent transparent transparent -ag-accent;
     -fx-border-width: 0 0 0 3;
 }
@@ -895,7 +899,7 @@
 .list-item:hover { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
 .list-item:selected {
     -fx-background-color: derive(-ag-accent, -65%);
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-border-color: -ag-accent;
 }
 .list-item:selected:hover { -fx-background-color: derive(-ag-accent, -60%); }
@@ -938,7 +942,7 @@
 }
 .prefs-back-btn:hover {
     -fx-background-color: transparent;
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
 }
 .prefs-page-title {
     -fx-text-fill: -ag-text;
@@ -997,7 +1001,7 @@
 /* No font properties here: CSS font rules re-derive the font from the inherited family
    (Nikkyou Sans), which has none of the icon codepoints — the Glyph would render invisible.
    The Glyph's own fontSize attribute sizes the icon instead. */
-.verifier-hero-glyph { -fx-text-fill: -ag-accent; }
+.verifier-hero-glyph { -fx-text-fill: -ag-accent-ink; }
 .verifier-hero-title { -fx-text-fill: -ag-text;   -fx-font-size: 18px;}
 .verifier-hero-sub   { -fx-text-fill: -ag-text-dim; -fx-font-size: 12px; }
 
@@ -1023,7 +1027,7 @@
     -fx-border-color: -ag-green;
 }
 .verifier-result-error {
-    -fx-border-color: -ag-accent;
+    -fx-border-color: -ag-warn;
 }
 .verifier-result-info {
     -fx-border-color: -ag-border;
@@ -1036,11 +1040,11 @@
     -fx-text-fill: -ag-green;
 }
 .verifier-result-error .verifier-result-title {
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-warn-ink;
 }
 /* Each link of the release verification chain, before and after it is checked */
 .verifier-step-pass { -fx-text-fill: -ag-green; }
-.verifier-step-fail { -fx-text-fill: -ag-accent;}
+.verifier-step-fail { -fx-text-fill: -ag-warn-ink;}
 
 /* ── Guided tour ──────────────────────────────────────────────────────────── */
 
@@ -1059,7 +1063,7 @@
     -fx-padding: 6;
 }
 .tour-eyebrow {
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-font-size: 10px;
 }
 .tour-progress {
@@ -1104,8 +1108,9 @@
     -ag-border:       #2E3038;
     -ag-text:         #ECECEC;
     -ag-text-dim:     #A6A7AD;
-    -ag-text-faint:   #6E7077;
+    -ag-text-faint:   #8B8D95;
     -ag-accent:       #cc1111;
+    -ag-accent-ink:   #FF5A4D;
     -ag-accent-hover: #e11414;
     -ag-accent-dark:  #991010;
 
@@ -1121,7 +1126,7 @@
    rule in the anchored node's own stylesheet cannot repaint the card. Each rule states size and
    fill explicitly for the same reason. */
 #tourPopover .tour-pop-title {
-    -fx-text-fill: -ag-accent;
+    -fx-text-fill: -ag-accent-ink;
     -fx-font-size: 14px;
 }
 #tourPopover .tour-pop-body {
@@ -1149,11 +1154,11 @@
 #tourPopover .action-btn:disabled { -fx-opacity: 0.45; }
 #tourPopover .primary-btn {
     -fx-background-color: -ag-accent;
-    -fx-text-fill: #fff;
+    -fx-text-fill: -ag-on-accent;
     -fx-border-color: -ag-accent-dark;
 }
-#tourPopover .primary-btn:hover { -fx-background-color: -ag-accent-hover; -fx-text-fill: #fff; }
-#tourPopover .primary-btn:armed { -fx-background-color: -ag-accent-dark; -fx-text-fill: #fff; }
+#tourPopover .primary-btn:hover { -fx-background-color: -ag-accent-hover; -fx-text-fill: -ag-on-accent; }
+#tourPopover .primary-btn:armed { -fx-background-color: -ag-accent-dark; -fx-text-fill: -ag-on-accent; }
 
 /* The node currently being pointed at */
 .tour-highlight {
@@ -1212,3 +1217,27 @@
     -fx-background-radius: -ag-radius;
     -fx-padding: 10 12 10 12;
 }
+
+
+/* ── Reading face ─────────────────────────────────────────────────────────────
+   Nikkyou Sans is a single-weight poster face: right for titles, labels and buttons, hard to read
+   as a sentence. Anything a person reads as a sentence is set in Inter instead. Add .ag-read to a
+   new label that holds a sentence; the selectors below cover the ones that already exist. */
+.ag-read,
+.welcome-sub, .welcome-hint,
+.badbank-info-text, .coordinator-warning-text, .syncing-text,
+.wizard-subtitle, .type-card-desc,
+.tour-step-body, #tourPopover .tour-pop-body,
+.diceware-instruction, .passphrase-weakness, .passphrase-warning,
+.verifier-hero-sub, .empty-state-message,
+.dialog-pane > .content.label,
+.tooltip {
+    -fx-font-family: "Inter", "Segoe UI", "Helvetica Neue", "Arial", sans-serif;
+}
+.ag-read { -fx-font-size: 13px; -fx-text-fill: -ag-text-dim; }
+.ag-read.faint { -fx-font-size: 12px; -fx-text-fill: -ag-text-faint; }
+
+/* ── Scrim ────────────────────────────────────────────────────────────────────
+   Covers the main window while a dialog owned by it is open, so nothing behind the dialog reads as
+   part of it. */
+.dialog-scrim { -fx-background-color: rgba(5,6,8,0.72); }

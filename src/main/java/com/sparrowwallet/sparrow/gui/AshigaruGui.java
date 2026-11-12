@@ -17,6 +17,9 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.Region;
+import javafx.collections.ListChangeListener;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -70,10 +73,21 @@ public class AshigaruGui extends Application {
         //lazily because the splash is built further down this same method and would otherwise
         //fall back to the default face without any error.
         Font.loadFont(AppServices.class.getResourceAsStream("/font/NikkyouSans.ttf"), 13);
+        //The reading face: every sentence in the UI (warnings, help, wizard copy) is set in Inter,
+        //leaving Nikkyou Sans for titles, labels and buttons. See ".ag-read" in ashigaru.css.
+        Font.loadFont(AppServices.class.getResourceAsStream("/font/Inter-Regular.ttf"), 13);
+        Font.loadFont(AppServices.class.getResourceAsStream("/font/Inter-SemiBold.ttf"), 13);
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource("ashigaru-main.fxml"));
-        Parent root = loader.load();
+        Parent content = loader.load();
         mainController = loader.getController();
+        //The scrim sits over the whole window and is shown while a dialog owned by it is open.
+        Region scrim = new Region();
+        scrim.getStyleClass().add("dialog-scrim");
+        scrim.setVisible(false);
+        scrim.setMouseTransparent(true);
+        StackPane root = new StackPane(content, scrim);
+        installDialogScrim(stage, scrim);
 
         //Size to the usable screen area (excluding panels/docks). Window managers pass the minimum size
         //on as a hint, and one larger than the usable area greys out maximize, refuses tiling and lets
@@ -148,6 +162,17 @@ public class AshigaruGui extends Application {
 
             timeout.play();
         }
+    }
+
+    /**
+     * Dims the main window whenever a dialog (or any other stage) owned by it is showing. Watching the
+     * window list covers every dialog in one place, including the ones built by inherited Sparrow code.
+     * Popups (menus, tooltips, the tour popover) are not stages and leave the window lit.
+     */
+    private static void installDialogScrim(Stage owner, Region scrim) {
+        Runnable update = () -> scrim.setVisible(Window.getWindows().stream()
+                .anyMatch(w -> w instanceof Stage child && child != owner && child.isShowing() && child.getOwner() == owner));
+        Window.getWindows().addListener((ListChangeListener<Window>) change -> update.run());
     }
 
     private Stage showSplash() {

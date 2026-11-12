@@ -14,6 +14,13 @@ This project bundles third-party data files, listed here with their attributions
 The wordlist is included verbatim. Its integrity is verified at load time against a bundled SHA-256
 digest.
 
+## Inter (reading typeface)
+
+- **Files:** `src/main/resources/font/Inter-Regular.ttf`, `src/main/resources/font/Inter-SemiBold.ttf`, `src/main/resources/font/Inter-read.txt`
+- **Used by:** every sentence in the GUI: warnings, help text and wizard copy (`.ag-read` in `ashigaru.css`)
+- **Copyright:** `Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)`
+- **License:** SIL Open Font License, Version 1.1 (https://openfontlicense.org)
+
 ## Nikkyou Sans (splash typeface)
 
 - **Files:** `src/main/resources/font/NikkyouSans.ttf`, `src/main/resources/font/NikkyouSans-read.txt`
