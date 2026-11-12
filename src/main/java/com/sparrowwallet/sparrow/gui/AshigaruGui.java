@@ -58,6 +58,7 @@ public class AshigaruGui extends Application {
                 log.error("Exception in thread \"" + t.getName() + "\"", e));
         AppServices.initialize(this, new AshigaruInteractionServices());
         instance = this;
+        AppServices.setExternalLinkHandler(ExposureDialogs::openOutsideTor);
         EventManager.get().register(this);
         // Start each session with no discovered Dojo listings (covers an unclean prior shutdown);
         // discovery re-populates them once connected.

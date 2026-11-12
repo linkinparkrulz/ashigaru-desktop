@@ -996,6 +996,25 @@ public class AppServices {
         }
     }
 
+    private static java.util.function.Consumer<String> externalLinkHandler;
+
+    /**
+     * Lets a front end decide what happens before a link leaves the app. The system browser does not
+     * use the app's Tor connection, so the GUI installs a handler that says so and offers to copy
+     * the link instead. Without a handler the link opens directly, as before.
+     */
+    public static void setExternalLinkHandler(java.util.function.Consumer<String> handler) {
+        externalLinkHandler = handler;
+    }
+
+    public static void openExternalLink(String url) {
+        if(externalLinkHandler != null) {
+            externalLinkHandler.accept(url);
+        } else {
+            AppServices.get().getApplication().getHostServices().showDocument(url);
+        }
+    }
+
     public static void openBlockExplorer(String txid) {
         if(Config.get().isBlockExplorerDisabled()) {
             return;
@@ -1011,7 +1030,7 @@ public class AppServices {
             }
             url += "/tx/" + txid;
         }
-        AppServices.get().getApplication().getHostServices().showDocument(url);
+        openExternalLink(url);
     }
 
     public static void openAmIExposed(String txid) {
@@ -1026,7 +1045,7 @@ public class AppServices {
         } else {
             url += "/#tx=" + txid;
         }
-        AppServices.get().getApplication().getHostServices().showDocument(url);
+        openExternalLink(url);
     }
 
     static void parseFileUriArguments(List<String> fileUriArguments) {

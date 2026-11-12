@@ -10,6 +10,10 @@ import com.sparrowwallet.drongo.wallet.Keystore;
 import com.sparrowwallet.drongo.wallet.StandardAccount;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.sparrow.AppServices;
+import com.sparrowwallet.sparrow.UnitFormat;
+import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
+import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
+import javafx.css.PseudoClass;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.Mode;
@@ -64,11 +68,21 @@ public class AshigaruMainController implements Initializable {
 
     // Account sidebar controls
     @FXML private VBox accountButtonsBox;
-    @FXML private Button deleteWalletBtn;
-    @FXML private Button viewSeedBtn;
-    @FXML private Button exportLabelsBtn;
-    @FXML private Button importLabelsBtn;
-    @FXML private Button lockWalletBtn;
+    @FXML private MenuItem deleteWalletBtn;
+    @FXML private MenuItem viewSeedBtn;
+    @FXML private MenuItem exportLabelsBtn;
+    @FXML private MenuItem importLabelsBtn;
+    @FXML private MenuItem lockWalletBtn;
+    @FXML private MenuItem openWalletItem;
+    @FXML private MenuItem createWalletItem;
+    @FXML private MenuButton walletMenuBtn;
+    @FXML private VBox noWalletBox;
+    @FXML private Button openWalletBtn;
+    @FXML private Button createWalletBtn;
+    @FXML private Button toolsBtn;
+    @FXML private Button settingsBtn;
+    @FXML private Label crumbLabel;
+    @FXML private Label serverLabel;
     @FXML private ToggleGroup accountToggleGroup;
     @FXML private ToggleButton depositBtn;
     @FXML private ToggleButton premixBtn;
@@ -124,6 +138,93 @@ public class AshigaruMainController implements Initializable {
             setConnState(ConnState.DISCONNECTED);
         }
         connectionLabel.setContextMenu(createTorMenu());
+
+        Icons.set(toolsBtn, FontAwesome5.Glyph.TH_LARGE);
+        Icons.set(settingsBtn, FontAwesome5.Glyph.SLIDERS_H);
+        Icons.set(createWalletBtn, FontAwesome5.Glyph.PLUS);
+        walletMenuBtn.setGraphic(Icons.of(FontAwesome5.Glyph.ELLIPSIS_H));
+        Icons.set(viewSeedBtn, FontAwesome5.Glyph.EYE);
+        Icons.set(exportLabelsBtn, FontAwesome5.Glyph.FILE_EXPORT);
+        Icons.set(importLabelsBtn, FontAwesome5.Glyph.FILE_IMPORT);
+        Icons.set(lockWalletBtn, FontAwesome5.Glyph.LOCK);
+        Icons.set(deleteWalletBtn, FontAwesome5.Glyph.TRASH_ALT);
+        buildPipeline();
+    }
+
+    // -------------------------------------------------------------------------
+    // Account pipeline
+    // -------------------------------------------------------------------------
+
+    /** The labels inside one account button: what the account is doing, and what it holds. */
+    private record PipelineRow(Label state, Label balance) {}
+
+    private final Map<StandardAccount, PipelineRow> pipelineRows = new EnumMap<>(StandardAccount.class);
+
+    private void buildPipeline() {
+        pipelineRows.put(StandardAccount.ACCOUNT_0, pipelineRow(depositBtn, "Deposit"));
+        pipelineRows.put(StandardAccount.WHIRLPOOL_PREMIX, pipelineRow(premixBtn, "Premix"));
+        pipelineRows.put(StandardAccount.WHIRLPOOL_POSTMIX, pipelineRow(postmixBtn, "Postmix"));
+        pipelineRows.put(StandardAccount.WHIRLPOOL_BADBANK, pipelineRow(badbankBtn, "Badbank"));
+    }
+
+    private PipelineRow pipelineRow(ToggleButton button, String name) {
+        Region node = new Region();
+        node.getStyleClass().add("pipe-node");
+        Label title = new Label(name);
+        title.getStyleClass().add("pipe-name");
+        Label state = new Label();
+        state.getStyleClass().add("pipe-state");
+        VBox text = new VBox(1, title, state);
+        Label balance = new Label();
+        balance.getStyleClass().add("pipe-balance");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox row = new HBox(11, node, text, spacer, balance);
+        row.setAlignment(Pos.CENTER_LEFT);
+        button.setText(null);
+        button.setGraphic(row);
+        button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        button.setAccessibleText(name);
+        return new PipelineRow(state, balance);
+    }
+
+    /**
+     * Refreshes every account's balance and state in the sidebar. Called whenever the open wallet's
+     * history settles, and by the wallet panel when its lists change.
+     */
+    public void refreshPipeline() {
+        if(currentWalletForm == null) {
+            return;
+        }
+        WalletPrivacy privacy = WalletPrivacy.of(currentWalletForm);
+        UnitFormat fmt = UnitFormat.DOT;
+        Whirlpool whirlpool = AppServices.getWhirlpoolServices().getWhirlpool(currentWalletForm.getWallet());
+        boolean mixing = whirlpool != null && whirlpool.isMixing();
+        pipelineRows.forEach((account, row) -> {
+            WalletPrivacy.Account totals = privacy.get(account);
+            row.balance().setText(fmt.formatBtcValue(totals.sats()));
+            String utxos = totals.utxos() == 0 ? "Empty" : totals.utxos() + (totals.utxos() == 1 ? " UTXO" : " UTXOs");
+            boolean live = mixing && account == StandardAccount.WHIRLPOOL_PREMIX && totals.utxos() > 0;
+            row.state().setText(live ? utxos + " \u00b7 mixing" : utxos);
+            row.state().pseudoClassStateChanged(LIVE, live);
+        });
+        if(currentWalletController != null) {
+            currentWalletController.showPrivacy(privacy);
+        }
+    }
+
+    private static final PseudoClass LIVE = PseudoClass.getPseudoClass("live");
+
+    private void updateCrumb(String detail) {
+        String wallet = currentWalletForm == null ? "Ashigaru" : currentWalletForm.getWallet().getMasterName();
+        crumbLabel.setText((detail == null ? wallet : wallet + "  /  " + detail).toUpperCase(Locale.ROOT));
+    }
+
+    private static String accountName(StandardAccount account) {
+        if(account == StandardAccount.WHIRLPOOL_PREMIX) return "Premix";
+        if(account == StandardAccount.WHIRLPOOL_POSTMIX) return "Postmix";
+        if(account == StandardAccount.WHIRLPOOL_BADBANK) return "Badbank";
+        return "Deposit";
     }
 
     // -------------------------------------------------------------------------
@@ -147,19 +248,16 @@ public class AshigaruMainController implements Initializable {
         }
         maybeReconnectOnLeavingPrefs();
         contentPane.setCenter(welcomePane);
+        currentWalletForm = null;
+        walletMenuBtn.setVisible(false);
+        walletMenuBtn.setManaged(false);
+        noWalletBox.setVisible(true);
+        noWalletBox.setManaged(true);
+        updateCrumb(null);
         // walletSelector stays visible in the sidebar at all times
         accountButtonsBox.setVisible(false);
         accountButtonsBox.setManaged(false);
-        deleteWalletBtn.setVisible(false);
-        deleteWalletBtn.setManaged(false);
-        viewSeedBtn.setVisible(false);
-        viewSeedBtn.setManaged(false);
-        exportLabelsBtn.setVisible(false);
-        exportLabelsBtn.setManaged(false);
-        importLabelsBtn.setVisible(false);
-        importLabelsBtn.setManaged(false);
         lockWalletBtn.setVisible(false);
-        lockWalletBtn.setManaged(false);
     }
 
     private void selectWallet(String walletId) {
@@ -172,14 +270,10 @@ public class AshigaruMainController implements Initializable {
         // Show account section and delete button (wallet selector is always visible)
         accountButtonsBox.setVisible(true);
         accountButtonsBox.setManaged(true);
-        deleteWalletBtn.setVisible(true);
-        deleteWalletBtn.setManaged(true);
-        viewSeedBtn.setVisible(true);
-        viewSeedBtn.setManaged(true);
-        exportLabelsBtn.setVisible(true);
-        exportLabelsBtn.setManaged(true);
-        importLabelsBtn.setVisible(true);
-        importLabelsBtn.setManaged(true);
+        walletMenuBtn.setVisible(true);
+        walletMenuBtn.setManaged(true);
+        noWalletBox.setVisible(false);
+        noWalletBox.setManaged(false);
 
         boolean encrypted = false;
         try { encrypted = walletForm.getStorage().isEncrypted(); } catch (IOException ignored) {}
@@ -187,7 +281,6 @@ public class AshigaruMainController implements Initializable {
                 .anyMatch(ks -> ks.hasSeed() && ks.getSeed().needsPassphrase());
         boolean lockable = encrypted || needsPassphrase;
         lockWalletBtn.setVisible(lockable);
-        lockWalletBtn.setManaged(lockable);
 
         // Select Deposit by default
         depositBtn.setSelected(true);
@@ -222,6 +315,8 @@ public class AshigaruMainController implements Initializable {
             walletScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
             walletScroll.getStyleClass().add("content-scroll");
             contentPane.setCenter(walletScroll);
+            updateCrumb(accountName(selectedAccount));
+            refreshPipeline();
             // Kick off a fresh history fetch so UTXOs/transactions appear immediately.
             // For non-Deposit accounts, also refresh the child form — master history
             // service does not fetch Premix/Postmix/Badbank address history.
@@ -292,21 +387,25 @@ public class AshigaruMainController implements Initializable {
     private void setConnState(ConnState state) {
         connState = state;
         connectionLabel.getStyleClass().removeAll("connected", "disconnected", "connecting");
+        boolean online = state == ConnState.CONNECTED && Config.get().hasServer();
+        serverLabel.setText(online ? Config.get().getServerDisplayName() : "");
+        serverLabel.setVisible(online);
+        serverLabel.setManaged(online);
         switch (state) {
             case CONNECTED -> {
-                connectionLabel.setText("● Connected");
+                connectionLabel.setText("Tor \u00b7 connected");
                 connectionLabel.getStyleClass().add("connected");
-                connectionLabel.setTooltip(new Tooltip("Click to disconnect · right-click for Tor options"));
+                connectionLabel.setTooltip(new Tooltip("Connection and Tor options"));
             }
             case CONNECTING -> {
-                connectionLabel.setText("◍ Connecting…");
+                connectionLabel.setText("Connecting\u2026");
                 connectionLabel.getStyleClass().add("connecting");
-                connectionLabel.setTooltip(new Tooltip("Connecting… · right-click for Tor options"));
+                connectionLabel.setTooltip(new Tooltip("Connection and Tor options"));
             }
             case DISCONNECTED -> {
-                connectionLabel.setText("○ Disconnected");
+                connectionLabel.setText("Offline \u00b7 click to connect");
                 connectionLabel.getStyleClass().add("disconnected");
-                connectionLabel.setTooltip(new Tooltip("Click to connect · right-click for Tor options"));
+                connectionLabel.setTooltip(new Tooltip("Connection and Tor options"));
             }
         }
     }
@@ -324,8 +423,18 @@ public class AshigaruMainController implements Initializable {
         MenuItem restartTor = new MenuItem("Restart Tor");
         restartTor.setOnAction(event -> restartTor());
 
-        ContextMenu menu = new ContextMenu(newIdentity, restartTor);
+        MenuItem toggle = new MenuItem("Disconnect");
+        toggle.setOnAction(event -> toggleConnection());
+        MenuItem whoLearns = new MenuItem("Who learns what\u2026");
+        whoLearns.setOnAction(event -> ExposureDialogs.showWhoLearnsWhat());
+        Icons.set(newIdentity, FontAwesome5.Glyph.SYNC_ALT);
+        Icons.set(restartTor, FontAwesome5.Glyph.BULLSEYE);
+        Icons.set(whoLearns, FontAwesome5.Glyph.EYE);
+
+        ContextMenu menu = new ContextMenu(newIdentity, restartTor, toggle, new SeparatorMenuItem(), whoLearns);
         menu.setOnShowing(event -> {
+            toggle.setText(connState == ConnState.DISCONNECTED ? "Connect" : "Disconnect");
+            toggle.setDisable(connState == ConnState.CONNECTING);
             boolean internalTor = Config.get().requiresInternalTor();
             newIdentity.setDisable(!AppServices.isTorRunning());
             restartTor.setDisable(!internalTor);
@@ -340,8 +449,25 @@ public class AshigaruMainController implements Initializable {
         }
     }
 
+    /**
+     * The connection pill opens its menu on any click. Tor recovery used to be a right-click on the
+     * status text, which nobody finds; connect and disconnect are the first items in the same menu.
+     */
     @FXML
-    private void onConnectionLabelClicked() {
+    private void onConnectionLabelClicked(javafx.scene.input.MouseEvent event) {
+        if(connState == ConnState.DISCONNECTED) {
+            toggleConnection();
+            return;
+        }
+        ContextMenu menu = connectionLabel.getContextMenu();
+        if(menu.isShowing()) {
+            menu.hide();
+        } else {
+            menu.show(connectionLabel, javafx.geometry.Side.BOTTOM, 0, 4);
+        }
+    }
+
+    private void toggleConnection() {
         switch (connState) {
             case DISCONNECTED -> {
                 // Remember the choice so future launches auto-connect, then request a connection.
@@ -1186,7 +1312,7 @@ public class AshigaruMainController implements Initializable {
     public void torFailedStatusEvent(TorFailedStatusEvent event) {
         Platform.runLater(() -> {
             setConnState(ConnState.DISCONNECTED);
-            statusLabel.setText("Tor failed to start — right-click the connection status to restart it");
+            statusLabel.setText("Tor failed to start. Open the connection menu, top right, to restart it.");
         });
     }
 
@@ -1208,7 +1334,7 @@ public class AshigaruMainController implements Initializable {
     @Subscribe
     public void walletHistoryStarted(WalletHistoryStartedEvent event) {
         if (event.getWallet().isMasterWallet()) {
-            Platform.runLater(() -> statusLabel.setText("⟳  Syncing " + event.getWallet().getDisplayName() + "…"));
+            Platform.runLater(() -> statusLabel.setText("Syncing " + event.getWallet().getDisplayName() + "\u2026"));
         }
     }
 
@@ -1217,6 +1343,7 @@ public class AshigaruMainController implements Initializable {
         if (event.getWallet().isMasterWallet()) {
             Platform.runLater(() -> statusLabel.setText("Ready"));
         }
+        Platform.runLater(this::refreshPipeline);
     }
 
     @Subscribe

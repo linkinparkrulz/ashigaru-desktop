@@ -9,48 +9,65 @@
       fx:controller="com.sparrowwallet.sparrow.gui.AshigaruWalletController"
       styleClass="wallet-panel" spacing="0">
 
-    <!-- ① Account header row: name + action buttons -->
-    <HBox styleClass="account-header-row" alignment="CENTER_LEFT" spacing="12">
-        <padding><Insets top="14" right="20" bottom="14" left="20"/></padding>
-        <Label fx:id="accountNameLabel" text="Deposit" styleClass="account-name-label"/>
+    <!-- ① Account header row: name, what the account is for, and its actions -->
+    <HBox styleClass="account-header-row" alignment="BOTTOM_LEFT" spacing="12">
+        <padding><Insets top="20" right="24" bottom="4" left="24"/></padding>
+        <VBox spacing="5">
+            <Label fx:id="accountNameLabel" text="Deposit" styleClass="account-name-label"/>
+            <Label fx:id="accountSubLabel" text="Where coins arrive before they are mixed." styleClass="ag-read"/>
+        </VBox>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button minWidth="-Infinity" fx:id="receiveBtn" text="⬇  Receive" onAction="#onReceive"
+        <Button minWidth="-Infinity" fx:id="receiveBtn" text="Receive" onAction="#onReceive"
                 styleClass="primary-btn" visible="false" managed="false"/>
-        <Button minWidth="-Infinity" fx:id="refreshBtn" text="⟳  Refresh" onAction="#onRefresh" styleClass="action-btn refresh-btn"/>
+        <Button minWidth="-Infinity" fx:id="refreshBtn" onAction="#onRefresh" styleClass="action-btn, refresh-btn, icon-btn">
+            <tooltip><Tooltip text="Refresh"/></tooltip>
+        </Button>
     </HBox>
 
-    <!-- ② Balance row: cards -->
-    <HBox styleClass="balance-row" alignment="CENTER_LEFT" spacing="14">
-        <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
-
-        <VBox styleClass="balance-card primary" spacing="4" HBox.hgrow="ALWAYS" maxWidth="Infinity">
-            <Label text="CONFIRMED" styleClass="balance-caption"/>
-            <Label fx:id="balanceLabel" text="—" styleClass="balance-value"/>
+    <!-- ② Hero: this account's balance, and how much of the whole wallet is private -->
+    <HBox styleClass="hero" alignment="CENTER_LEFT">
+        <VBox.margin><Insets top="16" right="24" bottom="4" left="24"/></VBox.margin>
+        <VBox styleClass="hero-balance" spacing="10" HBox.hgrow="ALWAYS" alignment="CENTER_LEFT">
+            <Label fx:id="heroEyebrow" text="DEPOSIT · CONFIRMED" styleClass="hero-eyebrow"/>
+            <Label fx:id="balanceLabel" text="—" styleClass="hero-value" minWidth="-Infinity"/>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label fx:id="utxoCountLabel" text="0" styleClass="hero-sub"/>
+                <Label text="·" styleClass="hero-sub, dot"/>
+                <Label fx:id="mempoolLabel" text="—" styleClass="hero-sub"/>
+            </HBox>
         </VBox>
-        <VBox styleClass="balance-card" spacing="4" HBox.hgrow="ALWAYS" maxWidth="Infinity">
-            <Label text="MEMPOOL" styleClass="balance-caption"/>
-            <Label fx:id="mempoolLabel" text="—" styleClass="balance-value secondary"/>
-        </VBox>
-        <VBox styleClass="balance-card" spacing="4" HBox.hgrow="ALWAYS" maxWidth="Infinity">
-            <Label text="UTXOs" styleClass="balance-caption"/>
-            <Label fx:id="utxoCountLabel" text="0" styleClass="balance-value secondary"/>
+        <VBox styleClass="hero-privacy" spacing="10" minWidth="330" maxWidth="330">
+            <HBox alignment="CENTER_LEFT">
+                <Label text="WALLET PRIVACY" styleClass="hero-caption"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="privacyTotalLabel" text="" styleClass="hero-sub"/>
+            </HBox>
+            <HBox spacing="18" alignment="CENTER_LEFT">
+                <StackPane fx:id="donutPane" minWidth="96" minHeight="96" maxWidth="96" maxHeight="96">
+                    <VBox alignment="CENTER" spacing="2">
+                        <Label fx:id="privacyPercentLabel" text="0%" styleClass="donut-value"/>
+                        <Label text="PRIVATE" styleClass="donut-caption"/>
+                    </VBox>
+                </StackPane>
+                <GridPane fx:id="privacyLegend" hgap="9" vgap="6" HBox.hgrow="ALWAYS"/>
+            </HBox>
         </VBox>
     </HBox>
 
     <!-- Badbank / doxxic-change info bar (shown only when Badbank tab is active) -->
     <HBox fx:id="badbankInfoBar" styleClass="badbank-info-bar" alignment="CENTER_LEFT" spacing="8" visible="false" managed="false">
         <padding><Insets top="10" right="20" bottom="10" left="20"/></padding>
-        <Label text="⚠" styleClass="badbank-warning-icon"/>
+        <Label fx:id="badbankIcon" styleClass="badbank-warning-icon"/>
         <Label fx:id="badbankInfoLabel"
-               text="Spending these UTXOs is not advised. Please consider mixing in a smaller pool or an atomic swap to XMR."
+               text="This is change from your Tx0. It is tied to the coins you deposited, so it is kept apart from Postmix. Mix it in a smaller pool, or swap it to XMR, before you spend it."
                styleClass="badbank-info-text" wrapText="true"/>
     </HBox>
 
     <!-- Coordinator-unreachable warning bar (shown while mixing can't connect) -->
     <HBox fx:id="coordinatorWarningBar" styleClass="coordinator-warning-bar" alignment="CENTER_LEFT" spacing="8" visible="false" managed="false">
         <padding><Insets top="10" right="20" bottom="10" left="20"/></padding>
-        <Label text="⚠" styleClass="coordinator-warning-icon"/>
-        <Label text="Can't reach the Whirlpool coordinator. It may be offline — mixing will resume automatically once it's reachable."
+        <Label fx:id="coordinatorIcon" styleClass="coordinator-warning-icon"/>
+        <Label text="Can't reach the Whirlpool coordinator. It may be offline. Mixing resumes automatically once it's reachable."
                styleClass="coordinator-warning-text" wrapText="true"/>
     </HBox>
 
@@ -58,7 +75,7 @@
     <HBox fx:id="syncingBar" styleClass="syncing-bar" alignment="CENTER_LEFT" spacing="10" visible="false" managed="false">
         <padding><Insets top="10" right="20" bottom="10" left="20"/></padding>
         <ProgressIndicator styleClass="syncing-spinner" prefWidth="16" prefHeight="16" minWidth="16" minHeight="16"/>
-        <Label text="Syncing wallet to the latest block — balances and mixing update once this finishes."
+        <Label text="Syncing wallet to the latest block. Balances and mixing update once this finishes."
                styleClass="syncing-text" wrapText="true"/>
     </HBox>
 
@@ -68,9 +85,9 @@
         <ToggleButton minWidth="-Infinity" fx:id="utxoViewBtn"  text="UTXOs"        onAction="#onViewToggle" styleClass="view-toggle-btn" selected="true"/>
         <ToggleButton minWidth="-Infinity" fx:id="txnViewBtn"   text="Transactions" onAction="#onViewToggle" styleClass="view-toggle-btn"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button minWidth="-Infinity" fx:id="selectAllUtxosBtn" text="Select All UTXOs" onAction="#onSelectAllUtxos"
+        <Button minWidth="-Infinity" fx:id="selectAllUtxosBtn" text="Select all" onAction="#onSelectAllUtxos"
                 styleClass="action-btn" visible="false" managed="false"/>
-        <Button minWidth="-Infinity" fx:id="mixSelectedBtn" text="Mix Selected UTXOs" onAction="#onMixSelected"
+        <Button minWidth="-Infinity" fx:id="mixSelectedBtn" text="Preview Tx0" onAction="#onMixSelected"
                 styleClass="primary-btn mix-btn" visible="false" managed="false"/>
     </HBox>
 
@@ -79,12 +96,44 @@
     <!-- UTXO list — responsive card view -->
     <ListView fx:id="utxoTable" styleClass="utxo-list" VBox.vgrow="ALWAYS">
         <placeholder>
-            <VBox alignment="CENTER" spacing="14" styleClass="empty-state">
-                <Label text="▼" styleClass="empty-state-icon"/>
-                <Label text="You don't have any UTXOs yet" styleClass="empty-state-message"/>
-                <Button minWidth="-Infinity" fx:id="receiveCta" text="Receive Funds" onAction="#onReceiveCta"
-                        styleClass="primary-btn"/>
-            </VBox>
+            <StackPane>
+                <Label fx:id="emptyAccountLabel" text="Nothing here yet" styleClass="table-placeholder" visible="false" managed="false"/>
+                <!-- First run: the empty Deposit account shows the three steps of the wallet instead of a
+                     bare call to action. -->
+                <VBox fx:id="firstRunBox" styleClass="first-run" spacing="16" alignment="TOP_LEFT">
+                    <padding><Insets top="22" right="4" bottom="22" left="4"/></padding>
+                    <HBox alignment="BOTTOM_LEFT">
+                        <VBox spacing="8">
+                            <Label text="NOTHING TO MIX YET" styleClass="hero-eyebrow"/>
+                            <Label text="Your first mix, in three steps" styleClass="first-run-title"/>
+                        </VBox>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Hyperlink fx:id="tourLink" text="New here? Take the guided tour" onAction="#onTakeTour" styleClass="card-link"/>
+                    </HBox>
+                    <HBox spacing="14" VBox.vgrow="ALWAYS">
+                        <VBox styleClass="step-card, now" spacing="8" HBox.hgrow="ALWAYS" prefWidth="100" maxWidth="Infinity">
+                            <Label text="1" styleClass="step-disc"/>
+                            <Label text="RECEIVE" styleClass="step-key"/>
+                            <Label text="Get a deposit address" styleClass="step-heading" wrapText="true"/>
+                            <Label text="Send bitcoin from an exchange or another wallet. Desktop only receives, so spending stays on mobile." styleClass="ag-read" wrapText="true"/>
+                            <Region VBox.vgrow="ALWAYS" minHeight="6"/>
+                            <Button minWidth="-Infinity" fx:id="receiveCta" text="Receive funds" onAction="#onReceiveCta" styleClass="primary-btn"/>
+                        </VBox>
+                        <VBox styleClass="step-card" spacing="8" HBox.hgrow="ALWAYS" prefWidth="100" maxWidth="Infinity">
+                            <Label text="2" styleClass="step-disc"/>
+                            <Label text="MIX" styleClass="step-key"/>
+                            <Label text="Split into a pool" styleClass="step-heading" wrapText="true"/>
+                            <Label text="A Tx0 turns your coins into equal premix outputs. They then mix on their own and keep remixing for free." styleClass="ag-read" wrapText="true"/>
+                        </VBox>
+                        <VBox styleClass="step-card" spacing="8" HBox.hgrow="ALWAYS" prefWidth="100" maxWidth="Infinity">
+                            <Label text="3" styleClass="step-disc"/>
+                            <Label text="SPEND" styleClass="step-key"/>
+                            <Label text="Pay from mobile" styleClass="step-heading" wrapText="true"/>
+                            <Label text="Open the same wallet in Ashigaru Mobile and spend your mixed coins from Postmix there." styleClass="ag-read" wrapText="true"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
+            </StackPane>
         </placeholder>
     </ListView>
 

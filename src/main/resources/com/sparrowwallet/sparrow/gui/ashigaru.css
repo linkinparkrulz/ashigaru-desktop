@@ -1241,3 +1241,170 @@
    Covers the main window while a dialog owned by it is open, so nothing behind the dialog reads as
    part of it. */
 .dialog-scrim { -fx-background-color: rgba(5,6,8,0.72); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Revamp: privacy on screen
+   Everything below draws something the app already knew and did not show: where the
+   funds sit along the pipeline, how much of the wallet is private, and who the app is
+   talking to. Colour carries one meaning throughout: green is private or verified,
+   amber is exposed or needs attention, red is the brand and the next step.
+   ══════════════════════════════════════════════════════════════════════════════ */
+.ag-icon { -fx-text-fill: -ag-text-dim; }
+.primary-btn .ag-icon { -fx-text-fill: -ag-on-accent; }
+.icon-btn { -fx-min-width: 34; -fx-pref-width: 34; -fx-padding: 8 0 8 0; }
+
+/* ── Sidebar: brand, wallet chip, pipeline ───────────────────────────────── */
+.sidebar-brand .app-title-sub { -fx-padding: 0; -fx-text-fill: -ag-accent-ink; }
+.wallet-menu-btn {
+    -fx-background-color: -ag-bg-light;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: -ag-radius;
+    -fx-background-radius: -ag-radius;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+.wallet-menu-btn:hover, .wallet-menu-btn:showing { -fx-background-color: -ag-bg-raised; -fx-border-color: -ag-border-strong; }
+.wallet-menu-btn > .label { -fx-padding: 9 0 9 10; }
+.wallet-menu-btn > .arrow-button { -fx-padding: 0; -fx-max-width: 0; }
+.wallet-menu-btn > .arrow-button > .arrow { -fx-shape: null; -fx-padding: 0; }
+
+.account-btn {
+    -fx-padding: 6 14 6 13;
+    -fx-background-radius: 0;
+    -fx-border-width: 0 0 0 3;
+    -fx-border-color: transparent;
+}
+.account-btn:selected, .account-btn.account-selected {
+    -fx-background-color: -ag-bg-light;
+    -fx-border-color: transparent transparent transparent -ag-accent;
+}
+.pipe-node {
+    -fx-min-width: 11; -fx-min-height: 11; -fx-max-width: 11; -fx-max-height: 11;
+    -fx-background-color: -ag-bg-mid;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-border-color: -ag-border-strong;
+    -fx-border-width: 2;
+}
+.account-btn:selected .pipe-node {
+    -fx-background-color: -ag-accent;
+    -fx-border-color: -ag-accent;
+    -fx-effect: dropshadow(gaussian, rgba(204,17,17,0.55), 7, 0.35, 0, 0);
+}
+.pipe-name    { -fx-text-fill: -ag-text; -fx-font-size: 13px; }
+.pipe-state   { -fx-text-fill: -ag-text-faint; -fx-font-size: 11px; -fx-font-family: "Inter", sans-serif; }
+.pipe-state:live { -fx-text-fill: -ag-accent-ink; }
+.pipe-balance { -fx-text-fill: -ag-text-dim; -fx-font-size: 12px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
+.account-btn:selected .pipe-balance { -fx-text-fill: -ag-text; }
+/* The connector between two accounts names the step that moves coins from one to the next. Its left
+   border is the line itself, set under the centre of the nodes. */
+.pipe-connector {
+    -fx-text-fill: -ag-text-faint;
+    -fx-font-size: 9px;
+    -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
+    -fx-padding: 3 0 3 17;
+    -fx-border-color: transparent transparent transparent -ag-border-strong;
+    -fx-border-width: 0 0 0 1;
+    -fx-border-insets: 0 0 0 20.5;
+    -fx-background-insets: 0;
+    -fx-max-width: Infinity;
+}
+.pipe-connector.side { -fx-border-style: segments(2, 3); }
+
+.nav-btn { -fx-font-size: 12px; -fx-padding: 9 12 9 12; -fx-background-radius: -ag-radius; }
+.nav-btn .ag-icon { -fx-text-fill: -ag-text-faint; }
+.nav-btn:hover .ag-icon { -fx-text-fill: -ag-accent-ink; }
+
+/* ── Status strip ───────────────────────────────────────────────────────── */
+.status-strip {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 0 0 1 0;
+}
+.crumb-label { -fx-text-fill: -ag-text-dim; -fx-font-size: 11px; }
+.status-strip .status-label {
+    -fx-text-fill: -ag-text-faint;
+    -fx-font-size: 11.5px;
+    -fx-font-family: "Inter", sans-serif;
+    -fx-padding: 0 0 0 14;
+}
+.status-pill {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-padding: 6 12 6 12;
+    -fx-text-fill: -ag-text-dim;
+    -fx-font-size: 11px;
+    -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
+}
+.status-pill.connected    { -fx-border-color: derive(-ag-green, -45%); }
+.status-pill.connecting   { -fx-border-color: derive(-ag-warn, -45%); }
+.status-pill.disconnected { -fx-border-color: -ag-warn; }
+.status-pill.connection-toggle:hover { -fx-background-color: -ag-bg-raised; }
+.status-strip .network-label { -fx-background-color: transparent; -fx-border-radius: 5; -fx-border-width: 1; -fx-padding: 5 9 5 9; -fx-font-size: 10px; }
+.status-strip .network-label.mainnet { -fx-border-color: derive(-ag-mainnet, -45%); -fx-text-fill: -ag-green-ink; }
+.status-strip .network-label.testnet { -fx-border-color: derive(-ag-testnet, -30%); }
+
+/* ── Wallet panel: header and hero ──────────────────────────────────────── */
+.account-header-row { -fx-background-color: transparent; -fx-border-width: 0; }
+.account-name-label { -fx-font-size: 25px; }
+.hero {
+    -fx-background-color: linear-gradient(to bottom, #191a20, -ag-bg-mid);
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+.hero-balance { -fx-padding: 20 24 20 24; }
+.hero-eyebrow, .hero-caption { -fx-font-size: 10px; }
+.hero-eyebrow { -fx-text-fill: -ag-accent-ink; }
+.hero-caption { -fx-text-fill: -ag-text-faint; }
+.hero-value   { -fx-text-fill: -ag-text; -fx-font-size: 44px; }
+.hero-sub     { -fx-text-fill: -ag-text-faint; -fx-font-size: 12px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
+.hero-sub.dot { -fx-text-fill: -ag-border-strong; }
+.hero-privacy {
+    -fx-padding: 16 20 16 20;
+    -fx-background-color: rgba(0,0,0,0.14);
+    -fx-background-radius: 0 8 8 0;
+    -fx-border-color: transparent transparent transparent -ag-border;
+    -fx-border-width: 0 0 0 1;
+}
+.donut-value   { -fx-text-fill: -ag-text; -fx-font-size: 22px; }
+.donut-caption { -fx-text-fill: -ag-green-ink; -fx-font-size: 8px; }
+.legend-swatch { -fx-min-width: 8; -fx-min-height: 8; -fx-max-width: 8; -fx-max-height: 8; }
+.legend-name   { -fx-text-fill: -ag-text-faint; -fx-font-size: 10px; }
+.legend-value  { -fx-text-fill: -ag-text; -fx-font-size: 11px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
+
+/* ── First run: three steps on the empty Deposit account ────────────────── */
+.first-run-title { -fx-text-fill: -ag-text; -fx-font-size: 21px; }
+.step-card {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 20 20 18 20;
+}
+.step-card.now { -fx-border-color: derive(-ag-accent, -35%); -fx-background-color: linear-gradient(to bottom, #1c1415, -ag-bg-mid 70%); }
+.step-disc {
+    -fx-min-width: 44; -fx-min-height: 44; -fx-max-width: 44; -fx-max-height: 44;
+    -fx-alignment: center;
+    -fx-background-radius: 999; -fx-border-radius: 999;
+    -fx-border-color: -ag-border-strong; -fx-border-width: 1.5;
+    -fx-text-fill: -ag-text-faint; -fx-font-size: 18px;
+}
+.step-card.now .step-disc { -fx-background-color: -ag-accent; -fx-border-color: -ag-accent; -fx-text-fill: -ag-on-accent; }
+.step-key { -fx-text-fill: -ag-text-faint; -fx-font-size: 10px; -fx-padding: 6 0 0 0; }
+.step-card.now .step-key { -fx-text-fill: -ag-accent-ink; }
+.step-heading { -fx-text-fill: -ag-text; -fx-font-size: 18px; }
+
+/* ── Exposure dialogs ───────────────────────────────────────────────────── */
+.exposure-cell { -fx-padding: 11 0 11 0; }
+.exposure-cell.divided { -fx-border-color: -ag-border transparent transparent transparent; -fx-border-width: 1 0 0 0; }
+.exposure-who    { -fx-text-fill: -ag-text; -fx-font-size: 13px; -fx-font-family: "Inter SemiBold", "Inter", sans-serif; }
+.exposure-detail { -fx-text-fill: -ag-text-faint; -fx-font-size: 10.5px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
+.exposure-key      { -fx-font-size: 10px; -fx-padding: 2 0 0 0; }
+.exposure-key.sees { -fx-text-fill: -ag-warn-ink; }
+.exposure-key.not  { -fx-text-fill: -ag-green-ink; }
+.exposure-warning  { -fx-text-fill: #E8D9B5; }
+.exposure-warning .ag-icon { -fx-text-fill: -ag-warn-ink; }
+.badbank-warning-icon .ag-icon, .coordinator-warning-icon .ag-icon { -fx-text-fill: -ag-warn-ink; }

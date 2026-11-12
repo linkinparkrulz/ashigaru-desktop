@@ -111,7 +111,7 @@ public class StatsController implements Initializable {
 
     private static void openUrl(String url) {
         try {
-            AppServices.get().getApplication().getHostServices().showDocument(url);
+            AppServices.openExternalLink(url);
         } catch(Exception e) {
             log.warn("Could not open browser", e);
         }

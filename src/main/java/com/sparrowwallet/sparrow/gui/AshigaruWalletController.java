@@ -12,6 +12,7 @@ import com.sparrowwallet.drongo.wallet.*;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.UnitFormat;
+import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.wallet.*;
@@ -28,7 +29,8 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
+import javafx.geometry.Insets;
+import javafx.scene.layout.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +60,19 @@ public class AshigaruWalletController implements Initializable {
     @FXML private ListView<UtxoRow> utxoTable;
     @FXML private ListView<TxnRow> txnTable;
     @FXML private HBox mixButtonBox;
+    @FXML private Label accountSubLabel;
+    @FXML private Label heroEyebrow;
+    @FXML private Label privacyTotalLabel;
+    @FXML private Label privacyPercentLabel;
+    @FXML private StackPane donutPane;
+    @FXML private GridPane privacyLegend;
+    @FXML private Label badbankIcon;
+    @FXML private Label coordinatorIcon;
+    @FXML private Label emptyAccountLabel;
+    @FXML private VBox firstRunBox;
+
+    private final PrivacyDonut donut = new PrivacyDonut();
+    private final Label[] legendValues = new Label[4];
     @FXML private Button startMixBtn;
     @FXML private Button mixToBtn;
     @FXML private Button selectAllUtxosBtn;
@@ -97,7 +112,43 @@ public class AshigaruWalletController implements Initializable {
             if (neu == null) old.setSelected(true);
         });
 
+        donutPane.getChildren().add(0, donut);
+        String[] names = {"PRIVATE", "MIXING", "UNMIXED", "BADBANK"};
+        javafx.scene.paint.Color[] colors = {PrivacyDonut.PRIVATE, PrivacyDonut.MIXING, PrivacyDonut.UNMIXED, PrivacyDonut.BADBANK};
+        for(int i = 0; i < names.length; i++) {
+            Region swatch = new Region();
+            swatch.getStyleClass().add("legend-swatch");
+            swatch.setBackground(new Background(new BackgroundFill(colors[i], new CornerRadii(2), Insets.EMPTY)));
+            Label name = new Label(names[i]);
+            name.getStyleClass().add("legend-name");
+            legendValues[i] = new Label("0.00000000");
+            legendValues[i].getStyleClass().add("legend-value");
+            GridPane.setHgrow(name, Priority.ALWAYS);
+            privacyLegend.addRow(i, swatch, name, legendValues[i]);
+        }
+        Icons.set(receiveBtn, FontAwesome5.Glyph.ARROW_DOWN);
+        refreshBtn.setGraphic(Icons.of(FontAwesome5.Glyph.SYNC_ALT));
+        badbankIcon.setGraphic(Icons.of(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13));
+        coordinatorIcon.setGraphic(Icons.of(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13));
+
         EventManager.get().register(this);
+    }
+
+    /** Fills the hero's privacy panel. The main controller calls this whenever account totals change. */
+    public void showPrivacy(WalletPrivacy privacy) {
+        UnitFormat fmt = UnitFormat.DOT;
+        donut.show(privacy);
+        privacyPercentLabel.setText(Math.round(privacy.privateShare() * 100) + "%");
+        privacyTotalLabel.setText(fmt.formatBtcValue(privacy.total()) + " BTC");
+        legendValues[0].setText(fmt.formatBtcValue(privacy.postmix().sats()));
+        legendValues[1].setText(fmt.formatBtcValue(privacy.premix().sats()));
+        legendValues[2].setText(fmt.formatBtcValue(privacy.deposit().sats()));
+        legendValues[3].setText(fmt.formatBtcValue(privacy.badbank().sats()));
+    }
+
+    @FXML
+    private void onTakeTour() {
+        AshigaruGui.get().getMainController().startGuidedTour();
     }
 
     private ChangeListener<Tab> tabSelectionListener;
@@ -214,9 +265,10 @@ public class AshigaruWalletController implements Initializable {
         // Balances
         UnitFormat fmt = Config.get().getUnitFormat() == null ? UnitFormat.DOT : Config.get().getUnitFormat();
         balanceLabel.setText(fmt.formatBtcValue(utxosEntry.getBalance()) + " BTC");
-        mempoolLabel.setText(fmt.formatBtcValue(utxosEntry.getMempoolBalance()) + " BTC");
-        utxoCountLabel.setText(String.valueOf(
-                utxosEntry.getChildren() != null ? utxosEntry.getChildren().size() : 0));
+        long pending = utxosEntry.getMempoolBalance();
+        mempoolLabel.setText(pending == 0 ? "0 pending" : fmt.formatBtcValue(pending) + " BTC pending");
+        int utxoCount = utxosEntry.getChildren() != null ? utxosEntry.getChildren().size() : 0;
+        utxoCountLabel.setText(utxoCount + (utxoCount == 1 ? " UTXO" : " UTXOs"));
 
         // UTXO table
         refreshUtxoTable(utxosEntry, wallet.isWhirlpoolMixWallet());
@@ -236,6 +288,13 @@ public class AshigaruWalletController implements Initializable {
                     default -> wallet.getFullDisplayName();
                 };
         accountNameLabel.setText(acctName);
+        heroEyebrow.setText(acctName.toUpperCase(Locale.ROOT) + " \u00b7 CONFIRMED");
+        accountSubLabel.setText(switch(acctName) {
+            case "Premix" -> "Coins waiting for their first mix.";
+            case "Postmix" -> "Mixed coins. They keep remixing for free while they stay here.";
+            case "Badbank" -> "Change from Tx0, kept apart from your mixed coins.";
+            default -> "Where coins arrive before they are mixed.";
+        });
 
         // Receive button and empty-state CTA — only for Deposit (master wallet).
         // Premix/Postmix/Badbank wallets have no extendedPublicKey and will NPE if receive is attempted.
@@ -243,8 +302,11 @@ public class AshigaruWalletController implements Initializable {
                 || wallet.getStandardAccountType() == StandardAccount.ACCOUNT_0;
         receiveBtn.setVisible(isDeposit);
         receiveBtn.setManaged(isDeposit);
-        receiveCta.setVisible(isDeposit);
-        receiveCta.setManaged(isDeposit);
+        firstRunBox.setVisible(isDeposit);
+        firstRunBox.setManaged(isDeposit);
+        emptyAccountLabel.setVisible(!isDeposit);
+        emptyAccountLabel.setManaged(!isDeposit);
+        emptyAccountLabel.setText("No coins in " + acctName + " yet");
         selectAllUtxosBtn.setVisible(isDeposit && utxoTable.isVisible());
         selectAllUtxosBtn.setManaged(isDeposit && utxoTable.isVisible());
 
@@ -256,6 +318,7 @@ public class AshigaruWalletController implements Initializable {
         // Buttons
         bindWhirlpoolState(wallet);
         configureMixButtons(wallet);
+        AshigaruGui.get().getMainController().refreshPipeline();
     }
 
     // Rebinds the mix button's start/stop/mixing listener to the given wallet's Whirlpool
