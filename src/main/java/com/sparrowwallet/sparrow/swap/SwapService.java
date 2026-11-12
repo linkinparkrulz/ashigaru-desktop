@@ -10,7 +10,9 @@ import com.sparrowwallet.drongo.wallet.BlockTransactionHashIndex;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.EventManager;
+import com.sparrowwallet.sparrow.event.ConnectionEvent;
 import com.sparrowwallet.sparrow.event.TorBootStatusEvent;
+import com.sparrowwallet.sparrow.event.TorDiedEvent;
 import com.sparrowwallet.sparrow.event.TorFailedStatusEvent;
 import com.sparrowwallet.sparrow.event.TorReadyStatusEvent;
 import com.sparrowwallet.sparrow.gui.AshigaruGui;
@@ -55,6 +57,10 @@ public class SwapService implements SwapHost {
     private static final Logger log = LoggerFactory.getLogger(SwapService.class);
     private static final int MAX_LOG_CHARS = 200_000;
     private static final int MAX_EVENT_CHARS = 600;
+    //Tor stopping by itself this soon after the engine started is put down to the engine
+    static final long TOR_LOSS_WINDOW_MILLIS = 90_000;
+    static final String PAUSED_FOR_TOR = "Swaps paused: Tor stopped right after the swap engine started, twice in a row. Your wallet stays connected. "
+            + "To try again, turn swaps off and on in Settings → Swaps. Please send the log from Tools → Logs.";
 
     private static SwapService instance;
 
@@ -69,6 +75,14 @@ public class SwapService implements SwapHost {
     private boolean starting;
     //The Tor proxy the running engine was started with, to notice when Tor comes back on another port
     private HostAndPort engineProxy;
+    //The Bitcoin server the running engine was started with, to notice when Ashigaru connects to another
+    private String engineServerUrl;
+    //Said once per change, while a running swap keeps the engine on the old server
+    private boolean serverChangeWaiting;
+    //When the engine last came up, and how many times in a row Tor then stopped by itself within the window
+    private long engineStartedAt;
+    private int torLostAfterStart;
+    private boolean pausedForTor;
     private final ReadOnlyBooleanWrapper running = new ReadOnlyBooleanWrapper(false);
     private final ReadOnlyStringWrapper status = new ReadOnlyStringWrapper("Off.");
     private final ReadOnlyObjectWrapper<Coin> coin = new ReadOnlyObjectWrapper<>();
@@ -247,6 +261,10 @@ public class SwapService implements SwapHost {
         if(running.get() || starting) {
             return;
         }
+        if(pausedForTor) {
+            status.set(PAUSED_FOR_TOR);
+            return;
+        }
         String problem = problem();
         if(problem != null) {
             status.set(problem);
@@ -257,6 +275,9 @@ public class SwapService implements SwapHost {
 
     /** Stops the engine, e.g. when swaps are turned off. Unfinished swaps resume when it starts again. */
     public void stop() {
+        //Turning swaps off and on again is how the user asks for another try
+        pausedForTor = false;
+        torLostAfterStart = 0;
         if(!running.get() && !starting) {
             status.set("Off.");
             return;
@@ -306,7 +327,10 @@ public class SwapService implements SwapHost {
     private void start(boolean renewIdentity) {
         HostAndPort torProxy = AppServices.getTorProxyIfUp();
         engineProxy = torProxy;
-        List<String> electrumUrls = List.of(Config.get().getServer().getUrl());
+        String serverUrl = Config.get().getServer().getUrl();
+        engineServerUrl = serverUrl;
+        serverChangeWaiting = false;
+        List<String> electrumUrls = List.of(serverUrl);
         List<String> moneroNodes = MoneroNodes.forEngine(MoneroNodes.getSelected());
         File swapsDir = new File(Storage.getSparrowHome(), "swaps");
         SwapEngine loaded = loadEngine();
@@ -336,11 +360,21 @@ public class SwapService implements SwapHost {
                 stop();
                 return;
             }
+            //Tor stopped by itself, for the second time, while this engine was starting: do not keep it
+            if(pausedForTor) {
+                runInBackground(() -> {
+                    loaded.shutdown();
+                    return null;
+                }, ignored -> {}, e -> {});
+                status.set(PAUSED_FOR_TOR);
+                return;
+            }
             runningSwaps.addAll(resumed);
             if(!resumed.isEmpty()) {
                 currentSwapId = resumed.get(resumed.size() - 1);
             }
             running.set(true);
+            engineStartedAt = System.currentTimeMillis();
             status.set("On. Using " + moneroNodes.size() + " Monero node" + (moneroNodes.size() == 1 ? "" : "s")
                     + (moneroNodes.size() > 1 ? ", which must agree before a swap releases your BTC." : ", your own."));
             appendLog("Swap engine running" + (moneroNodes.size() > 1 ? " with " + moneroNodes.size() + " Monero nodes in agreement" : "")
@@ -351,6 +385,7 @@ public class SwapService implements SwapHost {
             swapListeners.forEach(Runnable::run);
             //Tor may have moved or gone while the engine was starting, which followTor had to leave until now
             followTor();
+            followServer();
         }, e -> {
             starting = false;
             status.set("Could not start: " + e.getMessage());
@@ -373,6 +408,76 @@ public class SwapService implements SwapHost {
     @Subscribe
     public void torFailed(TorFailedStatusEvent event) {
         Platform.runLater(this::followTor);
+    }
+
+    /** Tor's daemon stopped without being asked to. Ashigaru restarts it; this decides whether the engine may follow. */
+    @Subscribe
+    public void torDied(TorDiedEvent event) {
+        Platform.runLater(() -> {
+            if(running.get() || starting) {
+                torLostAfterStart = diedSoonAfterStart(engineStartedAt, System.currentTimeMillis(), starting) ? torLostAfterStart + 1 : 0;
+                if(torLostAfterStart >= 2) {
+                    pausedForTor = true;
+                    appendLog(PAUSED_FOR_TOR);
+                }
+            }
+            followTor();
+            if(pausedForTor) {
+                status.set(PAUSED_FOR_TOR);
+            }
+        });
+    }
+
+    /** Whether Tor stopping now is close enough to the engine's start to be put down to the engine */
+    static boolean diedSoonAfterStart(long engineStartedAt, long now, boolean starting) {
+        return starting || engineStartedAt > 0 && now - engineStartedAt < TOR_LOSS_WINDOW_MILLIS;
+    }
+
+    /** Ashigaru connected to its Bitcoin server, which may be another one than the engine was started with */
+    @Subscribe
+    public void newConnection(ConnectionEvent event) {
+        Platform.runLater(this::followServer);
+    }
+
+    /**
+     * Keeps the engine on the Bitcoin server Ashigaru is connected to. The engine is given the server
+     * when it starts, so after a change in Settings → Server it kept asking the old one and reported
+     * a server that Ashigaru itself was connected to as unreachable. A running swap is not restarted
+     * under: it keeps the server it started with, and the engine switches when the swap ends.
+     */
+    private void followServer() {
+        if(starting || !Config.get().isSwapsEnabled()) {
+            return;
+        }
+        if(!running.get()) {
+            startIfEnabled();
+            return;
+        }
+        Server server = Config.get().getServer();
+        if(server == null || Config.get().getServerType() == ServerType.BITCOIN_CORE || !serverChanged(engineServerUrl, server.getUrl())) {
+            return;
+        }
+        if(isSwapActive()) {
+            if(!serverChangeWaiting) {
+                serverChangeWaiting = true;
+                appendLog("The Bitcoin server changed to " + server.getUrl() + ". The swap engine stays on " + engineServerUrl
+                        + " while a swap is running, and switches when it ends.");
+            }
+            return;
+        }
+        appendLog("The Bitcoin server changed to " + server.getUrl() + "; restarting the swap engine to use it");
+        running.set(false);
+        start(false);
+    }
+
+    /** Whether the engine, started with one server, should be restarted for the server Ashigaru uses now */
+    static boolean serverChanged(String engineUrl, String currentUrl) {
+        return currentUrl != null && !currentUrl.equals(engineUrl);
+    }
+
+    /** The Bitcoin server the engine is using, or null when it is not running */
+    public String getEngineServerUrl() {
+        return running.get() ? engineServerUrl : null;
     }
 
     /**
@@ -499,11 +604,16 @@ public class SwapService implements SwapHost {
      * published and watched through it, so a swap that cannot reach it would stop after the user had approved.
      */
     public static String notStartedMessage(List<String> unreachable) {
+        return notStartedMessage(unreachable, null);
+    }
+
+    /** As above, naming the server the engine asked, so one that differs from Settings → Server shows */
+    public static String notStartedMessage(List<String> unreachable, String engineServerUrl) {
         boolean bitcoin = unreachable.stream().anyMatch(line -> line.startsWith(BITCOIN_SERVER));
         long monero = unreachable.stream().filter(line -> !line.startsWith(BITCOIN_SERVER)).count();
         String lines = String.join("\n", unreachable);
         if(bitcoin) {
-            return "Not started: the swap engine cannot reach your Bitcoin server. The BTC lock is published through it, so a swap started now would "
+            return "Not started: the swap engine cannot reach your Bitcoin server" + (engineServerUrl == null ? "" : " (" + engineServerUrl + ")") + ". The BTC lock is published through it, so a swap started now would "
                     + "stop after you approve. Check the server in Settings → Server, then try again. A server on your own network or this computer "
                     + "is reached directly; any other server is reached through Tor.\n" + lines;
         }
@@ -620,6 +730,8 @@ public class SwapService implements SwapHost {
             appendLog("Swap " + swapId + " stopped" + (payload.has("error") ? ": " + payload.get("error").getAsString()
                     : payload.has("state") ? " at " + payload.get("state").getAsString() : "") + ".");
             swapListeners.forEach(Runnable::run);
+            //A server change that waited for this swap can go ahead now; the restart takes a new identity if due
+            followServer();
             renewIdentityIfIdle();
             return;
         }

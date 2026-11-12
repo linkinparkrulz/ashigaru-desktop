@@ -252,4 +252,21 @@ class SwapDashboardTest {
         assertEquals("This swap has stopped, and cancelling is not open yet.", d.banner().title());
         assertTrue(d.summary().funds().startsWith("Locked on Bitcoin"));
     }
+
+    private static boolean opensFirst(SwapProgress.Status status, SwapTimelock timelock, boolean running) {
+        return SwapDashboard.opensFirst(new Input(ID, status, timelock, running, TERMS, false, NOW));
+    }
+
+    @Test
+    void theSwapsPageOpensOnASwapOnlyWhileItNeedsThePage() {
+        //From the field: a swap that had failed came back every time Swaps was opened
+        assertFalse(opensFirst(stopped(Step.TERMS), null, false), "stopped before anything was locked");
+        assertFalse(opensFirst(at(Step.DONE, null), null, false), "complete");
+        assertFalse(opensFirst(at(Step.REFUNDED, null), null, false), "refunded");
+        assertFalse(opensFirst(stopped(Step.LOCK_PUBLISH), null, false), "the lock was not confirmed as published, and nothing can be done from the page");
+
+        assertTrue(opensFirst(at(Step.TERMS, null), null, true), "Ashigaru is running it");
+        assertTrue(opensFirst(stopped(Step.LOCK_PUBLISH), before(20), false), "a timelock reading proves the lock is on chain");
+        assertTrue(opensFirst(at(Step.REFUND_WAIT, null), before(5), false), "BTC is locked and waiting for the refund");
+    }
 }

@@ -53,13 +53,30 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
     public static final List<String> RECOVERY = List.of("Swap stalled", "Cancel", "Refund to Badbank");
     private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
-    public static SwapDashboard of(Input in) {
+    /** Whether the swap's BTC is, or was, locked on chain */
+    private static boolean locked(Input in) {
         SwapProgress.Step step = in.status().step();
         SwapProgress.Step reached = step == SwapProgress.Step.STOPPED ? in.status().stoppedAfter() : step;
         //A timelock reading proves the lock confirmed, so the swap is then locked whatever step it stopped at
-        boolean stoppedPublishing = step == SwapProgress.Step.STOPPED && reached == SwapProgress.Step.LOCK_PUBLISH && in.timelock() == null;
-        boolean locked = reached != null && reached.ordinal() >= SwapProgress.Step.LOCK_PUBLISH.ordinal() && reached != SwapProgress.Step.WORKING && !stoppedPublishing
+        boolean stoppedPublishing = stoppedPublishing(step, in);
+        return reached != null && reached.ordinal() >= SwapProgress.Step.LOCK_PUBLISH.ordinal() && reached != SwapProgress.Step.WORKING && !stoppedPublishing
                 || step == SwapProgress.Step.REFUND_WAIT || step == SwapProgress.Step.REFUNDING || step == SwapProgress.Step.REFUNDED;
+    }
+
+    /**
+     * Whether the latest swap takes the Swaps page when it is opened: one Ashigaru is running, or one that
+     * holds locked BTC and is not over. A swap that completed, was refunded, or stopped before anything was
+     * locked does not: it stays in Your swaps, and the page opens on the offers, ready for the next swap.
+     */
+    public static boolean opensFirst(Input in) {
+        SwapProgress.Step step = in.status().step();
+        return in.running() || locked(in) && step != SwapProgress.Step.DONE && step != SwapProgress.Step.REFUNDED;
+    }
+
+    public static SwapDashboard of(Input in) {
+        SwapProgress.Step step = in.status().step();
+        SwapProgress.Step reached = step == SwapProgress.Step.STOPPED ? in.status().stoppedAfter() : step;
+        boolean locked = locked(in);
         SwapTimelock timelock = in.timelock();
         boolean cancelOpen = timelock != null && timelock.cancelOpen();
         boolean complete = step == SwapProgress.Step.DONE;
@@ -351,8 +368,8 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
             recovery = "Not needed. The refund is complete.";
         } else if(stoppedPublishing(step, in)) {
             recoveryTitle = "If the lock was published";
-            recovery = "Cancellation opens " + SwapCopy.cancelAfter() + " after the lock confirms. If it was not published there is nothing to recover. "
-                    + "The maker waits only about 10 minutes for the lock, so a lock published much later ends in a cancel and refund, minus network fees.";
+            recovery = "Cancellation opens " + SwapCopy.cancelAfter() + " after the lock confirms. If it was not published there is nothing to recover: "
+                    + "the maker waits only about 10 minutes for the lock, and after that Ashigaru closes the swap when the swap engine next starts instead of publishing a late lock.";
         } else if(!locked) {
             recovery = "Nothing is locked yet, so there is nothing to recover.";
         } else if(timelock != null && timelock.phase() == SwapTimelock.Phase.CANCEL_OPEN) {

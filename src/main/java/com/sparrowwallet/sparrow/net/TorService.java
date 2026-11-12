@@ -57,6 +57,7 @@ public class TorService extends ScheduledService<Tor> {
                         }
                     });
                     torRuntime.subscribe(startupObserver);
+                    Tor.expectRunning();
                     torRuntime.enqueue(Action.StartDaemon, throwable -> {
                         if(throwable instanceof Reply.Error replyError && !replyError.replies.isEmpty()) {
                             startupException = new TorStartupException(replyError.replies.get(0).message);

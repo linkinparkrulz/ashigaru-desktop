@@ -249,8 +249,9 @@ public final class SwapProgress {
         if(before == Step.LOCK_PUBLISH) {
             //The engine saves the signed lock before it tries to publish it, so it cannot tell whether it got out
             return error + "\n\nThe swap stopped while publishing the BTC lock, and Ashigaru cannot tell whether the lock reached the Bitcoin network. "
-                    + "Check Badbank: if the coin is still there, nothing was locked. Reopening Ashigaru tries to publish the lock again, so fix "
-                    + "the Bitcoin server in Settings → Server first.";
+                    + "Check Badbank: if the coin is still there, nothing was locked. When the swap engine next starts it tries the lock again only while the maker "
+                    + "is still waiting for it (about 10 minutes); after that, a lock that never got out is dropped and the swap is closed with nothing locked. "
+                    + "Fix the Bitcoin server in Settings → Server first.";
         }
         String consequence = beforeLock
                 ? "Nothing was locked: the coin is still in Badbank and can be swapped again."

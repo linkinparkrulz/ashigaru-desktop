@@ -109,4 +109,29 @@ class SwapServiceTest {
         assertTrue(monero.startsWith("Not started: a Monero node did not answer"), monero);
         assertTrue(SwapService.notStartedMessage(java.util.List.of("a: x", "b: y")).startsWith("Not started: 2 Monero nodes"));
     }
+
+    @Test
+    void theMessageNamesTheServerTheEngineAsked() {
+        //From the field: the user had switched servers, Ashigaru was connected, and the engine still asked the old one
+        String message = SwapService.notStartedMessage(java.util.List.of("Bitcoin server (Electrum): timed out"), "tcp://192.168.1.20:50001");
+        assertTrue(message.startsWith("Not started: the swap engine cannot reach your Bitcoin server (tcp://192.168.1.20:50001)."), message);
+    }
+
+    @Test
+    void theEngineFollowsAChangeOfBitcoinServer() {
+        assertTrue(SwapService.serverChanged("tcp://192.168.1.20:50001", "tcp://abcdef.onion:50001"));
+        assertFalse(SwapService.serverChanged("tcp://abcdef.onion:50001", "tcp://abcdef.onion:50001"));
+        //No server configured is not a server to move to
+        assertFalse(SwapService.serverChanged("tcp://abcdef.onion:50001", null));
+    }
+
+    @Test
+    void torStoppingRightAfterTheEngineStartsIsPutDownToTheEngine() {
+        long started = 1_000_000;
+        assertTrue(SwapService.diedSoonAfterStart(started, started + 6_000, false));
+        assertFalse(SwapService.diedSoonAfterStart(started, started + SwapService.TOR_LOSS_WINDOW_MILLIS, false));
+        //Still starting: there is no start time yet, and it counts
+        assertTrue(SwapService.diedSoonAfterStart(0, started, true));
+        assertFalse(SwapService.diedSoonAfterStart(0, started, false));
+    }
 }

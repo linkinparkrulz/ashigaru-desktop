@@ -2,6 +2,7 @@ package com.sparrowwallet.sparrow.net;
 
 import com.google.common.net.HostAndPort;
 import com.sparrowwallet.sparrow.EventManager;
+import com.sparrowwallet.sparrow.event.TorDiedEvent;
 import com.sparrowwallet.sparrow.event.TorStatusEvent;
 import com.sparrowwallet.sparrow.io.IOUtils;
 import com.sparrowwallet.sparrow.io.Storage;
@@ -11,6 +12,7 @@ import io.matthewnelson.kmp.tor.runtime.RuntimeEvent;
 import io.matthewnelson.kmp.tor.runtime.TorRuntime;
 import io.matthewnelson.kmp.tor.runtime.core.OnEvent;
 import io.matthewnelson.kmp.tor.runtime.core.TorEvent;
+import io.matthewnelson.kmp.tor.runtime.core.config.TorOption;
 import io.matthewnelson.kmp.tor.runtime.core.ctrl.TorCmd;
 import io.matthewnelson.kmp.tor.runtime.core.net.IPSocketAddress;
 import org.slf4j.Logger;
@@ -24,6 +26,7 @@ import java.net.Proxy;
 import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 public class Tor {
@@ -43,6 +46,8 @@ public class Tor {
     //and stopping and starting Tor stops and starts its daemon.
     private static TorRuntime runtime;
     private static volatile IPSocketAddress socksAddress;
+    //Set while the daemon is being stopped on purpose, so its listener going away is not taken for a death
+    private static volatile boolean stopRequested;
 
     private final TorRuntime instance;
 
@@ -110,9 +115,24 @@ public class Tor {
             });
 
             b.observerStatic(RuntimeEvent.LISTENERS.INSTANCE, OnEvent.Executor.Immediate.INSTANCE, listeners -> {
+                boolean wasListening = socksAddress != null;
                 socksAddress = listeners.socks.isEmpty() ? null : listeners.socks.iterator().next();
                 log.info("Tor socks listener: " + (socksAddress == null ? "gone" : socksAddress));
+                //A daemon that dies takes its listener with it and says nothing else. Nothing noticed, so
+                //Ashigaru stayed offline ("Tor socks proxy is not yet instantiated") until Tor was restarted by hand.
+                if(wasListening && socksAddress == null && !stopRequested) {
+                    log.warn("Tor stopped by itself");
+                    EventManager.get().post(new TorDiedEvent());
+                }
             });
+
+            //On a Mac, Tor stopped dead seconds after the swap engine began dialling makers' onion services.
+            //Those can ask for a proof of work, which Tor solves with code it compiles while running, something
+            //macOS restricts. Unconfirmed as the cause, so this is a precaution: there, solve it interpreted,
+            //which is slower and compiles nothing.
+            if(isMac()) {
+                b.config((config, environment) -> config.put(TorOption.CompiledProofOfWorkHash.asSetting(setting -> setting.disable())));
+            }
 
             //A Tor that dies without a word leaves only this to say when and how
             b.observerStatic(RuntimeEvent.STATE.INSTANCE, OnEvent.Executor.Immediate.INSTANCE, state -> {
@@ -185,6 +205,7 @@ public class Tor {
      * Stops the daemon, calling onStopped once it has stopped or failed to.
      */
     public void stop(Runnable onStopped) {
+        stopRequested = true;
         instance.enqueue(Action.StopDaemon, throwable -> {
             log.warn("Error stopping Tor daemon", throwable);
             onStopped.run();
@@ -215,6 +236,15 @@ public class Tor {
         }
 
         return HostAndPort.fromParts(address.address.value, address.port.value);
+    }
+
+    /** Called when a daemon is about to be started: from here on, its listener going away is a death */
+    static void expectRunning() {
+        stopRequested = false;
+    }
+
+    private static boolean isMac() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("mac");
     }
 
     /** Where Tor's socks proxy listens, or null while the daemon is starting or has stopped */

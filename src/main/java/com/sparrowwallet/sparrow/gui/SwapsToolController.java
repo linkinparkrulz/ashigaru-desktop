@@ -477,7 +477,7 @@ public class SwapsToolController implements Initializable {
             List<String> unreachable = SwapService.unreachable(check);
             if(!unreachable.isEmpty()) {
                 endTaking();
-                offersPane.setMessage(SwapService.notStartedMessage(unreachable));
+                offersPane.setMessage(SwapService.notStartedMessage(unreachable, SwapService.get().getEngineServerUrl()));
                 return;
             }
             working = "Setting up the swap with the maker. If Ashigaru asks for your wallet password, it is to prove to the maker that you own the coin and to sign the lock; "
@@ -510,6 +510,17 @@ public class SwapsToolController implements Initializable {
         SwapService service = SwapService.get();
         String swapId = shownSwapId != null ? shownSwapId : service.getCurrentSwapId();
         SwapProgress.Status status = swapId == null || swapId.equals(dismissedSwapId) ? null : service.getProgress(swapId);
+        //A swap the user did not choose takes the page only while it needs it. A failed or finished one used to
+        //come back every time Swaps was opened, and had to be left with Back to offers before each new swap.
+        if(status != null && shownSwapId == null) {
+            if(SwapDashboard.opensFirst(new SwapDashboard.Input(swapId, status, service.getTimelock(swapId),
+                    service.isSwapRunning(swapId), service.getDetails(swapId), refunding.contains(swapId), Instant.now()))) {
+                //It stays once shown, so its result is not swapped for the offers the moment it ends
+                shownSwapId = swapId;
+            } else {
+                status = null;
+            }
+        }
         boolean show = status != null;
         dashboardBox.setVisible(show);
         offersView.setVisible(!show);
