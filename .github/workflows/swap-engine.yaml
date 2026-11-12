@@ -76,10 +76,36 @@ jobs:
           sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
           sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
 
-      - name: Build MinGW gcc (Windows cross-build)
+      # The toolchain is built from sources downloaded from gnu.org and sourceforge, with their signing
+      # keys fetched from keyservers. Any of those failing to answer failed the whole build, so the
+      # built toolchain is kept and only rebuilt when the eigenwallet revision (and its script) changes.
+      - name: Restore MinGW gcc (Windows cross-build)
         if: contains(matrix.target, 'windows')
+        id: mingw
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/opt/gcc-mingw-14.3
+          key: mingw-gcc-14.3-${{ runner.os }}-${{ hashFiles('swap-engine/EIGENWALLET_REV') }}
+
+      - name: Build MinGW gcc (Windows cross-build)
+        if: contains(matrix.target, 'windows') && steps.mingw.outputs.cache-hit != 'true'
         working-directory: swap-engine/build/eigenwallet/dev-scripts
         run: ./ubuntu_build_x86_86-w64-mingw32-gcc.sh
+
+      # Saved here rather than at the end of the job, so a later step failing does not lose it
+      - name: Keep MinGW gcc (Windows cross-build)
+        if: contains(matrix.target, 'windows') && steps.mingw.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/opt/gcc-mingw-14.3
+          key: ${{ steps.mingw.outputs.cache-primary-key }}
+
+      # The build script sets this itself; a restored toolchain needs it set here
+      - name: Point at the restored MinGW gcc (Windows cross-build)
+        if: contains(matrix.target, 'windows') && steps.mingw.outputs.cache-hit == 'true'
+        run: |
+          test -x "$HOME/opt/gcc-mingw-14.3/bin/x86_64-w64-mingw32-g++"
+          echo "MINGW_TOOLCHAIN_DIR=$HOME/opt/gcc-mingw-14.3/bin" >> "$GITHUB_ENV"
 
       # The build script exports MINGW_TOOLCHAIN_DIR through GITHUB_ENV, so it is only visible from
       # the next step on
