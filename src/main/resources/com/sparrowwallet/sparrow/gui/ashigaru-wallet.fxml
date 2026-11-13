@@ -88,6 +88,8 @@
         <ToggleButton minWidth="-Infinity" fx:id="whirlpoolViewBtn" text="Whirlpool" onAction="#onViewToggle" styleClass="view-toggle-btn"
                       visible="false" managed="false"/>
         <Region HBox.hgrow="ALWAYS"/>
+        <!-- What is selected, next to the action that uses it -->
+        <Label fx:id="selectionLabel" styleClass="selection-label" minWidth="-Infinity" visible="false" managed="false"/>
         <Button minWidth="-Infinity" fx:id="selectAllUtxosBtn" text="Select all" onAction="#onSelectAllUtxos"
                 styleClass="action-btn" visible="false" managed="false"/>
         <Button minWidth="-Infinity" fx:id="mixSelectedBtn" text="Preview Tx0" onAction="#onMixSelected"

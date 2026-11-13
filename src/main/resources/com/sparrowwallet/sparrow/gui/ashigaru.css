@@ -1548,3 +1548,5 @@
    items do) makes CSS rebuild the font from the inherited family, which would drop the icon font. */
 .ag-icon, .menu-item .ag-icon { -fx-font-family: "Font Awesome 5 Free Solid"; }
 .menu-item .ag-icon { -fx-text-fill: -ag-text-dim; }
+.selection-label { -fx-text-fill: -ag-text-dim; -fx-font-size: 12px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-padding: 0 12 0 0; }
+.view-toggle-bar .action-btn, .view-toggle-bar .primary-btn { -fx-padding: 7 14 7 14; }

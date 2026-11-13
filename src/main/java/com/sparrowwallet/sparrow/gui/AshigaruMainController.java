@@ -527,6 +527,7 @@ public class AshigaruMainController implements Initializable {
     void deleteWallet(WalletListItem item) {
         WalletForm form = AshigaruGui.get().getWalletForms().get(item.walletId());
         if (form == null) return;
+        if (!confirmDeleteByName(item.displayName())) return;
 
         boolean encrypted = false;
         try { encrypted = form.getStorage().isEncrypted(); } catch (IOException ignored) {}
@@ -560,6 +561,37 @@ public class AshigaruMainController implements Initializable {
             }
             doDelete(item, form);
         }
+    }
+
+    /**
+     * First gate on deletion: the user types the wallet's name. A wallet with no password and no
+     * passphrase used to be one empty field and a click away from being deleted.
+     */
+    private boolean confirmDeleteByName(String walletName) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Delete Wallet");
+        dialog.initOwner(AshigaruGui.get().getMainStage());
+        WalletCreationFlow.styleWizardDialog(dialog, "DELETE WALLET", "Delete this wallet?",
+                "This permanently deletes \"" + walletName + "\" from this computer. Your coins are not affected, but you need your seed words and passphrase to restore it.");
+        ButtonType next = new ButtonType("Continue", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(next, ButtonType.CANCEL);
+        WalletCreationFlow.styleWizardButtons(dialog.getDialogPane());
+        Node nextNode = dialog.getDialogPane().lookupButton(next);
+        nextNode.getStyleClass().remove("primary-btn");
+        nextNode.getStyleClass().add("action-btn");
+
+        Label hint = new Label("Type the wallet name to confirm");
+        hint.getStyleClass().add("field-label");
+        TextField name = new TextField();
+        name.setPromptText(walletName);
+        VBox box = new VBox(8, hint, name);
+        box.setPadding(new Insets(20));
+        dialog.getDialogPane().setContent(box);
+        dialog.getDialogPane().setPrefWidth(480);
+        nextNode.disableProperty().bind(name.textProperty().map(t -> !t.trim().equals(walletName.trim())).orElse(true));
+        AppServices.moveToActiveWindowScreen(dialog);
+        Platform.runLater(name::requestFocus);
+        return dialog.showAndWait().filter(bt -> bt == next).isPresent();
     }
 
     private Dialog<String> buildPassphraseDialog(String walletName) {

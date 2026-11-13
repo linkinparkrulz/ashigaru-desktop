@@ -62,6 +62,7 @@ public class AshigaruWalletController implements Initializable {
     @FXML private ListView<TxnRow> txnTable;
     @FXML private HBox mixButtonBox;
     @FXML private Label accountSubLabel;
+    @FXML private Label selectionLabel;
     @FXML private ToggleButton whirlpoolViewBtn;
     @FXML private WhirlpoolView whirlpoolView;
     @FXML private Label heroEyebrow;
@@ -553,6 +554,17 @@ public class AshigaruWalletController implements Initializable {
             updateMixSelectedButton();
         }
         updateSelectAllButton();
+
+        //Selection summary: how many coins and how much, beside Preview Tx0
+        long count = utxoRows.stream().filter(r -> r.selected.get()).count();
+        boolean show = utxosVisible && count > 0 && mixSelectedBtn.isManaged();
+        selectionLabel.setVisible(show);
+        selectionLabel.setManaged(show);
+        if (show) {
+            long sats = utxoRows.stream().filter(r -> r.selected.get() && r.utxoEntry != null)
+                    .mapToLong(r -> r.utxoEntry.getValue()).sum();
+            selectionLabel.setText(count + " selected  \u00b7  " + UnitFormat.DOT.formatBtcValue(sats) + " BTC");
+        }
     }
 
     // -------------------------------------------------------------------------

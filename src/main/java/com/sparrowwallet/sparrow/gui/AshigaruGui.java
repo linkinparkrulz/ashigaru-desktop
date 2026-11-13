@@ -137,6 +137,10 @@ public class AshigaruGui extends Application {
             }
         };
 
+        if (splashStage != null && splashStage.getUserData() instanceof AshigaruSplashController splashCtrl) {
+            splashCtrl.setOnOpenNow(revealMain);
+        }
+
         AppServices.get().start();
 
         if (Config.get().getMode() != Mode.ONLINE) {

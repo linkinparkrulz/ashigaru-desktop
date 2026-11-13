@@ -7,7 +7,7 @@
            xmlns:fx="http://javafx.com/fxml"
            fx:controller="com.sparrowwallet.sparrow.gui.AshigaruSplashController"
            styleClass="splash-pane" prefWidth="600" prefHeight="400">
-    <VBox alignment="CENTER" spacing="20" styleClass="splash-card" maxWidth="440" maxHeight="330">
+    <VBox alignment="CENTER" spacing="20" styleClass="splash-card" maxWidth="440" maxHeight="372">
         <padding>
             <Insets top="28" right="34" bottom="26" left="34" />
         </padding>
@@ -39,5 +39,11 @@
             <Label fx:id="statusLabel" text="Initializing application services" styleClass="splash-status" maxWidth="Infinity" wrapText="true"/>
             <ProgressBar fx:id="progressBar" maxWidth="Infinity" progress="-1" styleClass="splash-progress"/>
         </VBox>
+
+        <!-- Shown only when Tor fails to start: a failure needs a way out, not just a message -->
+        <HBox fx:id="failureActions" spacing="10" alignment="CENTER_RIGHT" visible="false" managed="false">
+            <Button fx:id="openNowBtn" text="Open without waiting" onAction="#onOpenNow" styleClass="action-btn"/>
+            <Button fx:id="retryTorBtn" text="Retry Tor" onAction="#onRetryTor" styleClass="primary-btn"/>
+        </HBox>
     </VBox>
 </StackPane>
