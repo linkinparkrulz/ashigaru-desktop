@@ -569,9 +569,13 @@ public class AshigaruMainController implements Initializable {
         WalletCreationFlow.styleWizardDialog(dialog, "DELETE WALLET", "Confirm deletion",
                 "Enter your BIP39 passphrase to permanently delete \"" + walletName + "\".");
 
-        ButtonType deleteBtn = new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
+        ButtonType deleteBtn = new ButtonType("Delete wallet", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(deleteBtn, ButtonType.CANCEL);
         WalletCreationFlow.styleWizardButtons(dialog.getDialogPane());
+        //Destructive actions stay quiet: outlined, never the filled red that means "the next step"
+        Node deleteNode = dialog.getDialogPane().lookupButton(deleteBtn);
+        deleteNode.getStyleClass().remove("primary-btn");
+        deleteNode.getStyleClass().add("action-btn");
 
         Label hint = new Label("Enter your BIP39 passphrase (leave empty if none):");
         PasswordField pf = new PasswordField();
@@ -696,6 +700,23 @@ public class AshigaruMainController implements Initializable {
     @FXML
     private void onLockWallet() {
         if (currentWalletForm == null) return;
+        //Lock used to act at once with no feedback. Say what it does, including that mixing stops.
+        Dialog<ButtonType> confirm = new Dialog<>();
+        confirm.setTitle("Lock wallet");
+        confirm.initOwner(AshigaruGui.get().getMainStage());
+        WalletCreationFlow.styleWizardDialog(confirm, currentWalletForm.getWallet().getMasterName().toUpperCase(Locale.ROOT),
+                "Lock this wallet?", "It closes, and you need its password or passphrase to open it again.");
+        Label note = new Label("Mixing for this wallet stops while it is locked.");
+        note.getStyleClass().add("ag-read");
+        note.setGraphic(Icons.of(FontAwesome5.Glyph.INFO_CIRCLE, 13));
+        note.setGraphicTextGap(10);
+        confirm.getDialogPane().setContent(note);
+        ButtonType lock = new ButtonType("Lock wallet", ButtonBar.ButtonData.OK_DONE);
+        confirm.getDialogPane().getButtonTypes().addAll(lock, ButtonType.CANCEL);
+        WalletCreationFlow.styleWizardButtons(confirm.getDialogPane());
+        confirm.getDialogPane().setPrefWidth(460);
+        AppServices.moveToActiveWindowScreen(confirm);
+        if (confirm.showAndWait().filter(bt -> bt == lock).isEmpty()) return;
         File walletFile = currentWalletForm.getStorage().getWalletFile();
         unloadWalletForm(currentWalletForm);
         unloadedWalletFiles.add(walletFile);
@@ -885,16 +906,22 @@ public class AshigaruMainController implements Initializable {
 
     /** Intro steps — always present, even with no wallet open (sidebar + status bar). */
     private List<TourManager.TourStep> shellTourSteps() {
-        return List.of(
-                new TourManager.TourStep("walletSelector", "Current wallet",
-                        "Switch between your loaded wallets from this dropdown. It stays here at all times."),
-                new TourManager.TourStep("openWalletBtn", "Open a wallet",
-                        "Load an existing wallet file from disk."),
-                new TourManager.TourStep("createWalletBtn", "New or restore",
-                        "Create a brand-new wallet, or restore one from an existing seed phrase. The tour continues automatically once you open your first wallet."),
-                new TourManager.TourStep("connectionLabel", "Connection & network",
-                        "Your network status — click to connect or disconnect. Block height and the active network are shown to its left.")
-        );
+        List<TourManager.TourStep> steps = new ArrayList<>();
+        steps.add(new TourManager.TourStep("walletSelector", "Current wallet",
+                "Switch between your loaded wallets from this dropdown. It stays here at all times."));
+        if(noWalletBox.isVisible()) {
+            steps.add(new TourManager.TourStep("openWalletBtn", "Open a wallet",
+                    "Load an existing wallet file from disk."));
+            steps.add(new TourManager.TourStep("createWalletBtn", "New or restore",
+                    "Create a brand-new wallet, or restore one from an existing seed phrase. The tour continues automatically once you open your first wallet."));
+        } else {
+            //With a wallet open, Open and New / Restore live in the wallet menu with the other actions
+            steps.add(new TourManager.TourStep("walletMenuBtn", "Wallet actions",
+                    "Everything you can do to a wallet is in this menu: view its seed words, export or import labels, lock it, open another wallet, create or restore one, or delete it."));
+        }
+        steps.add(new TourManager.TourStep("connectionLabel", "Connection & network",
+                "Your connection status. Click it to connect or disconnect, request a new Tor identity, restart Tor, or see who learns what. The server, block height and network sit beside it."));
+        return steps;
     }
 
     /**
@@ -905,19 +932,19 @@ public class AshigaruMainController implements Initializable {
     private List<TourManager.TourStep> walletTourSteps() {
         return List.of(
                 new TourManager.TourStep("accountButtonsBox", "Wallet accounts",
-                        "Switch between this wallet's Deposit, Premix, Postmix and Badbank accounts here.",
+                        "Your coins move down this line: Deposit, then Premix after a Tx0, then Postmix once mixed. Badbank holds Tx0 change, kept apart. Each account shows its balance; click one to open it.",
                         this::ensureWalletTourView),
                 new TourManager.TourStep("balanceLabel", "Your balance",
-                        "Your confirmed balance for the selected account. Pending mempool balance and UTXO count sit alongside it.",
+                        "Your confirmed balance for the selected account, with its UTXO count and anything pending. The ring on the right shows how much of the whole wallet is private.",
                         this::ensureWalletTourView),
                 new TourManager.TourStep("receiveBtn", "Receive funds",
                         "Generate a fresh receive address and QR code to fund your wallet.",
                         this::ensureWalletTourView),
                 new TourManager.TourStep("mixSelectedBtn", "Mixing",
-                        "Select coins and begin collaborative CoinJoin mixing. Start Mix and Mix To drive your mixing from here.",
+                        "Select coins and preview a Tx0, which splits them into equal outputs ready to mix. Start Mixing and Mix To, at the bottom, drive mixing from there.",
                         this::ensureWalletTourView),
                 new TourManager.TourStep("generalPrefsBtn", "General settings",
-                        "This is Settings. Under General you'll find your units, fee-rates source and appearance options.",
+                        "This is Settings. Under General you'll find the fee-rates source, block explorer and notification options.",
                         () -> ensureSettingsTourView(PreferenceGroup.GENERAL)),
                 new TourManager.TourStep("serverPrefsBtn", "Server settings",
                         "Under Server you choose how Ashigaru connects to Bitcoin — your own node or a public Electrum server, over Tor.",

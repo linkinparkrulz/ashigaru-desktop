@@ -38,6 +38,7 @@ public final class ExposureDialogs {
         GridPane grid = new GridPane();
         grid.setHgap(16);
         grid.getStyleClass().add("exposure-grid");
+        grid.setPadding(new Insets(10, 20, 6, 20));
         ColumnConstraints who = new ColumnConstraints(150);
         ColumnConstraints what = new ColumnConstraints();
         what.setHgrow(Priority.ALWAYS);
@@ -129,7 +130,7 @@ public final class ExposureDialogs {
         warn.setGraphic(Icons.of(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13));
         warn.setGraphicTextGap(10);
         VBox content = new VBox(12, link, warn);
-        content.setPadding(new Insets(4, 0, 0, 0));
+        content.setPadding(new Insets(20));
 
         ButtonType copy = new ButtonType("Copy link", ButtonBar.ButtonData.OK_DONE);
         ButtonType open = new ButtonType("Open anyway", ButtonBar.ButtonData.OTHER);

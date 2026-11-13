@@ -1543,3 +1543,8 @@
 .whirlpool-bar.waiting { -fx-background-color: -ag-text-faint; }
 .whirlpool-bar.private { -fx-background-color: -ag-green; }
 .whirlpool-note { -fx-padding: 4 4 0 4; }
+
+/* Icons name their font here as well as in code. A rule that sets only a size on a label (menu
+   items do) makes CSS rebuild the font from the inherited family, which would drop the icon font. */
+.ag-icon, .menu-item .ag-icon { -fx-font-family: "Font Awesome 5 Free Solid"; }
+.menu-item .ag-icon { -fx-text-fill: -ag-text-dim; }
