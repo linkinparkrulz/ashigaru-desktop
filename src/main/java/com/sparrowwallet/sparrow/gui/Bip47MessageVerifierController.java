@@ -1,5 +1,6 @@
 package com.sparrowwallet.sparrow.gui;
 
+import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.drongo.address.Address;
 import com.sparrowwallet.drongo.bip47.PaymentCode;
 import com.sparrowwallet.sparrow.net.dojo.SignedMessageVerifier;
@@ -165,11 +166,47 @@ public class Bip47MessageVerifierController {
         showInfo("Verification error: " + error, null, null);
     }
 
+    private final VBox checks = new VBox();
+
+    /**
+     * The result is the list of what was checked, each with the value it produced, so a mismatch
+     * shows which link failed and with what, not only that something did.
+     */
     private void showInfo(String title, String notificationAddress, String signerAddress) {
         resultTitleLabel.setText(title);
-        notificationAddressLabel.setText(notificationAddress == null ? "" : "Notification address: " + notificationAddress);
-        signerAddressLabel.setText(signerAddress == null ? "" : "Recovered signer address: " + signerAddress);
+        boolean ran = notificationAddress != null && signerAddress != null;
+        checks.getChildren().clear();
+        if(ran) {
+            boolean match = notificationAddress.equals(signerAddress);
+            checks.getChildren().addAll(
+                    check(true, "Payment code is valid", null),
+                    check(true, "Notification address derived", notificationAddress),
+                    check(true, "Signer recovered from the signature", signerAddress),
+                    check(match, match ? "The two addresses are identical" : "The two addresses differ",
+                            match ? null : "Do not trust this message or the file it belongs to."));
+            if(!resultBox.getChildren().contains(checks)) {
+                resultBox.getChildren().add(checks);
+            }
+        } else {
+            resultBox.getChildren().remove(checks);
+        }
+        notificationAddressLabel.setText("");
+        signerAddressLabel.setText("");
+        for(Label old : new Label[] {notificationAddressLabel, signerAddressLabel}) {
+            old.setVisible(false);
+            old.setManaged(false);
+        }
         resultBox.setVisible(true);
         resultBox.setManaged(true);
+    }
+
+    private static Label check(boolean passed, String text, String value) {
+        Label label = new Label(value == null ? text : text + "\n" + value);
+        label.getStyleClass().addAll("verify-step", passed ? "verifier-step-pass" : "verifier-step-fail");
+        label.setGraphic(Icons.of(passed ? FontAwesome5.Glyph.CHECK : FontAwesome5.Glyph.TIMES, 12));
+        label.setGraphicTextGap(11);
+        label.setWrapText(true);
+        label.setMinHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
+        return label;
     }
 }

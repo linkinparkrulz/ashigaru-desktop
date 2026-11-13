@@ -1492,8 +1492,43 @@
 .dice-card { -fx-background-color: -ag-bg; -fx-border-color: -ag-border; -fx-border-radius: -ag-radius; -fx-background-radius: -ag-radius; -fx-padding: 10 12 10 12; }
 .dice-card-index { -fx-text-fill: -ag-text-faint; -fx-font-size: 9px; }
 .dice-card-word  { -fx-text-fill: -ag-text; -fx-font-size: 14px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
-.warning-box { -fx-background-color: derive(-ag-warn, -80%); -fx-border-color: derive(-ag-warn, -35%); -fx-border-radius: -ag-radius; -fx-background-radius: -ag-radius; -fx-padding: 12 14 12 14; }
+.ag-warning-box { -fx-background-color: derive(-ag-warn, -80%); -fx-border-color: derive(-ag-warn, -35%); -fx-border-radius: -ag-radius; -fx-background-radius: -ag-radius; -fx-padding: 12 14 12 14; }
 .warning-title { -fx-text-fill: -ag-warn-ink; -fx-font-size: 13px; }
 .warning-title .ag-icon { -fx-text-fill: -ag-warn-ink; }
 .warning-line { -fx-text-fill: #E8D9B5; -fx-font-size: 12.5px; }
 .ack-check { -fx-text-fill: -ag-text; -fx-font-family: "Inter", sans-serif; -fx-font-size: 13px; }
+
+/* ── Network path (Settings, Server) ────────────────────────────────────── */
+.network-path {
+    -fx-background-color: linear-gradient(to bottom, #191a20, -ag-bg-mid);
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+.path-hop { -fx-padding: 16 18 14 18; -fx-border-color: transparent transparent transparent -ag-border; -fx-border-width: 0 0 0 1; }
+.path-hop:first-child { -fx-border-width: 0; }
+.path-ring {
+    -fx-min-width: 32; -fx-min-height: 32; -fx-max-width: 32; -fx-max-height: 32;
+    -fx-background-color: -ag-bg; -fx-background-radius: 999; -fx-border-radius: 999;
+    -fx-border-color: -ag-border-strong; -fx-border-width: 1.5;
+}
+.path-title { -fx-text-fill: -ag-text; -fx-font-size: 12px; }
+.path-state { -fx-text-fill: -ag-warn-ink; -fx-font-size: 11px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
+.path-fact  { -fx-text-fill: -ag-text-faint; -fx-font-size: 11.5px; -fx-font-family: "Inter", sans-serif; }
+.path-hop:ok .path-ring  { -fx-border-color: derive(-ag-green, -20%); }
+.path-hop:ok .path-ring .ag-icon { -fx-text-fill: -ag-green-ink; }
+.path-hop:ok .path-state { -fx-text-fill: -ag-green-ink; }
+.path-hop:busy .path-ring { -fx-border-color: -ag-warn; }
+
+/* ── Verification shown as the checks it ran ────────────────────────────── */
+.verify-step {
+    -fx-font-family: "Inter", sans-serif; -fx-font-size: 13px; -fx-text-fill: -ag-text-faint;
+    -fx-padding: 10 0 10 2; -fx-max-width: Infinity;
+    -fx-border-color: -ag-border transparent transparent transparent; -fx-border-width: 1 0 0 0;
+}
+.verify-step .ag-icon { -fx-text-fill: -ag-border-strong; }
+.verify-step.verifier-step-pass { -fx-text-fill: -ag-text; }
+.verify-step.verifier-step-pass .ag-icon { -fx-text-fill: -ag-green-ink; }
+.verify-step.verifier-step-fail { -fx-text-fill: -ag-warn-ink; }
+.verify-step.verifier-step-fail .ag-icon { -fx-text-fill: -ag-warn-ink; }
+.warning-box .warning-body { -fx-font-family: "Inter", sans-serif; -fx-font-size: 12.5px; -fx-text-fill: #E8D9B5; }

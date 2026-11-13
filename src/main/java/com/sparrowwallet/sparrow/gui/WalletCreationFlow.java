@@ -719,7 +719,7 @@ public class WalletCreationFlow {
         warnTitle.setGraphic(Icons.of(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13));
         warnTitle.setGraphicTextGap(10);
         VBox warning = new VBox(6, warnTitle);
-        warning.getStyleClass().add("warning-box");
+        warning.getStyleClass().add("ag-warning-box");
         for(String line : List.of(
                 "Include the dashes. They are part of the passphrase.",
                 "Neither is stored anywhere. Lose them and the funds cannot be recovered.",

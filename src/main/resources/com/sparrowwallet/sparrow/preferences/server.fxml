@@ -16,6 +16,7 @@
 <?import com.sparrowwallet.sparrow.net.ServerType?>
 <?import com.sparrowwallet.sparrow.control.HelpLabel?>
 <?import com.sparrowwallet.sparrow.control.CopyableLabel?>
+<?import com.sparrowwallet.sparrow.gui.NetworkPath?>
 <?import com.sparrowwallet.sparrow.control.ComboBoxTextField?>
 
 <GridPane fx:id="serverDetailPane" hgap="10.0" vgap="14.0" stylesheets="@../general.css, @../gui/ashigaru.css, @preferences.css" styleClass="preferences-detail" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.sparrowwallet.sparrow.preferences.ServerPreferencesController">
@@ -31,7 +32,10 @@
 
     <VBox GridPane.columnIndex="0" GridPane.rowIndex="0" spacing="6">
         <Label text="Server" styleClass="preferences-section-title" />
-        <Label text="Choose how Ashigaru connects to Bitcoin network data and proxy routing." wrapText="true" styleClass="preferences-section-subtitle" />
+        <Label text="Every connection goes through Tor. This is the path yours takes." wrapText="true" styleClass="preferences-section-subtitle" />
+        <NetworkPath>
+            <VBox.margin><Insets top="12"/></VBox.margin>
+        </NetworkPath>
     </VBox>
 
     <Form GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="preferences-form">
