@@ -498,7 +498,7 @@ public class AshigaruWalletController implements Initializable {
             // Deposit / Badbank — show Mix Selected to initiate Tx0
             mixSelectedBtn.setVisible(true);
             mixSelectedBtn.setManaged(true);
-            mixSelectedBtn.setText("Mix Selected UTXOs");
+            mixSelectedBtn.setText("Preview Tx0");
             mixSelectedBtn.setDisable(true);
         }
         updateActionButtons();
@@ -541,7 +541,7 @@ public class AshigaruWalletController implements Initializable {
         selectAllUtxosBtn.setManaged(show);
         boolean anySelected = utxoRows.stream().anyMatch(r -> r.selected.get());
         selectAllUtxosBtn.setDisable(utxoRows.isEmpty());
-        selectAllUtxosBtn.setText(anySelected ? "Clear Selection" : "Select All UTXOs");
+        selectAllUtxosBtn.setText(anySelected ? "Clear selection" : "Select all");
     }
 
     private void updateActionButtons() {

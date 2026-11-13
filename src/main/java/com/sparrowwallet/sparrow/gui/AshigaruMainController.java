@@ -402,7 +402,7 @@ public class AshigaruMainController implements Initializable {
                 connectionLabel.setTooltip(new Tooltip("Connection and Tor options"));
             }
             case DISCONNECTED -> {
-                connectionLabel.setText("Offline \u00b7 click to connect");
+                connectionLabel.setText("Offline");
                 connectionLabel.getStyleClass().add("disconnected");
                 connectionLabel.setTooltip(new Tooltip("Connection and Tor options"));
             }
@@ -449,15 +449,12 @@ public class AshigaruMainController implements Initializable {
     }
 
     /**
-     * The connection pill opens its menu on any click. Tor recovery used to be a right-click on the
-     * status text, which nobody finds; connect and disconnect are the first items in the same menu.
+     * The connection pill opens its menu on any click, in every state. Tor recovery used to be a
+     * right-click on the status text, which nobody finds. Connect and Restart Tor both have to be
+     * reachable while offline, which is exactly when they are needed.
      */
     @FXML
     private void onConnectionLabelClicked(javafx.scene.input.MouseEvent event) {
-        if(connState == ConnState.DISCONNECTED) {
-            toggleConnection();
-            return;
-        }
         ContextMenu menu = connectionLabel.getContextMenu();
         if(menu.isShowing()) {
             menu.hide();
@@ -742,7 +739,9 @@ public class AshigaruMainController implements Initializable {
         note.getStyleClass().add("ag-read");
         note.setGraphic(Icons.of(FontAwesome5.Glyph.INFO_CIRCLE, 13));
         note.setGraphicTextGap(10);
-        confirm.getDialogPane().setContent(note);
+        VBox noteBox = new VBox(note);
+        noteBox.setPadding(new Insets(20));
+        confirm.getDialogPane().setContent(noteBox);
         ButtonType lock = new ButtonType("Lock wallet", ButtonBar.ButtonData.OK_DONE);
         confirm.getDialogPane().getButtonTypes().addAll(lock, ButtonType.CANCEL);
         WalletCreationFlow.styleWizardButtons(confirm.getDialogPane());
