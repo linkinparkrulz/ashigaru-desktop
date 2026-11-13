@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!-- The page and, over it while the swap asks for a decision, the final review. The review is added by the controller. -->
+<StackPane fx:id="swapsRoot" xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.sparrowwallet.sparrow.gui.SwapsToolController"
+      stylesheets="@ashigaru.css, @../darktheme.css"
+      styleClass="verifier-panel, swaps-panel">
+<VBox fx:id="mainView" styleClass="verifier-panel, swaps-panel" spacing="16">
+    <padding><Insets top="22" right="22" bottom="22" left="22"/></padding>
+
+    <HBox spacing="12" alignment="BASELINE_LEFT">
+        <Label text="Send BTC  →  Receive XMR" styleClass="swaps-title"/>
+        <Label fx:id="engineStatus" wrapText="true" minHeight="-Infinity" styleClass="card-faint" HBox.hgrow="ALWAYS"/>
+    </HBox>
+
+    <!-- The running (or chosen) swap, as the dashboard. While it runs it is all the page shows. The controller fills it. -->
+    <VBox fx:id="dashboardBox" spacing="16" visible="false" managed="false"/>
+
+    <!-- Everything else; hidden while a swap runs -->
+    <VBox fx:id="offersView" spacing="16">
+        <!-- Everything about choosing an offer: attention notice, what is spent and received, the address, the comparison. The controller fills it. -->
+        <VBox fx:id="offersBox" spacing="16"/>
+
+        <!-- Swaps -->
+        <VBox spacing="8">
+            <Label text="Your swaps" styleClass="step-title"/>
+            <TableView fx:id="swapsTable" prefHeight="150" minHeight="100" styleClass="swaps-table">
+                <placeholder><Label text="No swaps yet."/></placeholder>
+                <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN"/></columnResizePolicy>
+            </TableView>
+        </VBox>
+    </VBox>
+</VBox>
+</StackPane>

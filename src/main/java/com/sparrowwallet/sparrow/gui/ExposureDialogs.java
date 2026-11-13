@@ -54,6 +54,16 @@ public final class ExposureDialogs {
         row = addParty(grid, row, "GitHub", "update check",
                 Config.get().isUpdateCheckEnabled() ? "That someone asked for the latest release" : "Nothing. The update check is off",
                 Config.get().isUpdateCheckEnabled() ? "Your IP address" : null);
+        if(com.sparrowwallet.sparrow.swap.SwapService.get().isEnabled()) {
+            //Swaps add three parties. All of them are reached over the app's own Tor.
+            row = addParty(grid, row, "Swap makers", "Badbank to XMR",
+                    "The offer you ask about, the Bitcoin you lock and the Monero address you receive to",
+                    "Your IP address, or which wallet the coin came from");
+            row = addParty(grid, row, "Monero nodes", "the ones ticked in Settings",
+                    "That someone is checking whether a maker's XMR is locked", "Your IP address");
+            row = addParty(grid, row, "Price source", "CoinGecko, or Kraken",
+                    "That someone asked the BTC to XMR price", "Your IP address");
+        }
         addParty(grid, row, "Explorer links", "open in your browser",
                 "The transaction you open and your IP address. Your browser does not use Ashigaru's Tor connection.", null);
 

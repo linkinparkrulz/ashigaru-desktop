@@ -62,6 +62,21 @@ headless package; build one locally with `./gradlew -Djava.awt.headless=true jpa
 There are **no tests over the Whirlpool integration layer** (`sparrow/whirlpool/*` bridges).
 Changes there must be verified by running against testnet (see §4).
 
+### 2.1 Swap screen tests that need a display
+
+`SwapScreenshotsTest` draws the swap screens (final review, dashboard, offers) with the real fonts and
+stylesheets, checks how they behave, and saves a picture of each state. It needs a display, so it is
+skipped unless `SWAP_SCREENSHOTS` names a folder for the pictures:
+
+```bash
+SWAP_SCREENSHOTS=/tmp/shots xvfb-run -a -s "-screen 0 1400x900x24" \
+    env JAVA_TOOL_OPTIONS="-Dprism.order=sw" ./gradlew :test --tests '*SwapScreenshotsTest*'
+```
+
+It is also where a layout is held to the smallest supported window: no screen may need more than the
+width Swaps gets at a 1200 pixel window with the Tools menu open (713 pixels), and the offers table must
+fold below 700.
+
 ## 3. Runtime Layout & Debugging
 
 **Home directory:** `~/.ashigaru` (Linux/macOS), `%APPDATA%\Ashigaru` (Windows), overridable

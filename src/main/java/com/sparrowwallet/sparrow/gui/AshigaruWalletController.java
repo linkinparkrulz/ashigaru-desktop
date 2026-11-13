@@ -16,6 +16,8 @@ import com.sparrowwallet.sparrow.UnitFormat;
 import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.Config;
+import com.sparrowwallet.sparrow.swap.SwapProgress;
+import com.sparrowwallet.sparrow.swap.SwapService;
 import com.sparrowwallet.sparrow.wallet.*;
 import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolException;
@@ -47,6 +49,9 @@ public class AshigaruWalletController implements Initializable {
     @FXML private Label accountNameLabel;
     @FXML private Button refreshBtn;
     @FXML private Button receiveBtn;
+    @FXML private Button swapBtn;
+    @FXML private HBox swapBanner;
+    @FXML private Label swapBannerLabel;
     @FXML private Button receiveCta;
     @FXML private TabPane accountTabs;
     @FXML private Label balanceLabel;
@@ -99,6 +104,16 @@ public class AshigaruWalletController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        //Follows the running swap while this view is shown, and lets go of the service once it is replaced
+        Runnable swapListener = this::updateSwapBanner;
+        SwapService.get().addSwapListener(swapListener);
+        swapBanner.sceneProperty().addListener((observable, oldScene, scene) -> {
+            if(oldScene != null && scene == null) {
+                SwapService.get().removeSwapListener(swapListener);
+            }
+        });
+        updateSwapBanner();
+
         // UTXO list — responsive card view (one card per UTXO, never scrolls sideways)
         utxoTable.setItems(utxoRows);
         utxoTable.setCellFactory(lv -> new AshigaruUtxoCell(showMixInfo));
@@ -132,6 +147,7 @@ public class AshigaruWalletController implements Initializable {
             privacyLegend.addRow(i, swatch, name, legendValues[i]);
         }
         Icons.set(receiveBtn, FontAwesome5.Glyph.ARROW_DOWN);
+        Icons.set(swapBtn, FontAwesome5.Glyph.EXCHANGE_ALT);
         refreshBtn.setGraphic(Icons.of(FontAwesome5.Glyph.SYNC_ALT));
         badbankIcon.setGraphic(Icons.of(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13));
         coordinatorIcon.setGraphic(Icons.of(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13));
@@ -319,6 +335,14 @@ public class AshigaruWalletController implements Initializable {
         boolean isBadbank = wallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_BADBANK;
         badbankInfoBar.setVisible(isBadbank);
         badbankInfoBar.setManaged(isBadbank);
+        boolean canSwap = isBadbank && SwapService.get().isEnabled();
+        swapBtn.setVisible(canSwap);
+        swapBtn.setManaged(canSwap);
+        //With swaps on, the bar points at the way out of Badbank that is on this screen
+        badbankInfoLabel.setText("This is change from your Tx0. It is tied to the coins you deposited, so it is kept apart from Postmix. "
+                + (canSwap ? "Tick one coin and choose Swap to XMR, or mix it in a smaller pool, before you spend it."
+                           : "Mix it in a smaller pool, or swap it to XMR, before you spend it."));
+        updateSwapButton();
 
         // Buttons
         bindWhirlpoolState(wallet);
@@ -565,6 +589,15 @@ public class AshigaruWalletController implements Initializable {
                     .mapToLong(r -> r.utxoEntry.getValue()).sum();
             selectionLabel.setText(count + " selected  \u00b7  " + UnitFormat.DOT.formatBtcValue(sats) + " BTC");
         }
+        updateSwapButton();
+    }
+
+    //Swap to XMR takes exactly one Badbank coin: the whole coin is swapped, with no change
+    private void updateSwapButton() {
+        long selected = utxoRows.stream().filter(r -> r.selected.get()).count();
+        swapBtn.setDisable(selected != 1);
+        swapBtn.setTooltip(new Tooltip(selected == 1 ? "Swap this whole coin for XMR"
+                : "Tick one coin to swap it for XMR. The whole coin is swapped, with no change."));
     }
 
     // -------------------------------------------------------------------------
@@ -574,6 +607,35 @@ public class AshigaruWalletController implements Initializable {
     @FXML
     private void onReceiveCta() {
         onReceive();
+    }
+
+    private void updateSwapBanner() {
+        SwapService service = SwapService.get();
+        SwapProgress.Status status = service.getProgress(service.getCurrentSwapId());
+        boolean show = service.isSwapActive() && status != null && !status.finished();
+        swapBanner.setVisible(show);
+        swapBanner.setManaged(show);
+        if(show) {
+            //A named stage, not "step 3 of 10": a count reads as nearly finished however long the waits ahead are
+            String milestone = com.sparrowwallet.sparrow.swap.SwapDashboard.milestone(status.step());
+            swapBannerLabel.setText("Swap to XMR in progress: " + (milestone != null ? milestone + ", " : "") + status.step().getTitle().toLowerCase(java.util.Locale.ROOT) + ".");
+        }
+    }
+
+    @FXML
+    private void onViewSwap() {
+        AshigaruGui.get().getMainController().openSwapTool();
+    }
+
+    @FXML
+    private void onSwap() {
+        List<UtxoRow> selected = utxoRows.stream().filter(r -> r.selected.get()).toList();
+        if(currentWalletForm == null || activeAccountForm == null || selected.size() != 1) {
+            return;
+        }
+        SwapService.get().chooseCoin(currentWalletForm.getWallet().getMasterName(), activeAccountForm.getWallet(),
+                selected.get(0).utxoEntry.getHashIndex());
+        AshigaruGui.get().getMainController().openSwapTool();
     }
 
     @FXML

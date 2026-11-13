@@ -1,16 +1,24 @@
 package com.sparrowwallet.sparrow.gui;
 
 import com.sparrowwallet.sparrow.AppServices;
+import com.sparrowwallet.sparrow.io.Config;
+import com.sparrowwallet.sparrow.swap.SwapService;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import org.controlsfx.glyphfont.Glyph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +33,10 @@ public class ToolsController implements Initializable {
     @FXML private ToggleButton statsButton;
     @FXML private ToggleButton logsButton;
     @FXML private ToggleButton tourButton;
+    @FXML private ToggleButton swapsButton;
     @FXML private StackPane toolsPane;
+
+    private Toggle requested;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -43,16 +54,35 @@ public class ToolsController implements Initializable {
                 setToolPane("logs.fxml");
             } else if(selectedToggle == tourButton) {
                 setToolPane("tour-launcher.fxml");
+            } else if(selectedToggle == swapsButton) {
+                setToolPane("swaps.fxml");
             }
         });
+
+        boolean swaps = SwapService.get().isEnabled();
+        swapsButton.setVisible(swaps);
+        swapsButton.setManaged(swaps);
 
         // Select whichever tool is listed first rather than naming one, so the highlight follows
         // the sidebar order. getToggles() is in FXML declaration order.
         Platform.runLater(() -> {
-            if(!toolsMenu.getToggles().isEmpty()) {
+            if(requested != null) {
+                toolsMenu.selectToggle(requested);
+            } else if(!toolsMenu.getToggles().isEmpty()) {
                 toolsMenu.selectToggle(toolsMenu.getToggles().get(0));
             }
         });
+    }
+
+    //The tools are tabs across the top. As a second sidebar they needed a collapse-to-icons mode to
+    //leave Swaps enough width; as tabs they take none, so that mode is gone.
+
+    /** Opens on Swaps instead of the first tool, e.g. after choosing a Badbank coin to swap */
+    public void showSwaps() {
+        requested = swapsButton;
+        if(toolsMenu.getSelectedToggle() != null) {
+            toolsMenu.selectToggle(swapsButton);
+        }
     }
 
     private void setToolPane(String fxmlName) {

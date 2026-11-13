@@ -13,6 +13,8 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      #One runner's network hiccup should not cancel the other platforms
+      fail-fast: false
       matrix:
         include:
           - os: windows-2022

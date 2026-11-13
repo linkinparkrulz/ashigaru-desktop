@@ -26,6 +26,13 @@
         </VBox>
     </HBox>
 
+    <!-- Which log: Ashigaru's own, or the swap engine's -->
+    <HBox fx:id="sourceBar" styleClass="view-toggle-bar" minWidth="-Infinity" maxWidth="-Infinity">
+        <fx:define><ToggleGroup fx:id="sourceGroup"/></fx:define>
+        <ToggleButton fx:id="appToggle" text="Application" selected="true" toggleGroup="$sourceGroup" styleClass="view-toggle" minWidth="-Infinity"/>
+        <ToggleButton fx:id="engineToggle" text="Swap engine" toggleGroup="$sourceGroup" styleClass="view-toggle" minWidth="-Infinity"/>
+    </HBox>
+
     <!-- Controls: wrap onto further rows as the window narrows rather than squeezing labels into "…" -->
     <FlowPane hgap="10" vgap="10" alignment="CENTER_LEFT">
         <HBox styleClass="view-toggle-bar" minWidth="-Infinity">

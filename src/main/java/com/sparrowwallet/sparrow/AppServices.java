@@ -220,6 +220,11 @@ public class AppServices {
 
     private static final AtomicBoolean dojoDiscoveryStarted = new AtomicBoolean(false);
 
+    //When Tor's daemon last stopped by itself and was restarted, to stop restarting one that keeps dying
+    private static final int MAX_TOR_REVIVALS = 3;
+    private static final long TOR_REVIVAL_WINDOW_MILLIS = 10 * 60 * 1000;
+    private final Deque<Long> torRevivals = new ArrayDeque<>();
+
     private static void maybeStartDojoDiscovery() {
         if(dojoDiscoveryStarted.compareAndSet(false, true)) {
             DojoNodeDiscovery.discoverInBackground();
@@ -624,6 +629,15 @@ public class AppServices {
         }
 
         return httpClientService;
+    }
+
+    /**
+     * Like {@link #getTorProxy()}, but null when the built-in Tor is running with no socks listener,
+     * as while it starts or after its daemon died. Only for code that waits for Tor: anything that
+     * would fall back to a direct connection on null must keep using getTorProxy, which throws then.
+     */
+    public static HostAndPort getTorProxyIfUp() {
+        return AppServices.isTorRunning() ? Tor.getDefault().findProxyHostAndPort() : getTorProxy();
     }
 
     public static HostAndPort getTorProxy() {
@@ -1290,6 +1304,28 @@ public class AppServices {
         minimumRelayFeeRate = Math.max(event.getMinimumRelayFeeRate(), Transaction.DEFAULT_MIN_RELAY_FEE);
         latestBlockHeader = event.getBlockHeader();
         Config.get().addRecentServer();
+    }
+
+    /**
+     * The bundled Tor stopped without being asked to. Nothing else brings it back, and without it
+     * Ashigaru cannot connect at all, so it is started again, a few times at most.
+     */
+    @Subscribe
+    public void torDied(TorDiedEvent event) {
+        Platform.runLater(() -> {
+            if(!Config.get().requiresInternalTor() || Tor.getDefault() == null) {
+                return;
+            }
+            long now = System.currentTimeMillis();
+            torRevivals.removeIf(revival -> now - revival > TOR_REVIVAL_WINDOW_MILLIS);
+            if(torRevivals.size() >= MAX_TOR_REVIVALS) {
+                log.warn("Tor stopped by itself again. Not restarting it: that is " + (MAX_TOR_REVIVALS + 1) + " times in ten minutes. Restart Tor from Settings → Server.");
+                return;
+            }
+            torRevivals.add(now);
+            log.warn("Tor stopped by itself; restarting it");
+            restartTor();
+        });
     }
 
     @Subscribe

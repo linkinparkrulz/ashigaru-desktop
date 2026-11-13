@@ -1,0 +1,111 @@
+diff --git a/bitcoin-wallet/src/wallet.rs b/bitcoin-wallet/src/wallet.rs
+index af896cb..b031278 100644
+--- a/bitcoin-wallet/src/wallet.rs
++++ b/bitcoin-wallet/src/wallet.rs
+@@ -1649,6 +1649,29 @@ impl Client {
+     /// Create a new client with multiple electrum servers for load balancing.
+     pub async fn new(electrum_rpc_urls: &[String], sync_interval: Duration) -> Result<Self> {
+         let balancer = ElectrumBalancer::new(electrum_rpc_urls.to_vec()).await?;
++        Self::from_balancer(balancer, sync_interval)
++    }
++
++    /// Like [`Client::new`], but every Electrum connection is made through the given SOCKS5 proxy
++    /// (`host:port`), e.g. a Tor SOCKS port.
++    pub async fn new_with_socks5(
++        electrum_rpc_urls: &[String],
++        sync_interval: Duration,
++        socks5_proxy: String,
++    ) -> Result<Self> {
++        let config = electrum_pool::ElectrumBalancerConfig {
++            socks5_proxy: Some(socks5_proxy),
++            ..Default::default()
++        };
++        let balancer =
++            ElectrumBalancer::new_with_config(electrum_rpc_urls.to_vec(), config).await?;
++        Self::from_balancer(balancer, sync_interval)
++    }
++
++    fn from_balancer(
++        balancer: ElectrumBalancer,
++        sync_interval: Duration,
++    ) -> Result<Self> {
+         let initial_last_sync = Instant::now()
+             .checked_sub(sync_interval)
+             .ok_or(anyhow!("failed to set last sync time"))?;
+diff --git a/electrum-pool/src/lib.rs b/electrum-pool/src/lib.rs
+index 53aab63..3e5398a 100644
+--- a/electrum-pool/src/lib.rs
++++ b/electrum-pool/src/lib.rs
+@@ -1,5 +1,5 @@
+ use bdk_electrum::BdkElectrumClient;
+-use bdk_electrum::electrum_client::{Client, ConfigBuilder, ElectrumApi, Error};
++use bdk_electrum::electrum_client::{Client, ConfigBuilder, ElectrumApi, Error, Socks5Config};
+ use bitcoin::Transaction;
+ use futures::stream::{FuturesUnordered, StreamExt};
+ use once_cell::sync::OnceCell;
+@@ -496,6 +496,9 @@ pub struct ElectrumBalancerConfig {
+     /// ([`ElectrumBalancer::join_quorum`], [`ElectrumBalancer::broadcast_all`])
+     /// wait for before returning early. Clamped to the number of nodes.
+     pub min_parallel_responses: usize,
++    /// SOCKS5 proxy (`host:port`) every Electrum connection is made through, e.g. a Tor SOCKS port.
++    /// Host names are then resolved by the proxy, so onion servers work.
++    pub socks5_proxy: Option<String>,
+ }
+ 
+ impl Default for ElectrumBalancerConfig {
+@@ -504,6 +507,7 @@ impl Default for ElectrumBalancerConfig {
+             request_timeout: 15,
+             min_retries: 5,
+             min_parallel_responses: 2,
++            socks5_proxy: None,
+         }
+     }
+ }
+@@ -530,6 +534,7 @@ impl ElectrumClientFactory<BdkElectrumClient<Client>> for BdkElectrumClientFacto
+             //
+             // Setting it to 0 causes some bugs, see: https://github.com/bitcoindevkit/rust-electrum-client/issues/186
+             .retry(1)
++            .socks5(config.socks5_proxy.as_ref().map(Socks5Config::new))
+             .build();
+ 
+         let client = Client::from_config(url, client_config).map_err(|e| {
+@@ -915,6 +920,7 @@ mod tests {
+             request_timeout: 5,
+             min_retries: 0,
+             min_parallel_responses: 2,
++            socks5_proxy: None,
+         };
+ 
+         let balancer = ElectrumBalancer::new_with_config_and_factory(urls, config, factory.clone())
+@@ -987,6 +993,7 @@ mod tests {
+             request_timeout: 5,
+             min_retries: 1,
+             min_parallel_responses: 2,
++            socks5_proxy: None,
+         };
+ 
+         let balancer = ElectrumBalancer::new_with_config_and_factory(urls, config, factory.clone())
+@@ -1090,6 +1097,7 @@ mod tests {
+             request_timeout: 15,
+             min_retries: 7,
+             min_parallel_responses: 3,
++            socks5_proxy: None,
+         };
+ 
+         let factory = Arc::new(MockElectrumClientFactory::new());
+@@ -1241,6 +1249,7 @@ mod tests {
+             request_timeout: 5,
+             min_retries: 0,
+             min_parallel_responses: 2,
++            socks5_proxy: None,
+         };
+ 
+         let balancer = ElectrumBalancer::new_with_config_and_factory(urls, config, factory.clone())
+@@ -1280,6 +1289,7 @@ mod tests {
+             request_timeout: 5,
+             min_retries: 0,
+             min_parallel_responses: 2,
++            socks5_proxy: None,
+         };
+ 
+         let balancer = ElectrumBalancer::new_with_config_and_factory(urls, config, factory.clone())

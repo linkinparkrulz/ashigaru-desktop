@@ -354,6 +354,48 @@ WHAT THE REVAMP IS FOR
 
 
 --------------------------------------------------------------------
+ 11. SWAPS: BADBANK TO XMR  (Path, Exposure)
+--------------------------------------------------------------------
+  The swap tooling from the xmr-swap branch is merged in. It needs a
+  build that includes the native swap engine: a plain "./gradlew run"
+  has none, so Swaps stays hidden. Use a packaged Swap build, then
+  turn swaps on in Settings, Swaps.
+
+  Where it shows up:
+  [ ] Settings has a fourth tab, Swaps. Its help text sits under the
+      row, like General.
+  [ ] With swaps OFF: no Swaps tab in Tools, no "Swap to XMR" on
+      Badbank, no "SWAP TO XMR" under Badbank in the sidebar.
+  [ ] With swaps ON: all three appear. Tools shows Swaps as a tab
+      (there is no collapse-to-icons button any more).
+  [ ] Badbank's amber bar now ends "Tick one coin and choose Swap to
+      XMR...".
+  [ ] "Swap to XMR" is disabled until exactly one coin is ticked, and
+      opens Tools, Swaps on the offers.
+  [ ] "Who learns what" gains three rows: Swap makers, Monero nodes,
+      Price source. Read them critically, as in section 3.
+
+  Looks (the swap screens were tested on xmr-swap with a different
+  typeface, so compare against that build):
+  [ ] Sentences and figures on the swap screens are in Roboto and
+      easy to read. Buttons and titles are in the poster face.
+  [ ] Nothing on the offers, review or progress screens is clipped,
+      wrapped badly or overlapping at the minimum window size.
+  [ ] The pinned Approve bar still stays in view while the review
+      scrolls.
+
+  Behaviour (should be exactly as on xmr-swap):
+  [ ] Offers load, sort and refresh.
+  [ ] Review offer shows the terms, deposit and recovery details.
+  [ ] A swap runs to completion and the XMR arrives.
+  [ ] A stalled or cancelled swap recovers the BTC.
+  [ ] Changing the Bitcoin server, restarting Tor and requesting a new
+      identity mid-swap behave as they did.
+  [ ] Tools, Logs still shows the swap engine log.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
  KNOWN GAPS  (not bugs, do not report)
 --------------------------------------------------------------------
   - The selection summary shows count and total only. It does not yet
@@ -361,3 +403,6 @@ WHAT THE REVAMP IS FOR
   - On Linux without a compositor, menus may show a pale halo.
   - Statistics decides "your pool" from Postmix coin value (0.025 or
     0.25 BTC).
+  - The minimum window width is 1200, inherited from xmr-swap.
+  - The interface is Nikkyou Sans on labels, buttons and tabs, with
+    Roboto for sentences. xmr-swap alone used Roboto everywhere.

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import tornadofx.control.Form?>
+<?import tornadofx.control.Fieldset?>
+<?import tornadofx.control.Field?>
+<?import com.sparrowwallet.sparrow.control.UnlabeledToggleSwitch?>
+<?import com.sparrowwallet.sparrow.control.HelpLabel?>
+
+<GridPane hgap="10.0" vgap="14.0" stylesheets="@../general.css, @../gui/ashigaru.css, @preferences.css" styleClass="preferences-detail" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.sparrowwallet.sparrow.preferences.SwapsPreferencesController">
+    <padding>
+        <Insets left="28.0" right="32.0" top="24.0" bottom="28.0" />
+    </padding>
+    <columnConstraints>
+        <ColumnConstraints percentWidth="100" />
+    </columnConstraints>
+
+    <VBox GridPane.columnIndex="0" GridPane.rowIndex="0" spacing="6">
+        <Label text="Swaps" styleClass="preferences-section-title" />
+        <Label text="Swap Badbank coins for XMR with eigenwallet makers, through Ashigaru's Tor only. Experimental: mainnet, small amounts, and keep Ashigaru open until a swap finishes."
+               wrapText="true" minHeight="-Infinity" styleClass="preferences-section-subtitle" />
+    </VBox>
+
+    <Form GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="preferences-form">
+        <Fieldset inputGrow="SOMETIMES" text="Badbank to XMR" styleClass="wideLabelFieldSet">
+            <Field text="Enable swaps:">
+                <VBox spacing="6">
+                <UnlabeledToggleSwitch fx:id="swapsEnabled" />
+                <Label text="Adds Swap to XMR to every wallet's Badbank account and Swaps to Tools. A swap locks one Badbank coin in a shared output with a market maker; if the swap does not complete, it can be cancelled after about 5 hours and the BTC refunded to Badbank, which must be claimed within about 24 hours. Some makers keep part of a refund as an anti-spam deposit; Ashigaru shows this before you approve." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                </VBox>
+            </Field>
+            <Field text="Status:">
+                <Label fx:id="engineStatus" wrapText="true" minHeight="-Infinity" styleClass="field-value" />
+            </Field>
+            <Field text="Maximum swap:">
+                <TextField fx:id="maxSwap" promptText="0.01" prefWidth="140" maxWidth="140" />
+                <Label text="BTC" styleClass="field-label" />
+            </Field>
+        </Fieldset>
+        <Fieldset inputGrow="SOMETIMES" text="Monero nodes" styleClass="wideLabelFieldSet">
+            <Label wrapText="true" minHeight="-Infinity" styleClass="card-faint"
+                   text="A swap only releases your BTC once the maker's XMR is seen locked, so the nodes that report it are trusted with the swap. Public nodes are used together: tick at least two, and every one must see the lock. A node you add yourself is your own, and trusted on its own." />
+            <VBox fx:id="nodeList" spacing="8">
+                <padding><Insets top="10" bottom="6"/></padding>
+            </VBox>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <TextField fx:id="customNode" promptText="your-node.onion:18081" HBox.hgrow="ALWAYS" />
+                <Button minWidth="-Infinity" fx:id="addNodeBtn" text="Add your node" onAction="#onAddNode" styleClass="secondary-btn" />
+                <Button minWidth="-Infinity" fx:id="checkNodesBtn" text="Check nodes" onAction="#onCheckNodes" styleClass="secondary-btn" />
+            </HBox>
+            <Label fx:id="nodeMessage" wrapText="true" minHeight="-Infinity" styleClass="card-faint" visible="false" managed="false" />
+        </Fieldset>
+    </Form>
+</GridPane>

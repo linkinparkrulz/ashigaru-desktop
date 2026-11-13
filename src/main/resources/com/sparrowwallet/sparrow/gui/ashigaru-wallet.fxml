@@ -20,6 +20,8 @@
         <Region HBox.hgrow="ALWAYS"/>
         <Button minWidth="-Infinity" fx:id="receiveBtn" text="Receive" onAction="#onReceive"
                 styleClass="primary-btn" visible="false" managed="false"/>
+        <Button minWidth="-Infinity" fx:id="swapBtn" text="Swap to XMR" onAction="#onSwap"
+                styleClass="primary-btn" visible="false" managed="false"/>
         <Button minWidth="-Infinity" fx:id="refreshBtn" onAction="#onRefresh" styleClass="action-btn, refresh-btn, icon-btn">
             <tooltip><Tooltip text="Refresh"/></tooltip>
         </Button>
@@ -62,6 +64,12 @@
         <Label fx:id="badbankInfoLabel"
                text="This is change from your Tx0. It is tied to the coins you deposited, so it is kept apart from Postmix. Mix it in a smaller pool, or swap it to XMR, before you spend it."
                styleClass="badbank-info-text" wrapText="true"/>
+    </HBox>
+
+    <!-- A swap is running: where it is, and a way to it (any account, any wallet) -->
+    <HBox fx:id="swapBanner" styleClass="swaps-banner" alignment="CENTER_LEFT" spacing="10" visible="false" managed="false">
+        <Label fx:id="swapBannerLabel" wrapText="true" minHeight="-Infinity" styleClass="field-value" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+        <Button minWidth="-Infinity" text="View" onAction="#onViewSwap" styleClass="secondary-btn"/>
     </HBox>
 
     <!-- Coordinator-unreachable warning bar (shown while mixing can't connect) -->

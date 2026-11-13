@@ -64,6 +64,17 @@ public class Config {
     private boolean signBsmsExports = false;
     private boolean preventSleep = false;
     private boolean tourShown = false;
+    //Badbank to XMR swaps through the embedded swap engine, only in builds that include it
+    private boolean swapsEnabled = false;
+    //The Tools list shows icons only, leaving the tool the room; null until the user chooses
+    private Boolean toolsMenuCollapsed;
+    //Developer override: a swap engine library to load instead of the bundled one
+    private File swapEngineLibrary;
+    //Largest swap the experimental engine will start, in sats, while it is being proven on mainnet
+    private long swapMaxSats = 1_000_000L;
+    //Monero nodes (onion host:port) ticked for swaps, and the ones the user added themselves
+    private List<String> swapMoneroNodes;
+    private List<String> swapCustomMoneroNodes;
     private List<File> recentWalletFiles;
     private Integer keyDerivationPeriod;
     private long dustAttackThreshold = DUST_ATTACK_THRESHOLD_SATS;
@@ -180,6 +191,56 @@ public class Config {
 
     public void setTourShown(boolean tourShown) {
         this.tourShown = tourShown;
+        flush();
+    }
+
+    public boolean isToolsMenuCollapsed() {
+        return toolsMenuCollapsed == null || toolsMenuCollapsed;
+    }
+
+    public void setToolsMenuCollapsed(boolean toolsMenuCollapsed) {
+        this.toolsMenuCollapsed = toolsMenuCollapsed;
+        flush();
+    }
+
+    public boolean isSwapsEnabled() {
+        return swapsEnabled;
+    }
+
+    public void setSwapsEnabled(boolean swapsEnabled) {
+        this.swapsEnabled = swapsEnabled;
+        flush();
+    }
+
+    public File getSwapEngineLibrary() {
+        return swapEngineLibrary;
+    }
+
+    public long getSwapMaxSats() {
+        return swapMaxSats;
+    }
+
+    public void setSwapMaxSats(long swapMaxSats) {
+        this.swapMaxSats = swapMaxSats;
+        flush();
+    }
+
+    /** The ticked nodes, or null when the user has not chosen yet and the defaults apply */
+    public List<String> getSwapMoneroNodes() {
+        return swapMoneroNodes;
+    }
+
+    public void setSwapMoneroNodes(List<String> swapMoneroNodes) {
+        this.swapMoneroNodes = swapMoneroNodes;
+        flush();
+    }
+
+    public List<String> getSwapCustomMoneroNodes() {
+        return swapCustomMoneroNodes == null ? List.of() : swapCustomMoneroNodes;
+    }
+
+    public void setSwapCustomMoneroNodes(List<String> swapCustomMoneroNodes) {
+        this.swapCustomMoneroNodes = swapCustomMoneroNodes;
         flush();
     }
 

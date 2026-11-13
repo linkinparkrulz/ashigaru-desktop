@@ -1,5 +1,5 @@
 package com.sparrowwallet.sparrow.preferences;
 
 public enum PreferenceGroup {
-    GENERAL, SERVER, UPDATE;
+    GENERAL, SERVER, UPDATE, SWAPS;
 }

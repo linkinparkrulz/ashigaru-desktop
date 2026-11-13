@@ -1,0 +1,34 @@
+[package]
+name = "ashigaru-swap"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-only"
+description = "Embeds the eigenwallet taker in Ashigaru Desktop: Tor-only networking, Ashigaru-funded BTC lock."
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+swap = { path = "../swap" }
+swap-env = { path = "../swap-env" }
+swap-p2p = { path = "../swap-p2p" }
+bitcoin-wallet = { path = "../bitcoin-wallet" }
+utxo-ownership-proof = { path = "../utxo-ownership-proof" }
+
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+bdk_wallet = { workspace = true }
+bitcoin = { workspace = true }
+futures = { workspace = true }
+hex = { workspace = true }
+libp2p = { workspace = true, features = ["tcp", "dns", "tokio", "websocket", "noise", "yamux", "relay"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+# eigenwallet's binaries install the ring provider at startup; the Monero RPC client needs one
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "net", "sync", "time", "macros", "io-util"] }
+tokio-socks = "0.5"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true, features = ["serde"] }

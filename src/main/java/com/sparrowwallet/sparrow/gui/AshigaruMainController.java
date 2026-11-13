@@ -82,6 +82,7 @@ public class AshigaruMainController implements Initializable {
     @FXML private Button toolsBtn;
     @FXML private Button settingsBtn;
     @FXML private Label crumbLabel;
+    @FXML private Label swapConnector;
     @FXML private Label serverLabel;
     @FXML private ToggleGroup accountToggleGroup;
     @FXML private ToggleButton depositBtn;
@@ -197,6 +198,9 @@ public class AshigaruMainController implements Initializable {
             return;
         }
         WalletPrivacy privacy = WalletPrivacy.of(currentWalletForm);
+        boolean swaps = com.sparrowwallet.sparrow.swap.SwapService.get().isEnabled();
+        swapConnector.setVisible(swaps);
+        swapConnector.setManaged(swaps);
         UnitFormat fmt = UnitFormat.DOT;
         Whirlpool whirlpool = AppServices.getWhirlpoolServices().getWhirlpool(currentWalletForm.getWallet());
         boolean mixing = whirlpool != null && whirlpool.isMixing();
@@ -1013,6 +1017,25 @@ public class AshigaruMainController implements Initializable {
         } catch(IOException e) {
             log.error("Error opening tools", e);
             showError("Error", "Could not open tools: " + e.getMessage());
+        }
+    }
+
+    /** Opens Tools on Swaps, after a Badbank coin was chosen to swap */
+    public void openSwapTool() {
+        onTools();
+        if(contentPane.getUserData() instanceof ToolsController tools) {
+            tools.showSwaps();
+        }
+    }
+
+    /**
+     * Leaves Tools for the open wallet's Badbank, where a coin is ticked to swap. With no wallet open there
+     * is no Badbank to show, so it only leaves Tools.
+     */
+    public void openBadbank() {
+        closeTool();
+        if(badbankBtn.isVisible() && badbankBtn.isManaged() && !badbankBtn.isSelected()) {
+            badbankBtn.fire();
         }
     }
 

@@ -43,6 +43,11 @@
     -ag-radius-sm:     4px;
     -ag-radius:        6px;
     -ag-radius-lg:     10px;
+
+    /* Built-in controls (checkboxes, combo boxes, tabs, table headers, titled panes) derive their
+       hover and pressed colours from these; left to Modena they come out near-black on this base */
+    -fx-hover-base:    -ag-bg-raised;
+    -fx-pressed-base:  derive(-ag-bg-raised, 25%);
 }
 
 /* ── Reusable surfaces ──────────────────────────────────────────────────────── */
@@ -56,7 +61,7 @@
 .ag-chip {
     -fx-background-color: -ag-bg-raised;
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 11px;
+    -fx-font-size: 12px;
     -fx-padding: 3 9 3 9;
     -fx-background-radius: 999;
 }
@@ -68,10 +73,10 @@
     -fx-background:       -ag-bg;
     -fx-control-inner-background: -ag-bg-mid;
     -fx-text-fill:        -ag-text;
-    /* Nikkyou Sans is the application face. Anything that must stay monospaced - amounts,
-       addresses, hashes, typed input, anything that lines up in a column - pins the family
-       back explicitly below. Defaulting this way round means a screen added later is on the
-       right font without anyone remembering to say so. */
+    /* Nikkyou Sans is the application face: titles, labels, buttons and tabs. Anything a person
+       reads as a sentence is set in Roboto (see "Reading face" below), and anything that must stay
+       monospaced - amounts, addresses, hashes, typed input - pins Roboto Mono explicitly. The swap
+       screens set Roboto on their own panel, where almost everything is a sentence about money. */
     -fx-font-family:      "Nikkyou Sans";
     -fx-font-size:        13px;
     /* Replace Modena's blue accent/focus with our red */
@@ -93,8 +98,12 @@
 
 /* Nikkyou Sans on the display-sized text only. It ships a single weight, so -fx-font-weight is
    deliberately absent wherever it is applied: JavaFX would synthesise a fake bold and smear the
-   letterforms. Body text, the 10px wizard eyebrow and the type-card titles keep the system face,
-   where a poster letterform costs legibility for no gain. */
+   letterforms. Body text, eyebrow labels and the type-card titles keep Roboto, where a poster
+   letterform costs legibility for no gain. */
+.app-title, .app-title-sub, .welcome-title, .wizard-title, .splash-title, .splash-subtitle,
+.verifier-hero-title, .tour-step-title, .swaps-title, .swaps-step-title {
+    -fx-font-family: "Nikkyou Sans";
+}
 .app-title {
     -fx-text-fill: -ag-text;
     -fx-font-size: 16px;
@@ -114,7 +123,7 @@
 }
 
 .network-label {
-    -fx-font-size: 11px;
+    -fx-font-size: 12px;
     -fx-padding: 3 8 3 8;
     -fx-background-radius: -ag-radius;
 }
@@ -124,7 +133,7 @@
 .header-info {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;  /* block height */
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 
 .connected    { -fx-text-fill: -ag-green-ink !important; }
@@ -157,7 +166,7 @@
 
 .sidebar-section-title {
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 10px;
+    -fx-font-size: 12px;
 }
 
 .wallet-list {
@@ -184,10 +193,10 @@
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
-/* Nikkyou Sans on the chrome. Every Button carries .button, so this covers the sidebar nav, Tools,
-   Settings, the wizard and the dialog button bars in one place. Data keeps the RobotoMono base set
-   on .root - addresses, xpubs, amounts and the log view stay monospaced and aligned. */
+/* Buttons name the application face themselves, so they keep it inside panels that switch their
+   own text to Roboto (the swap screens). */
 .button {
+    -fx-font-family: "Nikkyou Sans";
     -fx-background-color: -ag-bg-light;
     -fx-text-fill: -ag-text;
     -fx-border-color: -ag-border;
@@ -197,7 +206,7 @@
     -fx-cursor: hand;
 }
 .button:hover  { -fx-background-color: -ag-bg-raised; }
-.button:armed  { -fx-background-color: derive(-ag-accent, -70%); }
+.button:armed  { -fx-background-color: derive(-ag-bg-raised, 25%); -fx-text-fill: -ag-text; }
 .button:disabled { -fx-opacity: 0.45; }
 
 .primary-btn {
@@ -224,7 +233,7 @@
     -fx-text-fill: -ag-text-dim;
     -fx-border-color: transparent;
     -fx-alignment: CENTER_LEFT;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
     -fx-padding: 5 10 5 10;
     -fx-cursor: hand;
 }
@@ -243,12 +252,12 @@
 .nav-btn:hover { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
 
 .mix-btn { -fx-min-width: 140; }
-.refresh-btn { -fx-font-size: 11px; -fx-padding: 4 10 4 10; }
+.refresh-btn { -fx-font-size: 13px; -fx-padding: 4 10 4 10; }
 .delete-btn {
     -fx-background-color: derive(-ag-accent, -70%);
     -fx-text-fill: -ag-on-accent;
     -fx-border-color: -ag-accent-dark;
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
     -fx-padding: 4 10 4 10;
 }
 .delete-btn:hover { -fx-background-color: derive(-ag-accent, -55%); }
@@ -346,7 +355,7 @@
 }
 .balance-caption {
     -fx-text-fill: -ag-text-faint;
-    -fx-font-size: 10px;
+    -fx-font-size: 12px;
 }
 .balance-value           {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;  /* wallet balance */ -fx-text-fill: -ag-text;     -fx-font-size: 20px; -fx-font-weight: bold; }
@@ -365,7 +374,7 @@
 }
 .utxo-table .column-header-background .label {
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
     -fx-alignment: CENTER_LEFT;
 }
 .utxo-table .table-row-cell {
@@ -381,7 +390,7 @@
 .utxo-table .table-cell {
     -fx-text-fill: -ag-text;
     -fx-padding: 6 10 6 10;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
     -fx-alignment: CENTER_LEFT;
 }
 .table-placeholder { -fx-text-fill: -ag-text-faint; }
@@ -412,8 +421,8 @@
 .card-value     { -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
                   -fx-text-fill: -ag-text;       -fx-font-size: 16px; -fx-font-weight: bold; }
 .card-secondary { -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
-                  -fx-text-fill: -ag-text-dim;   -fx-font-size: 12px; }
-.card-faint     { -fx-text-fill: -ag-text-faint; -fx-font-size: 11px; }
+                  -fx-text-fill: -ag-text-dim;   -fx-font-size: 13px; }
+.card-faint     { -fx-text-fill: -ag-text-faint; -fx-font-size: 13px; }
 
 /* Whirlpool Stats chart: brand ink (first pool) and light grey (second pool). They differ in
    lightness as well as hue, and the pool pills in the recent list reuse them */
@@ -440,7 +449,7 @@
 .paynym-code {
     -fx-text-fill: -ag-text-dim;
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
 }
 /* Neutral disc shown behind the avatar while it loads (and if unavailable) */
 .avatar-placeholder {
@@ -482,7 +491,7 @@
     -fx-prompt-text-fill: -ag-text-faint;
     -fx-border-color: transparent;
     -fx-padding: 2 0 2 0;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .card-label-field:focused {
     -fx-background-color: -ag-bg-light;
@@ -498,7 +507,7 @@
     -fx-background-color: -ag-bg-raised;
     -fx-background-radius: 999;
 }
-.mix-badge .mix-badge-text { -fx-text-fill: -ag-text-dim; -fx-font-size: 11px;}
+.mix-badge .mix-badge-text { -fx-text-fill: -ag-text-dim; -fx-font-size: 12px;}
 .mix-badge.active          { -fx-background-color: -ag-accent-faint; }
 .mix-badge.active .mix-badge-text { -fx-text-fill: -ag-accent-ink; }
 .mix-badge.done            { -fx-background-color: derive(-ag-green, -65%); }
@@ -519,7 +528,7 @@
 }
 .status-label {
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
 }
 
 /* ── Dialogs (Tx0, Mix To) ────────────────────────────────────────────────── */
@@ -605,7 +614,7 @@
 }
 .wizard-eyebrow  { -fx-text-fill: -ag-accent-ink;    -fx-font-size: 10px;}
 .wizard-title    { -fx-text-fill: -ag-text; -fx-font-size: 18px; }
-.wizard-subtitle { -fx-text-fill: -ag-text-dim;  -fx-font-size: 12px; -fx-padding: 2 0 0 0; }
+.wizard-subtitle { -fx-text-fill: -ag-text-dim;  -fx-font-size: 13px; -fx-padding: 2 0 0 0; }
 
 /* Large selectable choice cards (wallet type / seed length) */
 .type-card {
@@ -621,7 +630,7 @@
     -fx-border-color: -ag-accent;
 }
 .type-card-title { -fx-text-fill: -ag-text; -fx-font-size: 14px; }
-.type-card-desc  { -fx-text-fill: -ag-text-dim; -fx-font-size: 12px; }
+.type-card-desc  { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
 
 /* ── Toggle buttons ───────────────────────────────────────────────────────── */
 .toggle-button {
@@ -640,6 +649,8 @@
     -fx-border-color: -ag-accent;
 }
 .toggle-button:selected:hover { -fx-background-color: derive(-ag-accent, -60%); }
+/* Pressed: a lighter grey, never the near-black that a darkened red or base gave */
+.toggle-button:armed { -fx-background-color: derive(-ag-bg-raised, 25%); -fx-text-fill: -ag-text; }
 .toggle-button:disabled { -fx-opacity: 0.45; }
 
 /* ── View toggle bar (UTXOs / Transactions) ───────────────────────────────── */
@@ -756,7 +767,7 @@
 }
 .splash-caption {
     -fx-text-fill: -ag-text-faint;
-    -fx-font-size: 10px;
+    -fx-font-size: 12px;
 }
 .splash-chip {
     -fx-background-color: derive(-ag-accent, -70%);
@@ -772,7 +783,7 @@
 /* Startup steps. Pending is deliberately quiet so the eye lands on whatever is happening now. */
 .splash-step {
     -fx-text-fill: -ag-text-faint;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .splash-step-active { -fx-text-fill: -ag-text; }
 .splash-step-done   { -fx-text-fill: -ag-green; }
@@ -839,7 +850,7 @@
 }
 .menu-item .label {
     -fx-text-fill: -ag-text;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .menu-item:hover, .menu-item:focused {
     -fx-background-color: derive(-ag-accent, -65%);
@@ -879,7 +890,7 @@
 }
 .wallet-selector .list-cell {
     -fx-text-fill: -ag-text;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .wallet-selector .wallet-selector-placeholder {
     -fx-text-fill: -ag-text-faint;
@@ -939,7 +950,7 @@
     -fx-text-fill: -ag-text-dim;
     -fx-border-color: transparent;
     -fx-padding: 2 8 2 0;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .prefs-back-btn:hover {
     -fx-background-color: transparent;
@@ -951,6 +962,15 @@
 }
 
 /* ── ControlsFX ToggleSwitch: override blue from darktheme.css ──────────── */
+/* A light knob that reads on both the off (grey) and on (green) track */
+.toggle-switch .thumb {
+    -fx-background-color: -ag-text-dim;
+    -fx-background-insets: 0;
+    -fx-background-radius: 100;
+}
+.toggle-switch:hover .thumb {
+    -fx-background-color: -ag-text;
+}
 .toggle-switch .thumb-area {
     -fx-background-color: #3a3a3a;
     -fx-background-insets: 0;
@@ -969,7 +989,7 @@
 .seed-word-grid .label {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;  /* seed word numbering */
     -fx-text-fill: -ag-text-faint;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .seed-word-grid .text-field {
     -fx-background-color: -ag-bg-light;
@@ -1000,21 +1020,21 @@
     -fx-border-radius: 999;
 }
 /* No font properties here: CSS font rules re-derive the font from the inherited family
-   (Nikkyou Sans), which has none of the icon codepoints — the Glyph would render invisible.
+   (Roboto), which has none of the icon codepoints — the Glyph would render invisible.
    The Glyph's own fontSize attribute sizes the icon instead. */
 .verifier-hero-glyph { -fx-text-fill: -ag-accent-ink; }
 .verifier-hero-title { -fx-text-fill: -ag-text;   -fx-font-size: 18px;}
-.verifier-hero-sub   { -fx-text-fill: -ag-text-dim; -fx-font-size: 12px; }
+.verifier-hero-sub   { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
 
 .step-chip   { -fx-min-width: 22; -fx-alignment: CENTER; }
 .step-title  { -fx-text-fill: -ag-text; -fx-font-size: 13px;}
-.step-optional { -fx-text-fill: -ag-text-faint; -fx-font-size: 11px; -fx-font-style: italic; }
+.step-optional { -fx-text-fill: -ag-text-faint; -fx-font-size: 13px; -fx-font-style: italic; }
 
 .verify-btn { -fx-font-size: 14px; -fx-padding: 10 16 10 16; }
 
 .verifier-panel .text-area {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .verifier-result-box {
     -fx-background-color: -ag-bg-mid;
@@ -1069,7 +1089,7 @@
 }
 .tour-progress {
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .tour-step-title {
     -fx-text-fill: -ag-text;
@@ -1138,11 +1158,11 @@
 }
 #tourPopover .tour-pop-counter {
     -fx-text-fill: -ag-text-faint;
-    -fx-font-size: 11px;
+    -fx-font-size: 12px;
     -fx-font-weight: normal;
 }
 #tourPopover .button {
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
     -fx-font-weight: normal;
     -fx-padding: 6 14 6 14;
 }
@@ -1172,7 +1192,7 @@
 /* ── Diceware passphrase helper ─────────────────────────────────────────────── */
 .diceware-instruction {
     -fx-text-fill: -ag-text-dim;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 .diceware-index {
     -fx-text-fill: -ag-text-faint;
@@ -1205,7 +1225,7 @@
 /* Advisory (never blocking) warning for a weak hand-typed passphrase */
 .passphrase-weakness {
     -fx-text-fill: -ag-testnet;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 
 /* Serious "write this down or lose your funds" warning on the dice review screen */
@@ -1222,7 +1242,7 @@
 
 /* ── Reading face ─────────────────────────────────────────────────────────────
    Nikkyou Sans is a single-weight poster face: right for titles, labels and buttons, hard to read
-   as a sentence. Anything a person reads as a sentence is set in Inter instead. Add .ag-read to a
+   as a sentence. Anything a person reads as a sentence is set in Roboto instead. Add .ag-read to a
    new label that holds a sentence; the selectors below cover the ones that already exist. */
 .ag-read,
 .welcome-sub, .welcome-hint,
@@ -1233,7 +1253,7 @@
 .verifier-hero-sub, .empty-state-message,
 .dialog-pane > .content.label,
 .tooltip {
-    -fx-font-family: "Inter", "Segoe UI", "Helvetica Neue", "Arial", sans-serif;
+    -fx-font-family: "Roboto", "Segoe UI", "Helvetica Neue", "Arial", sans-serif;
 }
 .ag-read { -fx-font-size: 13px; -fx-text-fill: -ag-text-dim; }
 .ag-read.faint { -fx-font-size: 12px; -fx-text-fill: -ag-text-faint; }
@@ -1293,7 +1313,7 @@
     -fx-effect: dropshadow(gaussian, rgba(204,17,17,0.55), 7, 0.35, 0, 0);
 }
 .pipe-name    { -fx-text-fill: -ag-text; -fx-font-size: 13px; }
-.pipe-state   { -fx-text-fill: -ag-text-faint; -fx-font-size: 11px; -fx-font-family: "Inter", sans-serif; }
+.pipe-state   { -fx-text-fill: -ag-text-faint; -fx-font-size: 11px; -fx-font-family: "Roboto", sans-serif; }
 .pipe-state:live { -fx-text-fill: -ag-accent-ink; }
 .pipe-balance { -fx-text-fill: -ag-text-dim; -fx-font-size: 12px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
 .account-btn:selected .pipe-balance { -fx-text-fill: -ag-text; }
@@ -1326,7 +1346,7 @@
 .status-strip .status-label {
     -fx-text-fill: -ag-text-faint;
     -fx-font-size: 11.5px;
-    -fx-font-family: "Inter", sans-serif;
+    -fx-font-family: "Roboto", sans-serif;
     -fx-padding: 0 0 0 14;
 }
 .status-pill {
@@ -1401,7 +1421,7 @@
 /* ── Exposure dialogs ───────────────────────────────────────────────────── */
 .exposure-cell { -fx-padding: 11 0 11 0; }
 .exposure-cell.divided { -fx-border-color: -ag-border transparent transparent transparent; -fx-border-width: 1 0 0 0; }
-.exposure-who    { -fx-text-fill: -ag-text; -fx-font-size: 13px; -fx-font-family: "Inter SemiBold", "Inter", sans-serif; }
+.exposure-who    { -fx-text-fill: -ag-text; -fx-font-size: 13px; -fx-font-family: "Roboto Medium", "Roboto", sans-serif; }
 .exposure-detail { -fx-text-fill: -ag-text-faint; -fx-font-size: 10.5px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
 .exposure-key      { -fx-font-size: 10px; -fx-padding: 2 0 0 0; }
 .exposure-key.sees { -fx-text-fill: -ag-warn-ink; }
@@ -1412,7 +1432,7 @@
 .sidebar-accounts .account-btn:selected,
 .sidebar-accounts .account-btn:selected:hover { -fx-background-color: -ag-bg-light; }
 .first-run { -fx-padding: 22 24 22 24; }
-.first-run .card-link, .first-run .card-link:visited { -fx-text-fill: -ag-text-dim; -fx-font-family: "Inter", sans-serif; }
+.first-run .card-link, .first-run .card-link:visited { -fx-text-fill: -ag-text-dim; -fx-font-family: "Roboto", sans-serif; }
 
 /* ── Mix count on every coin row ────────────────────────────────────────── */
 .mix-pip {
@@ -1486,7 +1506,7 @@
 .pool-pill { -fx-background-color: derive(-ag-accent, -55%); -fx-text-fill: -ag-accent-ink; -fx-padding: 2 9 2 9; -fx-background-radius: 999; -fx-font-size: 11px; }
 .pool-pill.second { -fx-background-color: -ag-bg-raised; -fx-text-fill: #C9CAD0; }
 .your-pool-card { -fx-border-color: derive(-ag-accent, -35%); -fx-background-color: linear-gradient(to bottom, #1f1819, -ag-bg-mid); }
-.preferences-section-subtitle { -fx-font-family: "Inter", sans-serif; -fx-font-size: 13px; -fx-text-fill: -ag-text-dim; }
+.preferences-section-subtitle { -fx-font-family: "Roboto", sans-serif; -fx-font-size: 13px; -fx-text-fill: -ag-text-dim; }
 
 /* ── Dice passphrase review ─────────────────────────────────────────────── */
 .dice-card { -fx-background-color: -ag-bg; -fx-border-color: -ag-border; -fx-border-radius: -ag-radius; -fx-background-radius: -ag-radius; -fx-padding: 10 12 10 12; }
@@ -1496,7 +1516,7 @@
 .warning-title { -fx-text-fill: -ag-warn-ink; -fx-font-size: 13px; }
 .warning-title .ag-icon { -fx-text-fill: -ag-warn-ink; }
 .warning-line { -fx-text-fill: #E8D9B5; -fx-font-size: 12.5px; }
-.ack-check { -fx-text-fill: -ag-text; -fx-font-family: "Inter", sans-serif; -fx-font-size: 13px; }
+.ack-check { -fx-text-fill: -ag-text; -fx-font-family: "Roboto", sans-serif; -fx-font-size: 13px; }
 
 /* ── Network path (Settings, Server) ────────────────────────────────────── */
 .network-path {
@@ -1514,7 +1534,7 @@
 }
 .path-title { -fx-text-fill: -ag-text; -fx-font-size: 12px; }
 .path-state { -fx-text-fill: -ag-warn-ink; -fx-font-size: 11px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
-.path-fact  { -fx-text-fill: -ag-text-faint; -fx-font-size: 11.5px; -fx-font-family: "Inter", sans-serif; }
+.path-fact  { -fx-text-fill: -ag-text-faint; -fx-font-size: 11.5px; -fx-font-family: "Roboto", sans-serif; }
 .path-hop:ok .path-ring  { -fx-border-color: derive(-ag-green, -20%); }
 .path-hop:ok .path-ring .ag-icon { -fx-text-fill: -ag-green-ink; }
 .path-hop:ok .path-state { -fx-text-fill: -ag-green-ink; }
@@ -1522,7 +1542,7 @@
 
 /* ── Verification shown as the checks it ran ────────────────────────────── */
 .verify-step {
-    -fx-font-family: "Inter", sans-serif; -fx-font-size: 13px; -fx-text-fill: -ag-text-faint;
+    -fx-font-family: "Roboto", sans-serif; -fx-font-size: 13px; -fx-text-fill: -ag-text-faint;
     -fx-padding: 10 0 10 2; -fx-max-width: Infinity;
     -fx-border-color: -ag-border transparent transparent transparent; -fx-border-width: 1 0 0 0;
 }
@@ -1531,7 +1551,7 @@
 .verify-step.verifier-step-pass .ag-icon { -fx-text-fill: -ag-green-ink; }
 .verify-step.verifier-step-fail { -fx-text-fill: -ag-warn-ink; }
 .verify-step.verifier-step-fail .ag-icon { -fx-text-fill: -ag-warn-ink; }
-.warning-box .warning-body { -fx-font-family: "Inter", sans-serif; -fx-font-size: 12.5px; -fx-text-fill: #E8D9B5; }
+.warning-box .warning-body { -fx-font-family: "Roboto", sans-serif; -fx-font-size: 12.5px; -fx-text-fill: #E8D9B5; }
 
 /* ── Tx0 as a flow ──────────────────────────────────────────────────────── */
 .tx0-flow-panel { -fx-background-color: -ag-bg; -fx-border-color: -ag-border; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14 16 12 16; }
@@ -1550,3 +1570,394 @@
 .menu-item .ag-icon { -fx-text-fill: -ag-text-dim; }
 .selection-label { -fx-text-fill: -ag-text-dim; -fx-font-size: 12px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-padding: 0 12 0 0; }
 .view-toggle-bar .action-btn, .view-toggle-bar .primary-btn { -fx-padding: 7 14 7 14; }
+
+/* ── Tools → Swaps ───────────────────────────────────────────────────────── */
+.swaps-title {
+    -fx-font-size: 22px;
+    -fx-text-fill: -ag-text;
+}
+.swaps-stats .swaps-stat {
+    -fx-padding: 14 18 14 18;
+    -fx-spacing: 4;
+    -fx-border-color: transparent -ag-border transparent transparent;
+}
+.swaps-stat-label {
+    -fx-text-fill: -ag-text-dim;
+}
+.swaps-stat-value {
+    -fx-font-size: 18px;
+    -fx-text-fill: -ag-text;
+}
+.swaps-amount {
+    -fx-font-size: 20px;
+    -fx-text-fill: -ag-text;
+}
+.swaps-good { -fx-text-fill: -ag-green; }
+.swaps-bad  { -fx-text-fill: -ag-red; }
+.swaps-chart .chart-series-line {
+    -fx-stroke: -ag-red;
+    -fx-stroke-width: 2px;
+}
+.swaps-chart .chart-plot-background {
+    -fx-background-color: transparent;
+}
+.swaps-chart .chart-vertical-grid-lines {
+    -fx-stroke: transparent;
+}
+.swaps-chart .chart-horizontal-grid-lines {
+    -fx-stroke: -ag-border;
+}
+.swaps-chart .axis {
+    -fx-tick-label-fill: -ag-text-faint;
+}
+.swaps-depth .bar {
+    -fx-background-color: -ag-green;
+    -fx-background-insets: 0;
+    -fx-background-radius: 2;
+}
+.swaps-depth .track {
+    -fx-background-color: -ag-bg-raised;
+    -fx-background-radius: 2;
+}
+.swaps-step {
+    -fx-padding: 3 8 3 8;
+    -fx-background-radius: 10;
+    -fx-background-color: -ag-bg-raised;
+    -fx-text-fill: -ag-text-faint;
+}
+.swaps-step-done {
+    -fx-text-fill: -ag-green;
+}
+.swaps-step-current {
+    -fx-background-color: -ag-red;
+    -fx-text-fill: -ag-text;
+}
+.swaps-step-title {
+    -fx-font-size: 20px;
+    -fx-text-fill: -ag-text;
+}
+.swaps-step-bar .bar {
+    -fx-background-color: -ag-red;
+    -fx-background-insets: 0;
+    -fx-background-radius: 2;
+    -fx-padding: 2;
+}
+.swaps-step-bar .track {
+    -fx-background-color: -ag-bg-raised;
+    -fx-background-insets: 0;
+    -fx-background-radius: 2;
+}
+.swaps-doing {
+    -fx-font-size: 14px;
+    -fx-text-fill: -ag-text;
+}
+.swaps-offer {
+    -fx-padding: 14 16 14 16;
+    -fx-spacing: 6;
+    -fx-pref-width: 270;
+    -fx-min-width: 270;
+    -fx-max-width: 270;
+}
+.swaps-offer-best {
+    -fx-border-color: -ag-red;
+}
+.swaps-badge {
+    -fx-font-size: 12px;
+    -fx-text-fill: -ag-text;
+    -fx-background-color: -ag-accent-tint;
+    -fx-background-radius: 8;
+    -fx-padding: 2 7 2 7;
+}
+.swaps-offer-rate {
+    -fx-font-size: 18px;
+    -fx-text-fill: -ag-text;
+}
+.swaps-slow {
+    -fx-text-fill: #e0a030;
+}
+.swaps-banner {
+    -fx-background-color: -ag-bg-light;
+    -fx-border-color: -ag-red;
+    -fx-border-width: 0 0 0 3;
+    -fx-padding: 8 20 8 20;
+}
+
+/* ── Swap final review ─────────────────────────────────────────────────────────
+   Drawn in the Swaps screen instead of a dialog: amounts first, the deposit and recovery terms before
+   the breakdown, and the decision pinned below the scrolling body. Roboto for sentences, Roboto Mono
+   for amounts and addresses, Nikkyou Sans for headings only. */
+.review-pane { -fx-background-color: transparent; }
+.review-scroll, .review-scroll > .viewport { -fx-background-color: transparent; -fx-background: transparent; }
+.review-content { -fx-padding: 22; }
+.review-bar {
+    -fx-background-color: -ag-bg-mid;
+    -fx-border-color: -ag-border;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 14 22 14 22;
+}
+.review-card { -fx-padding: 16 20 16 20; }
+.review-hero { -fx-padding: 22 24 22 24; }
+.review-eyebrow { -fx-text-fill: -ag-text-dim; -fx-font-family: "Roboto Medium"; -fx-font-size: 12px; }
+.review-heading { -fx-font-family: "Nikkyou Sans"; -fx-font-size: 20px; -fx-text-fill: -ag-text; }
+.review-subheading { -fx-font-family: "Nikkyou Sans"; -fx-font-size: 16px; -fx-text-fill: -ag-text; }
+.review-body { -fx-text-fill: -ag-text-dim; -fx-font-size: 14px; }
+.review-fine { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
+.review-dim { -fx-text-fill: -ag-text-dim; }
+.review-arrow { -fx-text-fill: -ag-text-dim; -fx-font-size: 22px; }
+.review-row { -fx-padding: 8 0 8 0; -fx-border-color: -ag-border; -fx-border-width: 0 0 1 0; }
+.review-row-last { -fx-border-width: 0; }
+.review-row-total { -fx-border-color: -ag-border-strong; -fx-border-width: 1 0 0 0; }
+.review-key { -fx-text-fill: -ag-text-dim; }
+.review-value { -fx-text-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; }
+.review-row-total .review-key { -fx-text-fill: -ag-text; -fx-font-family: "Roboto Medium"; }
+.review-amount-lead { -fx-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 28px; }
+.review-amount-tail { -fx-fill: -ag-text-dim; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 28px; }
+.review-amount-unit { -fx-fill: -ag-text-dim; -fx-font-size: 15px; }
+.review-callout {
+    -fx-background-color: #241a05;
+    -fx-border-color: #6b4d08;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 12 14 12 14;
+}
+.review-callout-icon {
+    -fx-background-color: #3a2a05;
+    -fx-background-radius: 999;
+    -fx-text-fill: -ag-warn;
+    -fx-font-family: "Roboto Medium";
+    -fx-min-width: 22; -fx-pref-width: 22; -fx-max-width: 22;
+    -fx-min-height: 22; -fx-pref-height: 22; -fx-max-height: 22;
+    -fx-alignment: center;
+}
+.review-callout-title { -fx-text-fill: -ag-text; -fx-font-family: "Roboto Medium"; -fx-font-size: 14px; }
+.review-line {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 10 14 10 14;
+}
+.review-info-dot { -fx-text-fill: -ag-blue; }
+.review-chip {
+    -fx-background-color: -ag-bg-raised;
+    -fx-text-fill: -ag-text-dim;
+    -fx-background-radius: 999;
+    -fx-padding: 3 11 3 11;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 12px;
+}
+.review-chip-done { -fx-background-color: #16301a; -fx-text-fill: #7bd07f; }
+.review-chip-current { -fx-background-color: -ag-accent-faint; -fx-text-fill: #ff8a8a; }
+.review-chip-warn { -fx-background-color: #3a2a05; -fx-text-fill: -ag-warn; }
+.review-address {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+.review-address-group { -fx-text-fill: -ag-text-dim; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 14px; }
+.review-address-edge { -fx-text-fill: -ag-text; }
+.review-primary { -fx-font-size: 15px; -fx-padding: 12 24 12 24; }
+
+/* ── Swap dashboard ────────────────────────────────────────────────────────────
+   Banner: what the user must do. Milestones: named stages, never a percentage. Then the current step
+   beside the summary of the swap. Neutral marks normal progress, amber means attention, green is
+   reserved for done; red stays on primary buttons. */
+.dash-eyebrow { -fx-text-fill: -ag-text-dim; -fx-font-family: "Roboto Medium"; -fx-font-size: 12px; }
+.dash-banner {
+    -fx-background-color: -ag-bg-light;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 14 18 14 18;
+}
+.dash-banner-warn { -fx-background-color: #241a05; -fx-border-color: #6b4d08; }
+.dash-banner-good { -fx-background-color: #0f1d11; -fx-border-color: #245a29; }
+.dash-banner-title { -fx-font-family: "Nikkyou Sans"; -fx-font-size: 17px; -fx-text-fill: -ag-text; }
+.dash-banner-text { -fx-text-fill: -ag-text-dim; -fx-font-size: 14px; }
+.dash-banner-icon {
+    -fx-background-color: -ag-bg-raised;
+    -fx-background-radius: 999;
+    -fx-text-fill: -ag-text;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 16px;
+    -fx-min-width: 32; -fx-pref-width: 32; -fx-max-width: 32;
+    -fx-min-height: 32; -fx-pref-height: 32; -fx-max-height: 32;
+    -fx-alignment: center;
+}
+.dash-banner-warn .dash-banner-icon { -fx-background-color: #3a2a05; -fx-text-fill: -ag-warn; }
+.dash-banner-good .dash-banner-icon { -fx-background-color: #16301a; -fx-text-fill: #7bd07f; }
+.dash-message { -fx-text-fill: -ag-warn; -fx-font-size: 14px; }
+.dash-node {
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-border-width: 2;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 13px;
+    -fx-min-width: 32; -fx-pref-width: 32; -fx-max-width: 32;
+    -fx-min-height: 32; -fx-pref-height: 32; -fx-max-height: 32;
+    -fx-alignment: center;
+}
+.dash-node-todo { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border-strong; -fx-text-fill: -ag-text-dim; }
+.dash-node-done { -fx-background-color: -ag-green; -fx-border-color: -ag-green; -fx-text-fill: #0E0F12; }
+.dash-node-current { -fx-background-color: -ag-bg-raised; -fx-border-color: -ag-text; -fx-text-fill: -ag-text; }
+.dash-node-warn { -fx-background-color: -ag-bg-raised; -fx-border-color: -ag-warn; -fx-text-fill: -ag-warn; }
+.dash-node-stop { -fx-background-color: #3a2a05; -fx-border-color: -ag-warn; -fx-text-fill: -ag-warn; }
+.dash-line { -fx-background-color: -ag-border-strong; }
+.dash-line-done { -fx-background-color: -ag-green; }
+.dash-line-warn { -fx-background-color: #6b4d08; }
+.dash-ms-name { -fx-text-fill: -ag-text-dim; -fx-font-size: 14px; }
+.dash-ms-name-on { -fx-text-fill: -ag-text; -fx-font-size: 14px; }
+.dash-fine { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
+.dash-body { -fx-text-fill: -ag-text-dim; -fx-font-size: 14px; }
+.dash-body-text { -fx-text-fill: -ag-text; -fx-font-size: 14px; }
+.dash-doing { -fx-text-fill: -ag-text; -fx-font-size: 15px; }
+.dash-slow { -fx-text-fill: -ag-warn; -fx-font-size: 13px; }
+.dash-facts {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 12 14 12 14;
+}
+.dash-fact-key { -fx-text-fill: -ag-text-dim; }
+.dash-fact-value { -fx-text-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 13px; }
+.dash-context { -fx-border-color: -ag-border; -fx-border-width: 1 0 0 0; -fx-padding: 14 0 0 0; }
+.dash-chip-warn {
+    -fx-background-color: #3a2a05;
+    -fx-text-fill: -ag-warn;
+    -fx-background-radius: 999;
+    -fx-padding: 3 11 3 11;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 12px;
+}
+.dash-section { -fx-border-color: -ag-border; -fx-border-width: 1 0 0 0; -fx-padding: 14 0 6 0; }
+.dash-pill-good, .dash-pill-warn {
+    -fx-background-radius: 999;
+    -fx-padding: 3 11 3 11;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 12px;
+}
+.dash-pill-good { -fx-background-color: #16301a; -fx-text-fill: #7bd07f; }
+.dash-pill-warn { -fx-background-color: #3a2a05; -fx-text-fill: -ag-warn; }
+.dash-dot { -fx-background-radius: 999; }
+.dash-dot-good { -fx-background-color: -ag-green; }
+.dash-dot-warn { -fx-background-color: -ag-warn; }
+.dash-step-now { -fx-text-fill: -ag-text; -fx-font-family: "Roboto Medium"; }
+.dash-step-done { -fx-text-fill: -ag-text-dim; }
+.dash-step-todo { -fx-text-fill: -ag-text-dim; -fx-opacity: 0.7; }
+.dash-spinner { -fx-progress-color: -ag-text; }
+.dash-track { -fx-background-color: -ag-bg-raised; -fx-background-radius: 2; }
+.dash-track-fill { -fx-background-color: -ag-warn; -fx-background-radius: 2; }
+.dash-point {
+    -fx-background-color: -ag-bg-light;
+    -fx-border-color: -ag-border-strong;
+    -fx-border-width: 2;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+}
+.dash-point-on { -fx-background-color: -ag-warn; -fx-border-color: -ag-warn; }
+.dash-details > .title { -fx-background-color: -ag-bg-light; -fx-background-radius: 6; -fx-padding: 12 18 12 18; }
+.dash-details > .title > .text { -fx-fill: -ag-text; -fx-font-size: 14px; }
+.dash-details > .content { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border; -fx-border-width: 0 1 1 1; -fx-padding: 8 18 8 18; }
+
+/* ── Swap offers ───────────────────────────────────────────────────────────────
+   A comparison. Primary: the estimated XMR and what the maker may keep if cancelled. Secondary: the maker
+   and rate. Tertiary: the gaps to the best offer and to the market, one quiet line. Nothing is made
+   fainter to save room. The market rate sits in a dashed strip: a reference, not an offer. */
+.offer-divider { -fx-background-color: -ag-border; }
+.offer-field-label { -fx-text-fill: -ag-text; -fx-font-family: "Roboto Medium"; -fx-font-size: 14px; }
+.offer-address {
+    -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
+    -fx-font-size: 14px;
+    -fx-text-fill: -ag-text;
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-border-strong;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 10 12 10 12;
+}
+.offer-address:focused { -fx-border-color: -ag-blue; }
+.offer-address-bad, .offer-address-bad:focused { -fx-border-color: -ag-warn; }
+.offer-status-ok { -fx-text-fill: #7bd07f; }
+.offer-status-warn { -fx-text-fill: -ag-warn; }
+.button.offer-link {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -ag-text-dim;
+    -fx-font-family: "Roboto";
+    -fx-font-size: 13px;
+    -fx-underline: true;
+    -fx-padding: 0;
+}
+.button.offer-link:hover { -fx-background-color: transparent; -fx-text-fill: -ag-text; }
+.offer-figure-small { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 18px; -fx-text-fill: -ag-text; }
+.offer-figure-dim { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 18px; -fx-text-fill: -ag-text-dim; }
+.offer-ref {
+    -fx-border-color: -ag-border-strong;
+    -fx-border-style: dashed;
+    -fx-border-radius: 6;
+    -fx-padding: 10 14 10 14;
+}
+.offer-ref-chip {
+    -fx-border-color: -ag-border-strong;
+    -fx-border-style: dashed;
+    -fx-border-radius: 999;
+    -fx-text-fill: -ag-text-dim;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 12px;
+    -fx-padding: 2 10 2 10;
+}
+.offer-seg { -fx-background-color: -ag-bg-mid; -fx-border-color: -ag-border; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 3; }
+.toggle-button.offer-seg-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -ag-text-dim;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 13px;
+    -fx-background-radius: 6;
+    -fx-padding: 6 12 6 12;
+}
+.toggle-button.offer-seg-btn:hover { -fx-text-fill: -ag-text; -fx-background-color: transparent; }
+.toggle-button.offer-seg-btn:selected { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
+.offer-dot-info { -fx-background-color: -ag-blue; }
+.offer-head { -fx-background-color: -ag-bg-mid; -fx-border-color: -ag-border-strong; -fx-border-width: 1 0 1 0; }
+.offer-row { -fx-border-color: transparent transparent -ag-border transparent; -fx-border-width: 0 0 1 3; }
+.offer-row:hover { -fx-background-color: -ag-bg-mid; }
+.offer-row-best { -fx-border-color: transparent transparent -ag-border -ag-text; }
+.offer-amount { -fx-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 18px; }
+.offer-tick { -fx-text-fill: #7bd07f; -fx-font-family: "Roboto Medium"; }
+.offer-deduction { -fx-text-fill: -ag-text; -fx-font-size: 15px; }
+.offer-maker { -fx-text-fill: -ag-text-dim; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 14px; }
+.button.offer-review {
+    -fx-background-color: transparent;
+    -fx-border-color: -ag-border-strong;
+    -fx-text-fill: -ag-text;
+    -fx-padding: 8 14 8 14;
+}
+.button.offer-review:hover { -fx-background-color: -ag-accent; -fx-border-color: -ag-accent-dark; -fx-text-fill: #fff; }
+.button.offer-review:disabled { -fx-opacity: 0.4; }
+.button.offer-caret {
+    -fx-background-color: transparent;
+    -fx-border-color: -ag-border;
+    -fx-text-fill: -ag-text-dim;
+    -fx-padding: 8 10 8 10;
+}
+.button.offer-caret:hover { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
+.offer-chip {
+    -fx-background-color: -ag-bg-raised;
+    -fx-text-fill: -ag-text-dim;
+    -fx-background-radius: 999;
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 12px;
+    -fx-padding: 3 11 3 11;
+}
+.offer-details { -fx-background-color: -ag-bg; -fx-border-color: -ag-border; -fx-border-width: 0 0 1 0; }
+.offer-detail-value { -fx-text-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 13px; }
+
+/* ── Swap screens keep Roboto ─────────────────────────────────────────────────
+   Tools, Swaps and Settings, Swaps were designed and tested with Roboto as their text face: nearly
+   every line there is a sentence or a figure about money. They keep it; their titles opt in to
+   Nikkyou Sans by class and their buttons take it from .button above. */
+.swaps-panel, .review-pane, .dash-pane, .offers-pane { -fx-font-family: "Roboto"; -fx-font-size: 14px; }
+.pipe-connector.exit { -fx-text-fill: -ag-warn-ink; -fx-border-color: transparent; -fx-padding: 4 0 6 34; }

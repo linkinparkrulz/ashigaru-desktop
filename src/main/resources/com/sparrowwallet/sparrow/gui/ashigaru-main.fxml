@@ -94,6 +94,8 @@
                 <ToggleButton fx:id="badbankBtn"  toggleGroup="$accountToggleGroup"
                               styleClass="account-btn, side" maxWidth="Infinity" minHeight="46"
                               onAction="#onAccountSelected"/>
+                <!-- The way out of Badbank, shown when swaps are switched on -->
+                <Label fx:id="swapConnector" text="SWAP TO XMR" styleClass="pipe-connector, side, exit" visible="false" managed="false"/>
             </VBox>
 
             <!-- Spacer fills remaining height -->

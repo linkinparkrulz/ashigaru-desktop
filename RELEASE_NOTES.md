@@ -1,3 +1,81 @@
+# Unreleased: swaps
+
+The swap screens are reworked so that the important facts are easier to read and harder to
+misunderstand, and the interface typeface changes across the whole app.
+
+## Swaps
+
+- **The swap engine is eigenwallet 5.0.2.** Makers are moving to version 5, which changed the swap
+  protocol: both sides must run it, so a version 4 engine could not swap with them. Ashigaru now
+  can, and offers from makers still on version 4 are left out and counted in the "not shown" line.
+  Version 5 makes a taker prove, while the swap is set up, that it controls the coin. Ashigaru
+  therefore asks for your wallet password **once, when you press Review offer**, signs that proof and
+  the lock together, and wipes the keys as soon as the lock is signed (or after 15 minutes if the
+  swap fails first). Nothing is published until you approve the final terms, which is asked
+  separately. Other protocol changes you will notice: the cancel timelock is 30 blocks (about 5
+  hours instead of 4), and the final approval now closes after about 90 seconds instead of 3
+  minutes, shown as a countdown. A swap that was still being set up when Ashigaru closed is
+  abandoned safely, with nothing locked. Finish or refund any swap started on the previous version
+  before updating.
+- **A Bitcoin server on your own network works with swaps.** The swap engine used to reach every
+  Electrum server through Tor, and Tor refuses private addresses, so a Dojo or Electrum server at
+  192.168.x.x, on this computer or at a `.local` name could never publish the swap's lock: the swap
+  stopped right after you approved. Such a server is now reached directly (nothing leaves your own
+  network); any other server still goes through Tor only. Starting a swap now also checks that the
+  engine can reach the Bitcoin server, as it already did for the Monero nodes, and says so before
+  anything is asked of you if it cannot.
+- **A swap that stopped while publishing the lock no longer says your BTC is locked.** The engine
+  saves the signed lock before trying to publish it, so after a failure it cannot say whether the lock
+  got out. The dashboard, the notice above the offers and the stop message now say exactly that, point
+  you to Badbank (if the coin is still there, nothing was locked), and do not show a Cancel and refund
+  that cannot open.
+- **Bug reports say what the swap engine is doing.** If the engine cannot be loaded (for example on a Mac
+  older than the build supports), the reason is now written to the swap engine's log, so the Logs
+  screen shows the Swap engine source and the saved report carries it. The report's header also says
+  whether swaps are on, whether the engine loaded and running, and what the Swaps screen reports,
+  with the home folder shortened to `~`.
+- **The final review is a proper screen.** The approval is a panel in the Swaps screen instead of a
+  dialog. It leads with what you send and receive (the XMR to twelve decimals), the destination
+  address, and the maker's anti-spam deposit in its own callout, then the recovery terms, with the
+  fee breakdown and the full address below. Approve and Reject stay in view under the scrolling body,
+  and the real approval deadline shows as a countdown. If the Swaps screen is not showing when the
+  request arrives, or you leave it, the same decision is asked in a dialog, with only the time that is
+  left.
+- **A dashboard replaces the progress card.** It says where your funds are, whether you need to do
+  anything, whether you can close Ashigaru, what happens if the swap stalls and when recovery
+  opens. Five named stages (Review and authorize, Lock BTC, Verify the maker's XMR, Claim XMR,
+  Complete) replace the percentage bar, which read as nearly finished during waits of unknown
+  length. Protocol steps and identifiers are in a collapsed section, and a finished swap shows a
+  receipt.
+- **Recovery says what actually happens.** A running swap is cancelled and refunded by Ashigaru
+  itself once the timelock allows; you only need to keep Ashigaru running. Only a swap that is not
+  running, after its cancel timelock has expired, has a Cancel and refund button, and before that
+  the button is shown disabled with when it opens. The countdown is worked out from the engine's
+  timelock events, and every time is shown as "about". Refunds are stated as estimates ("up to",
+  minus network fees).
+- **Offers are a comparison.** A table led by the estimated XMR for your coin and what the maker may
+  keep if the swap is cancelled, then the maker and rate, with the gaps to the best offer and to
+  the market in one quiet line. Sorting is explicit. The market rate is a reference, apart from
+  the offers. Take is now Review offer, with the reason shown while it is unavailable, and with no
+  coin chosen there is a button to Choose coin from Badbank. The receiving address has a
+  permanent label and a live check.
+- **Unfinished swaps come first.** A swap that holds your BTC and is not running is shown above the
+  offers with a way to its recovery screen. After a restart, a swap is placed from the engine's own
+  record, and the amounts, address and maker are kept with it, so its recovery screen still says what
+  is at stake.
+- **Consistent wording.** The offer card, the approval, the progress text and the quit prompt used
+  to describe refunds in different ways. They now share one account.
+
+## Window and typography
+
+- **The interface typeface is Roboto**, at 14 pixels for anything you need to understand and 13 for
+  supporting detail. Nikkyou Sans is kept for titles and key headings, and Roboto Mono for
+  amounts, addresses and transaction ids. Labels smaller than 13 pixels were raised, apart from small
+  uppercase headings.
+- **The window starts at 1280 pixels wide and cannot be made narrower than 1200**, both capped at
+  your screen. Swaps sits beside two menus, and the offers table needs room to be read. On a
+  smaller screen the table folds the maker and rate under the amount.
+
 # Ashigaru Desktop 1.5.2
 
 *Unreleased*
