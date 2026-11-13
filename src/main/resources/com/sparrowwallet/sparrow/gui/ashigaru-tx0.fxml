@@ -4,6 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
+<?import com.sparrowwallet.sparrow.gui.Tx0Flow?>
 
 <!--
   Tx0 dialog — loaded as a DialogPane.
@@ -12,7 +13,7 @@
 <DialogPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.sparrowwallet.sparrow.gui.AshigaruTx0Controller"
-            prefWidth="520" prefHeight="480"
+            prefWidth="930" prefHeight="520"
             stylesheets="@ashigaru.css, @../darktheme.css"
             styleClass="tx0-pane">
 
@@ -23,10 +24,13 @@
 
     <content>
         <StackPane>
-        <VBox fx:id="formBox" spacing="14">
+        <VBox fx:id="formBox">
             <padding><Insets top="16" right="20" bottom="8" left="20"/></padding>
+            <!-- The figures on the left, and where they go on the right -->
+            <HBox spacing="22">
+            <VBox spacing="14" minWidth="470" prefWidth="470">
 
-            <Label text="WHIRLPOOL TRANSACTION ZERO" styleClass="section-title"/>
+            <Label text="PREPARE COINS FOR MIXING" styleClass="section-title"/>
             <Separator/>
 
             <!-- Fee rate -->
@@ -96,6 +100,13 @@
                 <Label fx:id="totalFeesValue" text="—"
                        GridPane.rowIndex="5" GridPane.columnIndex="1" styleClass="field-value total-value"/>
             </GridPane>
+            </VBox>
+            <VBox styleClass="tx0-flow-panel" spacing="6">
+                <Label text="WHERE THE COINS GO" styleClass="hero-caption"/>
+                <Tx0Flow fx:id="flow"/>
+                <Label text="Ribbon width follows value. Small amounts are enlarged to stay legible." styleClass="ag-read, faint" wrapText="true" maxWidth="370"/>
+            </VBox>
+            </HBox>
         </VBox>
 
         <!-- Broadcast animation overlay (shown after Broadcast is clicked) -->

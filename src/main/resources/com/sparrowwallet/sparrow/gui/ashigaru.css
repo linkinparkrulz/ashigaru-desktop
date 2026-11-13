@@ -1532,3 +1532,14 @@
 .verify-step.verifier-step-fail { -fx-text-fill: -ag-warn-ink; }
 .verify-step.verifier-step-fail .ag-icon { -fx-text-fill: -ag-warn-ink; }
 .warning-box .warning-body { -fx-font-family: "Inter", sans-serif; -fx-font-size: 12.5px; -fx-text-fill: #E8D9B5; }
+
+/* ── Tx0 as a flow ──────────────────────────────────────────────────────── */
+.tx0-flow-panel { -fx-background-color: -ag-bg; -fx-border-color: -ag-border; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14 16 12 16; }
+
+/* ── Whirlpool rings view ───────────────────────────────────────────────── */
+.whirlpool-card { -fx-background-color: -ag-bg-mid; -fx-border-color: -ag-border; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14 16 14 16; }
+.whirlpool-track { -fx-background-color: -ag-bg; -fx-background-radius: 999; -fx-min-height: 6; -fx-max-height: 6; }
+.whirlpool-bar { -fx-min-height: 6; -fx-max-height: 6; -fx-background-radius: 999; -fx-background-color: #C9CAD0; }
+.whirlpool-bar.waiting { -fx-background-color: -ag-text-faint; }
+.whirlpool-bar.private { -fx-background-color: -ag-green; }
+.whirlpool-note { -fx-padding: 4 4 0 4; }

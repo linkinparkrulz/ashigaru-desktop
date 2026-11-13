@@ -76,6 +76,7 @@ public class AshigaruTx0Controller implements Initializable {
     private String walletId;
     private WalletForm walletForm;
     private List<UtxoEntry> utxoEntries;
+    @FXML private Tx0Flow flow;
 
     private Tx0Previews tx0Previews;
     private Pool selectedPool;           // chosen pool to broadcast
@@ -245,6 +246,7 @@ public class AshigaruTx0Controller implements Initializable {
     }
 
     private void setPreviewCalculating() {
+        flow.clear("Calculating\u2026");
         premixOutputsValue.setText("Calculating...");
         amountToWhirlpoolValue.setText("Calculating...");
         unmixedChangeValue.setText("Calculating...");
@@ -277,6 +279,11 @@ public class AshigaruTx0Controller implements Initializable {
         unmixedChangeValue.setText(fmt.tableFormatBtcValue(preview.getChangeValue()) + " BTC");
         minerFeeValue.setText(fmt.tableFormatBtcValue(minerFee) + " BTC");
         totalFeesValue.setText(fmt.tableFormatBtcValue(minerFee + poolFeeAmt) + " BTC");
+
+        //Same figures as the grid, so the two agree: premix outputs at the pool denomination, and
+        //the miner fee as the Tx0's own fee plus each premix output's reserve for its first mix.
+        long totalIn = utxoEntries.stream().mapToLong(Entry::getValue).sum();
+        flow.show(totalIn, preview.getNbPremix(), pool.getDenomination(), preview.getChangeValue(), poolFeeAmt, minerFee);
 
         selectedPool = pool;
         broadcastBtn.setDisable(false);

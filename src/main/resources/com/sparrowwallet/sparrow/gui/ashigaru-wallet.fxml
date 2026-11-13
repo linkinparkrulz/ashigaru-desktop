@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import com.sparrowwallet.sparrow.gui.WhirlpoolView?>
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
@@ -84,6 +85,8 @@
         <padding><Insets top="8" right="20" bottom="8" left="20"/></padding>
         <ToggleButton minWidth="-Infinity" fx:id="utxoViewBtn"  text="UTXOs"        onAction="#onViewToggle" styleClass="view-toggle-btn" selected="true"/>
         <ToggleButton minWidth="-Infinity" fx:id="txnViewBtn"   text="Transactions" onAction="#onViewToggle" styleClass="view-toggle-btn"/>
+        <ToggleButton minWidth="-Infinity" fx:id="whirlpoolViewBtn" text="Whirlpool" onAction="#onViewToggle" styleClass="view-toggle-btn"
+                      visible="false" managed="false"/>
         <Region HBox.hgrow="ALWAYS"/>
         <Button minWidth="-Infinity" fx:id="selectAllUtxosBtn" text="Select all" onAction="#onSelectAllUtxos"
                 styleClass="action-btn" visible="false" managed="false"/>
@@ -143,6 +146,9 @@
             <Label text="No transactions" styleClass="table-placeholder"/>
         </placeholder>
     </ListView>
+
+    <!-- Whirlpool view: every Premix and Postmix coin on the ring of its mix count (hidden by default) -->
+    <WhirlpoolView fx:id="whirlpoolView" VBox.vgrow="ALWAYS" visible="false" managed="false"/>
 
     <Separator/>
 

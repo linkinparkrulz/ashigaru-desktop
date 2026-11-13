@@ -1,5 +1,6 @@
 package com.sparrowwallet.sparrow.gui;
 
+import com.sparrowwallet.drongo.wallet.MixConfig;
 import com.google.common.eventbus.Subscribe;
 import com.samourai.whirlpool.client.mix.listener.MixFailReason;
 import com.samourai.whirlpool.client.mix.listener.MixStep;
@@ -61,6 +62,8 @@ public class AshigaruWalletController implements Initializable {
     @FXML private ListView<TxnRow> txnTable;
     @FXML private HBox mixButtonBox;
     @FXML private Label accountSubLabel;
+    @FXML private ToggleButton whirlpoolViewBtn;
+    @FXML private WhirlpoolView whirlpoolView;
     @FXML private Label heroEyebrow;
     @FXML private Label privacyTotalLabel;
     @FXML private Label privacyPercentLabel;
@@ -107,6 +110,7 @@ public class AshigaruWalletController implements Initializable {
         ToggleGroup viewGroup = new ToggleGroup();
         utxoViewBtn.setToggleGroup(viewGroup);
         txnViewBtn.setToggleGroup(viewGroup);
+        whirlpoolViewBtn.setToggleGroup(viewGroup);
         // Prevent deselecting both
         viewGroup.selectedToggleProperty().addListener((obs, old, neu) -> {
             if (neu == null) old.setSelected(true);
@@ -319,6 +323,18 @@ public class AshigaruWalletController implements Initializable {
         bindWhirlpoolState(wallet);
         configureMixButtons(wallet);
         AshigaruGui.get().getMainController().refreshPipeline();
+
+        //The rings need Premix and Postmix to exist, so the tab appears once the wallet has them
+        boolean hasWhirlpool = currentWalletForm != null && currentWalletForm.getNestedWalletForms().stream()
+                .anyMatch(f -> f.getWallet().getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX);
+        whirlpoolViewBtn.setVisible(hasWhirlpool);
+        whirlpoolViewBtn.setManaged(hasWhirlpool);
+        if (!hasWhirlpool && whirlpoolViewBtn.isSelected()) {
+            utxoViewBtn.setSelected(true);
+            onViewToggle();
+        } else if (whirlpoolView.isVisible()) {
+            refreshWhirlpoolView();
+        }
     }
 
     // Rebinds the mix button's start/stop/mixing listener to the given wallet's Whirlpool
@@ -561,14 +577,46 @@ public class AshigaruWalletController implements Initializable {
     @FXML
     private void onViewToggle() {
         boolean showUtxos = utxoViewBtn.isSelected();
+        boolean showRings = whirlpoolViewBtn.isSelected();
+        boolean showTxns = !showUtxos && !showRings;
         utxoTable.setVisible(showUtxos);
         utxoTable.setManaged(showUtxos);
-        txnTable.setVisible(!showUtxos);
-        txnTable.setManaged(!showUtxos);
-        if (!showUtxos) {
+        txnTable.setVisible(showTxns);
+        txnTable.setManaged(showTxns);
+        whirlpoolView.setVisible(showRings);
+        whirlpoolView.setManaged(showRings);
+        if (showTxns) {
             refreshTransactionTable();
         }
+        if (showRings) {
+            refreshWhirlpoolView();
+        }
         updateActionButtons();
+    }
+
+    /** Gathers every Premix and Postmix coin of the open wallet with its mix count for the rings. */
+    private void refreshWhirlpoolView() {
+        if (currentWalletForm == null) return;
+        List<WhirlpoolView.Coin> coins = new ArrayList<>();
+        for (WalletForm nested : currentWalletForm.getNestedWalletForms()) {
+            StandardAccount type = nested.getWallet().getStandardAccountType();
+            if (type != StandardAccount.WHIRLPOOL_PREMIX && type != StandardAccount.WHIRLPOOL_POSTMIX) continue;
+            WalletUtxosEntry entry = nested.getWalletUtxosEntry();
+            if (entry.getChildren() == null) continue;
+            for (Entry child : entry.getChildren()) {
+                if (!(child instanceof UtxoEntry utxo)) continue;
+                UtxoEntry.MixStatus status = utxo.getMixStatus();
+                int mixes = status == null || type == StandardAccount.WHIRLPOOL_PREMIX ? 0 : status.getMixesDone();
+                boolean active = status != null && status.getMixProgress() != null;
+                coins.add(new WhirlpoolView.Coin(mixes, active));
+            }
+        }
+        int minMixes = Whirlpool.DEFAULT_MIXTO_MIN_MIXES;
+        MixConfig mixConfig = currentWalletForm.getWallet().getMixConfig();
+        if (mixConfig != null && mixConfig.getMinMixes() != null) {
+            minMixes = mixConfig.getMinMixes();
+        }
+        whirlpoolView.show(coins, minMixes);
     }
 
     @FXML
