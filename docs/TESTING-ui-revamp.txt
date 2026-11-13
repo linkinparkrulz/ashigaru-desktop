@@ -1,0 +1,363 @@
+====================================================================
+ ASHIGARU DESKTOP - UI REVAMP TESTING CHECKLIST
+ Branch: claude/funny-cannon-itky0u
+====================================================================
+
+HOW TO USE
+  - Get the branch and run it (JDK 21):
+        git fetch origin claude/funny-cannon-itky0u
+        git checkout claude/funny-cannon-itky0u
+        ./gradlew run
+  - Sections 1-6 need no funds. A throwaway wallet is enough.
+  - Sections 7-10 need a funded wallet and a live coordinator. Use
+    testnet with a throwaway data directory where you can:
+        ./gradlew run --args="--network testnet --dir /tmp/ashigaru-test"
+  - Mark each item [x] pass / [!] fail (add a note and a screenshot).
+  - Items marked (UNSEEN) were built without ever being run against
+    real data. Look hardest at those.
+  - Every section ends with "anything odd?". Clipped text, a control
+    that does nothing, a wrong colour: write it down even if it is not
+    on the list.
+
+WHAT THE REVAMP IS FOR
+  Each screen should answer one of four questions better than before:
+    Privacy   How private is my bitcoin?
+    Path      Where does it go next?
+    Exposure  Who can see what I do?
+    Proof     Can I check it myself?
+  If a screen leaves you unable to answer its question, that is a
+  finding, even when nothing is broken.
+
+
+--------------------------------------------------------------------
+ 0. BUILD & LAUNCH
+--------------------------------------------------------------------
+  [ ] ./gradlew run builds cleanly.
+  [ ] Splash shows three steps (Tor, server, wallets) that change as
+      startup progresses.
+  [ ] Main window opens. No header band across the top, no status bar
+      across the bottom.
+  [ ] Wallets that were open last time reopen.
+  [ ] (UNSEEN) Make Tor fail to start (for example, block it with a
+      firewall). The splash shows "Retry Tor" and "Open without
+      waiting". Retry restarts Tor; Open without waiting opens the
+      main window straight away.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 1. TYPE, COLOUR, ICONS  (look for these everywhere)
+--------------------------------------------------------------------
+  [ ] Titles, labels and buttons are in the poster face. Sentences
+      (warnings, help text, wizard copy) are in a plain reading face.
+      Note any sentence still set in all-caps poster type.
+  [ ] Small grey captions are readable on both the dark canvas and on
+      cards.
+  [ ] Red appears only on the brand, the selected item and the one
+      button that moves you forward. Offline, errors and warnings are
+      amber. Private, verified and connected are green. Note any red
+      that means "something is wrong".
+  [ ] Icons are drawn icons, not text symbols or empty boxes. Check
+      buttons, both menus (wallet menu, connection menu) and tabs.
+  [ ] Open any dialog: the main window behind it dims. Close it: the
+      window is lit again. Try several dialogs in a row.
+  [ ] Menus and tooltips do NOT dim the window.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 2. SIDEBAR  (Path)
+--------------------------------------------------------------------
+  No wallet open:
+  [ ] Sidebar shows the wallet dropdown, "Open Wallet" and
+      "New / Restore". No accounts list.
+
+  Wallet open:
+  [ ] "Open Wallet" and "New / Restore" buttons are gone. A "..."
+      button sits beside the wallet dropdown.
+  [ ] The "..." menu holds: View seed words, Export labels, Import
+      labels, Lock wallet (only for wallets with a password or
+      passphrase), Open another wallet, New / restore, Delete wallet.
+      Each one works.
+  [ ] Accounts are drawn as a line: Deposit, TX0, Premix, MIX,
+      Postmix, then Badbank hanging off under "TX0 CHANGE".
+  [ ] Each account shows its balance and UTXO count ("Empty" when it
+      has none). Numbers match the account's own screen.
+  [ ] Clicking an account opens it; the selected one has a red node
+      and a red bar on the left.
+  [ ] Balances update after a receive, a Tx0 and a mix, without
+      switching accounts.
+  [ ] (UNSEEN) While mixing, Premix reads "N UTXOs · mixing" in red.
+  [ ] Narrow and shorten the window: the sidebar scrolls, nothing is
+      cut off.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 3. STATUS STRIP AND CONNECTION  (Exposure)
+--------------------------------------------------------------------
+  [ ] Top left shows where you are: "WALLET / ACCOUNT", "TOOLS" or
+      "SETTINGS".
+  [ ] Status messages (Ready, Syncing...) appear beside it.
+  [ ] Top right shows pills: connection, server name (only when
+      connected), block height, network.
+  [ ] Connection pill reads "Connecting...", then "Tor · connected"
+      (green outline). Offline reads "Offline" in amber, never red.
+  [ ] Click the pill in EVERY state (offline, connecting, connected).
+      A menu opens each time with: New Tor identity, Restart Tor,
+      Connect or Disconnect, Who learns what.
+  [ ] Connect / Disconnect works and the pill follows.
+  [ ] New Tor identity and Restart Tor work, and are greyed out when
+      they cannot apply.
+  [ ] "Who learns what" opens a sheet with five rows: internet
+      provider, server, Whirlpool coordinator, GitHub, explorer links.
+  [ ] The server row shows YOUR server's name. With a private Electrum
+      server it reads "Your own server".
+  [ ] The GitHub row changes when you turn the update check on or off
+      in Settings, Update.
+  [ ] READ THE SHEET CRITICALLY. Is every "Sees" and "Not" line true?
+      This wording has not been reviewed by a protocol expert.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 4. WALLET SCREEN, EMPTY  (Privacy, Path)
+--------------------------------------------------------------------
+  [ ] Header shows the account name large, with one sentence saying
+      what the account is for. The sentence differs for Deposit,
+      Premix, Postmix and Badbank.
+  [ ] The balance is the largest thing on the screen, with UTXO count
+      and pending amount under it.
+  [ ] "Wallet privacy" panel on the right: a ring, a percentage, and
+      four rows (Private, Mixing, Unmixed, Badbank). All zero on an
+      empty wallet.
+  [ ] Empty Deposit shows "Your first mix, in three steps" with three
+      cards. "Receive funds" opens Receive. "Take the guided tour"
+      starts the tour.
+  [ ] Empty Premix, Postmix and Badbank show "No coins in ... yet",
+      not the three cards.
+  [ ] Tabs: UTXOs and Transactions. A third tab, Whirlpool, appears
+      only for wallets that have a Postmix account (hot wallets, not
+      watch-only).
+  [ ] Shrink the window width: the header and tab row scroll sideways
+      rather than clipping button labels.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 5. CREATING, LOCKING AND DELETING A WALLET  (Proof)
+--------------------------------------------------------------------
+  Dice passphrase:
+  [ ] New / Restore, Hot wallet, generate a seed, "Yes, I have dice".
+      Roll and enter six words.
+  [ ] Review screen shows one card per word with five dice faces. The
+      dice match what you entered, in order. A one is a red disc.
+  [ ] The passphrase line and master fingerprint are shown as before.
+  [ ] The warning is an amber box with three short sentences, not one
+      all-caps paragraph.
+  [ ] "Create Wallet" is disabled until you tick "I have written down
+      the passphrase and the fingerprint". Untick: disabled again.
+  [ ] "Add another" adds a seventh word and its dice card.
+  [ ] Reopen the wallet with the passphrase you wrote down. The
+      fingerprint matches.
+
+  Other paths (should be unchanged apart from type and colour):
+  [ ] "No, I don't have dice" and the typed-passphrase screen.
+  [ ] Restore from an existing seed, with and without a passphrase.
+  [ ] Watch-only import from a zpub.
+
+  Seed words:
+  [ ] "..." menu, View seed words. Words open BLURRED with a "Hold to
+      reveal" button.
+  [ ] Press and hold with the mouse: words are readable. Release:
+      blurred again.
+  [ ] Tab to the button and hold Space: same behaviour.
+  [ ] On a passphrase wallet, the passphrase prompt still comes first.
+
+  Lock:
+  [ ] "..." menu, Lock wallet. A confirmation says the wallet closes
+      and that mixing stops while it is locked.
+  [ ] Cancel leaves the wallet open. Lock wallet closes it; it
+      reappears in the dropdown and asks for its password or
+      passphrase.
+
+  Delete (use a throwaway wallet):
+  [ ] "..." menu, Delete wallet. First dialog asks you to type the
+      wallet name. Continue is disabled until the name matches
+      exactly.
+  [ ] The existing password or passphrase step follows, as before.
+  [ ] Neither Continue nor Delete is a filled red button.
+  [ ] Wrong password or passphrase: wallet is NOT deleted.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 6. TOOLS AND SETTINGS  (Exposure, Proof)
+--------------------------------------------------------------------
+  Layout:
+  [ ] Tools and Settings show their sections as tabs across the top.
+      There is no second sidebar.
+  [ ] Each tab opens its page. Back returns to the wallet you had
+      open.
+
+  Settings, General:
+  [ ] Every option shows its explanation as a line under the row.
+      There are no "?" hover icons left on this page.
+  [ ] Fee rates source, Block explorer and Am I Exposed each say which
+      outside service they reach. The last two say the links open in
+      your browser, outside Tor.
+  [ ] Every control still saves its value.
+
+  Settings, Server:
+  [ ] The page opens with four hops: You, Tor, server, Bitcoin.
+  [ ] Each hop shows a state. Connected hops have a green ring.
+  [ ] Disconnect, reconnect, restart Tor: the hops follow without
+      reopening the page.
+  [ ] The server hop reads "Public server" or "Your server" to match
+      the type selected.
+  [ ] The Bitcoin hop shows the current block height once connected.
+  [ ] The public-server warning is readable sentences, not all-caps.
+  [ ] Test Connection, Edit, Restart Tor and the form below still
+      behave as before.
+
+  Settings, Update:
+  [ ] (UNSEEN) Check now, then Download and verify. The four
+      verification lines each get a green tick as they pass.
+  [ ] (UNSEEN) If you can produce a failing download, the failed line
+      turns amber with a cross and later lines stay grey.
+
+  Tools, Verifier:
+  [ ] (UNSEEN) "Use release signing code", paste a real release
+      signature block, Parse, Verify. Result lists four checks with
+      the notification address and the recovered signer address.
+  [ ] (UNSEEN) Change one character of the message and verify again.
+      The last check reads "The two addresses differ" in amber.
+
+  Tools, Statistics:
+  [ ] Chart lines and legend are red and light grey (no orange or
+      yellow). Pool pills in "Recent Tx0 transactions" use the same
+      two colours.
+  [ ] With no Postmix coins, the first tile is "Total BTC in pools".
+  [ ] (UNSEEN) With Postmix coins, a "YOUR POOL" tile appears first,
+      showing coins unspent in that pool and how many are yours.
+      Check the count against your Postmix UTXO list.
+
+  Tools, Logs and Guided tour:
+  [ ] Logs page works as before.
+  [ ] Start the guided tour with a wallet open and click Next through
+      every step. Each popover points at a real, visible control. Note
+      the step number of any that points at nothing.
+  [ ] Run it again with NO wallet open. It should cover Open Wallet
+      and New / Restore, then continue once a wallet is opened.
+  [ ] Anything odd?
+
+
+====================================================================
+ SECTIONS 7-10 NEED A FUNDED WALLET
+====================================================================
+
+--------------------------------------------------------------------
+ 7. RECEIVE AND TRANSACTIONS  (Path, Exposure)
+--------------------------------------------------------------------
+  [ ] Receive shows a strip (Deposit, Premix, Postmix) with Deposit
+      lit, and a sentence saying coins arrive unmixed. The sentence is
+      not clipped.
+  [ ] Address, derivation path, status, QR and Next address work as
+      before.
+  [ ] After a receive: the sidebar balance, the big balance and the
+      privacy ring all update. The ring shows the amount as Unmixed
+      (grey).
+  [ ] Select coins on Deposit. "N selected · amount BTC" appears
+      beside "Preview Tx0". The amount is the sum of what you ticked.
+      "Select all" becomes "Clear selection".
+  [ ] Transactions tab: each row with explorer / exposure links shows
+      an amber "OUTSIDE TOR" tag.
+  [ ] (UNSEEN) Click "explorer". A "Leaving Tor" dialog names the site
+      and shows the link. "Copy link" is the red default and puts the
+      link on the clipboard. "Open anyway" opens the browser. Closing
+      the dialog does neither.
+  [ ] (UNSEEN) Same for "exposure", and for the links in Tools,
+      Statistics.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 8. TX0  (Path)
+--------------------------------------------------------------------
+  [ ] (UNSEEN) Select Deposit coins, Preview Tx0. The dialog is wide:
+      figures on the left, "Where the coins go" on the right.
+  [ ] (UNSEEN) The picture shows the input on the left and up to four
+      ribbons on the right: To Premix (red), Change to Badbank
+      (amber), Anti-Sybil fee, Miner fee (grey).
+  [ ] (UNSEEN) Every number in the picture matches the figure beside
+      it in the grid. Premix count times pool size equals "Amount to
+      Whirlpool".
+  [ ] (UNSEEN) Change the pool: the picture redraws. While it is
+      working it reads "Calculating...".
+  [ ] (UNSEEN) Labels do not overlap, including when the change is
+      tiny or zero.
+  [ ] Broadcast still works and shows the signing / broadcasting /
+      complete steps.
+  [ ] After the Tx0: Deposit drops, Premix and Badbank rise in the
+      sidebar, and the ring gains a red (Mixing) and amber (Badbank)
+      segment.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 9. MIXING  (Privacy)
+--------------------------------------------------------------------
+  Coin rows:
+  [ ] (UNSEEN) Premix and Postmix rows show four dots beside the mix
+      badge. Filled dots equal the coin's mix count (up to four).
+  [ ] (UNSEEN) Dots turn green once a coin reaches the wallet's Mix To
+      minimum (3 by default). Change the minimum in Mix To and check
+      the colour follows.
+  [ ] Deposit and Badbank rows show no dots.
+
+  Whirlpool tab:
+  [ ] (UNSEEN) Every Premix and Postmix coin appears as a dot on a
+      ring. Count the dots: it matches "N coins" in the side panel and
+      your UTXO lists.
+  [ ] (UNSEEN) Premix coins sit on the outer dashed ring (0). Coins at
+      or past the minimum sit on the green inner ring.
+  [ ] (UNSEEN) Coins in a round are red with a dashed line to the
+      centre, and "Live round" says how many.
+  [ ] (UNSEEN) "Mixes completed" bars match the ring counts.
+  [ ] (UNSEEN) After a mix completes, the coin moves inward one ring.
+  [ ] The rings turn slowly and smoothly. Leave the tab open for ten
+      minutes and watch CPU use; it should stay low. Switch to another
+      tab and it should drop further.
+  [ ] Resize the window: the rings stay round and centred.
+  [ ] Start Mixing / Stop Mixing and Mix To still work from the bottom
+      bar.
+
+  Privacy ring:
+  [ ] (UNSEEN) The percentage equals Postmix divided by the whole
+      wallet. The four legend amounts match the four sidebar balances.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 10. BADBANK AND MIX TO  (Privacy, Path)
+--------------------------------------------------------------------
+  [ ] Badbank shows an amber bar explaining that the coins are Tx0
+      change tied to your deposit, and what to do with them. Is the
+      advice right?
+  [ ] (UNSEEN) Mix To shows a strip: Postmix, "3 MIXES", destination.
+      With no destination it reads "NO DESTINATION" in grey.
+  [ ] (UNSEEN) Pick a destination wallet: its name appears in green
+      and the lines turn red. Change the minimum: the middle label
+      follows.
+  [ ] Apply and Cancel behave as before.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ KNOWN GAPS  (not bugs, do not report)
+--------------------------------------------------------------------
+  - The selection summary shows count and total only. It does not yet
+    say which pool the selection fits.
+  - On Linux without a compositor, menus may show a pale halo.
+  - Statistics decides "your pool" from Postmix coin value (0.025 or
+    0.25 BTC).
