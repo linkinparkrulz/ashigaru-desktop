@@ -916,6 +916,14 @@ public class AppServices {
         if(!stylesheets.contains(ashigaruCss)) {
             stylesheets.add(ashigaruCss);
         }
+        //Popups need a transparent margin for their shadow. Where the desktop cannot give them one it
+        //shows as a white frame around every menu, so those desktops get an opaque variant.
+        if(!javafx.application.Platform.isSupported(javafx.application.ConditionalFeature.TRANSPARENT_WINDOW)) {
+            String opaqueCss = AppServices.class.getResource("gui/opaque-popups.css").toExternalForm();
+            if(!stylesheets.contains(opaqueCss)) {
+                stylesheets.add(opaqueCss);
+            }
+        }
     }
 
     public static Window getActiveWindow() {

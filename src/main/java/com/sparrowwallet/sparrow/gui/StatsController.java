@@ -153,7 +153,7 @@ public class StatsController implements Initializable {
         task.setOnFailed(e -> Platform.runLater(() -> {
             Throwable ex = task.getException();
             log.error("Failed to fetch whirlpool stats", ex);
-            statusLabel.setText("Could not fetch stats: " + (ex == null ? "unknown error" : ex.getMessage()));
+            statusLabel.setText("Could not fetch statistics: " + (ex == null ? "unknown error" : ex.getMessage()));
             refreshBtn.setDisable(false);
         }));
 
@@ -178,7 +178,7 @@ public class StatsController implements Initializable {
             lastUpdatedLabel.setText("—");
         }
         nextUpdateLabel.setText(data.nextUpdateSeconds > 0
-                ? "Next update ~" + formatDuration(data.nextUpdateSeconds)
+                ? "next in about " + formatDuration(data.nextUpdateSeconds)
                 : "—");
 
         renderPoolCard(data, "0.025_BTC_Pool", pool025SizeBadge, pool025EnteredLabel, pool025CyclesLabel, pool025Tx0CountLabel);
@@ -210,9 +210,7 @@ public class StatsController implements Initializable {
         boolean has = small + large > 0;
         yourPoolCard.setVisible(has);
         yourPoolCard.setManaged(has);
-        totalCard.getStyleClass().remove("primary");
         if(!has) {
-            totalCard.getStyleClass().add("primary");
             return;
         }
         boolean smallPool = small >= large;

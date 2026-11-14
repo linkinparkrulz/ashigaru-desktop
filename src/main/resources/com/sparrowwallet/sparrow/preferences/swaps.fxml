@@ -19,8 +19,15 @@
 
     <VBox GridPane.columnIndex="0" GridPane.rowIndex="0" spacing="6">
         <Label text="Swaps" styleClass="preferences-section-title" />
-        <Label text="Swap Badbank coins for XMR with eigenwallet makers, through Ashigaru's Tor only. Experimental: mainnet, small amounts, and keep Ashigaru open until a swap finishes."
+        <Label text="Swap Badbank coins for XMR with eigenwallet makers, through Ashigaru's Tor only."
                wrapText="true" minHeight="-Infinity" styleClass="preferences-section-subtitle" />
+        <!-- What "experimental" means here, said once and where it cannot be missed -->
+        <VBox styleClass="warning-box" spacing="5" maxWidth="Infinity">
+            <VBox.margin><Insets top="10"/></VBox.margin>
+            <Label text="Experimental" styleClass="warning-title" />
+            <Label text="Swaps run on mainnet with real funds. Start with small amounts, and keep Ashigaru open until a swap finishes."
+                   wrapText="true" minHeight="-Infinity" styleClass="warning-body" />
+        </VBox>
     </VBox>
 
     <Form GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="preferences-form">
@@ -28,7 +35,10 @@
             <Field text="Enable swaps:">
                 <VBox spacing="6">
                 <UnlabeledToggleSwitch fx:id="swapsEnabled" />
-                <Label text="Adds Swap to XMR to every wallet's Badbank account and Swaps to Tools. A swap locks one Badbank coin in a shared output with a market maker; if the swap does not complete, it can be cancelled after about 5 hours and the BTC refunded to Badbank, which must be claimed within about 24 hours. Some makers keep part of a refund as an anti-spam deposit; Ashigaru shows this before you approve." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                <Label text="Adds Swap to XMR to every wallet's Badbank account, and Swaps to Tools." styleClass="ag-read, faint" wrapText="true" maxWidth="560" minHeight="-Infinity"/>
+                <Label text="A swap locks one Badbank coin in a shared output with a market maker." styleClass="ag-read, faint" wrapText="true" maxWidth="560" minHeight="-Infinity"/>
+                <Label text="If the swap does not complete, it can be cancelled after about 5 hours and the BTC refunded to Badbank. The refund must be claimed within about 24 hours." styleClass="ag-read, faint" wrapText="true" maxWidth="560" minHeight="-Infinity"/>
+                <Label text="Some makers keep part of a refund as an anti-spam deposit. Ashigaru shows this before you approve." styleClass="ag-read, faint" wrapText="true" maxWidth="560" minHeight="-Infinity"/>
                 </VBox>
             </Field>
             <Field text="Status:">
@@ -40,7 +50,7 @@
             </Field>
         </Fieldset>
         <Fieldset inputGrow="SOMETIMES" text="Monero nodes" styleClass="wideLabelFieldSet">
-            <Label wrapText="true" minHeight="-Infinity" styleClass="card-faint"
+            <Label wrapText="true" minHeight="-Infinity" styleClass="ag-read, faint" maxWidth="760"
                    text="A swap only releases your BTC once the maker's XMR is seen locked, so the nodes that report it are trusted with the swap. Public nodes are used together: tick at least two, and every one must see the lock. A node you add yourself is your own, and trusted on its own." />
             <VBox fx:id="nodeList" spacing="8">
                 <padding><Insets top="10" bottom="6"/></padding>
@@ -50,7 +60,7 @@
                 <Button minWidth="-Infinity" fx:id="addNodeBtn" text="Add your node" onAction="#onAddNode" styleClass="secondary-btn" />
                 <Button minWidth="-Infinity" fx:id="checkNodesBtn" text="Check nodes" onAction="#onCheckNodes" styleClass="secondary-btn" />
             </HBox>
-            <Label fx:id="nodeMessage" wrapText="true" minHeight="-Infinity" styleClass="card-faint" visible="false" managed="false" />
+            <Label fx:id="nodeMessage" wrapText="true" minHeight="-Infinity" styleClass="ag-read, faint" visible="false" managed="false" />
         </Fieldset>
     </Form>
 </GridPane>

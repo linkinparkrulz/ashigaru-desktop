@@ -90,7 +90,8 @@ public class SwapsPreferencesController extends PreferencesDetailController {
         nodeBoxes.add(box);
 
         Label addressLabel = new Label(address);
-        addressLabel.getStyleClass().add("card-faint");
+        addressLabel.getStyleClass().add("node-address");
+        box.getStyleClass().add("node-check");
         addressLabel.setMinWidth(0);
         HBox.setHgrow(addressLabel, Priority.ALWAYS);
         Label result = new Label();

@@ -22,7 +22,7 @@
                 styleClass="primary-btn" visible="false" managed="false"/>
         <Button minWidth="-Infinity" fx:id="swapBtn" text="Swap to XMR" onAction="#onSwap"
                 styleClass="primary-btn" visible="false" managed="false"/>
-        <Button minWidth="-Infinity" fx:id="refreshBtn" onAction="#onRefresh" styleClass="action-btn, refresh-btn, icon-btn">
+        <Button minWidth="-Infinity" fx:id="refreshBtn" text="Refresh" onAction="#onRefresh" styleClass="action-btn, refresh-btn">
             <tooltip><Tooltip text="Refresh"/></tooltip>
         </Button>
     </HBox>
@@ -100,6 +100,8 @@
         <Label fx:id="selectionLabel" styleClass="selection-label" minWidth="-Infinity" visible="false" managed="false"/>
         <Button minWidth="-Infinity" fx:id="selectAllUtxosBtn" text="Select all" onAction="#onSelectAllUtxos"
                 styleClass="action-btn" visible="false" managed="false"/>
+        <Button minWidth="-Infinity" fx:id="tx0SelectedBtn" text="New Tx0" onAction="#onTx0Selected"
+                styleClass="action-btn" visible="false" managed="false" disable="true"/>
         <Button minWidth="-Infinity" fx:id="mixSelectedBtn" text="Preview Tx0" onAction="#onMixSelected"
                 styleClass="primary-btn mix-btn" visible="false" managed="false"/>
     </HBox>

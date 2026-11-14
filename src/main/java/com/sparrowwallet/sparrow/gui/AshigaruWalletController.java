@@ -68,6 +68,7 @@ public class AshigaruWalletController implements Initializable {
     @FXML private HBox mixButtonBox;
     @FXML private Label accountSubLabel;
     @FXML private Label selectionLabel;
+    @FXML private Button tx0SelectedBtn;
     @FXML private ToggleButton whirlpoolViewBtn;
     @FXML private WhirlpoolView whirlpoolView;
     @FXML private Label heroEyebrow;
@@ -148,7 +149,7 @@ public class AshigaruWalletController implements Initializable {
         }
         Icons.set(receiveBtn, FontAwesome5.Glyph.ARROW_DOWN);
         Icons.set(swapBtn, FontAwesome5.Glyph.EXCHANGE_ALT);
-        refreshBtn.setGraphic(Icons.of(FontAwesome5.Glyph.SYNC_ALT));
+        Icons.set(refreshBtn, FontAwesome5.Glyph.SYNC_ALT);
         badbankIcon.setGraphic(Icons.of(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13));
         coordinatorIcon.setGraphic(Icons.of(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13));
 
@@ -161,9 +162,9 @@ public class AshigaruWalletController implements Initializable {
         donut.show(privacy);
         privacyPercentLabel.setText(Math.round(privacy.privateShare() * 100) + "%");
         privacyTotalLabel.setText(fmt.formatBtcValue(privacy.total()) + " BTC");
-        legendValues[0].setText(fmt.formatBtcValue(privacy.postmix().sats()));
+        legendValues[0].setText(fmt.formatBtcValue(privacy.privateSats()));
         legendValues[1].setText(fmt.formatBtcValue(privacy.premix().sats()));
-        legendValues[2].setText(fmt.formatBtcValue(privacy.deposit().sats()));
+        legendValues[2].setText(fmt.formatBtcValue(privacy.unmixedSats()));
         legendValues[3].setText(fmt.formatBtcValue(privacy.badbank().sats()));
     }
 
@@ -349,9 +350,8 @@ public class AshigaruWalletController implements Initializable {
         configureMixButtons(wallet);
         AshigaruGui.get().getMainController().refreshPipeline();
 
-        //The rings need Premix and Postmix to exist, so the tab appears once the wallet has them
-        boolean hasWhirlpool = currentWalletForm != null && currentWalletForm.getNestedWalletForms().stream()
-                .anyMatch(f -> f.getWallet().getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX);
+        //...and it belongs to the two accounts whose coins it draws, Premix and Postmix
+        boolean hasWhirlpool = wallet.isWhirlpoolMixWallet();
         whirlpoolViewBtn.setVisible(hasWhirlpool);
         whirlpoolViewBtn.setManaged(hasWhirlpool);
         if (!hasWhirlpool && whirlpoolViewBtn.isSelected()) {
@@ -499,6 +499,8 @@ public class AshigaruWalletController implements Initializable {
         mixToBtn.setVisible(false);
         mixSelectedBtn.setVisible(false);
         mixSelectedBtn.setManaged(false);
+        tx0SelectedBtn.setVisible(false);
+        tx0SelectedBtn.setManaged(false);
         mixButtonBox.setVisible(false);
 
         if (wallet.isWhirlpoolMixWallet()) {
@@ -515,7 +517,12 @@ public class AshigaruWalletController implements Initializable {
                 mixToBtn.setVisible(true);
                 mixSelectedBtn.setVisible(true);
                 mixSelectedBtn.setManaged(true);
+                mixSelectedBtn.setText("Remix selected");
                 mixSelectedBtn.setDisable(true);
+                //Postmix offers both things a selection can mean: send mixed coins round again, or
+                //start a new mix from whatever is ticked (spend change, or a move to another pool)
+                tx0SelectedBtn.setVisible(true);
+                tx0SelectedBtn.setManaged(true);
                 updateMixToButton();
             }
         } else if (WhirlpoolServices.canWalletMix(wallet)) {
@@ -551,7 +558,24 @@ public class AshigaruWalletController implements Initializable {
     }
 
     private void updateMixSelectedButton() {
-        mixSelectedBtn.setDisable(utxoRows.stream().noneMatch(r -> r.selected.get()));
+        List<UtxoRow> selected = utxoRows.stream().filter(r -> r.selected.get()).toList();
+        boolean none = selected.isEmpty();
+        boolean postmix = activeAccountForm != null
+                && activeAccountForm.getWallet().getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX;
+        if (!postmix) {
+            mixSelectedBtn.setDisable(none);
+            mixSelectedBtn.setTooltip(null);
+            return;
+        }
+        //Only mixed coins can go round again. Change left from a spend needs a new Tx0 instead.
+        boolean allMixed = selected.stream().allMatch(r -> r.utxoEntry != null
+                && WalletPrivacy.isMixedCoin(activeAccountForm.getWallet(), r.utxoEntry.getNode()));
+        mixSelectedBtn.setDisable(none || !allMixed);
+        mixSelectedBtn.setTooltip(new Tooltip(none ? "Tick mixed coins to queue them for another mix."
+                : allMixed ? "Queue the ticked coins for another mix. Remixing is free."
+                : "The selection includes change, which cannot be remixed. Use New Tx0 for it."));
+        tx0SelectedBtn.setDisable(none);
+        tx0SelectedBtn.setTooltip(new Tooltip("Start a new mix from the ticked coins: a Tx0 splits them into fresh premix outputs."));
     }
 
     private void updateSelectAllButton() {
@@ -582,6 +606,9 @@ public class AshigaruWalletController implements Initializable {
         //Selection summary: how many coins and how much, beside Preview Tx0
         long count = utxoRows.stream().filter(r -> r.selected.get()).count();
         boolean show = utxosVisible && count > 0 && mixSelectedBtn.isManaged();
+        //One filled red button at a time: with coins ticked the next step is the mix, not Receive
+        receiveBtn.getStyleClass().removeAll("primary-btn", "action-btn");
+        receiveBtn.getStyleClass().add(show ? "action-btn" : "primary-btn");
         selectionLabel.setVisible(show);
         selectionLabel.setManaged(show);
         if (show) {
@@ -679,6 +706,9 @@ public class AshigaruWalletController implements Initializable {
             if (entry.getChildren() == null) continue;
             for (Entry child : entry.getChildren()) {
                 if (!(child instanceof UtxoEntry utxo)) continue;
+                //Only coins that can be registered for a mix orbit: Premix outputs and mixed Postmix
+                //coins. Change left in Postmix after a spend is not one of them.
+                if (type == StandardAccount.WHIRLPOOL_POSTMIX && !WalletPrivacy.isMixedCoin(nested.getWallet(), utxo.getNode())) continue;
                 UtxoEntry.MixStatus status = utxo.getMixStatus();
                 int mixes = status == null || type == StandardAccount.WHIRLPOOL_PREMIX ? 0 : status.getMixesDone();
                 boolean active = status != null && status.getMixProgress() != null;
@@ -755,6 +785,16 @@ public class AshigaruWalletController implements Initializable {
 
     @FXML
     private void onMixSelected() {
+        mixSelected(false);
+    }
+
+    /** Postmix only: a new Tx0 from the ticked coins, where Remix selected sends them round again. */
+    @FXML
+    private void onTx0Selected() {
+        mixSelected(true);
+    }
+
+    private void mixSelected(boolean forceTx0) {
         if (activeAccountForm == null) return;
         List<UtxoEntry> selectedEntries = utxoRows.stream()
                 .filter(r -> r.selected.get())
@@ -779,7 +819,7 @@ public class AshigaruWalletController implements Initializable {
         }
 
         Wallet activeWallet = activeAccountForm.getWallet();
-        if (activeWallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX) {
+        if (!forceTx0 && activeWallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX) {
             Whirlpool wp = AppServices.getWhirlpoolServices().getWhirlpool(activeAccountForm.getMasterWalletId());
             if (wp == null) {
                 AppServices.showErrorDialog("Mix error", "Whirlpool service not available for this wallet");
@@ -882,7 +922,7 @@ public class AshigaruWalletController implements Initializable {
             activeAccountSyncing = true;
             Platform.runLater(() -> {
                 refreshBtn.setDisable(true);
-                refreshBtn.setText("⟳  Syncing…");
+                refreshBtn.setText("Syncing\u2026");
                 setSyncingBarVisible(true);
                 // Disable mixing while syncing so a click can't be silently swallowed.
                 mixSelectedBtn.setDisable(true);
@@ -897,7 +937,7 @@ public class AshigaruWalletController implements Initializable {
             activeAccountSyncing = false;
             Platform.runLater(() -> {
                 refreshBtn.setDisable(false);
-                refreshBtn.setText("⟳  Refresh");
+                refreshBtn.setText("Refresh");
                 setSyncingBarVisible(false);
                 startMixBtn.setDisable(false);
                 // Re-enable Mix Selected based on the current selection.

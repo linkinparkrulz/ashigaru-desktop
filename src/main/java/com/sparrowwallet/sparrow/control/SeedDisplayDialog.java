@@ -46,11 +46,16 @@ public class SeedDisplayDialog extends Dialog<Void> {
         anchorPane.setEffect(blur);
         Button reveal = new Button("Hold to reveal");
         reveal.getStyleClass().add("action-btn");
+        //While hidden the words are also disabled, so Tab cannot walk through fields nobody can
+        //see and the keyboard stays on the reveal button, where holding Space shows them.
+        anchorPane.setDisable(true);
         reveal.armedProperty().addListener((obs, was, armed) -> {
             anchorPane.setEffect(armed ? null : blur);
+            anchorPane.setDisable(!armed);
             reveal.setOpacity(armed ? 0 : 1);
         });
         stackPane.getChildren().add(reveal);
+        Platform.runLater(reveal::requestFocus);
 
         final ButtonType cancelButtonType = new javafx.scene.control.ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
         dialogPane.getButtonTypes().addAll(cancelButtonType);

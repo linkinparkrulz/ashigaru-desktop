@@ -1961,3 +1961,69 @@
    Nikkyou Sans by class and their buttons take it from .button above. */
 .swaps-panel, .review-pane, .dash-pane, .offers-pane { -fx-font-family: "Roboto"; -fx-font-size: 14px; }
 .pipe-connector.exit { -fx-text-fill: -ag-warn-ink; -fx-border-color: transparent; -fx-padding: 4 0 6 34; }
+
+/* ── Tester round 1 ─────────────────────────────────────────────────────────── */
+/* Menu items are sentences ("View seed words…"), and they open from controls set in mono. The
+   poster face beside those read as a third voice, so menus take the reading face. */
+.menu-item .label { -fx-font-family: "Roboto", sans-serif; -fx-font-size: 13px; }
+.menu-item { -fx-padding: 7 18 7 14; }
+
+/* Coin checkboxes: a visible box on the dark row, filled red when ticked */
+.utxo-list .check-box > .box {
+    -fx-background-color: -ag-bg;
+    -fx-border-color: -ag-text-faint;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+    -fx-padding: 4;
+}
+.utxo-list .check-box:hover > .box { -fx-border-color: -ag-text; }
+.utxo-list .check-box:selected > .box { -fx-background-color: -ag-accent; -fx-border-color: -ag-accent; }
+.utxo-list .check-box:selected > .box > .mark { -fx-background-color: -ag-on-accent; }
+.utxo-list .check-box:focused > .box { -fx-border-color: -ag-accent-ink; }
+
+/* Change left in Postmix after a spend: not a mixed coin, and says so */
+.mix-badge.change { -fx-background-color: derive(-ag-warn, -78%); }
+.mix-badge.change .mix-badge-text { -fx-text-fill: -ag-warn-ink; }
+.wallet-avatar { -fx-background-color: -ag-bg; -fx-background-radius: 5; -fx-border-color: -ag-border; -fx-border-radius: 5; }
+.wallet-fingerprint { -fx-text-fill: -ag-text-faint; -fx-font-size: 11px; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-padding: 0 0 0 2; }
+.menu-item .label.ag-icon { -fx-font-family: "Font Awesome 5 Free Solid"; -fx-font-size: 12px; }
+
+/* ── Tools pages: a page header, not a red banner ───────────────────────────
+   Each tool opened on a red-gradient banner with an icon in a red ring. Red is the brand and the
+   next step, not decoration, and the tab already names the page. The header is now the same as an
+   account's: a large title and one sentence. */
+.verifier-hero {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0 0 2 0;
+}
+.verifier-hero-title { -fx-font-size: 25px; }
+.verifier-hero-sub   { -fx-font-family: "Roboto", sans-serif; -fx-font-size: 13px; -fx-text-fill: -ag-text-dim; }
+.verifier-panel .secondary-btn { -fx-background-color: -ag-bg-light; -fx-text-fill: -ag-text; }
+.verifier-panel .step-title { -fx-font-size: 12px; -fx-text-fill: -ag-text; }
+.verifier-panel .check-box { -fx-font-family: "Roboto", sans-serif; -fx-text-fill: -ag-text-dim; }
+.verifier-panel .field-label { -fx-font-family: "Roboto", sans-serif; }
+
+/* Statistics: one row of cards, the "as of" detail on one quiet line */
+.stats-status { -fx-text-fill: -ag-warn-ink; }
+.stats-meta .label, .stats-meta-line {
+    -fx-text-fill: -ag-text-faint; -fx-font-size: 11.5px;
+    -fx-font-family: 'Roboto Mono', "Monospaced", monospace;
+}
+.verifier-panel .card-value { -fx-font-size: 18px; -fx-font-weight: normal; }
+.verifier-panel .card-faint { -fx-font-size: 10.5px; }
+.verifier-panel .card-secondary { -fx-font-size: 11.5px; -fx-text-fill: -ag-text-dim; }
+.stats-chart .axis { -fx-tick-label-font-family: 'Roboto Mono'; -fx-tick-label-font-size: 10px; -fx-tick-label-fill: -ag-text-faint; }
+.stats-chart .axis-label { -fx-font-family: "Roboto", sans-serif; -fx-font-size: 11.5px; -fx-text-fill: -ag-text-faint; }
+.stats-chart .chart-legend { -fx-background-color: transparent; }
+.stats-chart .chart-legend-item { -fx-font-family: "Roboto", sans-serif; -fx-text-fill: -ag-text-dim; }
+.stats-chart .chart-plot-background { -fx-background-color: -ag-bg; }
+.label.stats-status { -fx-text-fill: -ag-warn-ink; }
+
+/* Settings, Swaps: node names read as names, addresses as data */
+.node-check { -fx-font-family: "Roboto Medium", "Roboto", sans-serif; -fx-font-size: 13px; -fx-text-fill: -ag-text; -fx-min-width: 150; }
+.node-address { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 11.5px; -fx-text-fill: -ag-text-faint; }
+.preferences-detail .check-box > .box { -fx-background-color: -ag-bg; -fx-border-color: -ag-text-faint; -fx-border-width: 1.5; -fx-border-radius: 3; -fx-background-radius: 3; }
+.preferences-detail .check-box:selected > .box { -fx-background-color: -ag-accent; -fx-border-color: -ag-accent; }
+.preferences-detail .check-box:selected > .box > .mark { -fx-background-color: -ag-on-accent; }

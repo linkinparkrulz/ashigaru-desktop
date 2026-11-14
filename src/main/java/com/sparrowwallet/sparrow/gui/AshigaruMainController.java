@@ -83,6 +83,48 @@ public class AshigaruMainController implements Initializable {
     @FXML private Button settingsBtn;
     @FXML private Label crumbLabel;
     @FXML private Label swapConnector;
+    @FXML private StackPane walletAvatar;
+    @FXML private Label walletFingerprint;
+
+    /**
+     * Shows who the open wallet is beside its name: the master fingerprint, and a picture of it.
+     * The picture is the wallet's PayNym avatar only when PayNyms are switched on, because fetching
+     * one asks paynym.rs about this wallet's payment code. Otherwise it is drawn on this machine
+     * from the fingerprint, which asks nobody.
+     */
+    private void showWalletIdentity(Wallet wallet) {
+        boolean show = wallet != null && !wallet.getKeystores().isEmpty();
+        walletAvatar.setVisible(show);
+        walletAvatar.setManaged(show);
+        walletFingerprint.setVisible(show);
+        walletFingerprint.setManaged(show);
+        walletAvatar.getChildren().clear();
+        if(!show) {
+            return;
+        }
+        String fingerprint = wallet.getKeystores().get(0).getKeyDerivation().getMasterFingerprint();
+        //A watch-only wallet imported from a bare key has no fingerprint to show
+        boolean known = fingerprint != null && !fingerprint.isEmpty() && !fingerprint.equals("00000000");
+        walletFingerprint.setText(known ? "Fingerprint " + fingerprint : "Watch-only");
+        try {
+            if(Config.get().isUsePayNym() && wallet.hasPaymentCode()) {
+                com.sparrowwallet.sparrow.control.PayNymAvatar avatar = new com.sparrowwallet.sparrow.control.PayNymAvatar();
+                avatar.setPrefSize(30, 30);
+                avatar.setPaymentCode(wallet.getPaymentCode());
+                walletAvatar.getChildren().add(avatar);
+                Tooltip.install(walletAvatar, new Tooltip("This wallet's PayNym"));
+                return;
+            }
+        } catch(Exception e) {
+            log.debug("Could not show PayNym avatar", e);
+        }
+        if(fingerprint != null && !fingerprint.isEmpty()) {
+            com.sparrowwallet.sparrow.control.LifeHashIcon icon = new com.sparrowwallet.sparrow.control.LifeHashIcon();
+            icon.setHex(fingerprint);
+            walletAvatar.getChildren().add(icon);
+            Tooltip.install(walletAvatar, new Tooltip("Drawn from this wallet's master fingerprint, " + fingerprint));
+        }
+    }
     @FXML private Label serverLabel;
     @FXML private ToggleGroup accountToggleGroup;
     @FXML private ToggleButton depositBtn;
@@ -208,6 +250,10 @@ public class AshigaruMainController implements Initializable {
             WalletPrivacy.Account totals = privacy.get(account);
             row.balance().setText(fmt.formatBtcValue(totals.sats()));
             String utxos = totals.utxos() == 0 ? "Empty" : totals.utxos() + (totals.utxos() == 1 ? " UTXO" : " UTXOs");
+            if(account == StandardAccount.WHIRLPOOL_POSTMIX && privacy.postmixChange().utxos() > 0) {
+                //Spend change sits in Postmix without being mixed; say how the account splits
+                utxos = privacy.privateUtxos() + " mixed \u00b7 " + privacy.postmixChange().utxos() + " change";
+            }
             boolean live = mixing && account == StandardAccount.WHIRLPOOL_PREMIX && totals.utxos() > 0;
             row.state().setText(live ? utxos + " \u00b7 mixing" : utxos);
             row.state().pseudoClassStateChanged(LIVE, live);
@@ -254,6 +300,7 @@ public class AshigaruMainController implements Initializable {
         contentPane.setCenter(welcomePane);
         walletMenuBtn.setVisible(false);
         walletMenuBtn.setManaged(false);
+        showWalletIdentity(null);
         noWalletBox.setVisible(true);
         noWalletBox.setManaged(true);
         crumbLabel.setText("ASHIGARU");
@@ -275,6 +322,7 @@ public class AshigaruMainController implements Initializable {
         accountButtonsBox.setManaged(true);
         walletMenuBtn.setVisible(true);
         walletMenuBtn.setManaged(true);
+        showWalletIdentity(walletForm.getWallet());
         noWalletBox.setVisible(false);
         noWalletBox.setManaged(false);
 

@@ -18,12 +18,9 @@
             <!-- Hero -->
             <HBox spacing="16" alignment="CENTER_LEFT" styleClass="verifier-hero">
                 <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
-                <StackPane styleClass="verifier-hero-icon">
-                    <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="22" icon="QUESTION_CIRCLE" styleClass="verifier-hero-glyph"/>
-                </StackPane>
                 <VBox spacing="3" HBox.hgrow="ALWAYS">
                     <Label text="Guided Tour" styleClass="verifier-hero-title"/>
-                    <Label minHeight="-Infinity" text="A quick walkthrough of Ashigaru — wallets, accounts, receiving funds and CoinJoin mixing."
+                    <Label minHeight="-Infinity" text="A quick walkthrough of Ashigaru: wallets, accounts, receiving funds and mixing."
                            wrapText="true" styleClass="verifier-hero-sub"/>
                 </VBox>
             </HBox>

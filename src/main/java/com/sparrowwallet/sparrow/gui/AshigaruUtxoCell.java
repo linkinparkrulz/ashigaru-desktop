@@ -1,5 +1,6 @@
 package com.sparrowwallet.sparrow.gui;
 
+import com.sparrowwallet.drongo.wallet.StandardAccount;
 import com.sparrowwallet.drongo.wallet.MixConfig;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
@@ -163,6 +164,20 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
         }
         badgeBox.setVisible(true);
         badgeBox.setManaged(true);
+
+        //Change left in Postmix after a spend is not a mixed coin. The wallet's default reports
+        //"1 mix" for anything in Postmix, which is wrong for it: show what it is instead.
+        Wallet account = row.utxoEntry.getWallet();
+        if (account.getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX
+                && !WalletPrivacy.isMixedCoin(account, row.utxoEntry.getNode())) {
+            badgeBox.getStyleClass().removeAll("active", "done");
+            badgeBox.getStyleClass().add("change");
+            badgeIcon.setVisible(false);
+            badgeIcon.setManaged(false);
+            badgeText.setText("Change \u00b7 not mixed");
+            return;
+        }
+        badgeBox.getStyleClass().remove("change");
 
         UtxoEntry.MixStatus mixStatus = row.utxoEntry.getMixStatus();
         boolean mixing = mixStatus != null

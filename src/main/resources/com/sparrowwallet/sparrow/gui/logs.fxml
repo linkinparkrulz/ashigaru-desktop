@@ -16,12 +16,9 @@
     <!-- Hero -->
     <HBox spacing="16" alignment="CENTER_LEFT" styleClass="verifier-hero">
         <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
-        <StackPane styleClass="verifier-hero-icon">
-            <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="22" icon="FILE_ALT" styleClass="verifier-hero-glyph"/>
-        </StackPane>
         <VBox spacing="3" HBox.hgrow="ALWAYS">
-            <Label text="Application Logs" styleClass="verifier-hero-title"/>
-            <Label minHeight="-Infinity" text="Recent activity from ashigaru.log. Addresses, keys and wallet names are redacted — copy or save this when reporting a problem to the developers."
+            <Label text="Logs" styleClass="verifier-hero-title"/>
+            <Label minHeight="-Infinity" text="Recent activity from ashigaru.log. Addresses, keys and wallet names are redacted, so it is safe to copy or save when reporting a problem."
                    wrapText="true" styleClass="verifier-hero-sub"/>
         </VBox>
     </HBox>
@@ -54,7 +51,7 @@
     <Label fx:id="warningLabel" visible="false" managed="false" wrapText="true" minHeight="-Infinity" styleClass="field-label"
            text="Raw mode is on: this log may contain your addresses, extended public keys and wallet names. Review it before sharing."/>
 
-    <Label fx:id="statusLabel" visible="false" managed="false" wrapText="true" minHeight="-Infinity" styleClass="field-label"/>
+    <Label fx:id="statusLabel" visible="false" managed="false" wrapText="true" minHeight="-Infinity" styleClass="stats-meta-line"/>
 
     <TextArea fx:id="logArea" editable="false" wrapText="false" styleClass="mono-area" VBox.vgrow="ALWAYS" minHeight="320"/>
 </VBox>

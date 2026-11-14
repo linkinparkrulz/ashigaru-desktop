@@ -41,6 +41,10 @@
             <VBox styleClass="sidebar-wallet-section" spacing="8">
                 <padding><Insets top="12" right="14" bottom="14" left="14"/></padding>
                 <HBox spacing="6" alignment="CENTER_LEFT">
+                    <!-- The open wallet's face: its PayNym avatar when PayNyms are in use, otherwise a
+                         picture drawn locally from its master fingerprint. The controller fills it. -->
+                    <StackPane fx:id="walletAvatar" styleClass="wallet-avatar" minWidth="30" minHeight="30" maxWidth="30" maxHeight="30"
+                               visible="false" managed="false"/>
                     <ComboBox fx:id="walletSelector" styleClass="wallet-selector" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
                     <!-- Every wallet-scoped action lives here, so the sidebar's one filled button
                          is never "New / Restore" while a wallet is open, and Delete is never a
@@ -60,6 +64,7 @@
                         </items>
                     </MenuButton>
                 </HBox>
+                <Label fx:id="walletFingerprint" styleClass="wallet-fingerprint" visible="false" managed="false"/>
                 <!-- Shown only while no wallet is selected -->
                 <VBox fx:id="noWalletBox" spacing="8">
                     <Button fx:id="openWalletBtn" text="Open Wallet…" onAction="#onOpenWallet"

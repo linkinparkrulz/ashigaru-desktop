@@ -1,0 +1,8 @@
+/* Loaded only where the desktop cannot draw transparent windows (X11 without a compositor, some
+   remote sessions). Menus, tooltips and the tour popover are popup windows with a transparent
+   margin for their drop shadow; without transparency that margin shows as a white frame. Here the
+   margin is painted in the app's canvas colour and the shadows that needed it are dropped. */
+.root.popup { -fx-background-color: #0E0F12; }
+.context-menu { -fx-effect: null; }
+.tooltip { -fx-effect: null; }
+.popover > .border { -fx-effect: null; }

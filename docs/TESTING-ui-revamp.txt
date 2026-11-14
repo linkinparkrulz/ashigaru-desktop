@@ -395,6 +395,75 @@ WHAT THE REVAMP IS FOR
   [ ] Anything odd?
 
 
+====================================================================
+ ROUND 2: RETEST AFTER THE FIRST PASS OF FEEDBACK
+====================================================================
+  Each item below answers a finding from round 1. Pull the branch
+  again before testing.
+
+  Menus and popups:
+  [ ] No white border around the "..." wallet menu, the connection
+      menu or the guided tour popovers.
+  [ ] Menu items are in the plain reading face, sentence case, with
+      drawn icons (no empty boxes).
+
+  Wallet selector:
+  [ ] A small picture sits left of the wallet dropdown and the master
+      fingerprint is shown under it. A watch-only wallet imported from
+      a bare key reads "Watch-only".
+  [ ] The picture is drawn locally from the fingerprint. It is the
+      wallet's PayNym avatar only if PayNyms are switched on, because
+      fetching one asks paynym.rs about your payment code.
+
+  Wallet screen:
+  [ ] Refresh is a labelled button with an icon, not an icon and
+      three dots. It reads "Syncing..." while a sync runs.
+  [ ] Coin checkboxes are clearly visible, and red when ticked.
+  [ ] On Deposit, Receive is red until you tick a coin. With coins
+      ticked, Preview Tx0 is the red button and Receive is outlined.
+  [ ] The Whirlpool tab appears on Premix and Postmix only.
+
+  Postmix change (needs a Postmix account holding spend change):
+  [ ] (UNSEEN) A change coin's badge reads "Change · not mixed" in
+      amber. It has no mix dots and no "1 mix".
+  [ ] (UNSEEN) Change is not counted as Private: the ring and the
+      Private figure cover mixed coins only, and change is added to
+      Unmixed.
+  [ ] (UNSEEN) The sidebar reads "N mixed · M change" under Postmix.
+  [ ] (UNSEEN) Change coins do not appear on the Whirlpool rings, and
+      the coin count there excludes them.
+
+  Postmix actions:
+  [ ] (UNSEEN) Postmix has two buttons: "Remix selected" and
+      "New Tx0".
+  [ ] (UNSEEN) Remix selected is enabled only when every ticked coin
+      is a mixed coin. Its tooltip explains why when it is not.
+  [ ] (UNSEEN) New Tx0 opens the Tx0 dialog for the ticked coins,
+      mixed or change, and the Tx0 broadcasts.
+  [ ] (UNSEEN) Remix selected still queues coins for remix as before.
+
+  Seed words:
+  [ ] The reveal button has keyboard focus when the dialog opens.
+      Holding Space shows the words; releasing hides them.
+  [ ] Tab does not move through the hidden word fields.
+
+  Tools:
+  [ ] Each Tools page opens with a large title and one sentence. No
+      red banner, no icon in a red ring.
+  [ ] Statistics shows one row of cards, with "Updated ... Blocks ..."
+      on a single small line above them. Error and loading messages
+      are amber sentences, not all-caps.
+  [ ] Chart axis labels and legend are in the reading face.
+  [ ] Logs: the "Showing the last N lines" line is small mono text.
+
+  Settings, Swaps:
+  [ ] An amber "Experimental" box sits under the page title.
+  [ ] The Enable swaps explanation is four short lines.
+  [ ] Monero node names are in the reading face and their addresses
+      in mono, lower case. The paragraph above them is sentences.
+  [ ] Anything odd?
+
+
 --------------------------------------------------------------------
  KNOWN GAPS  (not bugs, do not report)
 --------------------------------------------------------------------

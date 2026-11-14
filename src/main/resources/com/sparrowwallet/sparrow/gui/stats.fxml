@@ -20,19 +20,29 @@
             <!-- Hero -->
             <HBox spacing="16" alignment="CENTER_LEFT" styleClass="verifier-hero">
                 <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
-                <StackPane styleClass="verifier-hero-icon">
-                    <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="22" icon="CHART_BAR" styleClass="verifier-hero-glyph"/>
-                </StackPane>
                 <VBox spacing="3" HBox.hgrow="ALWAYS">
-                    <Label text="Whirlpool Statistics" styleClass="verifier-hero-title"/>
-                    <Label minHeight="-Infinity" text="Live pool sizes and mixing activity from whirlpoolstats.xyz."
+                    <Label text="Statistics" styleClass="verifier-hero-title"/>
+                    <Label minHeight="-Infinity" text="The crowd your coins mix with, from whirlpoolstats.xyz."
                            wrapText="true" styleClass="verifier-hero-sub"/>
                 </VBox>
                 <Button minWidth="-Infinity" fx:id="refreshBtn" text="Refresh" onAction="#onRefresh" styleClass="secondary-btn"/>
             </HBox>
 
             <!-- Loading / error status -->
-            <Label minHeight="-Infinity" fx:id="statusLabel" visible="false" managed="false" wrapText="true" styleClass="field-label"/>
+            <Label minHeight="-Infinity" fx:id="statusLabel" visible="false" managed="false" wrapText="true" styleClass="ag-read, stats-status"/>
+
+            <!-- When the figures are from, on one quiet line -->
+            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="stats-meta">
+                <Label text="Updated"/>
+                <Label fx:id="lastUpdatedLabel" text="—"/>
+                <Label text="·"/>
+                <Label fx:id="nextUpdateLabel" text="—"/>
+                <Label text="·"/>
+                <Label text="Blocks"/>
+                <Label fx:id="blockRangeLabel" text="—"/>
+                <Label text="·"/>
+                <Label fx:id="syncLabel" text="—"/>
+            </HBox>
 
             <!-- Summary cards -->
             <HBox spacing="12" alignment="CENTER_LEFT">
@@ -42,28 +52,12 @@
                     <Label fx:id="yourPoolValue" text="—" styleClass="card-value"/>
                     <Label fx:id="yourPoolSub" text="—" styleClass="card-faint"/>
                 </VBox>
-                <VBox fx:id="totalCard" spacing="6" styleClass="ag-card balance-card primary" HBox.hgrow="ALWAYS">
+                <VBox fx:id="totalCard" spacing="6" styleClass="ag-card, stats-total" HBox.hgrow="ALWAYS">
                     <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
                     <Label text="TOTAL BTC IN POOLS" styleClass="card-faint"/>
                     <Label fx:id="totalBtcLabel" text="—" styleClass="card-value"/>
                     <Label fx:id="totalsSubLabel" text="—" styleClass="card-faint"/>
                 </VBox>
-                <VBox spacing="6" styleClass="ag-card" HBox.hgrow="ALWAYS">
-                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                    <Label text="BLOCK RANGE" styleClass="card-faint"/>
-                    <Label fx:id="blockRangeLabel" text="—" styleClass="card-value"/>
-                    <Label fx:id="syncLabel" text="—" styleClass="card-faint"/>
-                </VBox>
-                <VBox spacing="6" styleClass="ag-card" HBox.hgrow="ALWAYS">
-                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                    <Label text="LAST UPDATED" styleClass="card-faint"/>
-                    <Label fx:id="lastUpdatedLabel" text="—" styleClass="card-value"/>
-                    <Label fx:id="nextUpdateLabel" text="—" styleClass="card-faint"/>
-                </VBox>
-            </HBox>
-
-            <!-- Pool cards -->
-            <HBox spacing="12">
                 <VBox fx:id="pool025Card" spacing="6" styleClass="ag-card" HBox.hgrow="ALWAYS">
                     <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
                     <HBox alignment="CENTER_LEFT" spacing="8">
@@ -110,13 +104,13 @@
             <!-- Recent Tx0s -->
             <VBox spacing="10" styleClass="ag-card">
                 <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                <Label text="Recent Tx0 Transactions" styleClass="step-title"/>
+                <Label text="Recent Tx0s" styleClass="step-title"/>
                 <ListView fx:id="txListView" prefHeight="240" minHeight="200"/>
             </VBox>
 
             <!-- Footer link -->
             <HBox alignment="CENTER_LEFT" spacing="8">
-                <Hyperlink fx:id="sourceLink" text="View full stats at whirlpoolstats.xyz" onAction="#onOpenSource"/>
+                <Hyperlink fx:id="sourceLink" text="Full statistics at whirlpoolstats.xyz" onAction="#onOpenSource" styleClass="card-link"/>
             </HBox>
         </VBox>
     </content>

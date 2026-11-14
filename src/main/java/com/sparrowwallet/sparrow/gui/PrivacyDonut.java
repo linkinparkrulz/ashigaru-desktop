@@ -38,7 +38,7 @@ public class PrivacyDonut extends Canvas {
         if(total == 0) {
             return;
         }
-        long[] parts = {privacy.postmix().sats(), privacy.premix().sats(), privacy.deposit().sats(), privacy.badbank().sats()};
+        long[] parts = {privacy.privateSats(), privacy.premix().sats(), privacy.unmixedSats(), privacy.badbank().sats()};
         Color[] colors = {PRIVATE, MIXING, UNMIXED, BADBANK};
         long segments = java.util.Arrays.stream(parts).filter(p -> p > 0).count();
         double gap = segments > 1 ? GAP_DEGREES : 0;

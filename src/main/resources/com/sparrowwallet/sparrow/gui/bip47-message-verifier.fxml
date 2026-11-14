@@ -18,9 +18,6 @@
             <!-- Hero -->
             <HBox spacing="16" alignment="CENTER_LEFT" styleClass="verifier-hero">
                 <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
-                <StackPane styleClass="verifier-hero-icon">
-                    <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="22" icon="CHECK_CIRCLE" styleClass="verifier-hero-glyph"/>
-                </StackPane>
                 <VBox spacing="3" HBox.hgrow="ALWAYS">
                     <Label text="Verify BIP47 Message" styleClass="verifier-hero-title"/>
                     <Label minHeight="-Infinity" text="Confirm a Bitcoin message signature matches the notification address derived from a BIP47 payment code."
