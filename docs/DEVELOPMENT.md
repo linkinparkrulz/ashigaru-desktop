@@ -74,7 +74,7 @@ SWAP_SCREENSHOTS=/tmp/shots xvfb-run -a -s "-screen 0 1400x900x24" \
 ```
 
 It is also where a layout is held to the smallest supported window: no screen may need more than the
-width Swaps gets at a 1200 pixel window with the Tools menu open (713 pixels), and the offers table must
+width it was designed for (713 pixels; the 1024 pixel minimum window gives Swaps 728), and the offers table must
 fold below 700.
 
 ## 3. Runtime Layout & Debugging

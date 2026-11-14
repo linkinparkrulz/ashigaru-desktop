@@ -1,17 +1,13 @@
 package com.sparrowwallet.sparrow.control;
 
 import impl.org.controlsfx.skin.CustomTextFieldSkin;
-import javafx.animation.FadeTransition;
-import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
+import javafx.scene.control.Tooltip;
 import javafx.scene.Cursor;
 import javafx.scene.control.PasswordField;
 import javafx.scene.layout.*;
-import javafx.util.Duration;
 import org.controlsfx.control.textfield.CustomPasswordField;
 
 public abstract class ViewPasswordFieldSkin extends CustomTextFieldSkin {
-    private static final Duration FADE_DURATION = Duration.millis(350);
     public static final char BULLET = '\u25CF';
 
     private boolean mask = true;
@@ -23,48 +19,33 @@ public abstract class ViewPasswordFieldSkin extends CustomTextFieldSkin {
         viewPasswordButton.getStyleClass().addAll("graphic");
         StackPane viewPasswordButtonPane = new StackPane(viewPasswordButton);
         viewPasswordButtonPane.getStyleClass().addAll("view-password-button");
-        viewPasswordButtonPane.setOpacity(0.0);
-        viewPasswordButtonPane.setCursor(Cursor.DEFAULT);
+        //Always there, so it can be found before a character is typed. It used to fade in only
+        //once the field had text, which hid it at the moment someone looks for it.
+        viewPasswordButtonPane.setCursor(Cursor.HAND);
+        Tooltip showTip = new Tooltip("Show what you type");
+        Tooltip hideTip = new Tooltip("Hide what you type");
+        Tooltip.install(viewPasswordButtonPane, showTip);
+        viewPasswordButtonPane.setAccessibleText("Show or hide what you type");
 
         viewPasswordButtonPane.setOnMouseReleased(e -> {
             if(mask) {
                 viewPasswordButtonPane.getStyleClass().remove("view-password-button");
                 viewPasswordButtonPane.getStyleClass().addAll("hide-password-button");
                 mask = false;
+                Tooltip.uninstall(viewPasswordButtonPane, showTip);
+                Tooltip.install(viewPasswordButtonPane, hideTip);
             } else {
                 viewPasswordButtonPane.getStyleClass().remove("hide-password-button");
                 viewPasswordButtonPane.getStyleClass().addAll("view-password-button");
                 mask = true;
+                Tooltip.uninstall(viewPasswordButtonPane, hideTip);
+                Tooltip.install(viewPasswordButtonPane, showTip);
             }
             textField.setText(textField.getText());
             textField.end();
         });
 
         textField.rightProperty().set(viewPasswordButtonPane);
-
-        final FadeTransition fader = new FadeTransition(FADE_DURATION, viewPasswordButtonPane);
-        fader.setCycleCount(1);
-
-        textField.textProperty().addListener(new InvalidationListener() {
-            @Override
-            public void invalidated(Observable arg0) {
-                String text = textField.getText();
-                boolean isTextEmpty = text == null || text.isEmpty();
-                boolean isButtonVisible = fader.getNode().getOpacity() > 0;
-
-                if (isTextEmpty && isButtonVisible) {
-                    setButtonVisible(false);
-                } else if (!isTextEmpty && !isButtonVisible) {
-                    setButtonVisible(true);
-                }
-            }
-
-            private void setButtonVisible( boolean visible ) {
-                fader.setFromValue(visible? 0.0: 1.0);
-                fader.setToValue(visible? 1.0: 0.0);
-                fader.play();
-            }
-        });
     }
 
     @Override

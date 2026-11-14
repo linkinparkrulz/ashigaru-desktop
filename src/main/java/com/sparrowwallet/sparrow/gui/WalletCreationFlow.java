@@ -937,7 +937,7 @@ public class WalletCreationFlow {
         pwDlg.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
         styleWizardButtons(pwDlg.getDialogPane());
 
-        PasswordField pwField = new PasswordField();
+        ViewPasswordField pwField = new ViewPasswordField();
         pwField.setPromptText("Leave blank for no password");
         Label pwLabel = new Label("Password (optional):");
         pwLabel.getStyleClass().add("field-label");

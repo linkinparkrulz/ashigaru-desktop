@@ -335,7 +335,7 @@ class SwapScreenshotsTest {
             shoot(pane, 845, 1100, c.name() + "-845");
             //A long value such as the full address must wrap and never force the page wider than its window
             double minWidth = onFx(() -> pane.minWidth(-1));
-            //713px is what Swaps gets at the smallest window (1200) with the Tools menu open
+            //713px is the width the swap screens are held to; the smallest window (1024) gives them 728
             assertTrue(minWidth <= 700, c.name() + " needs at least " + minWidth + "px");
         }
 

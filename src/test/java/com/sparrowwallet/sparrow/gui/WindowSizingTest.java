@@ -9,7 +9,7 @@ class WindowSizingTest {
     void aRoomyScreenGetsTheDefaultSize() {
         assertEquals(1280, WindowSizing.width(1920));
         assertEquals(800, WindowSizing.height(1040));
-        assertEquals(1200, WindowSizing.minWidth(1920));
+        assertEquals(1024, WindowSizing.minWidth(1920));
         assertEquals(520, WindowSizing.minHeight(1040));
     }
 
@@ -31,7 +31,7 @@ class WindowSizingTest {
     @Test
     void aLaptopScreenFitsTheDefaultButNotAboveIt() {
         assertEquals(1280, WindowSizing.width(1366));
-        assertEquals(1200, WindowSizing.minWidth(1366));
+        assertEquals(1024, WindowSizing.minWidth(1366));
         assertEquals(728, WindowSizing.height(728));
     }
 }

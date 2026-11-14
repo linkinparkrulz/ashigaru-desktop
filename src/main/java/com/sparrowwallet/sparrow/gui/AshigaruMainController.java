@@ -18,6 +18,7 @@ import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.Mode;
 import com.sparrowwallet.sparrow.control.SeedDisplayDialog;
+import com.sparrowwallet.sparrow.control.ViewPasswordField;
 import com.sparrowwallet.sparrow.control.WalletPasswordDialog;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.preferences.PreferencesController;
@@ -659,7 +660,7 @@ public class AshigaruMainController implements Initializable {
         deleteNode.getStyleClass().add("action-btn");
 
         Label hint = new Label("Enter your BIP39 passphrase (leave empty if none):");
-        PasswordField pf = new PasswordField();
+        ViewPasswordField pf = new ViewPasswordField();
         pf.setPromptText("Passphrase");
         VBox vbox = new VBox(6, hint, pf);
         dialog.getDialogPane().setContent(vbox);
@@ -1215,7 +1216,7 @@ public class AshigaruMainController implements Initializable {
         dialog.getDialogPane().getButtonTypes().addAll(okBtn, ButtonType.CANCEL);
         WalletCreationFlow.styleWizardButtons(dialog.getDialogPane());
 
-        PasswordField pf = new PasswordField();
+        ViewPasswordField pf = new ViewPasswordField();
         pf.setPromptText("Password");
         VBox vbox = new VBox(pf);
         vbox.setSpacing(8);

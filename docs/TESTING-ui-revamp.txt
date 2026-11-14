@@ -464,6 +464,54 @@ WHAT THE REVAMP IS FOR
   [ ] Anything odd?
 
 
+====================================================================
+ ROUND 3: SWAP ENGINE BUILDS, SWAP SCREENS, PASSPHRASE EYE
+====================================================================
+  Getting a build with swaps:
+    Actions tab > Package > Run workflow > choose this branch > tick
+    "Include the swap engine" > Run. It takes about an hour. The
+    installers are named "Ashigaru Build - <platform> (with swaps)".
+    Then turn swaps on in Settings, Swaps.
+
+  Eye on password and passphrase fields (no funds needed):
+  [ ] Every field below shows an eye at its right edge BEFORE you
+      type anything:
+        - BIP39 passphrase prompt when opening a wallet
+        - wallet password prompt when opening a wallet
+        - typed passphrase and its confirmation in New / Restore
+        - optional wallet password at the end of New / Restore
+        - passphrase step when deleting a wallet
+  [ ] Clicking the eye shows the text; the eye becomes a struck-out
+      eye in red. Clicking again hides the text.
+  [ ] The fingerprint beside the BIP39 passphrase still updates as
+      you type, shown or hidden.
+  [ ] Tooltip reads "Show what you type" / "Hide what you type".
+
+  Window:
+  [ ] The window can be dragged down to about 1024 wide (it was
+      1200). Nothing is clipped on the wallet screen, Tools or
+      Settings at that width.
+
+  Swap screens (needs the build with swaps):
+  [ ] Tools, Swaps opens with a "Swaps" title, one sentence, and the
+      engine's state on a small line. No "Send BTC -> Receive XMR"
+      heading on the page; the final review is titled "Send BTC,
+      receive XMR".
+  [ ] At 1024 wide the offers table still shows every column and the
+      Approve bar stays pinned on the review.
+  [ ] Icons are drawn, not characters: the warning and done marks in
+      banners, the numbered steps (a tick when done, a dot on the
+      current one), the protocol step list, the green tick beside
+      "No deduction", the arrow on the review, the little disclosure
+      button on each offer row, and Back to offers.
+  [ ] Amber means attention, green means done. Red appears only on
+      Approve / Cancel and refund and when hovering Review offer.
+  [ ] "Your swaps" is a dark table with thin row lines, like the coin
+      lists.
+  [ ] Everything under section 11 "Behaviour" still holds.
+  [ ] Anything odd?
+
+
 --------------------------------------------------------------------
  KNOWN GAPS  (not bugs, do not report)
 --------------------------------------------------------------------
@@ -472,6 +520,5 @@ WHAT THE REVAMP IS FOR
   - On Linux without a compositor, menus may show a pale halo.
   - Statistics decides "your pool" from Postmix coin value (0.025 or
     0.25 BTC).
-  - The minimum window width is 1200, inherited from xmr-swap.
   - The interface is Nikkyou Sans on labels, buttons and tabs, with
     Roboto for sentences. xmr-swap alone used Roboto everywhere.
