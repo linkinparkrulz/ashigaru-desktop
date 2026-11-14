@@ -23,6 +23,15 @@ public final class Icons {
         return g;
     }
 
+    /** A label that is only an icon, carrying a style class for its size, shape and colour. */
+    public static javafx.scene.control.Label label(FontAwesome5.Glyph glyph, double size, String styleClass) {
+        javafx.scene.control.Label label = new javafx.scene.control.Label();
+        label.setGraphic(of(glyph, size));
+        label.getStyleClass().add(styleClass);
+        label.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
+        return label;
+    }
+
     /** Puts an icon in front of a button's or label's text. */
     public static void set(Labeled control, FontAwesome5.Glyph glyph) {
         control.setGraphic(of(glyph));

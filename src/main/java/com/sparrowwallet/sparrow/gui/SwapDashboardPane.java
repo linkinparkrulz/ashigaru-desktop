@@ -1,5 +1,6 @@
 package com.sparrowwallet.sparrow.gui;
 
+import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.swap.SwapCopy;
 import com.sparrowwallet.sparrow.swap.SwapDashboard;
 import com.sparrowwallet.sparrow.swap.SwapDashboard.Action;
@@ -59,7 +60,8 @@ public class SwapDashboardPane extends VBox {
         //A way back that is always there once the swap is over or stopped; the banner's own button already does this for a finished one
         boolean bannerLeaves = dashboard.banner().cta() != null && dashboard.banner().cta().action() == Action.BACK_TO_OFFERS;
         if(dashboard.canLeave() && !bannerLeaves) {
-            Button back = button("← Back to offers", "secondary-btn");
+            Button back = button("Back to offers", "secondary-btn");
+            back.setGraphic(Icons.of(FontAwesome5.Glyph.CARET_LEFT, 12));
             back.setOnAction(event -> onAction.accept(Action.BACK_TO_OFFERS));
             top.getChildren().add(back);
         }
@@ -88,7 +90,8 @@ public class SwapDashboardPane extends VBox {
     }
 
     private Region banner(SwapDashboard.Banner banner) {
-        Label icon = label(banner.tone() == Tone.GOOD ? "✓" : banner.tone() == Tone.WARN ? "!" : "i", "dash-banner-icon");
+        Label icon = Icons.label(banner.tone() == Tone.GOOD ? FontAwesome5.Glyph.CHECK
+                : banner.tone() == Tone.WARN ? FontAwesome5.Glyph.EXCLAMATION_TRIANGLE : FontAwesome5.Glyph.INFO_CIRCLE, 14, "dash-banner-icon");
         icon.setAlignment(Pos.CENTER);
         VBox text = new VBox(2, wrapped(banner.title(), "dash-banner-title"), wrapped(banner.text(), "dash-banner-text"));
         HBox.setHgrow(text, Priority.ALWAYS);
@@ -136,7 +139,11 @@ public class SwapDashboardPane extends VBox {
             boolean done = i < milestones.current() && !(milestones.recovery() && i == 0);
             boolean current = i == milestones.current();
             boolean marker = milestones.recovery() && i == 0;
-            Label node = label(marker ? "!" : done ? "✓" : current ? "●" : String.valueOf(i + 1), "dash-node");
+            //Done, current and stopped are drawn icons; a step still to come shows its number
+            Label node = marker ? Icons.label(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 11, "dash-node")
+                    : done ? Icons.label(FontAwesome5.Glyph.CHECK, 11, "dash-node")
+                    : current ? Icons.label(FontAwesome5.Glyph.CIRCLE, 8, "dash-node")
+                    : label(String.valueOf(i + 1), "dash-node");
             node.setAlignment(Pos.CENTER);
             node.getStyleClass().add(marker ? "dash-node-stop" : done ? "dash-node-done" : current ? (milestones.attention() ? "dash-node-warn" : "dash-node-current") : "dash-node-todo");
             Region before = line(i > 0, i <= milestones.current() ? (milestones.attention() && i == milestones.current() ? "dash-line-warn" : "dash-line-done") : "dash-line-todo");
@@ -275,7 +282,9 @@ public class SwapDashboardPane extends VBox {
         for(int i = 0; i < dashboard.protocolSteps().size(); i++) {
             boolean done = i < dashboard.protocolCurrent();
             boolean current = i == dashboard.protocolCurrent();
-            Label step = label((done ? "✓  " : current ? "●  " : "○  ") + dashboard.protocolSteps().get(i), current ? "dash-step-now" : done ? "dash-step-done" : "dash-step-todo");
+            Label step = label(dashboard.protocolSteps().get(i), current ? "dash-step-now" : done ? "dash-step-done" : "dash-step-todo");
+            step.setGraphic(Icons.of(done ? FontAwesome5.Glyph.CHECK : FontAwesome5.Glyph.CIRCLE, done ? 10 : 6));
+            step.setGraphicTextGap(done ? 9 : 13);
             steps.getChildren().add(step);
         }
         VBox ids = new VBox(8, label("IDENTIFIERS", "dash-eyebrow"));

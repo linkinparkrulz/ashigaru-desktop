@@ -1593,7 +1593,7 @@
     -fx-text-fill: -ag-text;
 }
 .swaps-good { -fx-text-fill: -ag-green; }
-.swaps-bad  { -fx-text-fill: -ag-red; }
+.swaps-bad  { -fx-text-fill: -ag-warn-ink; }
 .swaps-chart .chart-series-line {
     -fx-stroke: -ag-red;
     -fx-stroke-width: 2px;
@@ -1673,7 +1673,7 @@
     -fx-text-fill: -ag-text;
 }
 .swaps-slow {
-    -fx-text-fill: #e0a030;
+    -fx-text-fill: -ag-warn-ink;
 }
 .swaps-banner {
     -fx-background-color: -ag-bg-light;
@@ -1714,16 +1714,16 @@
 .review-amount-tail { -fx-fill: -ag-text-dim; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 28px; }
 .review-amount-unit { -fx-fill: -ag-text-dim; -fx-font-size: 15px; }
 .review-callout {
-    -fx-background-color: #241a05;
-    -fx-border-color: #6b4d08;
+    -fx-background-color: derive(-ag-warn, -80%);
+    -fx-border-color: derive(-ag-warn, -45%);
     -fx-border-radius: 6;
     -fx-background-radius: 6;
     -fx-padding: 12 14 12 14;
 }
 .review-callout-icon {
-    -fx-background-color: #3a2a05;
+    -fx-background-color: derive(-ag-warn, -72%);
     -fx-background-radius: 999;
-    -fx-text-fill: -ag-warn;
+    -fx-text-fill: -ag-warn-ink;
     -fx-font-family: "Roboto Medium";
     -fx-min-width: 22; -fx-pref-width: 22; -fx-max-width: 22;
     -fx-min-height: 22; -fx-pref-height: 22; -fx-max-height: 22;
@@ -1746,9 +1746,9 @@
     -fx-font-family: "Roboto Medium";
     -fx-font-size: 12px;
 }
-.review-chip-done { -fx-background-color: #16301a; -fx-text-fill: #7bd07f; }
-.review-chip-current { -fx-background-color: -ag-accent-faint; -fx-text-fill: #ff8a8a; }
-.review-chip-warn { -fx-background-color: #3a2a05; -fx-text-fill: -ag-warn; }
+.review-chip-done { -fx-background-color: derive(-ag-green, -72%); -fx-text-fill: -ag-green-ink; }
+.review-chip-current { -fx-background-color: -ag-accent-faint; -fx-text-fill: -ag-accent-ink; }
+.review-chip-warn { -fx-background-color: derive(-ag-warn, -72%); -fx-text-fill: -ag-warn-ink; }
 .review-address {
     -fx-background-color: -ag-bg;
     -fx-border-color: -ag-border;
@@ -1771,8 +1771,8 @@
     -fx-background-radius: 6;
     -fx-padding: 14 18 14 18;
 }
-.dash-banner-warn { -fx-background-color: #241a05; -fx-border-color: #6b4d08; }
-.dash-banner-good { -fx-background-color: #0f1d11; -fx-border-color: #245a29; }
+.dash-banner-warn { -fx-background-color: derive(-ag-warn, -80%); -fx-border-color: derive(-ag-warn, -45%); }
+.dash-banner-good { -fx-background-color: derive(-ag-green, -82%); -fx-border-color: derive(-ag-green, -45%); }
 .dash-banner-title { -fx-font-family: "Nikkyou Sans"; -fx-font-size: 17px; -fx-text-fill: -ag-text; }
 .dash-banner-text { -fx-text-fill: -ag-text-dim; -fx-font-size: 14px; }
 .dash-banner-icon {
@@ -1785,9 +1785,9 @@
     -fx-min-height: 32; -fx-pref-height: 32; -fx-max-height: 32;
     -fx-alignment: center;
 }
-.dash-banner-warn .dash-banner-icon { -fx-background-color: #3a2a05; -fx-text-fill: -ag-warn; }
-.dash-banner-good .dash-banner-icon { -fx-background-color: #16301a; -fx-text-fill: #7bd07f; }
-.dash-message { -fx-text-fill: -ag-warn; -fx-font-size: 14px; }
+.dash-banner-warn .dash-banner-icon { -fx-background-color: derive(-ag-warn, -72%); -fx-text-fill: -ag-warn-ink; }
+.dash-banner-good .dash-banner-icon { -fx-background-color: derive(-ag-green, -72%); -fx-text-fill: -ag-green-ink; }
+.dash-message { -fx-text-fill: -ag-warn-ink; -fx-font-size: 14px; }
 .dash-node {
     -fx-background-radius: 999;
     -fx-border-radius: 999;
@@ -1801,18 +1801,18 @@
 .dash-node-todo { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border-strong; -fx-text-fill: -ag-text-dim; }
 .dash-node-done { -fx-background-color: -ag-green; -fx-border-color: -ag-green; -fx-text-fill: #0E0F12; }
 .dash-node-current { -fx-background-color: -ag-bg-raised; -fx-border-color: -ag-text; -fx-text-fill: -ag-text; }
-.dash-node-warn { -fx-background-color: -ag-bg-raised; -fx-border-color: -ag-warn; -fx-text-fill: -ag-warn; }
-.dash-node-stop { -fx-background-color: #3a2a05; -fx-border-color: -ag-warn; -fx-text-fill: -ag-warn; }
+.dash-node-warn { -fx-background-color: -ag-bg-raised; -fx-border-color: -ag-warn; -fx-text-fill: -ag-warn-ink; }
+.dash-node-stop { -fx-background-color: derive(-ag-warn, -72%); -fx-border-color: -ag-warn; -fx-text-fill: -ag-warn-ink; }
 .dash-line { -fx-background-color: -ag-border-strong; }
 .dash-line-done { -fx-background-color: -ag-green; }
-.dash-line-warn { -fx-background-color: #6b4d08; }
+.dash-line-warn { -fx-background-color: derive(-ag-warn, -45%); }
 .dash-ms-name { -fx-text-fill: -ag-text-dim; -fx-font-size: 14px; }
 .dash-ms-name-on { -fx-text-fill: -ag-text; -fx-font-size: 14px; }
 .dash-fine { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
 .dash-body { -fx-text-fill: -ag-text-dim; -fx-font-size: 14px; }
 .dash-body-text { -fx-text-fill: -ag-text; -fx-font-size: 14px; }
 .dash-doing { -fx-text-fill: -ag-text; -fx-font-size: 15px; }
-.dash-slow { -fx-text-fill: -ag-warn; -fx-font-size: 13px; }
+.dash-slow { -fx-text-fill: -ag-warn-ink; -fx-font-size: 13px; }
 .dash-facts {
     -fx-background-color: -ag-bg;
     -fx-border-color: -ag-border;
@@ -1824,8 +1824,8 @@
 .dash-fact-value { -fx-text-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 13px; }
 .dash-context { -fx-border-color: -ag-border; -fx-border-width: 1 0 0 0; -fx-padding: 14 0 0 0; }
 .dash-chip-warn {
-    -fx-background-color: #3a2a05;
-    -fx-text-fill: -ag-warn;
+    -fx-background-color: derive(-ag-warn, -72%);
+    -fx-text-fill: -ag-warn-ink;
     -fx-background-radius: 999;
     -fx-padding: 3 11 3 11;
     -fx-font-family: "Roboto Medium";
@@ -1838,8 +1838,8 @@
     -fx-font-family: "Roboto Medium";
     -fx-font-size: 12px;
 }
-.dash-pill-good { -fx-background-color: #16301a; -fx-text-fill: #7bd07f; }
-.dash-pill-warn { -fx-background-color: #3a2a05; -fx-text-fill: -ag-warn; }
+.dash-pill-good { -fx-background-color: derive(-ag-green, -72%); -fx-text-fill: -ag-green-ink; }
+.dash-pill-warn { -fx-background-color: derive(-ag-warn, -72%); -fx-text-fill: -ag-warn-ink; }
 .dash-dot { -fx-background-radius: 999; }
 .dash-dot-good { -fx-background-color: -ag-green; }
 .dash-dot-warn { -fx-background-color: -ag-warn; }
@@ -1879,8 +1879,8 @@
 }
 .offer-address:focused { -fx-border-color: -ag-blue; }
 .offer-address-bad, .offer-address-bad:focused { -fx-border-color: -ag-warn; }
-.offer-status-ok { -fx-text-fill: #7bd07f; }
-.offer-status-warn { -fx-text-fill: -ag-warn; }
+.offer-status-ok { -fx-text-fill: -ag-green-ink; }
+.offer-status-warn { -fx-text-fill: -ag-warn-ink; }
 .button.offer-link {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
@@ -1926,7 +1926,7 @@
 .offer-row:hover { -fx-background-color: -ag-bg-mid; }
 .offer-row-best { -fx-border-color: transparent transparent -ag-border -ag-text; }
 .offer-amount { -fx-fill: -ag-text; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 18px; }
-.offer-tick { -fx-text-fill: #7bd07f; -fx-font-family: "Roboto Medium"; }
+.offer-tick { -fx-text-fill: -ag-green-ink; -fx-font-family: "Roboto Medium"; }
 .offer-deduction { -fx-text-fill: -ag-text; -fx-font-size: 15px; }
 .offer-maker { -fx-text-fill: -ag-text-dim; -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 14px; }
 .button.offer-review {
@@ -1935,7 +1935,7 @@
     -fx-text-fill: -ag-text;
     -fx-padding: 8 14 8 14;
 }
-.button.offer-review:hover { -fx-background-color: -ag-accent; -fx-border-color: -ag-accent-dark; -fx-text-fill: #fff; }
+.button.offer-review:hover { -fx-background-color: -ag-accent; -fx-border-color: -ag-accent-dark; -fx-text-fill: -ag-on-accent; }
 .button.offer-review:disabled { -fx-opacity: 0.4; }
 .button.offer-caret {
     -fx-background-color: transparent;
@@ -2027,3 +2027,25 @@
 .preferences-detail .check-box > .box { -fx-background-color: -ag-bg; -fx-border-color: -ag-text-faint; -fx-border-width: 1.5; -fx-border-radius: 3; -fx-background-radius: 3; }
 .preferences-detail .check-box:selected > .box { -fx-background-color: -ag-accent; -fx-border-color: -ag-accent; }
 .preferences-detail .check-box:selected > .box > .mark { -fx-background-color: -ag-on-accent; }
+
+/* ── Swap screens, restyled with the rest ────────────────────────────────────
+   Their colours now come from the tokens above (amber for attention, green for done, red for the
+   selected offer and the approve button). Icons are drawn, and take the colour of the shape they
+   sit in. */
+.dash-banner-warn .dash-banner-icon .ag-icon, .dash-node-stop .ag-icon, .dash-node-warn .ag-icon,
+.review-callout-icon .ag-icon { -fx-text-fill: -ag-warn-ink; }
+.dash-banner-good .dash-banner-icon .ag-icon, .offer-tick .ag-icon, .dash-step-done .ag-icon { -fx-text-fill: -ag-green-ink; }
+.dash-node-done .ag-icon { -fx-text-fill: #0E0F12; }
+.dash-node-current .ag-icon, .dash-step-now .ag-icon { -fx-text-fill: -ag-text; }
+.dash-step-todo .ag-icon { -fx-text-fill: -ag-border-strong; }
+.review-arrow .ag-icon, .button.offer-caret .ag-icon { -fx-text-fill: -ag-text-dim; }
+.swaps-panel .verifier-hero { -fx-padding: 0 0 2 0; }
+/* Your swaps: the same dark rows and hairlines as the coin lists */
+.swaps-table { -fx-background-color: -ag-bg-mid; -fx-border-color: -ag-border; -fx-border-radius: 8; -fx-background-radius: 8; }
+.swaps-table .column-header-background, .swaps-table .column-header, .swaps-table .filler { -fx-background-color: -ag-bg-mid; -fx-border-color: transparent transparent -ag-border transparent; }
+.swaps-table .column-header .label { -fx-font-family: "Nikkyou Sans"; -fx-font-size: 10px; -fx-text-fill: -ag-text-faint; }
+.swaps-table .table-row-cell { -fx-background-color: -ag-bg-mid; -fx-border-color: transparent transparent -ag-border transparent; -fx-text-background-color: -ag-text; }
+.swaps-table .table-row-cell:selected { -fx-background-color: -ag-bg-light; }
+.swaps-table .table-cell { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 12px; -fx-text-fill: -ag-text-dim; -fx-border-color: transparent; }
+.swaps-table .placeholder .label { -fx-text-fill: -ag-text-faint; }
+.dash-details > .title > .arrow-button > .arrow { -fx-background-color: -ag-text-dim; }

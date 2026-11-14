@@ -54,6 +54,9 @@ class SwapScreenshotsTest {
             for(String font : List.of("RobotoMono-Regular", "Roboto-Regular", "Roboto-Medium", "Roboto-Bold", "NikkyouSans")) {
                 Font.loadFont(SwapScreenshotsTest.class.getResourceAsStream("/font/" + font + ".ttf"), 14);
             }
+            //The app registers its icon font through the module's service declaration, which a test on
+            //the class path never sees. Register it here so the pictures show the icons the app draws.
+            org.controlsfx.glyphfont.GlyphFontRegistry.register(new com.sparrowwallet.sparrow.glyphfont.FontAwesome5());
             return null;
         });
     }
@@ -405,7 +408,7 @@ class SwapScreenshotsTest {
                 "The swap stopped.", WAS, true, com.sparrowwallet.sparrow.swap.SwapProgress.Step.MAKER_CONFIRM), open(140), false), HEALTHY, false);
         shoot(recovery, 845, 1100, "dash-recovery-with-back-845");
         assertNotNull(onFx(() -> button(recovery, "Cancel and refund")));
-        assertNotNull(onFx(() -> button(recovery, "← Back to offers")));
+        assertNotNull(onFx(() -> button(recovery, "Back to offers")));
     }
 
     @Test

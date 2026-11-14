@@ -1,5 +1,6 @@
 package com.sparrowwallet.sparrow.gui;
 
+import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.swap.SwapCopy;
 import com.sparrowwallet.sparrow.swap.SwapReview;
 import javafx.animation.KeyFrame;
@@ -27,7 +28,7 @@ import java.util.Locale;
  * {@link SwapReview} and reports the user's choice through its decision.
  */
 public class SwapReviewPane extends BorderPane {
-    private static final String TITLE = "Send BTC  →  Receive XMR";
+    private static final String TITLE = "Send BTC, receive XMR";
 
     private final VBox content = new VBox(16);
     private final ScrollPane scroll = new ScrollPane(content);
@@ -82,7 +83,7 @@ public class SwapReviewPane extends BorderPane {
         hero.setAlignment(Pos.CENTER_LEFT);
         VBox send = new VBox(6, eyebrow("You send"), amount(review.coinBtc(), null, "BTC"),
                 wrapped("Whole Badbank coin, no change. Includes the " + sats(review.feeSats()) + " sat network fee.", "review-fine"));
-        Label arrow = label("→", "review-arrow");
+        Label arrow = Icons.label(FontAwesome5.Glyph.LONG_ARROW_ALT_RIGHT, 20, "review-arrow");
         String xmr = review.xmr();
         int split = Math.min(xmr.length(), xmr.indexOf('.') + 4);
         VBox receive = new VBox(6, eyebrow("You receive"), amount(xmr.substring(0, split), xmr.substring(split), "XMR"),
@@ -99,7 +100,7 @@ public class SwapReviewPane extends BorderPane {
         VBox commitment = card();
         commitment.getChildren().add(eyebrow("Commitment and recovery"));
         if(review.hasDeposit()) {
-            Label icon = label("!", "review-callout-icon");
+            Label icon = Icons.label(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13, "review-callout-icon");
             icon.setAlignment(Pos.CENTER);
             VBox text = new VBox(2, wrapped(SwapCopy.depositHeadline(review.depositBtc(), review.depositPercent()), "review-callout-title"),
                     wrapped(SwapCopy.depositDetail(), "review-fine"));

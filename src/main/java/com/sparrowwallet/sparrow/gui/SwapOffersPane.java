@@ -1,5 +1,6 @@
 package com.sparrowwallet.sparrow.gui;
 
+import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.swap.SwapAttention;
 import com.sparrowwallet.sparrow.swap.SwapEngine.Quote;
 import com.sparrowwallet.sparrow.swap.SwapOffers;
@@ -131,7 +132,7 @@ public class SwapOffersPane extends VBox {
         if(state.attention().isEmpty()) {
             return;
         }
-        Label icon = label("!", "review-callout-icon");
+        Label icon = Icons.label(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13, "review-callout-icon");
         icon.setAlignment(Pos.CENTER);
         VBox text = new VBox(2, wrapped(SwapAttention.headline(state.attention()), "review-callout-title"), wrapped(SwapAttention.text(state.attention()), "review-fine"));
         HBox.setHgrow(text, Priority.ALWAYS);
@@ -425,7 +426,7 @@ public class SwapOffersPane extends VBox {
         VBox deduction = new VBox(3);
         deduction.setMinWidth(0);
         if(row.noDeduction()) {
-            HBox line = new HBox(8, label("✓", "offer-tick"), label("No deduction", "offer-deduction"));
+            HBox line = new HBox(8, Icons.label(FontAwesome5.Glyph.CHECK, 11, "offer-tick"), label("No deduction", "offer-deduction"));
             line.setAlignment(Pos.CENTER_LEFT);
             deduction.getChildren().addAll(line, wrapped("Minus network fees", "review-fine"));
         } else {
@@ -458,7 +459,9 @@ public class SwapOffersPane extends VBox {
             }
             review.setOnAction(event -> listener.review(quote));
             boolean open = expanded.contains(quote.peerId());
-            Button caret = new Button(open ? "▴" : "▾");
+            Button caret = new Button();
+            caret.setGraphic(Icons.of(FontAwesome5.Glyph.CARET_RIGHT, 12));
+            caret.getGraphic().setRotate(open ? -90 : 90);
             caret.getStyleClass().add("offer-caret");
             caret.setMinWidth(Region.USE_PREF_SIZE);
             Tooltip.install(caret, new Tooltip(open ? "Hide details" : "Show details"));

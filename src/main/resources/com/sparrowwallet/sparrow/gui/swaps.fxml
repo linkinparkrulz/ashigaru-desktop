@@ -13,10 +13,13 @@
 <VBox fx:id="mainView" styleClass="verifier-panel, swaps-panel" spacing="16">
     <padding><Insets top="22" right="22" bottom="22" left="22"/></padding>
 
-    <HBox spacing="12" alignment="BASELINE_LEFT">
-        <Label text="Send BTC  →  Receive XMR" styleClass="swaps-title"/>
-        <Label fx:id="engineStatus" wrapText="true" minHeight="-Infinity" styleClass="card-faint" HBox.hgrow="ALWAYS"/>
-    </HBox>
+    <!-- The same header as every other Tools page: a title and one sentence. The engine's state sits
+         under it as a quiet line. -->
+    <VBox spacing="3" styleClass="verifier-hero">
+        <Label text="Swaps" styleClass="verifier-hero-title"/>
+        <Label text="Send one Badbank coin and receive XMR, through Ashigaru's Tor only." wrapText="true" minHeight="-Infinity" styleClass="verifier-hero-sub"/>
+        <Label fx:id="engineStatus" wrapText="true" minHeight="-Infinity" styleClass="stats-meta-line"/>
+    </VBox>
 
     <!-- The running (or chosen) swap, as the dashboard. While it runs it is all the page shows. The controller fills it. -->
     <VBox fx:id="dashboardBox" spacing="16" visible="false" managed="false"/>
