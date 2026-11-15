@@ -27,6 +27,7 @@ import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class Tor {
@@ -48,6 +49,9 @@ public class Tor {
     private static volatile IPSocketAddress socksAddress;
     //Set while the daemon is being stopped on purpose, so its listener going away is not taken for a death
     private static volatile boolean stopRequested;
+    //What the running daemon said when asked, for the diagnostics block and the log. Never read from a file:
+    //kmp-tor hands Tor its configuration on stdin (--torrc-file -), so nothing on disk shows what it was given.
+    private static volatile String daemonFacts = "Tor:      not asked yet\nTor PoW:  not asked yet\n";
 
     private final TorRuntime instance;
 
@@ -118,6 +122,11 @@ public class Tor {
                 boolean wasListening = socksAddress != null;
                 socksAddress = listeners.socks.isEmpty() ? null : listeners.socks.iterator().next();
                 log.info("Tor socks listener: " + (socksAddress == null ? "gone" : socksAddress));
+                if(socksAddress == null) {
+                    daemonFacts = "Tor:      no daemon running\nTor PoW:  not known while Tor is down\n";
+                } else {
+                    askDaemon();
+                }
                 //A daemon that dies takes its listener with it and says nothing else. Nothing noticed, so
                 //Ashigaru stayed offline ("Tor socks proxy is not yet instantiated") until Tor was restarted by hand.
                 if(wasListening && socksAddress == null && !stopRequested) {
@@ -187,6 +196,56 @@ public class Tor {
         }
         String path = args.get(index + 1);
         return new File(path).getAbsoluteFile().equals(dataDir.getAbsoluteFile());
+    }
+
+    /**
+     * Asks the running daemon for its version, its pid and the proof-of-work setting it actually has, over the
+     * control connection, and keeps the answer for {@link #diagnostics()} and the log. On macOS Ashigaru asks for
+     * interpreted proof of work (CompiledProofOfWorkHash 0); a Java callback saying so does not show that the daemon
+     * took it, and this does. Called when the daemon's listener comes up, before anything is dialled through it.
+     */
+    private static void askDaemon() {
+        TorRuntime asked = runtime;
+        if(asked == null) {
+            return;
+        }
+
+        asked.enqueue(new TorCmd.Info.Get("version", "process/pid"), throwable -> {
+            log.warn("Could not ask Tor for its version and pid", throwable);
+        }, info -> {
+            String pid = info.get("process/pid");
+            String executable = pid == null ? null : executableOf(pid);
+            String text = "Tor:      version " + info.get("version") + ", pid " + pid + (executable == null ? "" : ", " + executable) + "\n";
+            daemonFacts = text + daemonFacts.substring(daemonFacts.indexOf("Tor PoW:"));
+            log.info("Tor daemon: " + text.trim());
+        });
+
+        asked.enqueue(new TorCmd.Config.Get(TorOption.CompiledProofOfWorkHash.INSTANCE), throwable -> {
+            log.warn("Could not ask Tor for CompiledProofOfWorkHash", throwable);
+        }, entries -> {
+            String setting = describeProofOfWork(entries.stream().map(entry -> entry.setting + (entry.isDefault ? " (default)" : " (set)")).toList(), isMac());
+            daemonFacts = daemonFacts.substring(0, daemonFacts.indexOf("Tor PoW:")) + "Tor PoW:  " + setting + "\n";
+            log.info("Tor daemon: " + setting);
+        });
+    }
+
+    /** Words for the answer to GETCONF CompiledProofOfWorkHash, with what Ashigaru asked for on this system */
+    static String describeProofOfWork(List<String> answers, boolean mac) {
+        String got = answers.isEmpty() ? "no answer" : String.join(", ", answers);
+        return "CompiledProofOfWorkHash=" + got + "; Ashigaru asks for " + (mac ? "0 (interpreted) on this system" : "Tor's default on this system");
+    }
+
+    private static String executableOf(String pid) {
+        try {
+            return ProcessHandle.of(Long.parseLong(pid.trim())).flatMap(process -> process.info().command()).map(command -> new File(command).getName()).orElse(null);
+        } catch(NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** What the running Tor said when last asked, for the diagnostics block */
+    public static String diagnostics() {
+        return daemonFacts;
     }
 
     public static Tor getDefault() {

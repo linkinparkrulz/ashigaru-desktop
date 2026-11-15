@@ -26,4 +26,13 @@ class TorTest {
         assertFalse(Tor.holdsDataDir(List.of("--DataDirectory"), DATA));
         assertFalse(Tor.holdsDataDir(List.of(), DATA));
     }
+
+    @Test
+    void theProofOfWorkAnswerSaysWhatTorHasAndWhatAshigaruAskedFor() {
+        assertEquals("CompiledProofOfWorkHash=0 (set); Ashigaru asks for 0 (interpreted) on this system",
+                Tor.describeProofOfWork(List.of("0 (set)"), true));
+        assertEquals("CompiledProofOfWorkHash=auto (default); Ashigaru asks for Tor's default on this system",
+                Tor.describeProofOfWork(List.of("auto (default)"), false));
+        assertTrue(Tor.describeProofOfWork(List.of(), true).contains("no answer"));
+    }
 }

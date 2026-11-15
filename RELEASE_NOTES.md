@@ -77,6 +77,12 @@ misunderstand, and the interface typeface changes across the whole app.
 
 ## Tester fixes
 
+- **The diagnostics block says what Tor was actually given.** When Tor's listener comes up, Ashigaru
+  asks the running daemon for its version, its pid and its `CompiledProofOfWorkHash` setting over the
+  control connection. The answer is in the log and in the diagnostics block from Settings → Logs. On a
+  Mac the setting should read `0 (set)`, which shows the daemon took the interpreted proof of work
+  Ashigaru asks for; anything else means the request never reached it. Tor is given its configuration
+  on stdin, so no file on disk can show this.
 - **Ashigaru starts when Sparrow Wallet, or anything else, holds the single-instance lock.** Ashigaru
   used the same lock name as Sparrow Wallet and kept the lock file in the shared temp folder. If
   Sparrow (or a process left over from a crash) was holding it, Ashigaru took itself for a second copy

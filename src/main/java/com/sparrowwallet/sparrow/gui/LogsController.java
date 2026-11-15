@@ -441,6 +441,7 @@ public class LogsController implements Initializable {
         builder.append("Java:     ").append(System.getProperty("java.version")).append("\n");
         builder.append("Network:  ").append(Network.get().getName()).append("\n");
         builder.append("Proxy:    ").append(AppServices.getProxy() != null ? "enabled" : "disabled").append("\n");
+        builder.append(com.sparrowwallet.sparrow.net.Tor.diagnostics());
         if(Config.get().isSwapsEnabled()) {
             builder.append(SwapService.get().diagnostics());
         }
