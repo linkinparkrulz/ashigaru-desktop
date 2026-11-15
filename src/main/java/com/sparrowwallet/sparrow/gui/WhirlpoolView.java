@@ -19,12 +19,12 @@ import java.util.List;
 /**
  * A coin's privacy is its mix count, so this draws it. Every ring is a completed mix: Premix coins
  * on the outside, coins that have reached the wallet's minimum at the centre, around the eagle.
- * Coins in the round happening now are red and tied to the core.
+ * Coins awaiting the next round are red and tied to the core.
  *
  * <p>A third view beside UTXOs and Transactions; it reads the same per-coin mix counts they do.
  */
 public class WhirlpoolView extends HBox {
-    /** One coin: how many mixes it has completed, and whether it is in a round right now. */
+    /** One coin: how many mixes it has completed, and whether it is awaiting a round right now. */
     public record Coin(int mixes, boolean active) {}
 
     private static final int RINGS = 4;
@@ -156,8 +156,8 @@ public class WhirlpoolView extends HBox {
         }
         summary.setText(coins.size() + (coins.size() == 1 ? " coin" : " coins"));
         round.setText(coins.isEmpty() ? "No coins in Premix or Postmix yet. Run a Tx0 from Deposit to start."
-                : active == 0 ? "None of your coins is in a round right now."
-                : active + (active == 1 ? " of your coins is" : " of your coins are") + " in a round right now, shown in red.");
+                : active == 0 ? "None of your coins is awaiting a round right now."
+                : active + (active == 1 ? " of your coins is" : " of your coins are") + " awaiting a round right now, shown in red.");
         draw(0);
     }
 

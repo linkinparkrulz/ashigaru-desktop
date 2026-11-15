@@ -87,4 +87,21 @@ class SwapsToolControllerTest {
         assertNull(SwapsToolController.startedAt(swap));
         assertNull(SwapsToolController.startedAt(new com.google.gson.JsonObject()));
     }
+
+    @Test
+    void aMakerThatRefusedThisCoinIsNotOfferedForItAgain() {
+        String full = "{\"type\":\"FullRefund\"}";
+        //Both list a range that includes the coin; the first one then said it buys 0.01 BTC at least
+        Quote refuser = offer("refuser", "5.0.3", 705_000, 10_000, 1_000_000, full);
+        Quote other = offer("other", "5.0.2", 706_000, 10_000, 1_000_000, full);
+        com.sparrowwallet.sparrow.swap.MakerRefusals refusals = new com.sparrowwallet.sparrow.swap.MakerRefusals();
+        refusals.record("refuser", com.sparrowwallet.sparrow.swap.MakerRefusals.parse(
+                "Seller refused to buy 0.00035449 BTC because the minimum configured buy limit is 0.01000000 BTC", 35_449, java.time.Instant.now()).orElseThrow());
+
+        SwapsToolController.Offers offers = SwapsToolController.Offers.of(List.of(refuser, other), 35_449, null, refusals);
+        assertEquals(List.of(other), offers.shown());
+        assertEquals(1, offers.wrongSize());
+        //With no coin chosen, nothing is hidden on a maker's say-so about a coin
+        assertEquals(2, SwapsToolController.Offers.of(List.of(refuser, other), 0, null, refusals).shown().size());
+    }
 }

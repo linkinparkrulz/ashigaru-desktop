@@ -13,6 +13,8 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
+import javafx.util.Duration;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
@@ -44,6 +46,7 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
     private static final PseudoClass FILLED = PseudoClass.getPseudoClass("filled");
     private static final PseudoClass PRIVATE = PseudoClass.getPseudoClass("private");
     private final HBox pipBox = new HBox(4);
+    private final Tooltip pipTip = new Tooltip();
     private final TextField labelField = new TextField();
     private final Label addressLabel = new Label();
     private final Label metaLabel = new Label();
@@ -62,6 +65,11 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
         badgeBox.setAlignment(Pos.CENTER_RIGHT);
         pipBox.getStyleClass().add("mix-pips");
         pipBox.setAlignment(Pos.CENTER);
+        pipTip.setShowDelay(Duration.millis(150));
+        pipTip.setShowDuration(Duration.INDEFINITE);
+        pipTip.setWrapText(true);
+        pipTip.setMaxWidth(320);
+        Tooltip.install(pipBox, pipTip);
         for(int i = 0; i < PIPS; i++) {
             Region pip = new Region();
             pip.getStyleClass().add("mix-pip");
@@ -191,6 +199,7 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
                 pipBox.getChildren().get(i).pseudoClassStateChanged(FILLED, i < done);
             }
             pipBox.pseudoClassStateChanged(PRIVATE, isPrivate);
+            pipTip.setText(pipExplainer(done, minMixes(row)));
             pipBox.setVisible(true);
             pipBox.setManaged(true);
         }
@@ -211,6 +220,25 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
                 badgeText.setText("Unmixed");
             }
         }
+    }
+
+    /**
+     * What the dots mean, on hover. Each dot is one completed mix; the coin's own count is said first, then
+     * the whole scale, so a reader who has never seen the Whirlpool tab can still read the row.
+     */
+    static String pipExplainer(int done, int minMixes) {
+        String own = done == 0 ? "This coin has not been mixed yet."
+                : "This coin has completed " + done + (done == 1 ? " mix." : " mixes.");
+        String reached = done >= minMixes ? " It has reached your minimum of " + minMixes + ", so its dots are green."
+                : " Your minimum is " + minMixes + "; the dots turn green when a coin gets there.";
+        return own + reached + "\n\n"
+                + "Each dot is one completed mix:\n"
+                + "\u25CB\u25CB\u25CB\u25CB  none yet, waiting in Premix\n"
+                + "\u25CF\u25CB\u25CB\u25CB  1 mix\n"
+                + "\u25CF\u25CF\u25CB\u25CB  2 mixes\n"
+                + "\u25CF\u25CF\u25CF\u25CB  3 mixes\n"
+                + "\u25CF\u25CF\u25CF\u25CF  4 or more\n\n"
+                + "More mixes means more coins it could be mistaken for. Remixing is free while a coin stays in Postmix.";
     }
 
     /** The wallet's own "private enough" threshold: the Mix To minimum, or Whirlpool's default. */

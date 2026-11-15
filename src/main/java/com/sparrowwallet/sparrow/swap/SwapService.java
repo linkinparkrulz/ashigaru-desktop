@@ -89,6 +89,10 @@ public class SwapService implements SwapHost {
     //The swap being set up: the only one Ashigaru answers wallet requests for
     private BadbankSwapHost activeHost;
     private final Set<String> runningSwaps = ConcurrentHashMap.newKeySet();
+    //Who each swap of this run is with and for how much, so a maker's refusal is remembered against the right maker
+    private record Started(String peerId, long sats) {}
+    private final Map<String, Started> startedSwaps = new ConcurrentHashMap<>();
+    private final MakerRefusals refusals = new MakerRefusals();
     //Each swap's latest step, as reported by the engine; the swap being set up is the latest started
     private final Map<String, SwapProgress.Status> progress = new ConcurrentHashMap<>();
     //Each swap's latest timelock state, from the engine's TimelockChange events: blocks left until cancel or punish
@@ -122,6 +126,11 @@ public class SwapService implements SwapHost {
 
     public boolean isEnabled() {
         return Config.get().isSwapsEnabled() && isAvailable();
+    }
+
+    /** What makers have refused during this run, so their offers can be left out for the coin they refused */
+    public MakerRefusals getRefusals() {
+        return refusals;
     }
 
     public boolean isSwapActive() {
@@ -570,6 +579,7 @@ public class SwapService implements SwapHost {
             }
             runInBackground(() -> engine.startSwap(maker, sats, fee, xmrAddress, refundAddress), swapId -> {
                 runningSwaps.add(swapId);
+                startedSwaps.put(swapId, new Started(maker.peerId(), sats));
                 currentSwapId = swapId;
                 saveDetails(swapId, SwapDetails.started(sats, fee, xmrAddress, SwapReview.shortId(maker.peerId())));
                 progress.putIfAbsent(swapId, new SwapProgress.Status(SwapProgress.Step.NODES, null, java.time.Instant.now(), false));
@@ -727,6 +737,11 @@ public class SwapService implements SwapHost {
             activeHost = null;
             SwapProgress.Status status = SwapProgress.stopped(payload, progress.get(swapId), java.time.Instant.now());
             progress.put(swapId, status);
+            Started started = startedSwaps.get(swapId);
+            if(started != null && payload.has("error")) {
+                MakerRefusals.parse(payload.get("error").getAsString(), started.sats(), java.time.Instant.now())
+                        .ifPresent(refusal -> refusals.record(started.peerId(), refusal));
+            }
             appendLog("Swap " + swapId + " stopped" + (payload.has("error") ? ": " + payload.get("error").getAsString()
                     : payload.has("state") ? " at " + payload.get("state").getAsString() : "") + ".");
             swapListeners.forEach(Runnable::run);

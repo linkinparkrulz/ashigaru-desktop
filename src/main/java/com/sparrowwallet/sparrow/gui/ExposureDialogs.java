@@ -146,7 +146,10 @@ public final class ExposureDialogs {
         ButtonType open = new ButtonType("Open anyway", ButtonBar.ButtonData.OTHER);
         DialogPane pane = dlg.getDialogPane();
         pane.setContent(content);
-        pane.getButtonTypes().addAll(open, copy);
+        //The window's X only closes a dialog that has a cancel button; without one it did nothing, and the
+        //only way out was to copy the link.
+        ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        pane.getButtonTypes().addAll(open, copy, cancel);
         WalletCreationFlow.styleWizardButtons(pane);
         pane.setPrefWidth(480);
         AppServices.moveToActiveWindowScreen(dlg);

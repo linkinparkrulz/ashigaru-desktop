@@ -5,6 +5,15 @@ misunderstand, and the interface typeface changes across the whole app.
 
 ## Swaps
 
+- **A maker that refuses a swap is left out of the offers for that coin, and the stopped swap says
+  why.** A maker can list a range that includes your coin and still turn it down: its real buy limit
+  may be higher than it advertises (0.01 BTC for a coin of 0.00035 BTC), the anti-spam deposit on a
+  small coin may come to less than its minimum, or it may fail on its own side ("Seller encountered a
+  problem"). The engine retried each of these for about two minutes and stopped with the engine's
+  wording, and the same maker was on the list again. Ashigaru now reads these refusals, explains them
+  in plain words (nothing was locked; choose another maker), and leaves that maker out of the offers
+  for coins it would refuse again until Ashigaru is closed. A maker with a fault of its own is left
+  out for 15 minutes. If every maker refuses a very small coin, it is too small to swap.
 - **The swap engine is eigenwallet 5.0.2.** Makers are moving to version 5, which changed the swap
   protocol: both sides must run it, so a version 4 engine could not swap with them. Ashigaru now
   can, and offers from makers still on version 4 are left out and counted in the "not shown" line.
@@ -65,6 +74,17 @@ misunderstand, and the interface typeface changes across the whole app.
   is at stake.
 - **Consistent wording.** The offer card, the approval, the progress text and the quit prompt used
   to describe refunds in different ways. They now share one account.
+
+## Tester fixes
+
+- **The window's X closes the "Leaving Tor" dialog.** It used to do nothing; the only way out was Copy
+  link. There is now a Cancel button as well.
+- **The dots on a coin explain themselves.** Hover over them for what this coin's count means and a
+  key from no dots to four. They show completed mixes; they do not show a number of bits of entropy,
+  which Ashigaru does not calculate.
+- **A coin waiting for Whirlpool says "awaiting a round"**, not "in a round", on the Whirlpool view.
+- **The amber note on Badbank (and the Whirlpool and syncing notes) no longer gets cut off** when it
+  needs more than one line.
 
 ## Window and typography
 

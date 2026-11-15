@@ -11,6 +11,7 @@ import com.sparrowwallet.sparrow.swap.SwapDashboard;
 import com.sparrowwallet.sparrow.swap.SwapEngine.Quote;
 import com.sparrowwallet.sparrow.swap.SwapProgress;
 import com.sparrowwallet.sparrow.swap.SwapReview;
+import com.sparrowwallet.sparrow.swap.MakerRefusals;
 import com.sparrowwallet.sparrow.swap.SwapService;
 import com.sparrowwallet.sparrow.swap.XmrPrice;
 import javafx.animation.KeyFrame;
@@ -217,7 +218,7 @@ public class SwapsToolController implements Initializable {
     /** Draws the offers screen: only offers that can take this coin, compared by what they would give */
     private void renderOffers() {
         Double market = price == null ? null : price.btcPerXmr();
-        Offers offers = Offers.of(quotes, swapSats, market);
+        Offers offers = Offers.of(quotes, swapSats, market, SwapService.get().getRefusals());
         SwapService.Coin coin = SwapService.get().coinProperty().get();
         boolean running = SwapService.get().runningProperty().get();
         String empty = !offers.shown().isEmpty() ? null
@@ -240,8 +241,17 @@ public class SwapsToolController implements Initializable {
      */
     record Offers(List<Quote> shown, Quote bestRate, Quote bestRefund, int outdated, int wrongSize, int belowMarket, int soldOut, int newer) {
         static Offers of(List<Quote> quotes, long swapSats, Double marketBtcPerXmr) {
+            return of(quotes, swapSats, marketBtcPerXmr, new MakerRefusals());
+        }
+
+        /**
+         * A maker that has already refused a coin this size, this run, is counted with the ones that cannot take
+         * it: its offer says otherwise, but the maker has said no.
+         */
+        static Offers of(List<Quote> quotes, long swapSats, Double marketBtcPerXmr, MakerRefusals refusals) {
             List<Quote> shown = new ArrayList<>();
             int outdated = 0, wrongSize = 0, belowMarket = 0, soldOut = 0, newer = 0;
+            java.time.Instant now = java.time.Instant.now();
             for(Quote quote : quotes) {
                 if(quote.isTooNew()) {
                     newer++;
@@ -251,7 +261,7 @@ public class SwapsToolController implements Initializable {
                     belowMarket++;
                 } else if(quote.maxSats() <= 0) {
                     soldOut++;
-                } else if(swapSats > 0 && !fits(quote, swapSats)) {
+                } else if(swapSats > 0 && (!fits(quote, swapSats) || refusals.rulesOut(quote.peerId(), swapSats, now))) {
                     wrongSize++;
                 } else {
                     shown.add(quote);
@@ -437,6 +447,9 @@ public class SwapsToolController implements Initializable {
     private String offerProblem(Quote quote) {
         if(SwapService.get().coinProperty().get() == null || swapSats == 0) {
             return "Choose a Badbank coin first";
+        }
+        if(SwapService.get().getRefusals().rulesOut(quote.peerId(), swapSats, java.time.Instant.now())) {
+            return "This maker already turned this coin down. Choose another maker.";
         }
         if(!fits(quote, swapSats)) {
             return "This maker takes " + btc(quote.minSats()) + " to " + btc(quote.maxSats()) + " BTC; this coin swaps " + btc(swapSats) + " BTC.";

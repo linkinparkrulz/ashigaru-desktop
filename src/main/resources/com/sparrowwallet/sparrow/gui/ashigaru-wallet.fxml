@@ -63,7 +63,7 @@
         <Label fx:id="badbankIcon" styleClass="badbank-warning-icon"/>
         <Label fx:id="badbankInfoLabel"
                text="This is change from your Tx0. It is tied to the coins you deposited, so it is kept apart from Postmix. Mix it in a smaller pool, or swap it to XMR, before you spend it."
-               styleClass="badbank-info-text" wrapText="true"/>
+               styleClass="badbank-info-text" wrapText="true" minHeight="-Infinity" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
     </HBox>
 
     <!-- A swap is running: where it is, and a way to it (any account, any wallet) -->
@@ -77,7 +77,7 @@
         <padding><Insets top="10" right="20" bottom="10" left="20"/></padding>
         <Label fx:id="coordinatorIcon" styleClass="coordinator-warning-icon"/>
         <Label text="Can't reach the Whirlpool coordinator. It may be offline. Mixing resumes automatically once it's reachable."
-               styleClass="coordinator-warning-text" wrapText="true"/>
+               styleClass="coordinator-warning-text" wrapText="true" minHeight="-Infinity" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
     </HBox>
 
     <!-- Syncing bar (shown while the wallet history is refreshing) -->
@@ -85,7 +85,7 @@
         <padding><Insets top="10" right="20" bottom="10" left="20"/></padding>
         <ProgressIndicator styleClass="syncing-spinner" prefWidth="16" prefHeight="16" minWidth="16" minHeight="16"/>
         <Label text="Syncing wallet to the latest block. Balances and mixing update once this finishes."
-               styleClass="syncing-text" wrapText="true"/>
+               styleClass="syncing-text" wrapText="true" minHeight="-Infinity" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
     </HBox>
 
     <!-- ③ View toggle: UTXOs / Transactions + Mix Selected (right-aligned) -->
