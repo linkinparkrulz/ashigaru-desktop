@@ -77,6 +77,12 @@ misunderstand, and the interface typeface changes across the whole app.
 
 ## Tester fixes
 
+- **Ashigaru starts when Sparrow Wallet, or anything else, holds the single-instance lock.** Ashigaru
+  used the same lock name as Sparrow Wallet and kept the lock file in the shared temp folder. If
+  Sparrow (or a process left over from a crash) was holding it, Ashigaru took itself for a second copy
+  and quit about a second after launch, with no window and no message. Linux Mint testers saw
+  exactly this. The lock file now lives in Ashigaru's own folder and needs a per-run token (since
+  the security hardening after 1.5.1), and Ashigaru has its own lock name.
 - **The window's X closes the "Leaving Tor" dialog.** It used to do nothing; the only way out was Copy
   link. There is now a Cancel button as well.
 - **The dots on a coin explain themselves.** Hover over them for what this coin's count means and a

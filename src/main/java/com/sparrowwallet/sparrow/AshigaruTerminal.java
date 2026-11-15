@@ -21,7 +21,9 @@ import java.util.List;
 import java.util.Locale;
 
 public class AshigaruTerminal {
-    public static final String APP_ID = "com.sparrowwallet.sparrow";
+    //Names the single-instance lock. It was Sparrow Wallet's own id, so a running Sparrow (or anything else holding
+    //that lock) made Ashigaru believe it was already open and exit a second after launch, with no window and no message.
+    public static final String APP_ID = "org.ashigaru.desktop";
     public static final String APP_NAME = "Ashigaru";
     public static final String APP_VERSION = "1.5.1";
     public static final String APP_VERSION_SUFFIX = "";
