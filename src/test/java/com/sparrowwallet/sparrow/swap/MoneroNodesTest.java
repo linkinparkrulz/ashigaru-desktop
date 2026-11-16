@@ -40,4 +40,45 @@ class MoneroNodesTest {
         assertFalse(MoneroNodes.isOnionHostAndPort("node.example.com:18081"));
         assertFalse(MoneroNodes.isOnionHostAndPort("abc.onion"));
     }
+
+    private static final String OWN2 = "bbcdefghijklmnopqrstuvwxyz234567abcdefghijklmnopqrstuvwx.onion:18081";
+    private static final String RUCKNIUM = MoneroNodes.PUBLIC_NODES.get(2).address();
+
+    @Test
+    void ticksThatAreNotUsedAreCounted() {
+        //A tester ticked Cake, plowsof and rucknium and added their own: only theirs runs
+        assertEquals(3, MoneroNodes.ignoredPublic(List.of(CAKE, PLOWSOF, RUCKNIUM, OWN)));
+        assertEquals(0, MoneroNodes.ignoredPublic(List.of(CAKE, PLOWSOF, RUCKNIUM)));
+        assertEquals(0, MoneroNodes.ignoredPublic(List.of(OWN)));
+        assertTrue(MoneroNodes.hasOwn(List.of(CAKE, OWN)));
+        assertFalse(MoneroNodes.hasOwn(List.of(CAKE, PLOWSOF)));
+    }
+
+    @Test
+    void theStatusSaysWhichNodesRun() {
+        assertEquals("your own Monero node, trusted on its own", MoneroNodes.describe(List.of(OWN)));
+        assertEquals("your own Monero node only; the 3 public nodes you ticked are not used",
+                MoneroNodes.describe(List.of(CAKE, PLOWSOF, RUCKNIUM, OWN)));
+        assertEquals("your own Monero node only; the 1 public node you ticked is not used", MoneroNodes.describe(List.of(CAKE, OWN)));
+        assertEquals("2 of your own Monero nodes, which must agree before a swap releases your BTC", MoneroNodes.describe(List.of(OWN, OWN2)));
+        assertEquals("2 of your own Monero nodes, which must agree before a swap releases your BTC; the 1 public node you ticked is not used",
+                MoneroNodes.describe(List.of(CAKE, OWN, OWN2)));
+        assertEquals("3 public Monero nodes, which must agree before a swap releases your BTC", MoneroNodes.describe(List.of(CAKE, PLOWSOF, RUCKNIUM)));
+    }
+
+    @Test
+    void nothingIsSaidAboutASelectionThatCannotBeUsed() {
+        assertNull(MoneroNodes.describe(List.of(CAKE)));
+        assertNull(MoneroNodes.describe(List.of()));
+    }
+
+    @Test
+    void theSettingsNoteAppearsOnlyWhenTicksAreIgnored() {
+        assertEquals("Your own node is ticked, so only your own node is used. The 3 public nodes you ticked are ignored.",
+                MoneroNodes.note(List.of(CAKE, PLOWSOF, RUCKNIUM, OWN)));
+        assertEquals("Your own node is ticked, so only your own node is used. The 1 public node you ticked is ignored.",
+                MoneroNodes.note(List.of(CAKE, OWN)));
+        assertNull(MoneroNodes.note(List.of(OWN)));
+        assertNull(MoneroNodes.note(List.of(CAKE, PLOWSOF)));
+    }
 }

@@ -557,6 +557,9 @@ public class AshigaruWalletController implements Initializable {
         }
     }
 
+    //Style class that turns Preview Tx0's text green while a Deposit coin is ticked
+    static final String READY_STYLE = "ready";
+
     private void updateMixSelectedButton() {
         List<UtxoRow> selected = utxoRows.stream().filter(r -> r.selected.get()).toList();
         boolean none = selected.isEmpty();
@@ -578,12 +581,18 @@ public class AshigaruWalletController implements Initializable {
         tx0SelectedBtn.setTooltip(new Tooltip("Start a new mix from the ticked coins: a Tx0 splits them into fresh premix outputs."));
     }
 
+    /** The Deposit account: the wallet itself, before any Whirlpool account */
+    private boolean isDepositAccount() {
+        if (activeAccountForm == null) return false;
+        Wallet wallet = activeAccountForm.getWallet();
+        return wallet.isMasterWallet() || wallet.getStandardAccountType() == null
+                || wallet.getStandardAccountType() == StandardAccount.ACCOUNT_0;
+    }
+
     private void updateSelectAllButton() {
         if (activeAccountForm == null || selectAllUtxosBtn == null) return;
 
-        Wallet wallet = activeAccountForm.getWallet();
-        boolean isDeposit = wallet.isMasterWallet() || wallet.getStandardAccountType() == null
-                || wallet.getStandardAccountType() == StandardAccount.ACCOUNT_0;
+        boolean isDeposit = isDepositAccount();
         boolean show = isDeposit && utxoTable.isVisible();
         selectAllUtxosBtn.setVisible(show);
         selectAllUtxosBtn.setManaged(show);
@@ -602,6 +611,15 @@ public class AshigaruWalletController implements Initializable {
             updateMixSelectedButton();
         }
         updateSelectAllButton();
+
+        //Preview Tx0 reads green once a Deposit coin is ticked, so the eye is led to the next step. Not on Postmix,
+        //where the same button is "Remix selected".
+        boolean ready = utxosVisible && mixSelectedBtn.isManaged() && isDepositAccount()
+                && utxoRows.stream().anyMatch(r -> r.selected.get());
+        mixSelectedBtn.getStyleClass().remove(READY_STYLE);
+        if (ready) {
+            mixSelectedBtn.getStyleClass().add(READY_STYLE);
+        }
 
         //Selection summary: how many coins and how much, beside Preview Tx0
         long count = utxoRows.stream().filter(r -> r.selected.get()).count();

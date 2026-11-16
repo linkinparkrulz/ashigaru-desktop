@@ -51,7 +51,9 @@
         </Fieldset>
         <Fieldset inputGrow="SOMETIMES" text="Monero nodes" styleClass="wideLabelFieldSet">
             <Label wrapText="true" minHeight="-Infinity" styleClass="ag-read, faint" maxWidth="760"
-                   text="A swap only releases your BTC once the maker's XMR is seen locked, so the nodes that report it are trusted with the swap. Public nodes are used together: tick at least two, and every one must see the lock. A node you add yourself is your own, and trusted on its own." />
+                   text="A swap only releases your BTC once the maker's XMR is seen locked, so the nodes that report it are trusted with the swap. Public nodes are used together: tick at least two, and every one must see the lock. A node you add yourself is your own, and trusted on its own: if you tick it, only your node is used and any public nodes ticked are ignored." />
+            <Label fx:id="nodeLockNote" wrapText="true" minHeight="-Infinity" styleClass="ag-read, faint" maxWidth="760" visible="false" managed="false"
+                   text="These are locked while swaps are on. Choose Edit nodes to change them: that turns swaps off, and you turn them back on when you are done." />
             <VBox fx:id="nodeList" spacing="8">
                 <padding><Insets top="10" bottom="6"/></padding>
             </VBox>
@@ -59,6 +61,7 @@
                 <TextField fx:id="customNode" promptText="your-node.onion:18081" HBox.hgrow="ALWAYS" />
                 <Button minWidth="-Infinity" fx:id="addNodeBtn" text="Add your node" onAction="#onAddNode" styleClass="secondary-btn" />
                 <Button minWidth="-Infinity" fx:id="checkNodesBtn" text="Check nodes" onAction="#onCheckNodes" styleClass="secondary-btn" />
+                <Button minWidth="-Infinity" fx:id="editNodesBtn" text="Edit nodes" onAction="#onEditNodes" styleClass="secondary-btn" visible="false" managed="false" />
             </HBox>
             <Label fx:id="nodeMessage" wrapText="true" minHeight="-Infinity" styleClass="ag-read, faint" visible="false" managed="false" />
         </Fieldset>

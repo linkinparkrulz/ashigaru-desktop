@@ -340,7 +340,10 @@ public class SwapService implements SwapHost {
         engineServerUrl = serverUrl;
         serverChangeWaiting = false;
         List<String> electrumUrls = List.of(serverUrl);
-        List<String> moneroNodes = MoneroNodes.forEngine(MoneroNodes.getSelected());
+        List<String> selectedNodes = MoneroNodes.getSelected();
+        List<String> moneroNodes = MoneroNodes.forEngine(selectedNodes);
+        //Said as the engine will use them: ticked public nodes are left out when the user's own node is ticked
+        String nodeUse = MoneroNodes.describe(selectedNodes);
         File swapsDir = new File(Storage.getSparrowHome(), "swaps");
         SwapEngine loaded = loadEngine();
 
@@ -384,10 +387,8 @@ public class SwapService implements SwapHost {
             }
             running.set(true);
             engineStartedAt = System.currentTimeMillis();
-            status.set("On. Using " + moneroNodes.size() + " Monero node" + (moneroNodes.size() == 1 ? "" : "s")
-                    + (moneroNodes.size() > 1 ? ", which must agree before a swap releases your BTC." : ", your own."));
-            appendLog("Swap engine running" + (moneroNodes.size() > 1 ? " with " + moneroNodes.size() + " Monero nodes in agreement" : "")
-                    + " (ready in " + (System.currentTimeMillis() - startedAt) / 1000 + " s)");
+            status.set("On. Using " + nodeUse + ".");
+            appendLog("Swap engine running with " + nodeUse + " (ready in " + (System.currentTimeMillis() - startedAt) / 1000 + " s)");
             if(!resumed.isEmpty()) {
                 appendLog("Resumed unfinished swaps: " + String.join(", ", resumed));
             }

@@ -32,8 +32,12 @@ public class SwapsPreferencesController extends PreferencesDetailController {
     @FXML private TextField customNode;
     @FXML private Label nodeMessage;
     @FXML private Button checkNodesBtn;
+    @FXML private Button addNodeBtn;
+    @FXML private Button editNodesBtn;
+    @FXML private Label nodeLockNote;
 
     private final List<CheckBox> nodeBoxes = new ArrayList<>();
+    private final List<Button> removeButtons = new ArrayList<>();
     //Each node's last check result, beside its address
     private final java.util.Map<String, Label> nodeResults = new java.util.HashMap<>();
 
@@ -49,6 +53,7 @@ public class SwapsPreferencesController extends PreferencesDetailController {
             } else {
                 service.stop();
             }
+            updateNodeLock();
         });
         engineStatus.textProperty().bind(service.statusProperty());
         if(!service.isAvailable()) {
@@ -70,6 +75,7 @@ public class SwapsPreferencesController extends PreferencesDetailController {
     private void buildNodeList(Config config) {
         nodeList.getChildren().clear();
         nodeBoxes.clear();
+        removeButtons.clear();
         nodeResults.clear();
         List<String> selected = MoneroNodes.getSelected();
         for(MoneroNodes.Node node : MoneroNodes.PUBLIC_NODES) {
@@ -79,6 +85,7 @@ public class SwapsPreferencesController extends PreferencesDetailController {
             nodeList.getChildren().add(nodeRow("Your node", address, selected.contains(address), true, config));
         }
         showNodeProblem();
+        updateNodeLock();
     }
 
     private HBox nodeRow(String name, String address, boolean ticked, boolean custom, Config config) {
@@ -106,6 +113,7 @@ public class SwapsPreferencesController extends PreferencesDetailController {
             Button remove = new Button("Remove");
             remove.setMinWidth(Region.USE_PREF_SIZE);
             remove.getStyleClass().add("secondary-btn");
+            removeButtons.add(remove);
             remove.setOnAction(event -> {
                 List<String> customNodes = new ArrayList<>(config.getSwapCustomMoneroNodes());
                 customNodes.remove(address);
@@ -144,6 +152,35 @@ public class SwapsPreferencesController extends PreferencesDetailController {
         SwapService.get().restart();
     }
 
+    /**
+     * The nodes are locked while swaps are on, as the Bitcoin server's settings are while Ashigaru is connected to it:
+     * the engine was started with them, and a change that quietly restarted it would pull it out from under a swap. A
+     * selection that cannot be used yet stays editable, since the engine is not running on it.
+     */
+    private void updateNodeLock() {
+        boolean locked = swapsEnabled.isSelected() && MoneroNodes.problem(MoneroNodes.getSelected()) == null;
+        nodeBoxes.forEach(box -> box.setDisable(locked));
+        removeButtons.forEach(button -> button.setDisable(locked));
+        customNode.setDisable(locked);
+        addNodeBtn.setDisable(locked);
+        editNodesBtn.setVisible(locked);
+        editNodesBtn.setManaged(locked);
+        nodeLockNote.setVisible(locked);
+        nodeLockNote.setManaged(locked);
+    }
+
+    /** Like "Edit Existing Connection" for the server: unlocks the nodes by turning swaps off, unless a swap is relying on them */
+    @FXML
+    private void onEditNodes() {
+        if(SwapService.get().isSwapActive()) {
+            showNodeMessage("A swap is running and relies on these nodes. Wait until it has finished, then edit them.");
+            return;
+        }
+        //The switch's own listener turns the engine off and unlocks the nodes
+        swapsEnabled.setSelected(false);
+        showNodeMessage("Swaps are off while you change the nodes. Turn them back on when you are done.");
+    }
+
     @FXML
     private void onCheckNodes() {
         SwapService service = SwapService.get();
@@ -179,11 +216,14 @@ public class SwapsPreferencesController extends PreferencesDetailController {
         config.setSwapMoneroNodes(new ArrayList<>(selected));
         showNodeProblem();
         SwapService.get().restart();
+        updateNodeLock();
     }
 
     private void showNodeProblem() {
-        String problem = MoneroNodes.problem(MoneroNodes.getSelected());
-        showNodeMessage(problem);
+        List<String> selected = MoneroNodes.getSelected();
+        String problem = MoneroNodes.problem(selected);
+        //Ticks that will be ignored are said now, while they are being chosen, not found out from the status afterwards
+        showNodeMessage(problem != null ? problem : MoneroNodes.note(selected));
     }
 
     private void showNodeMessage(String message) {

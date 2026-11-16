@@ -273,9 +273,9 @@ public class AshigaruTx0Controller implements Initializable {
             poolFeeLabel.setText("Anti-Sybil fee");
         }
 
-        poolFeeValue.setText(fmt.formatBtcValue(poolFeeAmt) + " BTC");
+        poolFeeValue.setText(fmt.tableFormatBtcValue(poolFeeAmt) + " BTC");
         premixOutputsValue.setText(String.valueOf(preview.getNbPremix()));
-        amountToWhirlpoolValue.setText(fmt.formatBtcValue((long) preview.getNbPremix() * pool.getDenomination()) + " BTC");
+        amountToWhirlpoolValue.setText(fmt.tableFormatBtcValue((long) preview.getNbPremix() * pool.getDenomination()) + " BTC");
         unmixedChangeValue.setText(fmt.tableFormatBtcValue(preview.getChangeValue()) + " BTC");
         minerFeeValue.setText(fmt.tableFormatBtcValue(minerFee) + " BTC");
         totalFeesValue.setText(fmt.tableFormatBtcValue(minerFee + poolFeeAmt) + " BTC");

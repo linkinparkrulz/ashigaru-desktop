@@ -103,7 +103,7 @@
         <Button minWidth="-Infinity" fx:id="tx0SelectedBtn" text="New Tx0" onAction="#onTx0Selected"
                 styleClass="action-btn" visible="false" managed="false" disable="true"/>
         <Button minWidth="-Infinity" fx:id="mixSelectedBtn" text="Preview Tx0" onAction="#onMixSelected"
-                styleClass="primary-btn mix-btn" visible="false" managed="false"/>
+                styleClass="action-btn, mix-btn" visible="false" managed="false"/>
     </HBox>
 
     <Separator/>
@@ -168,8 +168,8 @@
     <HBox fx:id="mixButtonBox" styleClass="mix-button-row" alignment="CENTER_LEFT" spacing="10" visible="false">
         <padding><Insets top="14" right="20" bottom="14" left="20"/></padding>
 
-        <Button minWidth="-Infinity" fx:id="startMixBtn"  text="Start Mixing" onAction="#onStartMix"  styleClass="primary-btn mix-btn" visible="false"/>
-        <Button minWidth="-Infinity" fx:id="mixToBtn"     text="Mix To…"      onAction="#onMixTo"      styleClass="action-btn mix-btn"  visible="false"/>
+        <Button minWidth="-Infinity" fx:id="startMixBtn"  text="Start Mixing" onAction="#onStartMix"  styleClass="primary-btn, mix-btn" visible="false"/>
+        <Button minWidth="-Infinity" fx:id="mixToBtn"     text="Mix To…"      onAction="#onMixTo"      styleClass="action-btn, mix-btn"  visible="false"/>
 
         <Region HBox.hgrow="ALWAYS"/>
     </HBox>

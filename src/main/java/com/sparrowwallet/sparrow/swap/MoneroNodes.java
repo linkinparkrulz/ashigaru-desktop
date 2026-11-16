@@ -54,6 +54,49 @@ public final class MoneroNodes {
         return publicNodes.size() >= MIN_PUBLIC_NODES ? publicNodes : List.of();
     }
 
+    /** True when a node of the user's own is ticked, which makes it the only one used */
+    public static boolean hasOwn(List<String> selected) {
+        return selected.stream().anyMatch(address -> !isPublic(address));
+    }
+
+    /**
+     * How many ticked public nodes are not used because the user's own node is ticked as well. Ticking a node of their
+     * own means they trust it alone, so the public ones are dropped (see {@link #forEngine}); this counts them so the
+     * screens can say so instead of showing four ticks and one node.
+     */
+    public static int ignoredPublic(List<String> selected) {
+        return hasOwn(selected) ? (int)selected.stream().filter(MoneroNodes::isPublic).count() : 0;
+    }
+
+    /**
+     * What swaps run on, as a phrase to follow "Using": the engine's nodes and, when ticked nodes are left out, which.
+     * Null when the selection cannot be used.
+     */
+    public static String describe(List<String> selected) {
+        List<String> used = forEngine(selected);
+        if(used.isEmpty()) {
+            return null;
+        }
+        int ignored = ignoredPublic(selected);
+        String left = ignored == 0 ? "" : "the " + ignored + " public node" + (ignored == 1 ? " you ticked is" : "s you ticked are") + " not used";
+        if(hasOwn(selected)) {
+            if(used.size() == 1) {
+                return ignored == 0 ? "your own Monero node, trusted on its own" : "your own Monero node only; " + left;
+            }
+            return used.size() + " of your own Monero nodes, which must agree before a swap releases your BTC" + (ignored == 0 ? "" : "; " + left);
+        }
+        return used.size() + " public Monero nodes, which must agree before a swap releases your BTC";
+    }
+
+    /** A note for the Settings screen while the nodes are being chosen, or null when there is nothing to point out */
+    public static String note(List<String> selected) {
+        int ignored = ignoredPublic(selected);
+        if(ignored == 0) {
+            return null;
+        }
+        return "Your own node is ticked, so only your own node is used. The " + ignored + " public node" + (ignored == 1 ? " you ticked is" : "s you ticked are") + " ignored.";
+    }
+
     /** Why the selection cannot be used, or null */
     public static String problem(List<String> selected) {
         if(forEngine(selected).isEmpty()) {

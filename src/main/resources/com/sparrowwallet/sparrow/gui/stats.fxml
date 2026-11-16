@@ -63,7 +63,7 @@
                     <HBox alignment="CENTER_LEFT" spacing="8">
                         <Label text="0.025 BTC POOL" styleClass="card-faint"/>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Label fx:id="pool025SizeBadge" text="—" styleClass="ag-chip accent"/>
+                        <Label fx:id="pool025SizeBadge" text="—" styleClass="ag-chip, accent"/>
                     </HBox>
                     <Label fx:id="pool025EnteredLabel" text="—" styleClass="card-secondary"/>
                     <Label fx:id="pool025CyclesLabel" text="—" styleClass="card-secondary"/>
@@ -74,7 +74,7 @@
                     <HBox alignment="CENTER_LEFT" spacing="8">
                         <Label text="0.25 BTC POOL" styleClass="card-faint"/>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Label fx:id="pool25SizeBadge" text="—" styleClass="ag-chip accent"/>
+                        <Label fx:id="pool25SizeBadge" text="—" styleClass="ag-chip, accent"/>
                     </HBox>
                     <Label fx:id="pool25EnteredLabel" text="—" styleClass="card-secondary"/>
                     <Label fx:id="pool25CyclesLabel" text="—" styleClass="card-secondary"/>

@@ -96,15 +96,17 @@
                            GridPane.columnSpan="2"/>
 
                 <Label text="Total fees"
-                       GridPane.rowIndex="5" GridPane.columnIndex="0" styleClass="field-label total-label"/>
+                       GridPane.rowIndex="5" GridPane.columnIndex="0" styleClass="field-label, total-label"/>
                 <Label fx:id="totalFeesValue" text="—"
-                       GridPane.rowIndex="5" GridPane.columnIndex="1" styleClass="field-value total-value"/>
+                       GridPane.rowIndex="5" GridPane.columnIndex="1" styleClass="field-value, total-value"/>
             </GridPane>
             </VBox>
             <VBox styleClass="tx0-flow-panel" spacing="6">
                 <Label text="WHERE THE COINS GO" styleClass="hero-caption"/>
                 <Tx0Flow fx:id="flow"/>
-                <Label text="Ribbon width follows value. Small amounts are enlarged to stay legible." styleClass="ag-read, faint" wrapText="true" maxWidth="370"/>
+                <!-- minHeight: a wrapping label otherwise reports one line and ends in an ellipsis -->
+                <Label text="Ribbon width follows value. Small amounts are enlarged to stay legible. Change goes to Badbank, kept apart from Postmix: mix it in a smaller pool, or swap it to XMR if swaps are on."
+                       styleClass="ag-read, faint" wrapText="true" minHeight="-Infinity" prefWidth="370" maxWidth="370"/>
             </VBox>
             </HBox>
         </VBox>

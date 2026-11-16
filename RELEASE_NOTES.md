@@ -77,6 +77,24 @@ misunderstand, and the interface typeface changes across the whole app.
 
 ## Tester fixes
 
+- **Style classes on five more screens were never applied.** The same comma mistake as the Verifier was on the
+  Deposit/Mix buttons, the Tx0 total row and the Statistics pool badges. Start Mixing is now the red primary
+  button, Mix To... and Preview Tx0 are the neutral buttons, the Tx0 total is emphasised, and the pool-size
+  badges are pills. These buttons are now a uniform 140px wide, as their stylesheet always intended. A test now
+  fails the build on any space-separated `styleClass`.
+- **Preview Tx0 turns green once a Deposit coin is ticked**, so the next step is easy to find.
+- **The "?" beside a passphrase (and every other help mark) now answers a click.** It used to show its text only
+  after hovering for half a second, so it looked broken. Click it for the help; click again to close it.
+- **The Tx0 caption is no longer cut off,** and says where the change goes (Badbank, kept apart from Postmix).
+- **Every amount in the Tx0 flow has eight decimals,** so the Anti-Sybil fee reads 0.00125000 beside the other
+  amounts, in the ribbon and in the window beside it.
+- **The wallet's "..." button no longer runs over the sidebar's divider** when the wallet has a picture. The wallet
+  selector can now shrink to make room.
+- **Swaps say which Monero nodes they use, and the nodes lock while swaps are on.** With your own node ticked,
+  only your own node is used and any public nodes ticked beside it are ignored: the status now says so
+  ("Using your own Monero node only; the 3 public nodes you ticked are not used"), and so does Settings. As with
+  the Bitcoin server, the Monero node settings are greyed out while swaps are on; "Edit nodes" turns swaps off so
+  they can be changed, unless a swap is running. "Who learns what" names your own node when it is the one used.
 - **The Verifier is simpler and fits the window.** Paste the whole signed message into one box and it is
   read as you paste: there is no Parse button, and the message and signature boxes (now under "Enter the
   message and signature separately") fill themselves. Pasting a second block now replaces the first; before,

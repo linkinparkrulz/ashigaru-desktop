@@ -6,9 +6,11 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.MouseButton;
 import javafx.util.Duration;
 import org.controlsfx.glyphfont.Glyph;
 
@@ -34,7 +36,27 @@ public class HelpLabel extends Label {
         tooltip.setMaxWidth(400);
         getStyleClass().add("help-label");
 
+        //A question mark gets clicked. It used to answer only to hovering for half a second, so on a screen where
+        //nothing seemed to happen it looked broken. A click shows the same text where it was clicked and stays until
+        //it is clicked again or the person clicks elsewhere.
+        tooltip.setAutoHide(true);
+        setCursor(Cursor.HAND);
+        setOnMouseClicked(event -> {
+            if(event.getButton() != MouseButton.PRIMARY || !hasHelp()) {
+                return;
+            }
+            if(tooltip.isShowing()) {
+                tooltip.hide();
+            } else {
+                tooltip.show(this, event.getScreenX() + 8, event.getScreenY() + 8);
+            }
+        });
+
         Platform.runLater(() -> setTooltip(tooltip));
+    }
+
+    private boolean hasHelp() {
+        return !getHelpText().isBlank() || helpGraphicProperty().get() != null;
     }
 
     private static Glyph getHelpGlyph() {

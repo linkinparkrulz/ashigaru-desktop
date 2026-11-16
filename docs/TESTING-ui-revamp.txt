@@ -253,6 +253,32 @@ WHAT THE REVAMP IS FOR
   [ ] The buttons look like the other Tools tabs: Verify Message is
       the red primary button, the cards have a visible background.
 
+  Tester round (comma style classes, help, formatting, Monero nodes):
+  [ ] Deposit, tick one coin: Preview Tx0's text and outline turn
+      green. Untick: it returns to normal. On Postmix the same button
+      ("Remix selected") never turns green. Start Mixing is red.
+  [ ] Tools > Statistics: the two pool-size badges are pills.
+  [ ] Tx0 preview: "Total fees" is bold and red. The caption under the
+      ribbon wraps in full (no "..."). Every amount has eight decimals,
+      including Anti-Sybil fee (0.00125000), in the ribbon AND the grid.
+  [ ] Click the "?" on the unlock passphrase dialog, the restore
+      passphrase step and the keystore passphrase dialog: each shows
+      its help; a second click closes it.
+  [ ] Wallet with a PayNym picture: the "..." button sits inside the
+      sidebar and the divider line is unbroken, at the default and the
+      minimum sidebar width.
+  [ ] Settings > Swaps, own node ticked with public nodes ticked: the
+      note says the public ones are ignored. Turn swaps on: the status
+      says "Using your own Monero node only; the N public nodes you
+      ticked are not used", and every node box, the add-node field, Add
+      and Remove are greyed out, with an Edit nodes button.
+  [ ] Edit nodes: swaps turn off, the section unlocks. While a swap is
+      running it refuses with a message. Turn swaps back on: it locks.
+  [ ] Settings > Swaps with only one public node ticked and swaps on:
+      stays editable, and says to tick at least two.
+  [ ] Who learns what (swaps on, own node ticked): the row reads
+      "Your own Monero node".
+
   Tools, Statistics:
   [ ] Chart lines and legend are red and light grey (no orange or
       yellow). Pool pills in "Recent Tx0 transactions" use the same

@@ -59,8 +59,13 @@ public final class ExposureDialogs {
             row = addParty(grid, row, "Swap makers", "Badbank to XMR",
                     "The offer you ask about, the Bitcoin you lock and the Monero address you receive to",
                     "Your IP address, or which wallet the coin came from");
-            row = addParty(grid, row, "Monero nodes", "the ones ticked in Settings",
-                    "That someone is checking whether a maker's XMR is locked", "Your IP address");
+            //With a node of their own ticked, that is the only one used: the public ones ticked beside it are left out
+            boolean ownNode = com.sparrowwallet.sparrow.swap.MoneroNodes.hasOwn(com.sparrowwallet.sparrow.swap.MoneroNodes.getSelected());
+            row = ownNode
+                    ? addParty(grid, row, "Your own Monero node", "the only one used",
+                            "Whether a maker's XMR is locked: only your own node is asked", "Anyone else. Public nodes ticked in Settings are not used")
+                    : addParty(grid, row, "Monero nodes", "the ones ticked in Settings",
+                            "That someone is checking whether a maker's XMR is locked", "Your IP address");
             row = addParty(grid, row, "Price source", "CoinGecko, or Kraken",
                     "That someone asked the BTC to XMR price", "Your IP address");
         }

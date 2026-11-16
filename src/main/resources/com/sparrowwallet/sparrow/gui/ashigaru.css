@@ -252,6 +252,11 @@
 .nav-btn:hover { -fx-background-color: -ag-bg-raised; -fx-text-fill: -ag-text; }
 
 .mix-btn { -fx-min-width: 140; }
+/* Preview Tx0 once a Deposit coin is ticked: the next step, in green so the eye finds it. Hover and armed name the
+   colour too, because .button:armed would otherwise turn the text back to white. */
+.mix-btn.ready { -fx-text-fill: -ag-green-ink; -fx-border-color: -ag-green; }
+.mix-btn.ready:hover { -fx-text-fill: -ag-green-ink; }
+.mix-btn.ready:armed { -fx-text-fill: -ag-green-ink; }
 .refresh-btn { -fx-font-size: 13px; -fx-padding: 4 10 4 10; }
 .delete-btn {
     -fx-background-color: derive(-ag-accent, -70%);
@@ -883,7 +888,9 @@
 .wallet-selector {
     -fx-background-color: -ag-bg;
     -fx-border-color: -ag-border;
-    -fx-min-width: 160;
+    /* The row also holds the avatar (30) and the menu button (34) in a sidebar whose content is 204px wide at its
+       narrowest, so the selector must be able to shrink to 128. At 160 the menu button ran over the sidebar's divider. */
+    -fx-min-width: 120;
 }
 .wallet-selector:hover {
     -fx-border-color: derive(-ag-accent, -30%);

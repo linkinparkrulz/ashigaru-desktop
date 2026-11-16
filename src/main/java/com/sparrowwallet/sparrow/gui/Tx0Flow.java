@@ -39,6 +39,14 @@ public class Tx0Flow extends Canvas {
         g.fillText(message, getWidth() / 2, getHeight() / 2);
     }
 
+    /**
+     * Every amount on the ribbon with all eight decimals, as the grid beside it shows unmixed change, the miner fee and the
+     * total. The plain format drops trailing zeros, which left the Anti-Sybil fee as 0.00125 beside 0.00277655 and 0.00001604.
+     */
+    static String amount(UnitFormat fmt, long sats) {
+        return fmt.tableFormatBtcValue(sats);
+    }
+
     public void show(long total, int premixCount, long perPremix, long change, long poolFee, long minerFee) {
         if(total <= 0) {
             clear("Nothing selected.");
@@ -46,10 +54,10 @@ public class Tx0Flow extends Canvas {
         }
         UnitFormat fmt = UnitFormat.DOT;
         List<Out> outs = new ArrayList<>();
-        outs.add(new Out((long) premixCount * perPremix, PREMIX, PREMIX_INK, premixCount + " × " + fmt.formatBtcValue(perPremix), "To Premix"));
-        outs.add(new Out(change, CHANGE, CHANGE_INK, fmt.formatBtcValue(change), "Change → Badbank"));
-        outs.add(new Out(poolFee, FEE, DIM, fmt.formatBtcValue(poolFee), "Anti-Sybil fee"));
-        outs.add(new Out(minerFee, FEE, DIM, fmt.formatBtcValue(minerFee), "Miner fee"));
+        outs.add(new Out((long) premixCount * perPremix, PREMIX, PREMIX_INK, premixCount + " × " + amount(fmt, perPremix), "To Premix"));
+        outs.add(new Out(change, CHANGE, CHANGE_INK, amount(fmt, change), "Change → Badbank"));
+        outs.add(new Out(poolFee, FEE, DIM, amount(fmt, poolFee), "Anti-Sybil fee"));
+        outs.add(new Out(minerFee, FEE, DIM, amount(fmt, minerFee), "Miner fee"));
         outs.removeIf(o -> o.sats() <= 0);
 
         GraphicsContext g = getGraphicsContext2D();
@@ -73,7 +81,7 @@ public class Tx0Flow extends Canvas {
         g.setFill(FAINT);
         g.setFont(Font.font("Roboto Mono", 10.5));
         g.setTextAlign(TextAlignment.LEFT);
-        g.fillText(fmt.formatBtcValue(total) + " in", X_IN, TOP + HEIGHT + 20);
+        g.fillText(amount(fmt, total) + " in", X_IN, TOP + HEIGHT + 20);
 
         //Output blocks: to scale, except that small ones are enlarged enough to stay legible
         double[] heights = new double[outs.size()];
