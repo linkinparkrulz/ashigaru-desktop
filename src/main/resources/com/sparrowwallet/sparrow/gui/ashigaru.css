@@ -1012,23 +1012,10 @@
     -fx-border-color: derive(-ag-accent, -55%);
     -fx-border-radius: -ag-radius-lg;
 }
-.verifier-hero-icon {
-    -fx-min-width: 46; -fx-min-height: 46; -fx-max-width: 46; -fx-max-height: 46;
-    -fx-background-color: -ag-accent-faint;
-    -fx-background-radius: 999;
-    -fx-border-color: derive(-ag-accent, -35%);
-    -fx-border-radius: 999;
-}
-/* No font properties here: CSS font rules re-derive the font from the inherited family
-   (Roboto), which has none of the icon codepoints — the Glyph would render invisible.
-   The Glyph's own fontSize attribute sizes the icon instead. */
-.verifier-hero-glyph { -fx-text-fill: -ag-accent-ink; }
 .verifier-hero-title { -fx-text-fill: -ag-text;   -fx-font-size: 18px;}
 .verifier-hero-sub   { -fx-text-fill: -ag-text-dim; -fx-font-size: 13px; }
 
-.step-chip   { -fx-min-width: 22; -fx-alignment: CENTER; }
 .step-title  { -fx-text-fill: -ag-text; -fx-font-size: 13px;}
-.step-optional { -fx-text-fill: -ag-text-faint; -fx-font-size: 13px; -fx-font-style: italic; }
 
 .verify-btn { -fx-font-size: 14px; -fx-padding: 10 16 10 16; }
 
@@ -1049,9 +1036,6 @@
 }
 .verifier-result-error {
     -fx-border-color: -ag-warn;
-}
-.verifier-result-info {
-    -fx-border-color: -ag-border;
 }
 .verifier-result-title {
     -fx-text-fill: -ag-text;
@@ -2004,6 +1988,25 @@
 .verifier-panel .step-title { -fx-font-size: 12px; -fx-text-fill: -ag-text; }
 .verifier-panel .check-box { -fx-font-family: "Roboto", sans-serif; -fx-text-fill: -ag-text-dim; }
 .verifier-panel .field-label { -fx-font-family: "Roboto", sans-serif; }
+
+/* Verifier: the answer card beside the inputs, and the typed-input section. Scoped to .verifier-tool so Stats, Logs,
+   Swaps and the update dialog, which share the generic verifier-* classes, are not moved. */
+.verifier-tool .verifier-result-box { -fx-padding: 16; -fx-background-color: -ag-bg-light; -fx-border-width: 1; }
+.verifier-tool .verifier-result-idle .verifier-result-title { -fx-text-fill: -ag-text-dim; }
+.verifier-tool .verifier-result-idle .verifier-result-icon .ag-icon { -fx-text-fill: -ag-border-strong; }
+.verifier-tool .verifier-result-success .verifier-result-icon .ag-icon { -fx-text-fill: -ag-green-ink; }
+.verifier-tool .verifier-result-error .verifier-result-icon .ag-icon { -fx-text-fill: -ag-warn-ink; }
+.verifier-tool .verifier-result-title { -fx-font-size: 15px; }
+.verifier-tool .verifier-value { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 12px; -fx-text-fill: -ag-text-dim; }
+.verifier-tool .verifier-status-warn { -fx-text-fill: -ag-warn-ink; }
+.verifier-tool .verifier-manual { -fx-background-color: transparent; -fx-padding: 0; }
+.verifier-tool .verifier-manual > .title {
+    -fx-background-color: transparent; -fx-border-color: -ag-border transparent transparent transparent;
+    -fx-border-width: 1 0 0 0; -fx-padding: 10 0 0 0;
+}
+.verifier-tool .verifier-manual > .title > .text { -fx-font-family: "Roboto", sans-serif; -fx-font-size: 12.5px; -fx-fill: -ag-text-dim; }
+.verifier-tool .verifier-manual > .title > .arrow-button > .arrow { -fx-background-color: -ag-text-faint; }
+.verifier-tool .verifier-manual > .content { -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 0; }
 
 /* Statistics: one row of cards, the "as of" detail on one quiet line */
 .stats-status { -fx-text-fill: -ag-warn-ink; }

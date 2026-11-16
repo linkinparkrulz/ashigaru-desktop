@@ -217,7 +217,7 @@ jobs:
 
           4. Verify your own signature before publishing. In Ashigaru, open Tools -> Verifier,
              click "Use Release Signing Code", paste the whole block into the signed message
-             box, then parse and verify. It must report the recovered signer as
+             box, then choose Verify Message. It must report the recovered signer as
              1K8CDoBYWBuaeAhejLAk5hiACAgbbPnDCJ.
 
           5. Upload RELEASE-BIP47-SIGNATURE.txt to this draft release.

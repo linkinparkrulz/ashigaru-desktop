@@ -226,12 +226,32 @@ WHAT THE REVAMP IS FOR
   [ ] (UNSEEN) If you can produce a failing download, the failed line
       turns amber with a cross and later lines stay grey.
 
-  Tools, Verifier:
-  [ ] (UNSEEN) "Use release signing code", paste a real release
-      signature block, Parse, Verify. Result lists four checks with
-      the notification address and the recovered signer address.
-  [ ] (UNSEEN) Change one character of the message and verify again.
-      The last check reads "The two addresses differ" in amber.
+  Tools, Verifier (reworked: one paste, result beside the inputs):
+  [ ] "Use release signing code", paste a real release signature block
+      into "Signed message". It says "Signed message recognised" at
+      once and there is no Parse button. Verify Message (or Ctrl+Enter):
+      the card on the right turns green, "Signature verified", with the
+      notification address and the recovered signer address, each with
+      a copy button, and "The message names this payment code".
+  [ ] At the minimum window width (1024) the Verify button and the
+      result card are both on screen without scrolling.
+  [ ] Change one character of the message in the block and verify
+      again. The card turns amber, "Signature does not match this
+      payment code", and "The two addresses differ" is amber.
+  [ ] Paste a DIFFERENT block after the first: the new one is what is
+      verified (the old message must not linger).
+  [ ] Open "Enter the message and signature separately", edit the
+      message: the block box empties and the status says the typed
+      input is used. Verify still works from the typed boxes.
+  [ ] Change the payment code after a result: the card goes back to
+      "The result appears here".
+  [ ] Tab and Shift+Tab move between boxes (no tab characters typed).
+  [ ] A bad payment code, a bad signature and an empty field each give
+      a plain-words message and put the cursor in the right box.
+  [ ] Paste / Clear buttons work. A half-pasted block says what is
+      missing (for example the END BITCOIN SIGNATURE line).
+  [ ] The buttons look like the other Tools tabs: Verify Message is
+      the red primary button, the cards have a visible background.
 
   Tools, Statistics:
   [ ] Chart lines and legend are red and light grey (no orange or

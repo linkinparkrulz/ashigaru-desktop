@@ -140,7 +140,7 @@ Compare the output against the `SHA256(SHA256SUMS): ...` line inside `MESSAGE.tx
 
 Open `RELEASE-BIP47-SIGNATURE.txt`. It is a standard Bitcoin signed message block: the contents of `MESSAGE.txt` between `-----BEGIN BITCOIN SIGNED MESSAGE-----` and `-----BEGIN BITCOIN SIGNATURE-----`, then the signing address and a base64 signature.
 
-The simplest check is in Ashigaru itself — **Tools → Verifier**, use the release signing code, paste the whole file into the signed message block, then parse and verify. You can also use Ashigaru Mobile or a BIP47 message verifier such as https://paymentcode.io/lab with:
+The simplest check is in Ashigaru itself — **Tools → Verifier**, use the release signing code, paste the whole file into the signed message box (it is read as you paste), then choose Verify Message. You can also use Ashigaru Mobile or a BIP47 message verifier such as https://paymentcode.io/lab with:
 
 - **Payment Code**: the release signing payment code above
 - **Message**: the exact contents of `MESSAGE.txt`

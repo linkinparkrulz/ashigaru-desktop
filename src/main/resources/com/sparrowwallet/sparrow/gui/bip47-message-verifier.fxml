@@ -3,41 +3,43 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import org.controlsfx.glyphfont.Glyph?>
 
-<ScrollPane xmlns="http://javafx.com/javafx"
-            xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.sparrowwallet.sparrow.gui.Bip47MessageVerifierController"
-            stylesheets="@ashigaru.css, @../darktheme.css"
-            styleClass="wallet-panel"
-            fitToWidth="true">
-    <content>
-        <VBox spacing="16" styleClass="verifier-panel">
-            <padding><Insets top="22" right="22" bottom="22" left="22"/></padding>
+<!-- styleClass lists are comma separated in FXML: "a b" adds ONE class named "a b", which no selector matches -->
+<!-- The root is not a ScrollPane: ToolsController already scrolls every tool, and a second scroll layer
+     inside it was why this screen jumped and hid its button -->
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:id="root"
+      fx:controller="com.sparrowwallet.sparrow.gui.Bip47MessageVerifierController"
+      stylesheets="@ashigaru.css, @../darktheme.css"
+      spacing="16" styleClass="verifier-panel, verifier-tool">
+    <padding><Insets top="22" right="22" bottom="22" left="22"/></padding>
 
-            <!-- Hero -->
-            <HBox spacing="16" alignment="CENTER_LEFT" styleClass="verifier-hero">
-                <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
-                <VBox spacing="3" HBox.hgrow="ALWAYS">
-                    <Label text="Verify BIP47 Message" styleClass="verifier-hero-title"/>
-                    <Label minHeight="-Infinity" text="Confirm a Bitcoin message signature matches the notification address derived from a BIP47 payment code."
-                           wrapText="true" styleClass="verifier-hero-sub"/>
-                </VBox>
-            </HBox>
+    <!-- Hero: a title and one sentence, as on the other Tools pages -->
+    <HBox spacing="16" alignment="CENTER_LEFT" styleClass="verifier-hero">
+        <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
+        <VBox spacing="3" HBox.hgrow="ALWAYS">
+            <Label text="Verify BIP47 Message" styleClass="verifier-hero-title"/>
+            <Label minHeight="-Infinity" text="Confirm a Bitcoin message signature matches the notification address derived from a BIP47 payment code."
+                   wrapText="true" styleClass="verifier-hero-sub"/>
+        </VBox>
+    </HBox>
 
-            <!-- Step 1 — payment code -->
-            <VBox spacing="10" styleClass="ag-card verifier-step">
+    <HBox spacing="16" VBox.vgrow="ALWAYS" alignment="TOP_LEFT">
+        <!-- What to check -->
+        <VBox spacing="16" HBox.hgrow="ALWAYS" minWidth="420">
+            <!-- The payment code the message should come from -->
+            <VBox spacing="10" styleClass="ag-card, verifier-step">
                 <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
                 <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Label text="1" styleClass="ag-chip accent step-chip"/>
-                    <Label text="BIP47 Payment Code" styleClass="step-title"/>
+                    <Label text="Payment code" styleClass="step-title"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Button minWidth="-Infinity" fx:id="releaseCodeBtn" text="Use Release Signing Code"
                             onAction="#onUseReleaseCode" styleClass="secondary-btn"/>
                 </HBox>
                 <TextField fx:id="paymentCodeField" promptText="PM8T..." styleClass="address-field"/>
                 <HBox alignment="CENTER_LEFT" spacing="8">
-                    <TextField fx:id="payNymHandleField" promptText="+handle" HBox.hgrow="ALWAYS"/>
+                    <TextField fx:id="payNymHandleField" promptText="Or look one up by +handle" HBox.hgrow="ALWAYS"/>
                     <Button minWidth="-Infinity" fx:id="payNymLookupBtn" text="Look up" onAction="#onLookupPayNym"
                             styleClass="secondary-btn"/>
                 </HBox>
@@ -45,47 +47,51 @@
                        visible="false" managed="false"/>
             </VBox>
 
-            <!-- Step 2 — signed message block (optional) -->
-            <VBox spacing="10" styleClass="ag-card verifier-step">
+            <!-- The signed message: one paste, read as you paste it -->
+            <VBox spacing="10" styleClass="ag-card, verifier-step" VBox.vgrow="ALWAYS">
                 <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Label text="2" styleClass="ag-chip step-chip"/>
-                    <Label text="Signed Message Block" styleClass="step-title"/>
-                    <Label text="optional" styleClass="step-optional"/>
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label text="Signed message" styleClass="step-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button minWidth="-Infinity" fx:id="pasteBtn" text="Paste" onAction="#onPaste" styleClass="secondary-btn"/>
+                    <Button minWidth="-Infinity" fx:id="clearBtn" text="Clear" onAction="#onClear" styleClass="secondary-btn"/>
                 </HBox>
-                <Label minHeight="-Infinity" text="Paste a full Bitcoin signed message block, or skip this and fill in the Message and Signature below."
-                       wrapText="true" styleClass="field-label"/>
-                <TextArea fx:id="signedBlockArea" prefRowCount="6" wrapText="false"
-                          promptText="-----BEGIN BITCOIN SIGNED MESSAGE-----" styleClass="mono-area"/>
-                <HBox alignment="CENTER_LEFT">
-                    <Button minWidth="-Infinity" text="Parse Signed Block" onAction="#onParseSignedBlock" styleClass="secondary-btn"/>
-                </HBox>
+                <TextArea fx:id="signedBlockArea" prefRowCount="8" minHeight="150" wrapText="false" VBox.vgrow="ALWAYS"
+                          promptText="Paste the whole signed message here, from -----BEGIN BITCOIN SIGNED MESSAGE-----" styleClass="mono-area"/>
+                <Label minHeight="-Infinity" fx:id="blockStatus" wrapText="true" styleClass="field-label"/>
+
+                <!-- Only for a message and signature that did not come as a block -->
+                <TitledPane fx:id="manualPane" text="Enter the message and signature separately" expanded="false" animated="false"
+                            styleClass="verifier-manual">
+                    <VBox spacing="8">
+                        <padding><Insets top="10" right="0" bottom="0" left="0"/></padding>
+                        <Label text="Message" styleClass="field-label"/>
+                        <TextArea fx:id="messageArea" prefRowCount="4" minHeight="80" wrapText="true"
+                                  promptText="Message that was signed" styleClass="mono-area"/>
+                        <Label text="Base64 signature" styleClass="field-label"/>
+                        <TextArea fx:id="signatureArea" prefRowCount="2" minHeight="56" wrapText="true"
+                                  promptText="H9..." styleClass="mono-area"/>
+                        <Label minHeight="-Infinity" wrapText="true" styleClass="field-label"
+                               text="Spaces and line breaks in the message must match exactly what was signed."/>
+                    </VBox>
+                </TitledPane>
             </VBox>
 
-            <!-- Step 3 — message + signature -->
-            <VBox spacing="10" styleClass="ag-card verifier-step">
-                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Label text="3" styleClass="ag-chip step-chip"/>
-                    <Label text="Message &amp; Signature" styleClass="step-title"/>
-                </HBox>
-                <Label text="Message" styleClass="field-label"/>
-                <TextArea fx:id="messageArea" prefRowCount="5" wrapText="true"
-                          promptText="Message that was signed"/>
-                <Label text="Base64 Signature" styleClass="field-label"/>
-                <TextArea fx:id="signatureArea" prefRowCount="3" wrapText="true"
-                          promptText="H9..." styleClass="mono-area"/>
-            </VBox>
-
-            <!-- Result -->
-            <VBox fx:id="resultBox" spacing="6" visible="false" managed="false" styleClass="verifier-result-box">
-                <Label fx:id="resultTitleLabel" styleClass="verifier-result-title"/>
-                <Label minHeight="-Infinity" fx:id="notificationAddressLabel" wrapText="true" styleClass="field-value"/>
-                <Label minHeight="-Infinity" fx:id="signerAddressLabel" wrapText="true" styleClass="field-value"/>
-            </VBox>
-
-            <!-- Action -->
-            <Button minWidth="-Infinity" text="Verify Message" onAction="#onVerify" styleClass="primary-btn verify-btn" maxWidth="Infinity"/>
+            <Button minWidth="-Infinity" fx:id="verifyBtn" text="Verify Message" onAction="#onVerify"
+                    styleClass="primary-btn, verify-btn" maxWidth="Infinity"/>
         </VBox>
-    </content>
-</ScrollPane>
+
+        <!-- The answer stays in view beside the inputs -->
+        <VBox fx:id="resultBox" spacing="10" minWidth="320" prefWidth="360" maxWidth="360"
+              styleClass="ag-card, verifier-result-box, verifier-result-idle">
+            <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label fx:id="resultIcon" styleClass="verifier-result-icon" minWidth="-Infinity"/>
+                <Label fx:id="resultTitleLabel" wrapText="true" minHeight="-Infinity" styleClass="verifier-result-title"
+                       HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            </HBox>
+            <Label fx:id="resultDetailLabel" wrapText="true" minHeight="-Infinity" styleClass="field-label"/>
+            <VBox fx:id="checksBox"/>
+        </VBox>
+    </HBox>
+</VBox>

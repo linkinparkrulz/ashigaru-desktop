@@ -77,6 +77,17 @@ misunderstand, and the interface typeface changes across the whole app.
 
 ## Tester fixes
 
+- **The Verifier is simpler and fits the window.** Paste the whole signed message into one box and it is
+  read as you paste: there is no Parse button, and the message and signature boxes (now under "Enter the
+  message and signature separately") fill themselves. Pasting a second block now replaces the first; before,
+  the first message could silently outvote it. The answer is a card beside the inputs, so Verify and the
+  result are on screen at the minimum window size; it goes blank when you change anything, says
+  what went wrong in plain words and puts the cursor in the right box, and shows copyable addresses.
+  Ctrl+Enter verifies, Tab moves between boxes, and there are Paste and Clear buttons. A check was added:
+  if the message names a BIP47 payment code, it must be the one you are verifying.
+- **The Verifier's cards, step labels and the Verify button had no styling at all.** FXML separates style
+  classes with commas, and this screen separated them with spaces, so no stylesheet rule matched them. The
+  Verifier now uses commas and looks like the other Tools tabs.
 - **The diagnostics block says what Tor was actually given.** When Tor's listener comes up, Ashigaru
   asks the running daemon for its version, its pid and its `CompiledProofOfWorkHash` setting over the
   control connection. The answer is in the log and in the diagnostics block from Settings → Logs. On a
