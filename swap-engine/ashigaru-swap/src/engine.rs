@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::panic::AssertUnwindSafe;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -15,6 +16,7 @@ use libp2p::core::transport::{Boxed, Transport as _};
 use libp2p::core::upgrade::Version;
 use libp2p::{Multiaddr, PeerId, SwarmBuilder, identity, noise, websocket, yamux};
 use serde::Deserialize;
+use rust_decimal::Decimal;
 use serde_json::{Value, json};
 use swap::cli::api::tauri_bindings::TauriHandle;
 use swap::cli::{Behaviour, EventLoop, EventLoopHandle, QuoteWithAddress};
@@ -22,7 +24,7 @@ use swap::database::{AccessMode, open_db};
 use swap::monero::wallet::witness::DaemonWitness;
 use swap::monero::{Daemon, Wallets};
 use swap::network::rendezvous::XmrBtcNamespace;
-use swap::protocol::bob::{self, BobState};
+use swap::protocol::bob::{self, AcceptedQuoteTerms, BobState};
 use swap::protocol::{Database, State};
 use swap::seed::Seed;
 use swap_env::env::{Config as EnvConfig, GetConfig, Mainnet};
@@ -89,7 +91,16 @@ pub struct StartSwap {
     pub xmr_address: String,
     /// A Badbank address: receives the lock's change and any refund
     pub refund_address: String,
+    /// The price of one XMR in the offer the user chose, in sats. The engine stops the swap if the maker's
+    /// final terms give more than `MAX_OFFER_DIFFERENCE_TO_QUOTE_PERCENT` percent less XMR than this implies.
+    pub quoted_price_sats: u64,
+    /// The anti-spam deposit ratio of that offer's refund policy, as a decimal string; "0" for a full refund
+    pub anti_spam_deposit_ratio: String,
 }
+
+/// How far below the XMR that the chosen offer implies the maker's final terms may be. eigenwallet's own GUI
+/// uses 5; Ashigaru warns earlier (at 2) and the engine is the hard stop.
+pub const MAX_OFFER_DIFFERENCE_TO_QUOTE_PERCENT: u32 = 5;
 
 struct SwapParts {
     bitcoin_wallet: Arc<dyn bitcoin_wallet::BitcoinWallet>,
@@ -103,6 +114,8 @@ struct SwapParts {
 const NODE_CHECK_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub struct Engine {
+    /// The engine identity's seed: each swap's secret keys and the Apollo key are derived from it
+    seed: Seed,
     event_loop: Mutex<EventLoopHandle>,
     db: Arc<dyn Database + Send + Sync>,
     env_config: EnvConfig,
@@ -222,6 +235,7 @@ impl Engine {
         let past_swaps = read_past_swaps(&config.past_data_dirs, &config.data_dir).await;
 
         Ok(Self {
+            seed,
             event_loop: Mutex::new(event_loop_handle),
             db,
             env_config,
@@ -358,6 +372,15 @@ impl Engine {
         let swap_handle = event_loop.swap_handle(peer_id, swap_id).await?;
         drop(event_loop);
 
+        // What the user chose, kept with the swap: the engine refuses final terms that are much worse
+        // (more than a few percent less XMR, or a different refund policy)
+        let accepted_quote_terms = AcceptedQuoteTerms {
+            quoted_price: bitcoin::Amount::from_sat(request.quoted_price_sats),
+            max_offer_difference_to_quote_percent: MAX_OFFER_DIFFERENCE_TO_QUOTE_PERCENT,
+            anti_spam_deposit_ratio: Decimal::from_str(request.anti_spam_deposit_ratio.trim())
+                .context("The offer's anti-spam deposit ratio is not a number")?,
+        };
+
         let swap = bob::Swap::new(
             self.db.clone(),
             swap_id,
@@ -366,9 +389,14 @@ impl Engine {
             self.env_config,
             swap_handle,
             monero_receive_pool,
+            self.seed.derive_apollo_encryption_key(),
+            self.seed.derive_swap_secret_keys(swap_id),
             refund_address,
             bitcoin::Amount::from_sat(request.btc_sats),
             bitcoin::Amount::from_sat(request.tx_lock_fee_sats),
+            // Ashigaru never turns Apollo (on-chain backup) on: no Apollo output, and nothing extra paid
+            None,
+            Some(accepted_quote_terms),
         )
         .with_event_emitter(Some(self.handle.clone()))
         .with_monero_witnesses(parts.monero_witnesses.clone());
@@ -384,7 +412,7 @@ impl Engine {
         let mut resumed = Vec::new();
         for (peer_id, swap_id, state) in self.db.all().await? {
             let State::Bob(bob_state) = state else { continue };
-            if bob::is_complete(&bob_state) || self.is_running(swap_id).await {
+            if bob::is_swap_complete(&bob_state) || self.is_running(swap_id).await {
                 continue;
             }
 
@@ -414,6 +442,8 @@ impl Engine {
                 self.env_config,
                 swap_handle,
                 monero_receive_pool,
+                self.seed.derive_apollo_encryption_key(),
+                self.seed.derive_swap_secret_keys(swap_id),
             )
             .await?
             .with_event_emitter(Some(self.handle.clone()))
@@ -602,7 +632,7 @@ async fn swap_entry(db: &(dyn Database + Send + Sync), peer_id: PeerId, swap_id:
         "swapId": swap_id,
         "peerId": peer_id.to_string(),
         "state": state.to_string(),
-        "complete": bob::is_complete(state),
+        "complete": bob::is_swap_complete(state),
         "running": running,
         "past": past,
         "startedAt": db.get_swap_start_date(swap_id).await.ok(),

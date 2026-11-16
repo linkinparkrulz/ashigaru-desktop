@@ -14,8 +14,8 @@ use bdk_wallet::export::FullyNodedExport;
 use bitcoin::FeeRate;
 use bitcoin::secp256k1::{PublicKey, ecdsa::Signature};
 use bitcoin_wallet::{
-    Address, Amount, BitcoinWallet, Network, Psbt, ScriptStatus, Subscription, Txid, Watchable,
-    Weight,
+    Address, Amount, ApolloOutputShape, BitcoinWallet, Network, Psbt, ScriptStatus, Subscription, Txid,
+    Watchable, Weight,
 };
 use serde_json::{Value, json};
 use utxo_ownership_proof::{Challenge, OwnershipProof};
@@ -106,12 +106,53 @@ impl BitcoinWallet for QuoteOnlyWallet {
         Ok(None)
     }
 
-    async fn max_giveable(
+    async fn max_giveable_with_optional_apollo(
         &self,
         _locking_script_size: usize,
         _max_inputs: Option<usize>,
+        _apollo: Option<ApolloOutputShape>,
     ) -> Result<(Amount, Amount)> {
         Ok((Amount::ZERO, Amount::ZERO))
+    }
+
+    // eigenwallet 5.0.3 added Apollo, an optional on-chain backup of a swap, and with it the methods below. Ashigaru
+    // never turns it on (a swap is started without an Apollo fee), so nothing here is reached; they are what the
+    // trait requires, and they refuse or do nothing rather than guess.
+    async fn send_to_address_with_apollo_output(
+        &self,
+        _address: Address,
+        _amount: Amount,
+        _apollo_address: Address,
+        _tx_apollo_fee: Amount,
+        _spending_fee: Amount,
+        _change_override: Option<Address>,
+        _max_inputs: Option<usize>,
+    ) -> Result<Psbt> {
+        bail!(NOT_YET)
+    }
+
+    async fn is_transaction_conflicted(&self, _txid: Txid, _min_confirmations: u32) -> Result<bool> {
+        Ok(false)
+    }
+
+    fn reserve_outpoints(&self, _outpoints: Vec<bitcoin::OutPoint>) {}
+
+    fn release_outpoint(&self, _outpoint: &bitcoin::OutPoint) {}
+
+    async fn wallet_spending_transactions(&self) -> Vec<Arc<bitcoin::Transaction>> {
+        Vec::new()
+    }
+
+    async fn broadcast(&self, _transaction: bitcoin::Transaction, _kind: &str) -> Result<(Txid, Subscription)> {
+        bail!(NOT_YET)
+    }
+
+    async fn broadcast_without_subscription(&self, _transaction: bitcoin::Transaction, _kind: &str) -> Result<Txid> {
+        bail!(NOT_YET)
+    }
+
+    async fn estimate_fee_for_target(&self, _weight: Weight, _target_block: u32) -> Result<Amount> {
+        bail!(NOT_YET)
     }
 
     async fn estimate_fee(
@@ -380,11 +421,15 @@ impl BitcoinWallet for HybridWallet {
         self.client.get_tx(txid).await
     }
 
-    async fn max_giveable(
+    async fn max_giveable_with_optional_apollo(
         &self,
         locking_script_size: usize,
         max_inputs: Option<usize>,
+        apollo: Option<ApolloOutputShape>,
     ) -> Result<(Amount, Amount)> {
+        if apollo.is_some() {
+            bail!("Ashigaru does not use Apollo, eigenwallet's optional on-chain backup");
+        }
         let answer = bridge::ask(
             "max_giveable",
             json!({ "scriptSize": locking_script_size, "maxInputs": max_inputs }),
@@ -423,6 +468,46 @@ impl BitcoinWallet for HybridWallet {
 
     async fn wallet_export(&self, _role: &str) -> Result<FullyNodedExport> {
         bail!("Badbank is not exported to the swap engine")
+    }
+
+    // The methods below came with eigenwallet 5.0.3's Apollo (an optional on-chain backup of a swap). Ashigaru
+    // never turns it on, so the engine does not reach them; they refuse or do nothing rather than guess.
+    async fn send_to_address_with_apollo_output(
+        &self,
+        _address: Address,
+        _amount: Amount,
+        _apollo_address: Address,
+        _tx_apollo_fee: Amount,
+        _spending_fee: Amount,
+        _change_override: Option<Address>,
+        _max_inputs: Option<usize>,
+    ) -> Result<Psbt> {
+        bail!("Ashigaru does not use Apollo, eigenwallet's optional on-chain backup")
+    }
+
+    async fn is_transaction_conflicted(&self, _txid: Txid, _min_confirmations: u32) -> Result<bool> {
+        Ok(false)
+    }
+
+    /// Ashigaru picks the one coin each swap spends, and runs one swap at a time, so there is nothing to reserve
+    fn reserve_outpoints(&self, _outpoints: Vec<bitcoin::OutPoint>) {}
+
+    fn release_outpoint(&self, _outpoint: &bitcoin::OutPoint) {}
+
+    async fn wallet_spending_transactions(&self) -> Vec<Arc<bitcoin::Transaction>> {
+        Vec::new()
+    }
+
+    async fn broadcast(&self, transaction: bitcoin::Transaction, kind: &str) -> Result<(Txid, Subscription)> {
+        self.ensure_broadcasted(transaction, kind).await
+    }
+
+    async fn broadcast_without_subscription(&self, transaction: bitcoin::Transaction, kind: &str) -> Result<Txid> {
+        Ok(self.ensure_broadcasted(transaction, kind).await?.0)
+    }
+
+    async fn estimate_fee_for_target(&self, _weight: Weight, _target_block: u32) -> Result<Amount> {
+        bail!("Ashigaru does not use Apollo, eigenwallet's optional on-chain backup")
     }
 }
 

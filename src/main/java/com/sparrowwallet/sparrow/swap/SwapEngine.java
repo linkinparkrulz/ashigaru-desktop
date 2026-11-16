@@ -221,6 +221,10 @@ public class SwapEngine {
         request.addProperty("txLockFeeSats", txLockFeeSats);
         request.addProperty("xmrAddress", xmrAddress);
         request.addProperty("refundAddress", refundAddress);
+        //What the user chose, kept with the swap: from 5.0.4 the engine stops a swap whose final terms give much less XMR than
+        //this price implies, or that change the refund policy
+        request.addProperty("quotedPriceSats", maker.priceSats());
+        request.addProperty("antiSpamDepositRatio", maker.refundRatioText());
         return call(() -> library.as_start_swap(GSON.toJson(request))).getAsString();
     }
 
@@ -302,6 +306,26 @@ public class SwapEngine {
             } catch(RuntimeException e) {
                 //Unknown or unreadable terms rank last for refunds
                 return 1;
+            }
+        }
+
+        /**
+         * The refund policy's anti-spam deposit ratio exactly as the maker sent it, as a decimal string: "0" for a full
+         * refund. The engine takes it as a decimal, so it is not passed through a double. Throws when the terms cannot be
+         * read, because a swap must not start on terms nobody can check.
+         */
+        public String refundRatioText() throws SwapEngineException {
+            try {
+                com.google.gson.JsonObject policy = com.google.gson.JsonParser.parseString(refundPolicy).getAsJsonObject();
+                if("FullRefund".equals(policy.get("type").getAsString())) {
+                    return "0";
+                }
+                if(!"PartialRefund".equals(policy.get("type").getAsString())) {
+                    throw new IllegalArgumentException("unknown refund policy");
+                }
+                return policy.getAsJsonObject("content").get("anti_spam_deposit_ratio").getAsBigDecimal().toPlainString();
+            } catch(RuntimeException e) {
+                throw new SwapEngineException("This maker's refund terms could not be read, so no swap is started with it");
             }
         }
 

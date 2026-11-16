@@ -108,36 +108,36 @@ index 0000000..1d77d0a
 +    }
 +}
 diff --git a/swap/src/protocol/bob.rs b/swap/src/protocol/bob.rs
-index 7adbe6b..6c127a9 100644
+index a093278..bd71a55 100644
 --- a/swap/src/protocol/bob.rs
 +++ b/swap/src/protocol/bob.rs
-@@ -29,6 +29,8 @@ pub struct Swap {
-     pub id: Uuid,
-     pub monero_receive_pool: MoneroAddressPool,
+@@ -36,6 +36,8 @@ pub struct Swap {
      pub event_emitter: Option<TauriHandle>,
+     /// Wakes the Apollo manager. `None` means the swap runs without a manager.
+     pub apollo: Option<ApolloManagerHandle>,
 +    /// Ashigaru: further Monero nodes that must agree the XMR is locked before Bitcoin is released
 +    pub monero_witnesses: Vec<Arc<monero::wallet::witness::DaemonWitness>>,
  }
  
  impl Swap {
-@@ -59,6 +61,7 @@ impl Swap {
-             id,
-             monero_receive_pool,
+@@ -76,6 +78,7 @@ impl Swap {
+             secret_keys,
              event_emitter: None,
+             apollo: None,
 +            monero_witnesses: Vec::new(),
          }
      }
  
-@@ -84,6 +87,7 @@ impl Swap {
-             id,
-             monero_receive_pool,
+@@ -106,6 +109,7 @@ impl Swap {
+             secret_keys,
              event_emitter: None,
+             apollo: None,
 +            monero_witnesses: Vec::new(),
          })
      }
  
-@@ -91,4 +95,12 @@ impl Swap {
-         self.event_emitter = event_emitter;
+@@ -118,4 +122,12 @@ impl Swap {
+         self.apollo = apollo;
          self
      }
 +
@@ -150,26 +150,26 @@ index 7adbe6b..6c127a9 100644
 +    }
  }
 diff --git a/swap/src/protocol/bob/swap.rs b/swap/src/protocol/bob/swap.rs
-index 4dd88b7..6d1582b 100644
+index d7f0b2a..a2d52e7 100644
 --- a/swap/src/protocol/bob/swap.rs
 +++ b/swap/src/protocol/bob/swap.rs
-@@ -92,6 +92,7 @@ pub async fn run_until(
-             swap.monero_receive_pool.clone(),
+@@ -174,6 +174,7 @@ pub async fn run_swap_until(
+             swap.apollo.as_ref(),
              swap.event_emitter.clone(),
              swap.env_config,
 +            swap.monero_witnesses.clone(),
          )
          .await?;
  
-@@ -136,6 +137,7 @@ async fn next_state(
-     monero_receive_pool: MoneroAddressPool,
+@@ -224,6 +225,7 @@ async fn advance_state(
+     apollo: Option<&ApolloManagerHandle>,
      event_emitter: Option<TauriHandle>,
      env_config: env::Config,
 +    monero_witnesses: Vec<Arc<monero::wallet::witness::DaemonWitness>>,
  ) -> Result<BobState> {
      if let Some(substate) = state.substate() {
          tracing::debug!(%state, %substate, "Advancing state");
-@@ -511,6 +513,18 @@ async fn next_state(
+@@ -713,6 +715,18 @@ async fn advance_state(
              select! {
                  // Wait until we have verified the Monero lock transaction candidate
                  validity = xmr_lock_transaction_verification => {
@@ -188,7 +188,7 @@ index 4dd88b7..6d1582b 100644
                      if let XmrLockTransactionValidity::Valid { hermes_amount } = validity {
                          tracing::info!(txid = %lock_transfer_proof.tx_hash(), "Monero lock transaction is valid");
  
-@@ -598,8 +612,17 @@ async fn next_state(
+@@ -800,8 +814,17 @@ async fn advance_state(
              );
  
              select! {
@@ -208,7 +208,7 @@ index 4dd88b7..6d1582b 100644
                      BobState::XmrLocked(
                          state.xmr_locked(monero_wallet_restore_blockheight, lock_transfer_proof.clone(), hermes_amount)
                      )
-@@ -1876,3 +1899,72 @@ async fn advance_hermes(
+@@ -2152,3 +2175,72 @@ async fn advance_hermes(
      .await
      .expect("we never stop retrying to advance the Hermes channel")
  }

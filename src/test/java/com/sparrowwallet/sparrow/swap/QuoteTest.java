@@ -70,4 +70,24 @@ class QuoteTest {
         assertTrue(SwapEngine.Quote.compareVersions("4.13.0", "4.13.0-rc.2") > 0);
         assertEquals(0, SwapEngine.Quote.compareVersions("v4.13.0", "4.13.0"));
     }
+
+    private static SwapEngine.Quote withPolicy(String policy) {
+        return new SwapEngine.Quote("peer", "/ip4/1.2.3.4/tcp/9939", "5.0.4", 700_000, 10_000, 1_000_000, policy);
+    }
+
+    @Test
+    void theDepositRatioGoesToTheEngineExactlyAsTheMakerGaveIt() throws Exception {
+        assertEquals("0", withPolicy("{\"type\":\"FullRefund\"}").refundRatioText());
+        assertEquals("0.1", withPolicy("{\"type\":\"PartialRefund\",\"content\":{\"anti_spam_deposit_ratio\":0.1}}").refundRatioText());
+        //A maker may send it as a string, and a double must not turn 0.015 into 0.01499999
+        assertEquals("0.25", withPolicy("{\"type\":\"PartialRefund\",\"content\":{\"anti_spam_deposit_ratio\":\"0.25\"}}").refundRatioText());
+        assertEquals("0.015", withPolicy("{\"type\":\"PartialRefund\",\"content\":{\"anti_spam_deposit_ratio\":0.015}}").refundRatioText());
+    }
+
+    @Test
+    void noSwapStartsOnRefundTermsThatCannotBeRead() {
+        for(String unreadable : new String[] {"{}", "not json", "{\"type\":\"SomethingNew\"}", "{\"type\":\"PartialRefund\"}"}) {
+            assertThrows(SwapEngineException.class, () -> withPolicy(unreadable).refundRatioText(), unreadable);
+        }
+    }
 }
