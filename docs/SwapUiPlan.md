@@ -93,9 +93,9 @@ These need the swap engine, Tor and live makers, which the automated tests canno
 - A swap running through the cancel timelock: Ashigaru cancels and refunds by itself, with no button.
 - The countdown against real blocks, and that the `TimelockChange` events arrive.
 
-## Engine: eigenwallet 5.0.2
+## Engine: eigenwallet 5.0.4
 
-The engine moved from 4.16.1 to 5.0.2 (`swap-engine/EIGENWALLET_REV`, six patches). The scope, the reasons
+The engine moved from 4.16.1 to 5.0.2 and then to 5.0.4 (`swap-engine/EIGENWALLET_REV`, six patches). The scope, the reasons
 and the risks are in `docs/EngineUpgrade5x.md`. Makers on version 4 are now the incompatible ones
 (`SwapEngine.Quote.MIN_MAKER_VERSION` is 5.0.0), and a maker at 6.0.0 or later is left out until the engine
 is checked against it (`FIRST_UNSUPPORTED_MAKER_VERSION`). When the engine moves again, re-read the timelocks

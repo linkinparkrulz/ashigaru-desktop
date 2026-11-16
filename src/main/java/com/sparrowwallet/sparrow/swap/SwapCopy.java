@@ -92,4 +92,62 @@ public final class SwapCopy {
         return "A refund must be published within " + refundWindow() + " of the cancel confirming. Ashigaru does this while it is open, "
                 + "so keep it running until the swap finishes.";
     }
+
+    // ---- The maker's final terms against the offer that was chosen (eigenwallet 5.0.4's price warning) ----
+
+    /** An XMR amount to full precision, twelve decimals */
+    public static String xmrText(long piconero) {
+        return new java.math.BigDecimal(piconero).movePointLeft(12).setScale(12).toPlainString();
+    }
+
+    /** A percentage for these messages: "2.7%" */
+    public static String percentText(double percent) {
+        return String.format(java.util.Locale.ROOT, "%.1f%%", percent);
+    }
+
+    public static String priceWarningTitle() {
+        return "The price moved against you";
+    }
+
+    /** The warning shown before the final approval, when the maker's terms are more than {@link SwapTermsCheck#WARN_PERCENT}% short of its offer */
+    public static String priceWarning(double percentLess, String offeredXmr, String expectedXmr) {
+        return "This maker's final terms give you " + percentText(percentLess) + " less XMR than the offer you chose: " + offeredXmr
+                + " XMR instead of " + expectedXmr + " XMR. Nothing has been locked. If you accept, you still have to approve the lock separately.";
+    }
+
+    /** The reason a swap was refused without asking, as a clause: the terms are too far from the offer, or its policy changed */
+    private static String refusalClause(SwapTermsCheck.Reason reason, double percentLess) {
+        return switch(reason) {
+            case LESS_XMR -> "the maker's final terms give you " + percentText(percentLess) + " less XMR than the offer you chose, which is more than the "
+                    + SwapTermsCheck.STOP_PERCENT + "% Ashigaru allows";
+            case REFUND_POLICY -> "the maker changed its refund policy after you chose its offer";
+            default -> "Ashigaru could not check the maker's final terms against the offer you chose";
+        };
+    }
+
+    private static final String SAFE = " Nothing was locked, and the coin is still in Badbank.";
+
+    /** The notice shown when Ashigaru refuses a swap without asking */
+    public static String priceRefusal(SwapTermsCheck.Reason reason, double percentLess) {
+        return "Swap not started: " + refusalClause(reason, percentLess) + "." + SAFE + " Choose another maker.";
+    }
+
+    /** The same reason as a sentence for the stopped swap's record, which adds on its own that nothing was locked */
+    public static String priceRefusalRecord(SwapTermsCheck.Reason reason, double percentLess) {
+        return sentence(refusalClause(reason, percentLess));
+    }
+
+    /** Why the swap stopped when the user turned down the worse price, as a sentence for the swap's record */
+    public static String priceRejectedRecord(double percentLess) {
+        return "You rejected the maker's price, which gave " + percentText(percentLess) + " less XMR than the offer you chose.";
+    }
+
+    private static String sentence(String clause) {
+        return Character.toUpperCase(clause.charAt(0)) + clause.substring(1) + ".";
+    }
+
+    /** Shown beside the terms in the final review, once the user has accepted a worse price */
+    public static String priceAccepted(double percentLess) {
+        return "You accepted a price " + percentText(percentLess) + " below the offer you chose.";
+    }
 }

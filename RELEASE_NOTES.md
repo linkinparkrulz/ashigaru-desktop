@@ -14,7 +14,7 @@ misunderstand, and the interface typeface changes across the whole app.
   in plain words (nothing was locked; choose another maker), and leaves that maker out of the offers
   for coins it would refuse again until Ashigaru is closed. A maker with a fault of its own is left
   out for 15 minutes. If every maker refuses a very small coin, it is too small to swap.
-- **The swap engine is eigenwallet 5.0.2.** Makers are moving to version 5, which changed the swap
+- **The swap engine is eigenwallet 5.0.4.** Makers are moving to version 5, which changed the swap
   protocol: both sides must run it, so a version 4 engine could not swap with them. Ashigaru now
   can, and offers from makers still on version 4 are left out and counted in the "not shown" line.
   Version 5 makes a taker prove, while the swap is set up, that it controls the coin. Ashigaru
@@ -26,6 +26,21 @@ misunderstand, and the interface typeface changes across the whole app.
   minutes, shown as a countdown. A swap that was still being set up when Ashigaru closed is
   abandoned safely, with nothing locked. Finish or refund any swap started on the previous version
   before updating.
+- **Ashigaru warns you when the maker's final price is worse than the offer you chose, and refuses
+  it when it is much worse.** Between the offer you click and the final approval, the maker answers
+  with its real terms, and they can be worse. As in eigenwallet 5.0.4, if they give you more than 2%
+  less Monero than the offer you chose, a "Price changed" window shows both amounts and the
+  difference, and the swap goes on only if you accept the worse price; **Reject swap** is the default
+  answer, and the window counts down with the approval time and closes as a rejection. If they give
+  more than 5% less Monero, or the maker changed its refund policy (a full refund that became a
+  deposit, or a different deposit share), the swap is refused without asking, with the reason on the
+  dashboard. Nothing is locked in any of these cases, and an accepted worse price is shown again on
+  the final review. The price and refund terms of the chosen offer are also handed to the engine, so
+  its own 5% check runs as a second line of defence. Makers on 5.0.4 no longer quote amounts whose
+  anti-spam deposit is too small, which is the refusal many small coins met before.
+- **The engine does not turn on eigenwallet's new on-chain backup (Apollo).** 5.0.3 added it as an
+  optional feature; once it has run, older versions cannot open the swap database. Ashigaru never
+  enables it. As before, finish or refund running swaps before updating.
 - **A Bitcoin server on your own network works with swaps.** The swap engine used to reach every
   Electrum server through Tor, and Tor refuses private addresses, so a Dojo or Electrum server at
   192.168.x.x, on this computer or at a `.local` name could never publish the swap's lock: the swap

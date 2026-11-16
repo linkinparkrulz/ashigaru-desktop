@@ -110,6 +110,17 @@ public class SwapReviewPane extends BorderPane {
             callout.setAlignment(Pos.TOP_LEFT);
             commitment.getChildren().add(callout);
         }
+        //A price the user accepted in the warning stays in front of them while they approve the lock
+        if(review.hasAcceptedWorsePrice()) {
+            Label icon = Icons.label(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13, "review-callout-icon");
+            icon.setAlignment(Pos.CENTER);
+            VBox text = new VBox(2, wrapped(SwapCopy.priceAccepted(review.acceptedWorsePercent()), "review-callout-title"));
+            HBox.setHgrow(text, Priority.ALWAYS);
+            HBox callout = new HBox(12, icon, text);
+            callout.getStyleClass().add("review-callout");
+            callout.setAlignment(Pos.TOP_LEFT);
+            commitment.getChildren().add(callout);
+        }
         GridPane columns = new GridPane();
         columns.setHgap(22);
         for(int i = 0; i < 3; i++) {

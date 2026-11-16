@@ -18,9 +18,17 @@ import java.time.Instant;
  * @param xmrAddress     where the XMR goes
  * @param maker          a short label for the maker
  * @param expiresAt      when an unanswered approval is rejected, which is a real deadline
+ * @param acceptedWorsePercent how far below the offer the user chose the maker's final terms are, when they accepted that in the
+ *                       price warning; 0 when there was nothing to accept
  */
 public record SwapReview(long coinSats, long lockSats, long feeSats, long piconero, long amnestySats,
-                         boolean fullRefund, String xmrAddress, String maker, Instant expiresAt, Decision decision) {
+                         boolean fullRefund, String xmrAddress, String maker, Instant expiresAt, Decision decision,
+                         double acceptedWorsePercent) {
+
+    public SwapReview(long coinSats, long lockSats, long feeSats, long piconero, long amnestySats,
+                      boolean fullRefund, String xmrAddress, String maker, Instant expiresAt, Decision decision) {
+        this(coinSats, lockSats, feeSats, piconero, amnestySats, fullRefund, xmrAddress, maker, expiresAt, decision, 0);
+    }
 
     /** What the user chose; the host answers the engine accordingly. Either is safe to call more than once. */
     public interface Decision {
@@ -34,6 +42,17 @@ public record SwapReview(long coinSats, long lockSats, long feeSats, long picone
     public static SwapReview commit(long coinSats, long lockSats, long feeSats, long piconero, long amnestySats, boolean fullRefund,
                                     String xmrAddress, String maker, Instant expiresAt, Decision decision) {
         return new SwapReview(coinSats, lockSats, feeSats, piconero, amnestySats, fullRefund, xmrAddress, maker, expiresAt, decision);
+    }
+
+    /** A review that follows an accepted price warning, so the choice stays visible while the lock is approved */
+    public static SwapReview commit(long coinSats, long lockSats, long feeSats, long piconero, long amnestySats, boolean fullRefund,
+                                    String xmrAddress, String maker, Instant expiresAt, Decision decision, double acceptedWorsePercent) {
+        return new SwapReview(coinSats, lockSats, feeSats, piconero, amnestySats, fullRefund, xmrAddress, maker, expiresAt, decision, acceptedWorsePercent);
+    }
+
+    /** True when the user accepted a price worse than the offer they chose */
+    public boolean hasAcceptedWorsePrice() {
+        return acceptedWorsePercent > 0;
     }
 
     /** True when the maker may keep part of the BTC if the swap fails */

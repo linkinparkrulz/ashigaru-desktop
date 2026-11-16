@@ -158,3 +158,27 @@ built before any UI decision; step 4 depends on the password decision.
 2. Do the upgrade on its own branch from `xmr-swap`, steps 1 and 2 first so CI starts as early as possible.
 3. Decide A or B for the password before step 4.
 4. Release the upgraded engine only after step 6 passes. Until then keep 4.x makers and the 5.x notice.
+
+
+## Update: 5.0.2 to 5.0.4
+
+Pin `dfb4a4cd2e09225696567b4b951b9df866988b86`. 8 upstream commits, 79 files. No protocol or wire change is
+stated, so `MIN_MAKER_VERSION` stays 5.0.0.
+
+What changed for Ashigaru, and what was done:
+
+- **Patch 0004** (Monero witness nodes) was reworked: `bob::Swap` gained fields, `advance_state` was renamed,
+  and the witness hooks moved. All six patches apply in order with `fetch.sh` (checked in a scratch clone).
+- **Shim** (`swap-engine/ashigaru-swap`): `bob::Swap::new` and `from_db` take Apollo keys
+  (`Seed::derive_apollo_encryption_key`, `derive_swap_secret_keys`) and `accepted_quote_terms`; the
+  `BitcoinWallet` trait gained nine Apollo methods (implemented as "not supported" in both wallets; Apollo is
+  never enabled); `is_complete` is now `is_swap_complete`. This was checked against the upstream source by hand.
+  **It has not been compiled**: the sandbox cannot fetch Arti or build Monero. First compile is the
+  `Swap engine` workflow.
+- **Price protection.** Upstream's 5% stop (`check_offered_xmr_against_quote`) runs only when the swap carries
+  `accepted_quote_terms`. Ashigaru now sends the quoted price and the deposit ratio from Java (`startSwap`),
+  so it is active. The 2% warning is upstream GUI code, which Ashigaru does not use, so it is implemented in
+  Java: `SwapTermsCheck` (rule), `PriceWarningDialog` (confirmation), `BadbankSwapHost.approve` (flow).
+  Thresholds come from the 5.0.4 release notes: warn above 2% less XMR; refuse above 5% less, on a changed
+  refund policy, or on terms that cannot be read.
+- **Not enabled:** Apollo. After it has run, older engines cannot open the database.

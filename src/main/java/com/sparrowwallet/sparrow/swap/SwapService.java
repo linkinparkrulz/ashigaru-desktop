@@ -93,6 +93,8 @@ public class SwapService implements SwapHost {
     private record Started(String peerId, long sats) {}
     private final Map<String, Started> startedSwaps = new ConcurrentHashMap<>();
     private final MakerRefusals refusals = new MakerRefusals();
+    //Why the approval refused or rejected the maker's final terms, until the swap that stopped for it reports in
+    private volatile String pendingRefusal;
     //Each swap's latest step, as reported by the engine; the swap being set up is the latest started
     private final Map<String, SwapProgress.Status> progress = new ConcurrentHashMap<>();
     //Each swap's latest timelock state, from the engine's TimelockChange events: blocks left until cancel or punish
@@ -551,6 +553,10 @@ public class SwapService implements SwapHost {
         BadbankSwapHost host = new BadbankSwapHost(chosen.badbank(), chosen.outpoint(), AshigaruGui.get().getMainStage());
         host.setPresenterSource(this::getReviewPresenter);
         host.setSwapContext(xmrAddress, SwapReview.shortId(maker.peerId()));
+        //The final terms are checked against this offer before the user is asked to approve anything
+        host.setQuote(maker);
+        pendingRefusal = null;
+        host.setRefusalListener(reason -> pendingRefusal = reason);
         //The XMR amount and any deposit are only known once the maker's terms reach the approval
         host.setTermsListener((piconero, amnestySats, fullRefund) -> {
             String id = currentSwapId;
@@ -731,6 +737,12 @@ public class SwapService implements SwapHost {
         }
         if("swap_stopped".equals(kind)) {
             String swapId = payload.get("swapId").getAsString();
+            //A swap that stopped because its final terms were refused says that, not the engine's "rejected"
+            String ourRefusal = pendingRefusal;
+            pendingRefusal = null;
+            if(ourRefusal != null) {
+                payload.addProperty("error", ourRefusal);
+            }
             runningSwaps.remove(swapId);
             if(activeHost != null) {
                 activeHost.release();

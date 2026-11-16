@@ -559,6 +559,23 @@ WHAT THE REVAMP IS FOR
 
 
 --------------------------------------------------------------------
+ SWAP PRICE WARNING  (engine 5.0.4)
+--------------------------------------------------------------------
+  Needs a maker whose final terms are worse than its offer, or a test
+  build that fakes the terms. Nothing is locked in any of these.
+  [ ] Final terms 2% or less short: no warning, the normal review.
+  [ ] Between 2% and 5% short: a "Price changed" window with both
+      XMR amounts and the difference. "Reject swap" is the red,
+      default button; Enter and the window's X both reject.
+  [ ] The window counts down and closes as a rejection when the
+      approval time runs out.
+  [ ] "Accept the worse price" goes to the normal review, which shows
+      "You accepted a price X% below the offer".
+  [ ] More than 5% short, or a changed refund policy: no window, the
+      swap stops, and the dashboard says why.
+
+
+--------------------------------------------------------------------
  KNOWN GAPS  (not bugs, do not report)
 --------------------------------------------------------------------
   - The selection summary shows count and total only. It does not yet

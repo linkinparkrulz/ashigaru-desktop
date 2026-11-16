@@ -66,4 +66,41 @@ class SwapCopyTest {
         assertFalse(full.contains("anti-spam"));
         assertTrue(full.contains("up to 0.04998760 BTC"));
     }
+
+    @Test
+    void thePriceWarningSaysWhatMovedAndThatNothingIsLockedYet() {
+        String text = SwapCopy.priceWarning(2.74, "48.700000000000", "50.000000000000");
+        assertTrue(text.contains("2.7% less XMR"));
+        assertTrue(text.contains("48.700000000000 XMR instead of 50.000000000000 XMR"));
+        assertTrue(text.contains("Nothing has been locked"));
+        assertTrue(text.contains("approve the lock separately"));
+    }
+
+    @Test
+    void aRefusedSwapSaysWhyAndThatTheCoinIsSafe() {
+        String less = SwapCopy.priceRefusal(SwapTermsCheck.Reason.LESS_XMR, 6.1);
+        assertTrue(less.startsWith("Swap not started"));
+        assertTrue(less.contains("6.1% less XMR"));
+        assertTrue(less.contains("5%"));
+        assertTrue(less.contains("Nothing was locked"));
+        assertTrue(SwapCopy.priceRefusal(SwapTermsCheck.Reason.REFUND_POLICY, 0).contains("refund policy"));
+        assertTrue(SwapCopy.priceRefusal(SwapTermsCheck.Reason.UNREADABLE, 0).contains("could not check"));
+        //Never a Java word in a message the user reads
+        assertFalse(less.contains("LESS_XMR"));
+    }
+
+    @Test
+    void theStoppedSwapRecordGivesTheReasonWithoutRepeatingThatNothingWasLocked() {
+        //The stopped-swap screen adds that itself, so the reason must not
+        String record = SwapCopy.priceRefusalRecord(SwapTermsCheck.Reason.LESS_XMR, 6.1);
+        assertEquals("The maker's final terms give you 6.1% less XMR than the offer you chose, which is more than the 5% Ashigaru allows.", record);
+        assertFalse(record.contains("Nothing was locked"));
+        assertTrue(SwapCopy.priceRefusalRecord(SwapTermsCheck.Reason.REFUND_POLICY, 0).startsWith("The maker changed its refund policy"));
+        assertEquals("You rejected the maker's price, which gave 2.7% less XMR than the offer you chose.", SwapCopy.priceRejectedRecord(2.74));
+    }
+
+    @Test
+    void anAcceptedWorsePriceIsNamedInTheReview() {
+        assertEquals("You accepted a price 3.0% below the offer you chose.", SwapCopy.priceAccepted(3.0));
+    }
 }

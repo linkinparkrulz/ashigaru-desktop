@@ -19,6 +19,7 @@ import com.sparrowwallet.drongo.psbt.PSBT;
 import com.sparrowwallet.drongo.wallet.*;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.control.WalletPasswordDialog;
+import com.sparrowwallet.sparrow.gui.PriceWarningDialog;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Storage;
 import javafx.animation.PauseTransition;
@@ -84,6 +85,10 @@ public class BadbankSwapHost {
     //What the final review shows about this swap
     private String xmrAddress = "";
     private String maker = "";
+    //The offer the user chose: the maker's final terms are checked against it before anything is approved
+    private SwapEngine.Quote quote;
+    //Told why when a swap is refused here, so the stopped swap can say so
+    private RefusalListener refusalListener = reason -> {};
 
     public BadbankSwapHost(Wallet badbank, BlockTransactionHashIndex coin, Window owner) {
         if(badbank.getStandardAccountType() != StandardAccount.WHIRLPOOL_BADBANK) {
@@ -106,6 +111,20 @@ public class BadbankSwapHost {
 
     public void setTermsListener(TermsListener listener) {
         this.termsListener = listener;
+    }
+
+    /** Hears why a swap was refused at the approval, whether Ashigaru refused it or the user did */
+    public interface RefusalListener {
+        void refused(String reason);
+    }
+
+    public void setRefusalListener(RefusalListener listener) {
+        this.refusalListener = listener;
+    }
+
+    /** The offer the user chose. Without it the final terms cannot be checked, and no swap is approved. */
+    public void setQuote(SwapEngine.Quote quote) {
+        this.quote = quote;
     }
 
     /** Where the XMR goes and who the maker is, for the final review */
@@ -464,15 +483,35 @@ public class BadbankSwapHost {
         }
 
         termsListener.terms(piconero, amnesty, fullRefund);
+        //The engine's clock for this approval started when it asked. Everything below, the price warning included, shares it.
+        Instant deadline = Instant.now().plusSeconds(APPROVAL_SECS);
+
+        //The maker's final terms against the offer the user chose (eigenwallet 5.0.4's price warning): refused outright when
+        //they are far worse or the refund policy changed, a warning to confirm when they are somewhat worse
+        SwapTermsCheck.Result check = SwapTermsCheck.check(quote, lockAmount, piconero, amnesty, fullRefund);
+        if(check.verdict() == SwapTermsCheck.Verdict.STOP) {
+            refuse(SwapCopy.priceRefusalRecord(check.reason(), check.percentLess()), SwapCopy.priceRefusal(check.reason(), check.percentLess()), answer);
+            return;
+        }
+        double acceptedWorse = 0;
+        if(check.verdict() == SwapTermsCheck.Verdict.WARN) {
+            if(!PriceWarningDialog.show(owner, check, secondsLeft(deadline))) {
+                refuse(SwapCopy.priceRejectedRecord(check.percentLess()), null, answer);
+                return;
+            }
+            acceptedWorse = check.percentLess();
+        }
+        final double acceptedWorsePercent = acceptedWorse;
+
         ReviewPresenter presenter = presenters.get();
         if(presenter == null) {
-            approveWithDialog(lockAmount, networkFee, piconero, amnesty, fullRefund, APPROVAL_SECS, answer);
+            approveWithDialog(lockAmount, networkFee, piconero, amnesty, fullRefund, secondsLeft(deadline), acceptedWorsePercent, answer);
             return;
         }
 
         AtomicBoolean answered = new AtomicBoolean();
-        Instant expiresAt = Instant.now().plusSeconds(APPROVAL_SECS);
-        PauseTransition expiry = new PauseTransition(Duration.seconds(APPROVAL_SECS));
+        Instant expiresAt = deadline;
+        PauseTransition expiry = new PauseTransition(Duration.seconds(secondsLeft(deadline)));
         SwapReview.Decision decision = new SwapReview.Decision() {
             @Override
             public void confirm() {
@@ -500,22 +539,41 @@ public class BadbankSwapHost {
                 expiry.stop();
                 //Only the time that is left: the engine's clock kept running while the review was on screen
                 long left = Math.max(1, java.time.Duration.between(Instant.now(), expiresAt).getSeconds());
-                approveWithDialog(lockAmount, networkFee, piconero, amnesty, fullRefund, (int)left, answer);
+                approveWithDialog(lockAmount, networkFee, piconero, amnesty, fullRefund, (int)left, acceptedWorsePercent, answer);
             }
         };
         expiry.play();
-        presenter.present(SwapReview.commit(coin.getValue(), lockAmount, networkFee, piconero, amnesty, fullRefund, xmrAddress, maker, expiresAt, decision));
+        presenter.present(SwapReview.commit(coin.getValue(), lockAmount, networkFee, piconero, amnesty, fullRefund, xmrAddress, maker, expiresAt, decision,
+                acceptedWorsePercent));
+    }
+
+    /** Whole seconds until the engine's approval deadline, never less than one */
+    private static int secondsLeft(Instant deadline) {
+        return (int)Math.max(1, java.time.Duration.between(Instant.now(), deadline).getSeconds());
+    }
+
+    /**
+     * Answers the engine no, and says why: to the swap's own record ({@code record}), and, when Ashigaru refused and the user was not
+     * asked, in a notice they cannot miss ({@code notice}; null when the user made the choice). Nothing has been locked at this point.
+     */
+    private void refuse(String record, String notice, CompletableFuture<JsonElement> answer) {
+        refusalListener.refused(record);
+        answer.complete(new JsonPrimitive(false));
+        if(notice != null) {
+            Platform.runLater(() -> alert(Alert.AlertType.WARNING, "Swap not started", notice, ButtonType.OK).show());
+        }
     }
 
     /** The dialog form of the final approval, used when the Swaps screen is not showing */
     private void approveWithDialog(long lockAmount, long networkFee, long piconero, long amnesty, boolean fullRefund, int seconds,
-                                   CompletableFuture<JsonElement> answer) {
+                                   double acceptedWorsePercent, CompletableFuture<JsonElement> answer) {
         ButtonType approveButton = new ButtonType("Approve", ButtonBar.ButtonData.OK_DONE);
         ButtonType rejectButton = new ButtonType("Reject", ButtonBar.ButtonData.CANCEL_CLOSE);
         Alert alert = alert(Alert.AlertType.CONFIRMATION, "Approve the swap?",
                 "Lock: " + btc(lockAmount) + " BTC from Badbank\n"
                         + "Network fee: " + networkFee + " sats\n"
                         + "You receive: " + xmr(piconero) + " XMR\n\n"
+                        + (acceptedWorsePercent > 0 ? SwapCopy.priceAccepted(acceptedWorsePercent) + "\n\n" : "")
                         + recoveryTerms(lockAmount, amnesty, fullRefund) + "\n\n"
                         + "This closes as a rejection in " + seconds + " seconds.",
                 approveButton, rejectButton);
