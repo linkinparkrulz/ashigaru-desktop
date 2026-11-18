@@ -90,6 +90,19 @@ misunderstand, and the interface typeface changes across the whole app.
 - **Consistent wording.** The offer card, the approval, the progress text and the quit prompt used
   to describe refunds in different ways. They now share one account.
 
+## Tools
+
+- **Tools has a Sign tab, the counterpart of the Verifier.** Choose an open wallet, enter a message (a challenge
+  someone gave you, or a statement), and Sign Message gives you the signed block to send. It is signed as that
+  wallet's BIP47 payment code, so the Verifier on the other end, with your payment code, answers "Signature
+  verified". The payment code and its notification address are shown first, so you can see which identity signs.
+  A line naming your payment code is added to the message by default (a box turns it off) and the screen says
+  exactly what will be added. Signing is offline and asks for no password, because an open wallet already holds this
+  key (it is what signs an Auth47 login). Watch-only and hardware wallets have no payment code and are not listed.
+  Before showing the block, Ashigaru reads it back the way the Verifier does and checks the signature against your
+  payment code, so a block that would not verify is never handed out. A message that contains `-----BEGIN` or
+  `-----END` signature markers is refused, as it would break the block.
+
 ## Tester fixes
 
 - **Style classes on five more screens were never applied.** The same comma mistake as the Verifier was on the

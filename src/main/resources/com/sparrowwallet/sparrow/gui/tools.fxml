@@ -21,6 +21,11 @@
                     <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="CHECK_CIRCLE" />
                 </graphic>
             </ToggleButton>
+            <ToggleButton fx:id="bip47SignerButton" text="Sign" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" toggleGroup="$toolsMenu">
+                <graphic>
+                    <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="PEN_FANCY" />
+                </graphic>
+            </ToggleButton>
             <ToggleButton fx:id="statsButton" text="Statistics" contentDisplay="LEFT" graphicTextGap="10" styleClass="preferences-nav-item" toggleGroup="$toolsMenu">
                 <graphic>
                     <Glyph fontFamily="Font Awesome 5 Free Solid" fontSize="13" icon="CHART_BAR" />

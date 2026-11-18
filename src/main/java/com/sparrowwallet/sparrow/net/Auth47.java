@@ -2,14 +2,9 @@ package com.sparrowwallet.sparrow.net;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.sparrowwallet.drongo.ExtendedKey;
-import com.sparrowwallet.drongo.KeyPurpose;
-import com.sparrowwallet.drongo.crypto.ChildNumber;
-import com.sparrowwallet.drongo.crypto.ECKey;
-import com.sparrowwallet.drongo.protocol.ScriptType;
 import com.sparrowwallet.drongo.wallet.Wallet;
-import com.sparrowwallet.drongo.wallet.WalletNode;
 import com.sparrowwallet.sparrow.AppServices;
+import com.sparrowwallet.sparrow.paynym.Bip47Signing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -169,14 +164,7 @@ public class Auth47 {
 
     private String sign(Wallet wallet, String challenge) {
         try {
-            Wallet notificationWallet = wallet.getNotificationWallet();
-            WalletNode notificationNode = notificationWallet.getNode(KeyPurpose.NOTIFICATION);
-            ExtendedKey extendedPrivateKey = notificationWallet.getKeystores().get(0).getBip47ExtendedPrivateKey();
-            List<ChildNumber> derivation = new ArrayList<>();
-            derivation.add(extendedPrivateKey.getKeyChildNumber());
-            derivation.addAll(notificationNode.getDerivation());
-            ECKey privKey = extendedPrivateKey.getKey(derivation);
-            return privKey.signMessage(challenge, ScriptType.P2PKH);
+            return Bip47Signing.signChallenge(wallet, challenge);
         } catch(Exception e) {
             log.error("Error signing auth47 challenge", e);
             throw new IllegalStateException("Error signing auth47 challenge: " + e.getMessage(), e);

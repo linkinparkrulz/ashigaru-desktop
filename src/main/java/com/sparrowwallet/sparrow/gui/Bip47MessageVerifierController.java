@@ -309,26 +309,6 @@ public class Bip47MessageVerifierController {
     }
 
     private static VBox check(boolean passed, String text, String value) {
-        Label label = new Label(text);
-        label.getStyleClass().addAll("verify-step", passed ? "verifier-step-pass" : "verifier-step-fail");
-        label.setGraphic(Icons.of(passed ? FontAwesome5.Glyph.CHECK : FontAwesome5.Glyph.TIMES, 12));
-        label.setGraphicTextGap(11);
-        label.setWrapText(true);
-        label.setMinHeight(Region.USE_PREF_SIZE);
-        VBox row = new VBox(label);
-        if(value != null) {
-            Label address = new Label(value);
-            address.getStyleClass().add("verifier-value");
-            address.setWrapText(true);
-            address.setMinHeight(Region.USE_PREF_SIZE);
-            HBox.setHgrow(address, Priority.ALWAYS);
-            CopyButton copy = new CopyButton();
-            copy.setOnAction(event -> copy.copy(value));
-            HBox valueRow = new HBox(8, address, copy);
-            valueRow.setAlignment(Pos.CENTER_LEFT);
-            VBox.setMargin(valueRow, new Insets(-6, 0, 8, 25));
-            row.getChildren().add(valueRow);
-        }
-        return row;
+        return VerifierRows.check(passed, text, value);
     }
 }

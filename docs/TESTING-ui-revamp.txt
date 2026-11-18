@@ -576,6 +576,26 @@ WHAT THE REVAMP IS FOR
 
 
 --------------------------------------------------------------------
+ TOOLS > SIGN  (BIP47 message signing)
+--------------------------------------------------------------------
+  [ ] A "Sign" tab sits beside "Verifier". With a seed wallet open it
+      is chosen already and shows the payment code and notification
+      address; with none open it says why and Sign is disabled.
+  [ ] Enter a message and press Sign Message (or Ctrl+Enter): a signed
+      block appears at the right. Copy signed message copies all of it.
+  [ ] Paste that block into Tools > Verifier with the same payment
+      code: "Signature verified", and "The message names this
+      payment code".
+  [ ] The note under the message says what is added to it; untick
+      "Add my payment code" and the message is signed as typed.
+  [ ] Editing the message, the wallet or the box clears the answer.
+  [ ] A message containing -----BEGIN BITCOIN SIGNATURE----- is
+      refused with a reason.
+  [ ] Optional: check the block in a different BIP47 wallet's
+      verifier, and report which one.
+
+
+--------------------------------------------------------------------
  KNOWN GAPS  (not bugs, do not report)
 --------------------------------------------------------------------
   - The selection summary shows count and total only. It does not yet

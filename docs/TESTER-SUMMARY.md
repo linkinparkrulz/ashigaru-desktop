@@ -43,6 +43,16 @@ Start with a small coin. Report the maker you used and what the screen said.
 - [ ] Ctrl+Enter verifies; Tab moves between boxes; Paste and Clear work.
 - [ ] A message naming a different BIP47 payment code than the one you are verifying is refused.
 
+## 3b. Sign (Tools → Sign), new
+
+- [ ] A **Sign** tab sits beside Verifier. With a seed wallet open it is already chosen and shows the payment code
+      and notification address. Watch-only and hardware wallets are not listed.
+- [ ] Enter a message, press **Sign Message** (Ctrl+Enter), and copy the signed block.
+- [ ] Paste the block into **Verifier** with the same payment code: "Signature verified" and "The message names
+      this payment code".
+- [ ] The note under the message says what line is added; untick "Add my payment code" and it is signed as typed.
+- [ ] If you can, check the block in another BIP47 wallet's verifier and tell us which one.
+
 ## 4. Smaller fixes from your reports
 
 - [ ] The "?" help marks (passphrase and elsewhere) show their text on a click, and close on a second click.
