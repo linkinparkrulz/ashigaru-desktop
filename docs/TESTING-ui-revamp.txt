@@ -457,9 +457,13 @@ WHAT THE REVAMP IS FOR
   [ ] A small picture sits left of the wallet dropdown and the master
       fingerprint is shown under it. A watch-only wallet imported from
       a bare key reads "Watch-only".
-  [ ] The picture is drawn locally from the fingerprint. It is the
-      wallet's PayNym avatar only if PayNyms are switched on, because
-      fetching one asks paynym.rs about your payment code.
+  [ ] The picture is the wallet's PayNym robot. It is fetched from
+      paynym.rs through Tor a few seconds after the server connects
+      (once per wallet per launch), and the fingerprint picture shows
+      until then, and for good if the fetch fails. With Tor and any
+      proxy off, the fingerprint picture stays and nothing is asked.
+      Hover it: "This wallet's PayNym, from paynym.rs".
+  [ ] A watch-only wallet shows a small eye, not a picture.
 
   Wallet screen:
   [ ] Refresh is a labelled button with an icon, not an icon and

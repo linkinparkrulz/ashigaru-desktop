@@ -87,11 +87,12 @@ public class AshigaruMainController implements Initializable {
     @FXML private StackPane walletAvatar;
     @FXML private Label walletFingerprint;
 
+    private WalletIdentityAvatar walletIdentity;
+
     /**
-     * Shows who the open wallet is beside its name: the master fingerprint, and a picture of it.
-     * The picture is the wallet's PayNym avatar only when PayNyms are switched on, because fetching
-     * one asks paynym.rs about this wallet's payment code. Otherwise it is drawn on this machine
-     * from the fingerprint, which asks nobody.
+     * Shows who the open wallet is beside its name: the master fingerprint, and a picture. The picture is the wallet's
+     * PayNym robot, fetched from paynym.rs through Tor once the server connection is up, and drawn from the fingerprint
+     * on this computer until then or if it cannot be fetched (see {@link WalletIdentityAvatar}).
      */
     private void showWalletIdentity(Wallet wallet) {
         boolean show = wallet != null && !wallet.getKeystores().isEmpty();
@@ -99,7 +100,10 @@ public class AshigaruMainController implements Initializable {
         walletAvatar.setManaged(show);
         walletFingerprint.setVisible(show);
         walletFingerprint.setManaged(show);
-        walletAvatar.getChildren().clear();
+        if(walletIdentity == null) {
+            walletIdentity = new WalletIdentityAvatar(walletAvatar);
+        }
+        walletIdentity.clear();
         if(!show) {
             return;
         }
@@ -108,24 +112,12 @@ public class AshigaruMainController implements Initializable {
         boolean known = fingerprint != null && !fingerprint.isEmpty() && !fingerprint.equals("00000000");
         walletFingerprint.setText(known ? "Fingerprint " + fingerprint : "Watch-only");
         try {
-            if(Config.get().isUsePayNym() && wallet.hasPaymentCode()) {
-                com.sparrowwallet.sparrow.control.PayNymAvatar avatar = new com.sparrowwallet.sparrow.control.PayNymAvatar();
-                avatar.setPrefSize(30, 30);
-                avatar.setPaymentCode(wallet.getPaymentCode());
-                walletAvatar.getChildren().add(avatar);
-                Tooltip.install(walletAvatar, new Tooltip("This wallet's PayNym"));
-                return;
-            }
+            walletIdentity.show(fingerprint, wallet.hasPaymentCode() ? wallet.getPaymentCode() : null);
         } catch(Exception e) {
-            log.debug("Could not show PayNym avatar", e);
-        }
-        if(fingerprint != null && !fingerprint.isEmpty()) {
-            com.sparrowwallet.sparrow.control.LifeHashIcon icon = new com.sparrowwallet.sparrow.control.LifeHashIcon();
-            icon.setHex(fingerprint);
-            walletAvatar.getChildren().add(icon);
-            Tooltip.install(walletAvatar, new Tooltip("Drawn from this wallet's master fingerprint, " + fingerprint));
+            log.debug("Could not show the wallet's picture", e);
         }
     }
+
     @FXML private Label serverLabel;
     @FXML private ToggleGroup accountToggleGroup;
     @FXML private ToggleButton depositBtn;
@@ -1415,6 +1407,10 @@ public class AshigaruMainController implements Initializable {
             Integer height = AppServices.getCurrentBlockHeight();
             if (height != null) {
                 blockHeightLabel.setText("Block " + height);
+            }
+            //The PayNym robot is only asked for while connected, so a wallet opened before that gets its turn now
+            if (currentWalletForm != null && walletIdentity != null && !walletIdentity.showsRobot()) {
+                showWalletIdentity(currentWalletForm.getWallet());
             }
         });
     }

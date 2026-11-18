@@ -19,7 +19,7 @@ A privacy-first Bitcoin wallet for the desktop, built around Whirlpool coinjoin.
 - **Receive only.** Spending happens on mobile, which keeps the desktop's attack surface small.
 - **Dice-rolled passphrases.** Creating a wallet walks you through rolling a diceware BIP39 passphrase with physical dice. Restoring a wallet accepts the passphrase it already has, or none.
 - **Import / export labels.** Move your labels to and from any BIP-329 wallet.
-- **PayNym avatars.** BIP47 transactions show the counterparty's PepeHash avatar on the transaction card.
+- **PayNym avatars.** The open wallet's PayNym robot sits beside its name, and BIP47 transactions show the counterparty's PepeHash avatar on the transaction card. Both are fetched from paynym.rs through Tor.
 - **UTXO analysis.** Check your own UTXOs with AmIExposed or BitHypha.
 
 **Privacy and network**

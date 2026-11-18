@@ -41,8 +41,8 @@
             <VBox styleClass="sidebar-wallet-section" spacing="8">
                 <padding><Insets top="12" right="14" bottom="14" left="14"/></padding>
                 <HBox spacing="6" alignment="CENTER_LEFT">
-                    <!-- The open wallet's face: its PayNym avatar when PayNyms are in use, otherwise a
-                         picture drawn locally from its master fingerprint. The controller fills it. -->
+                    <!-- The open wallet's face: its PayNym robot, fetched through Tor, with a picture drawn
+                         locally from its master fingerprint until it arrives. The controller fills it. -->
                     <StackPane fx:id="walletAvatar" styleClass="wallet-avatar" minWidth="30" minHeight="30" maxWidth="30" maxHeight="30"
                                visible="false" managed="false"/>
                     <ComboBox fx:id="walletSelector" styleClass="wallet-selector" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>

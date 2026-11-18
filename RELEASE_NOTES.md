@@ -105,6 +105,14 @@ misunderstand, and the interface typeface changes across the whole app.
 
 ## Tester fixes
 
+- **The wallet's picture is now its PayNym robot.** The picture beside the wallet name was meant to be the
+  wallet's PayNym avatar when PayNyms were on, but nothing in Settings turned them on, so it was always a picture
+  drawn from the fingerprint. It is now the real PayNym robot, fetched from paynym.rs through Tor a few seconds after
+  the server connects (once per wallet per launch; a failed fetch is tried again when the server reconnects), with the
+  fingerprint picture shown until it arrives and kept if it cannot be fetched. **This tells paynym.rs your wallet's payment code**, and so links the wallet to its
+  PayNym. With no Tor and no proxy nothing is asked and the fingerprint picture stays. The fingerprint is still
+  shown under the name, and a watch-only wallet shows a small eye.
+
 - **Style classes on five more screens were never applied.** The same comma mistake as the Verifier was on the
   Deposit/Mix buttons, the Tx0 total row and the Statistics pool badges. Start Mixing is now the red primary
   button, Mix To... and Preview Tx0 are the neutral buttons, the Tx0 total is emphasised, and the pool-size

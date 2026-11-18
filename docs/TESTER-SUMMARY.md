@@ -53,6 +53,16 @@ Start with a small coin. Report the maker you used and what the screen said.
 - [ ] The note under the message says what line is added; untick "Add my payment code" and it is signed as typed.
 - [ ] If you can, check the block in another BIP47 wallet's verifier and tell us which one.
 
+## 3c. Wallet picture (PayNym robot), new
+
+- [ ] A few seconds after the server connects, the picture beside the wallet name turns into the wallet's PayNym
+      robot. Until then (and if it never arrives) it is the fingerprint picture.
+- [ ] Hover it: "This wallet's PayNym, from paynym.rs". The fingerprint is still written under the name.
+- [ ] With Tor and any proxy off, the fingerprint picture stays and nothing is asked. If the fetch fails, it is
+      tried again the next time the server reconnects.
+- [ ] Does paynym.rs give a robot for a wallet whose PayNym you never claimed? Tell us if it does not.
+- Note: this tells paynym.rs the wallet's payment code.
+
 ## 4. Smaller fixes from your reports
 
 - [ ] The "?" help marks (passphrase and elsewhere) show their text on a click, and close on a second click.
