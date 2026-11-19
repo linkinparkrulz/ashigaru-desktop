@@ -51,6 +51,14 @@ headless package; build one locally with `./gradlew -Djava.awt.headless=true jpa
 - Reproducible-build flags are set on all archive tasks; don't add tasks that break
   `preserveFileTimestamps=false` / `reproducibleFileOrder=true`.
 
+**Versioning.** The repository keeps a base version (`1.5.x`) in two places that must agree:
+`ashigaruTerminalVersion` in `build.gradle` (the installer) and `AshigaruTerminal.APP_VERSION` (the app); `AppVersionTest`
+fails if they differ. A package built by the **Package** (or **Swap build**) workflow is stamped on the runner by
+`.github/scripts/set-build-version.sh`: the installer is `<major>.<minor>.<run number>` and the app shows
+`<major>.<minor>.<run number>+<commit>` in the window title, About and Settings → Logs, so any build can be told from
+another. Nothing is committed back; a local `./gradlew run` shows the plain base version. Release builds take their
+version from the tag and are not stamped.
+
 ## 2. Tests
 
 | Module | Location | Coverage |

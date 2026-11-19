@@ -4,6 +4,10 @@ Branch `claude/funny-cannon-itky0u`. Everything below came from tester reports o
 Items marked **(swaps)** need a build that includes the swap engine (the Package workflow's `swap_engine` option);
 the first build with 5.0.4 has not been compiled or run against a real maker yet.
 
+**Which build is this?** Every package now carries its own number, shown in the window title, About and Settings →
+Logs as `1.5.<n>+<commit>` (for example `1.5.81+f6833e3`). Quote it with anything you report. If the title shows
+plain `1.5.1`, you are running an old copy.
+
 **Before you update:** finish or refund any swap that is still running. The engine changed underneath it.
 **Never enable eigenwallet's "on-chain backup" (Apollo)** if you run eigenwallet separately: after it has run,
 older versions cannot open the swap database.

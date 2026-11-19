@@ -103,7 +103,7 @@ public class AshigaruGui extends Application {
         //resize exposes before the next layout pass. Left at the default white it flashes on every drag.
         scene.setFill(APP_BACKGROUND);
 
-        stage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION);
+        stage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION + AshigaruTerminal.APP_VERSION_SUFFIX);
         stage.setMinWidth(WindowSizing.minWidth(visualBounds.getWidth()));
         stage.setMinHeight(WindowSizing.minHeight(visualBounds.getHeight()));
         stage.setScene(scene);
@@ -190,7 +190,7 @@ public class AshigaruGui extends Application {
 
             Stage splashStage = new Stage();
             splashStage.initStyle(StageStyle.UNDECORATED);
-            splashStage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION);
+            splashStage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION + AshigaruTerminal.APP_VERSION_SUFFIX);
             Scene splashScene = new Scene(splashRoot, 600, 400);
             AppServices.addAshigaruStylesheets(splashScene.getStylesheets());
             splashScene.setFill(APP_BACKGROUND);
