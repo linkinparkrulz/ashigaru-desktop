@@ -92,6 +92,17 @@ misunderstand, and the interface typeface changes across the whole app.
 
 ## Tools
 
+- **Pair with Sentinel, in the wallet's three-dot menu.** It shows a QR that Sentinel (the Dojo Bay edition) scans to
+  watch this wallet, and three one-time words (from the EFF word list, as Samourai and Ashigaru phones do) that it asks
+  for before it can read the QR. The QR holds the Deposit BIP44, BIP49 and BIP84 keys, Premix, Postmix and Bad Bank, and
+  the wallet fingerprint: public keys only, never a seed or private key. The BIP44 and BIP49 Deposit keys are worked out
+  from the seed, so an encrypted wallet asks for its password once, and the open copy is wiped straight away; if
+  the seed alone does not give the wallet's own key (a BIP39 passphrase), those two are left out rather than guessed.
+  Keys the wallet does not have (a watch-only wallet, or one with no Whirlpool accounts) are left out and the window
+  says which. New words and a fresh QR are made each time the window opens or you press New words, nothing is saved
+  or logged, and nothing is sent anywhere. Anyone who has both the QR and the words can see the accounts' addresses and
+  balances. Also: **Copy pairing text** for Sentinel's paste box.
+
 - **Tools has a Sign tab, the counterpart of the Verifier.** Choose an open wallet, enter a message (a challenge
   someone gave you, or a statement), and Sign Message gives you the signed block to send. It is signed as that
   wallet's BIP47 payment code, so the Verifier on the other end, with your payment code, answers "Signature

@@ -73,6 +73,7 @@ public class AshigaruMainController implements Initializable {
     @FXML private MenuItem viewSeedBtn;
     @FXML private MenuItem exportLabelsBtn;
     @FXML private MenuItem importLabelsBtn;
+    @FXML private MenuItem sentinelPairBtn;
     @FXML private MenuItem lockWalletBtn;
     @FXML private MenuItem openWalletItem;
     @FXML private MenuItem createWalletItem;
@@ -182,6 +183,7 @@ public class AshigaruMainController implements Initializable {
         Icons.set(viewSeedBtn, FontAwesome5.Glyph.EYE);
         Icons.set(exportLabelsBtn, FontAwesome5.Glyph.FILE_EXPORT);
         Icons.set(importLabelsBtn, FontAwesome5.Glyph.FILE_IMPORT);
+        Icons.set(sentinelPairBtn, FontAwesome5.Glyph.QRCODE);
         Icons.set(lockWalletBtn, FontAwesome5.Glyph.LOCK);
         Icons.set(deleteWalletBtn, FontAwesome5.Glyph.TRASH_ALT);
         buildPipeline();
@@ -843,6 +845,55 @@ public class AshigaruMainController implements Initializable {
         } else {
             showSeedDialog(wallet.getKeystores().get(0));
         }
+    }
+
+    /**
+     * Pair with Sentinel: shows this wallet's public keys as a QR, with three one-time words that open it. Only the
+     * Deposit BIP44 and BIP49 keys need the seed, so an encrypted wallet asks for its password; the open copy is wiped
+     * as soon as the keys are made.
+     */
+    @FXML
+    private void onPairWithSentinel() {
+        if (currentWalletForm == null) return;
+        Wallet wallet = currentWalletForm.getWallet();
+        if (wallet.getKeystores().isEmpty()) return;
+        Keystore keystore = wallet.getKeystores().get(0);
+        if (!keystore.hasSeed() && !keystore.hasMasterPrivateExtendedKey()) {
+            //Watch-only: only the keys the wallet already holds
+            showSentinelPairing(wallet, null, null);
+            return;
+        }
+
+        Wallet copy = wallet.copy();
+        if (copy.isEncrypted()) {
+            WalletPasswordDialog dlg = new WalletPasswordDialog(copy.getMasterName(), WalletPasswordDialog.PasswordRequirement.LOAD);
+            dlg.initOwner(AshigaruGui.get().getMainStage());
+            Optional<SecureString> password = dlg.showAndWait();
+            if (password.isPresent()) {
+                Storage.DecryptWalletService svc = new Storage.DecryptWalletService(copy, password.get());
+                svc.setOnSucceeded(e -> showSentinelPairing(wallet, svc.getValue().getKeystores().get(0), copy));
+                svc.setOnFailed(e -> AppServices.showErrorDialog("Incorrect Password", svc.getException().getMessage()));
+                svc.start();
+            }
+        } else {
+            showSentinelPairing(wallet, copy.getKeystores().get(0), copy);
+        }
+    }
+
+    private void showSentinelPairing(Wallet wallet, Keystore open, Wallet openCopy) {
+        SentinelPairing.Slots slots;
+        try {
+            slots = SentinelPairing.slots(wallet, open);
+        } finally {
+            if (openCopy != null) {
+                openCopy.clearPrivate();
+            }
+        }
+        if (!slots.hasAnyKey()) {
+            showInfo("Nothing to pair", "This wallet has no public keys Sentinel can watch.");
+            return;
+        }
+        SentinelPairingDialog.show(AshigaruGui.get().getMainStage(), slots);
     }
 
     private void showSeedDialog(Keystore keystore) {

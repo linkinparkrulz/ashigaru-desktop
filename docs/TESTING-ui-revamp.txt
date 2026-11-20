@@ -580,6 +580,24 @@ WHAT THE REVAMP IS FOR
 
 
 --------------------------------------------------------------------
+ PAIR WITH SENTINEL  (wallet "..." menu)
+--------------------------------------------------------------------
+  [ ] The "..." menu beside the wallet name has "Pair with Sentinel...".
+  [ ] A wallet with no password opens the window at once; an encrypted
+      wallet asks for its password first, and a wrong password says so.
+  [ ] The window shows a QR, three words (like word-word-word), and
+      which keys are in the pairing. A mixing wallet lists all six:
+      Deposit BIP44, BIP49, BIP84, Premix, Postmix, Bad Bank.
+  [ ] In Sentinel (Dojo Bay edition), add a wallet from an Ashigaru
+      pairing, scan the QR, type the three words: the wallet is added
+      with its accounts, and nothing is "skipped" for a mixing wallet.
+  [ ] "New words" changes the words and the QR; the old words no
+      longer open the new QR. "Copy pairing text" and "Copy words" copy.
+  [ ] A watch-only wallet imported from a zpub still opens it, with
+      only Deposit BIP84, and says the others are not in it.
+  [ ] Closing the window and opening it again gives different words.
+
+--------------------------------------------------------------------
  TOOLS > SIGN  (BIP47 message signing)
 --------------------------------------------------------------------
   [ ] A "Sign" tab sits beside "Verifier". With a seed wallet open it

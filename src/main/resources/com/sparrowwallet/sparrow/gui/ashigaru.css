@@ -1423,6 +1423,7 @@
 /* The price warning before a swap goes on at a worse price: the offer, the final terms and the difference, in rows */
 .price-figures { -fx-border-color: -ag-border transparent transparent transparent; -fx-border-width: 1 0 0 0; }
 .price-figure { -fx-padding: 9 0 9 0; -fx-border-color: transparent transparent -ag-border transparent; -fx-border-width: 0 0 1 0; }
+.sentinel-words { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 20px; -fx-text-fill: -ag-text; -fx-padding: 6 0 6 0; }
 .price-figure-name { -fx-font-family: "Roboto", sans-serif; -fx-font-size: 13px; -fx-text-fill: -ag-text-dim; }
 .price-figure-value { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 13px; -fx-text-fill: -ag-text; }
 .price-figure-worse { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 13px; -fx-text-fill: -ag-warn-ink; }

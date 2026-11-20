@@ -55,6 +55,7 @@
                             <MenuItem fx:id="viewSeedBtn" text="View seed words…" onAction="#onViewSeed"/>
                             <MenuItem fx:id="exportLabelsBtn" text="Export labels…" onAction="#onExportLabels"/>
                             <MenuItem fx:id="importLabelsBtn" text="Import labels…" onAction="#onImportLabels"/>
+                            <MenuItem fx:id="sentinelPairBtn" text="Pair with Sentinel…" onAction="#onPairWithSentinel"/>
                             <MenuItem fx:id="lockWalletBtn" text="Lock wallet" onAction="#onLockWallet"/>
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="openWalletItem" text="Open another wallet…" onAction="#onOpenWallet"/>

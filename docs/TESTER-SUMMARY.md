@@ -57,6 +57,16 @@ Start with a small coin. Report the maker you used and what the screen said.
 - [ ] The note under the message says what line is added; untick "Add my payment code" and it is signed as typed.
 - [ ] If you can, check the block in another BIP47 wallet's verifier and tell us which one.
 
+## 3d. Pair with Sentinel, new
+
+Needs Sentinel, the Dojo Bay edition, on an Android phone.
+- [ ] The wallet's "..." menu has **Pair with Sentinel...**. An encrypted wallet asks for its password first.
+- [ ] The window shows a QR and three words. In Sentinel add a wallet from an Ashigaru pairing, scan the QR, and type
+      the words: the wallet comes across with its accounts. Tell us exactly what Sentinel says if anything is "skipped".
+- [ ] **New words** gives different words and a different QR; the old words no longer work.
+- [ ] A watch-only wallet shows only the keys it has and says which are not in the pairing.
+- Note: whoever has both the QR and the words can see the wallet's addresses and balances. No seed or private key is in it.
+
 ## 3c. Wallet picture (PayNym robot), new
 
 - [ ] A few seconds after the server connects, the picture beside the wallet name turns into the wallet's PayNym

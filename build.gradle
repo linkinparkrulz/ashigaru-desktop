@@ -532,6 +532,7 @@ extraJavaModuleInfo {
         exports('com.samourai.wallet.api.backend.beans')
         exports('com.samourai.wallet.client.indexHandler')
         exports('com.samourai.wallet.hd')
+        exports('com.samourai.wallet.crypto')
         exports('com.samourai.wallet.util')
         exports('com.samourai.wallet.bip47.rpc')
         exports('com.samourai.wallet.bip47.rpc.java')
