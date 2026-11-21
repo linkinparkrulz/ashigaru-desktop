@@ -24,13 +24,35 @@ import javafx.stage.Window;
  * logged or sent anywhere, and the words are new each time the window opens.
  */
 final class SentinelPairingDialog {
+    /** The QR is drawn about this wide, in whole pixels per module; the box holds a little more so that the layout does not move */
     private static final int QR_SIZE = 440;
+    private static final int QR_BOX = 480;
 
     private SentinelPairingDialog() {}
 
     /** A built dialog and the pieces a test needs to reach */
     record Built(Dialog<ButtonType> dialog, Label wordsLabel, ImageView qrView, Button newWordsButton, Button copyWordsButton,
                  Button copyPairingButton, Label includedLabel, Label missingLabel, State state) {}
+
+    /** New words, what they make, and its picture */
+    record Pairing(String words, String envelope, java.awt.image.BufferedImage qr) {}
+
+    /**
+     * Makes a pairing whose QR a plain reader gets back out. The words are random, so a pairing whose picture does not read
+     * (see {@link QrImages#reads}) is simply replaced by one with other words; it takes a few tries at most.
+     */
+    static Pairing readablePairing(SentinelPairing.Slots slots, int size) {
+        Pairing last = null;
+        for(int attempt = 0; attempt < 30; attempt++) {
+            String words = SentinelPairing.newWords();
+            String envelope = SentinelPairing.envelope(slots, words);
+            last = new Pairing(words, envelope, QrImages.dense(envelope, size));
+            if(last.qr() != null && QrImages.reads(last.qr(), envelope)) {
+                return last;
+            }
+        }
+        return last;
+    }
 
     /** What the window is showing now: the words, and the text the QR holds */
     static final class State {
@@ -39,7 +61,9 @@ final class SentinelPairingDialog {
     }
 
     static void show(Window owner, SentinelPairing.Slots slots) {
-        build(owner, slots).dialog().showAndWait();
+        Dialog<ButtonType> dialog = build(owner, slots).dialog();
+        AppServices.moveToActiveWindowScreen(dialog);
+        dialog.showAndWait();
     }
 
     static Built build(Window owner, SentinelPairing.Slots slots) {
@@ -53,14 +77,12 @@ final class SentinelPairingDialog {
 
         State state = new State();
         ImageView qrView = new ImageView();
-        qrView.setFitWidth(QR_SIZE);
-        qrView.setFitHeight(QR_SIZE);
         qrView.setPreserveRatio(true);
         qrView.setSmooth(false);
         VBox qrBox = new VBox(qrView);
         qrBox.setAlignment(Pos.CENTER);
-        qrBox.setMinSize(QR_SIZE, QR_SIZE);
-        qrBox.setMaxSize(QR_SIZE, QR_SIZE);
+        qrBox.setMinSize(QR_BOX, QR_BOX);
+        qrBox.setMaxSize(QR_BOX, QR_BOX);
 
         Label wordsHeading = new Label("Type these three words in Sentinel");
         wordsHeading.getStyleClass().addAll("ag-read", "faint");
@@ -112,10 +134,17 @@ final class SentinelPairingDialog {
         content.setPadding(new Insets(20));
 
         Runnable refresh = () -> {
-            state.words = SentinelPairing.newWords();
-            state.envelope = SentinelPairing.envelope(slots, state.words);
+            Pairing pairing = readablePairing(slots, QR_SIZE);
+            state.words = pairing.words();
+            state.envelope = pairing.envelope();
             wordsLabel.setText(state.words);
-            qrView.setImage(QrImages.toFx(QrImages.dense(state.envelope, QR_SIZE)));
+            javafx.scene.image.Image qr = QrImages.toFx(pairing.qr());
+            qrView.setImage(qr);
+            if(qr != null) {
+                //Shown at its own size: no pixel is stretched
+                qrView.setFitWidth(qr.getWidth());
+                qrView.setFitHeight(qr.getHeight());
+            }
         };
         refresh.run();
 
@@ -134,9 +163,8 @@ final class SentinelPairingDialog {
         pane.setContent(content);
         pane.getButtonTypes().add(ButtonType.CLOSE);
         WalletCreationFlow.styleWizardButtons(pane);
-        pane.setPrefWidth(860);
+        pane.setPrefWidth(900);
 
-        AppServices.moveToActiveWindowScreen(dlg);
         return new Built(dlg, wordsLabel, qrView, newWords, copyWords, copyPairing, included, missing, state);
     }
 

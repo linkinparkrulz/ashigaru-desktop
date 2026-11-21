@@ -3,8 +3,6 @@ package com.sparrowwallet.sparrow.gui;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.samourai.wallet.crypto.AESUtil;
-import com.samourai.wallet.util.CharSequenceX;
 import com.sparrowwallet.drongo.ExtendedKey;
 import com.sparrowwallet.drongo.policy.Policy;
 import com.sparrowwallet.drongo.policy.PolicyType;
@@ -31,6 +29,20 @@ class SentinelPairingTest {
     private static final String MNEMONIC = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     //The BIP84 account 0 key of the seed above, from the BIP84 test vectors
     private static final String ZPUB = "zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs";
+
+    /**
+     * Opens a payload as Sentinel does (AESUtil.decrypt with Samourai's default iterations). By reflection: the cipher's exception type
+     * comes from a library the app module does not require, so it is not on this compile path, and a plain call would not compile.
+     */
+    static String decrypt(String payload, String words) throws Exception {
+        Class<?> aes = Class.forName("com.samourai.wallet.crypto.AESUtil");
+        java.lang.reflect.Method method = aes.getMethod("decrypt", String.class, com.samourai.wallet.util.CharSequenceX.class, int.class);
+        try {
+            return (String) method.invoke(null, payload, new com.samourai.wallet.util.CharSequenceX(words), aes.getField("DefaultPBKDF2Iterations").getInt(null));
+        } catch(java.lang.reflect.InvocationTargetException e) {
+            throw e.getCause() instanceof Exception cause ? cause : e;
+        }
+    }
 
     private static DeterministicSeed seed(String passphrase) throws Exception {
         return new DeterministicSeed(MNEMONIC, passphrase, 0, DeterministicSeed.Type.BIP39);
@@ -175,7 +187,7 @@ class SentinelPairingTest {
         assertTrue(outer.has("payload") && !outer.get("payload").getAsString().isEmpty());
 
         //Sentinel: AESUtil.decrypt(payload, CharSequenceX(password), DefaultPBKDF2Iterations)
-        String decrypted = AESUtil.decrypt(outer.get("payload").getAsString(), new CharSequenceX(words), AESUtil.DefaultPBKDF2Iterations);
+        String decrypted = decrypt(outer.get("payload").getAsString(), words);
 
         //Sentinel: json.optJSONArray("watch-only"), index 0 the fingerprint, 1..6 the keys, nothing past 7
         JsonArray array = JsonParser.parseString(decrypted).getAsJsonObject().getAsJsonArray("watch-only");
@@ -199,7 +211,7 @@ class SentinelPairingTest {
         SentinelPairing.Slots slots = SentinelPairing.slots(wallet(""), null);
         String words = SentinelPairing.newWords();
         JsonObject outer = JsonParser.parseString(SentinelPairing.envelope(slots, words)).getAsJsonObject();
-        String decrypted = AESUtil.decrypt(outer.get("payload").getAsString(), new CharSequenceX(words), AESUtil.DefaultPBKDF2Iterations);
+        String decrypted = decrypt(outer.get("payload").getAsString(), words);
         JsonArray array = JsonParser.parseString(decrypted).getAsJsonObject().getAsJsonArray("watch-only");
         assertEquals(7, array.size());
         assertTrue(array.get(1).isJsonNull(), "BIP44 is null, which Sentinel names as skipped");
@@ -215,10 +227,10 @@ class SentinelPairingTest {
         String other = SentinelPairing.newWords();
         String payload = JsonParser.parseString(SentinelPairing.envelope(slots, words)).getAsJsonObject().get("payload").getAsString();
 
-        assertDoesNotThrow(() -> AESUtil.decrypt(payload, new CharSequenceX(words), AESUtil.DefaultPBKDF2Iterations));
+        assertDoesNotThrow(() -> decrypt(payload, words));
         //A wrong password either fails to decrypt or gives something that is not the keys (Sentinel's own test allows both)
         try {
-            String wrong = AESUtil.decrypt(payload, new CharSequenceX(other), AESUtil.DefaultPBKDF2Iterations);
+            String wrong = decrypt(payload, other);
             assertFalse(wrong.contains("watch-only"));
         } catch(Exception expected) {
             //fine

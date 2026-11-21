@@ -6,8 +6,6 @@ import com.google.zxing.BinaryBitmap;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
-import com.samourai.wallet.crypto.AESUtil;
-import com.samourai.wallet.util.CharSequenceX;
 import com.sparrowwallet.drongo.policy.Policy;
 import com.sparrowwallet.drongo.policy.PolicyType;
 import com.sparrowwallet.drongo.protocol.ScriptType;
@@ -78,6 +76,10 @@ class SentinelPairingDialogTest {
         }
     }
 
+    private static String decrypt(String payload, String words) throws Exception {
+        return SentinelPairingTest.decrypt(payload, words);
+    }
+
     private static String decodeQr(SentinelPairingDialog.Built built) throws Exception {
         BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(SwingFXUtils.fromFXImage(built.qrView().getImage(), null))));
         return new QRCodeReader().decode(bitmap).getText();
@@ -92,7 +94,7 @@ class SentinelPairingDialogTest {
         assertEquals(built.state().envelope, decodeQr(built));
 
         JsonObject outer = JsonParser.parseString(decodeQr(built)).getAsJsonObject();
-        String decrypted = AESUtil.decrypt(outer.get("payload").getAsString(), new CharSequenceX(built.wordsLabel().getText()), AESUtil.DefaultPBKDF2Iterations);
+        String decrypted = decrypt(outer.get("payload").getAsString(), built.wordsLabel().getText());
         assertTrue(decrypted.contains("watch-only"));
     }
 
@@ -111,7 +113,7 @@ class SentinelPairingDialogTest {
         assertEquals(built.state().envelope, newEnvelope);
         //The new words open the new picture, and the old ones no longer open it
         String payload = JsonParser.parseString(newEnvelope).getAsJsonObject().get("payload").getAsString();
-        assertDoesNotThrow(() -> AESUtil.decrypt(payload, new CharSequenceX(built.wordsLabel().getText()), AESUtil.DefaultPBKDF2Iterations));
+        assertDoesNotThrow(() -> decrypt(payload, built.wordsLabel().getText()));
     }
 
     @Test

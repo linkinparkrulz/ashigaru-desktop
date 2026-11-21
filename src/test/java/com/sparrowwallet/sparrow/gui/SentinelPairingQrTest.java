@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class SentinelPairingQrTest {
     private static final String MNEMONIC = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
-    private static String fullEnvelope() throws Exception {
+    private static SentinelPairing.Slots fullSlots() throws Exception {
         Wallet master = new Wallet("pair");
         master.setPolicyType(PolicyType.SINGLE);
         master.setScriptType(ScriptType.P2WPKH);
@@ -39,7 +39,11 @@ class SentinelPairingQrTest {
         }
         Keystore open = new Keystore();
         open.setSeed(seed);
-        return SentinelPairing.envelope(SentinelPairing.slots(master, open), SentinelPairing.newWords());
+        return SentinelPairing.slots(master, open);
+    }
+
+    private static String fullEnvelope() throws Exception {
+        return SentinelPairingDialog.readablePairing(fullSlots(), 440).envelope();
     }
 
     private static String decode(BufferedImage image) throws Exception {
@@ -60,30 +64,36 @@ class SentinelPairingQrTest {
     void theQrIsSmallEnoughToScanOffAScreen() throws Exception {
         String envelope = fullEnvelope();
         int version = Encoder.encode(envelope, ErrorCorrectionLevel.L).getVersion().getVersionNumber();
-        int modules = 17 + 4 * version + 4;
-        //460 pixels across the picture, margin included: each module is at least this many pixels
-        double pixelsPerModule = 460.0 / modules;
+        //The code, and the four-module quiet zone the standard asks for on each side
+        int modules = 17 + 4 * version + 8;
+        BufferedImage qr = QrImages.dense(envelope, 440);
+        assertEquals(0, qr.getWidth() % modules, "whole pixels per module");
+        int pixelsPerModule = qr.getWidth() / modules;
         System.out.println("pairing text " + envelope.length() + " characters, QR version " + version + ", " + modules + " modules, "
-                + String.format("%.1f", pixelsPerModule) + " px per module at 460 px");
+                + pixelsPerModule + " px per module, picture " + qr.getWidth() + " px");
         assertTrue(version <= 40);
-        assertTrue(pixelsPerModule >= 2.5, "modules of " + pixelsPerModule + " px would be hard to scan");
+        assertTrue(pixelsPerModule >= 3, "modules of " + pixelsPerModule + " px would be hard to scan");
+        assertTrue(qr.getWidth() >= 400 && qr.getWidth() <= 480, "about the size the dialog draws: " + qr.getWidth());
     }
 
     @Test
-    void aPictureTwiceAsSmallStillReads() throws Exception {
-        //A phone sees the screen smaller than it is: the same picture at half the size must still decode
-        String envelope = fullEnvelope();
-        BufferedImage qr = QrImages.dense(envelope, 920);
-        BufferedImage half = new BufferedImage(460, 460, BufferedImage.TYPE_INT_RGB);
-        java.awt.Graphics2D g = half.createGraphics();
-        g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g.drawImage(qr, 0, 0, 460, 460, null);
-        g.dispose();
-        try {
-            assertEquals(envelope, decode(half));
-        } catch(NotFoundException e) {
-            fail("the QR did not decode at half size");
+    void whateverTheWordsTheWindowShowsAQrThatReads() throws Exception {
+        //About one pairing in twenty-five makes a QR that a plain reader cannot find: the window replaces such a pairing
+        SentinelPairing.Slots slots = fullSlots();
+        for(int i = 0; i < 150; i++) {
+            SentinelPairingDialog.Pairing pairing = SentinelPairingDialog.readablePairing(slots, 440);
+            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(pairing.qr())));
+            assertEquals(pairing.envelope(), new QRCodeReader().decode(bitmap).getText(), "pairing " + i);
         }
+    }
+
+    @Test
+    void thePlainReaderCheckSaysNoToAPictureThatIsNotTheContent() throws Exception {
+        String envelope = fullEnvelope();
+        BufferedImage qr = QrImages.dense(envelope, 440);
+        assertTrue(QrImages.reads(qr, envelope));
+        assertFalse(QrImages.reads(qr, envelope + "x"));
+        assertFalse(QrImages.reads(new BufferedImage(200, 200, BufferedImage.TYPE_INT_RGB), envelope));
     }
 
     @Test

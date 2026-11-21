@@ -49,6 +49,7 @@ public final class PriceWarningDialog {
             return false;
         }
         Built built = build(owner, result, seconds);
+        AppServices.moveToActiveWindowScreen(built.dialog());
         Optional<ButtonType> answer = built.dialog().showAndWait();
         return answer.isPresent() && answer.get() == built.accept();
     }
@@ -118,7 +119,6 @@ public final class PriceWarningDialog {
         dlg.setOnShown(event -> clock.play());
         dlg.setOnHidden(event -> clock.stop());
 
-        AppServices.moveToActiveWindowScreen(dlg);
         return new Built(dlg, accept, reject, countdown);
     }
 

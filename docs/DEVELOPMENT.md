@@ -280,9 +280,10 @@ Observe progress by registering on the client's own bus:
 The historical provenance: Samourai's `whirlpool-client` / `extlibj` / `soroban-client` lived
 on Samourai's own GitLab (offline since the 2024 takedown); Sparrow's `nightjar` bundle lives
 on the Sparrow Gitea (`code.sparrowwallet.com`). Neither is required: **the complete client
-source is vendored in this repo** under `darkjar/src/main/java/` — the Gitea/Maven
-repositories in the build files only serve prebuilt third-party artifacts for the *app*
-module, not any Whirlpool code. Reading darkjar *is* reading the upstream client, pinned at
+source is vendored in this repo** under `darkjar/src/main/java/` — the repositories in the
+build files only serve prebuilt third-party artifacts for the *app* module, not any
+Whirlpool code. The build no longer uses the Sparrow Gitea at all: `bwt-jni`, `bokmakierie`
+and `fxsvgimage` come from Maven Central (`com.sparrowwallet:*`), as in Sparrow itself. Reading darkjar *is* reading the upstream client, pinned at
 the exact revision this app runs. `whirlpool-client-cli` (Samourai's standalone CLI embedder)
 was the canonical example of using this library outside a wallet GUI; if unreachable, the
 Sparrow bridge classes in `sparrow/whirlpool/` serve the same illustrative purpose.
