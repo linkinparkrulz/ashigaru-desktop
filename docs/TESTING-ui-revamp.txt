@@ -580,6 +580,35 @@ WHAT THE REVAMP IS FOR
 
 
 --------------------------------------------------------------------
+ TESTER ROUND: PASSWORDS, TOP BAR, OFFERS
+--------------------------------------------------------------------
+  [ ] Start a swap and type a wrong wallet password: ONE window,
+      "That is not the password for <wallet>...", no second red
+      banner above the offers. Cancel the password window: only
+      "Swap setup cancelled. Nothing was locked or sent."
+  [ ] View seed and Pair with Sentinel ask for the password in the
+      same small window as opening a wallet, and say wrong
+      passwords in the same words.
+  [ ] A top-bar message ("Updating to new block height", "Requested
+      new Tor circuits") is back to "Ready" after about 20 seconds
+      without switching account. "Syncing" goes to "Ready" when
+      the sync ends.
+  [ ] With a mixing wallet open the top bar shows a Coordinator
+      light: idle until Whirlpool starts, online once it has;
+      amber while connecting; red if the coordinator cannot be
+      reached (a coin connecting for over 90 seconds, or start-up
+      failing). Hover it for the reason.
+  [ ] With swaps on, a Swaps light: on, starting (amber, also while
+      waiting for Tor), or red when it could not start.
+  [ ] Offers say "x.x% worse/better than market" (no minus sign),
+      "0.0123 XMR less than the most", and a "98% refund" /
+      "100% refund" line under REFUND IF CANCELLED.
+  [ ] "Could not load the offer list. Ashigaru will try again..."
+      disappears by itself when the list loads again.
+  [ ] The review's note says to check the fee breakdown and full
+      address ABOVE.
+
+--------------------------------------------------------------------
  PAIR WITH SENTINEL  (wallet "..." menu)
 --------------------------------------------------------------------
   [ ] The "..." menu beside the wallet name has "Pair with Sentinel...".

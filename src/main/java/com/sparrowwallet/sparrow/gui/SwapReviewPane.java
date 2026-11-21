@@ -24,7 +24,7 @@ import java.util.Locale;
 /**
  * The swap's final review, drawn in the Swaps screen instead of a dialog: the final terms, then approve
  * and publish the BTC lock. The action bar is pinned below a scrolling body, so Approve and Reject stay
- * in view however much of the terms is scrolled; the bar says what is below. It only draws a
+ * in view however much of the terms is scrolled; the bar points up at the terms it covers. It only draws a
  * {@link SwapReview} and reports the user's choice through its decision.
  */
 public class SwapReviewPane extends BorderPane {
@@ -174,7 +174,7 @@ public class SwapReviewPane extends BorderPane {
 
         //Pinned below the scrolling body so the decision is always in reach
         Button reject = button("Reject", "secondary-btn");
-        Label note = wrapped("Nothing is published until you press Approve. The fee breakdown and full address are below.", "review-body");
+        Label note = wrapped("Nothing is published until you press Approve. Check the fee breakdown and full address above first.", "review-body");
         HBox.setHgrow(note, Priority.ALWAYS);
         note.setMaxWidth(Double.MAX_VALUE);
         Button approve = button("Approve and publish BTC lock", "primary-btn", "review-primary");

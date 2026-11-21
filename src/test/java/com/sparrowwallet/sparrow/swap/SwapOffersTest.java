@@ -92,6 +92,12 @@ class SwapOffersTest {
         assertTrue(a.versusMarket() < 0);
         assertEquals("−1.9%", SwapOffers.percent(a.versusMarket()));
         assertEquals("+0.3%", SwapOffers.percent(0.26));
+        //In words, so that a sign is not read the other way
+        assertEquals("1.9% worse than market", SwapOffers.versusMarketText(a.versusMarket()));
+        assertEquals("0.3% better than market", SwapOffers.versusMarketText(0.26));
+        assertEquals("at market", SwapOffers.versusMarketText(0.04));
+        assertEquals("at market", SwapOffers.versusMarketText(-0.04));
+        assertEquals("3.4% worse than market", SwapOffers.versusMarketText(-3.4));
         assertNull(SwapOffers.rows(SHOWN, COIN, null, Sort.MOST_XMR).get(0).versusMarket(), "no market price, no comparison");
     }
 
@@ -169,5 +175,24 @@ class SwapOffersTest {
         assertFalse(text.contains("still locked"), text);
         assertTrue(text.contains("cannot tell whether the lock got out"), text);
         assertTrue(text.contains("if the coin is still there, nothing was locked"), text);
+    }
+
+    @Test
+    void theRefundIsTheShareThatComesBack() {
+        assertEquals("100% refund", SwapOffers.refundText(0));
+        assertEquals("98% refund", SwapOffers.refundText(0.02));
+        assertEquals("98.5% refund", SwapOffers.refundText(0.015));
+        assertEquals("90% refund", SwapOffers.refundText(0.1));
+        assertEquals("100% refund", SwapOffers.refundText(0.00001));
+        //Terms that could not be read are ranked last by the code (a ratio of 1); that is not "0% refund"
+        assertNull(SwapOffers.refundText(1));
+        assertNull(SwapOffers.refundText(1.5));
+        assertNull(SwapOffers.refundText(-0.1));
+        assertNull(SwapOffers.refundText(Double.NaN));
+    }
+
+    @Test
+    void theGapToTheMostIsInWords() {
+        assertEquals("0.0123 XMR less than the most", SwapOffers.behindMostText(0.0123));
     }
 }

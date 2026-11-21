@@ -101,7 +101,7 @@ public class AshigaruWalletController implements Initializable {
     // Tracks when each UTXO first entered the CONNECTING mix step, to detect a coordinator
     // that has gone unreachable (the client loops re-emitting CONNECTING while it's down).
     private final Map<BlockTransactionHashIndex, Long> connectingSince = new HashMap<>();
-    private static final long COORDINATOR_WARN_MS = 90_000;
+    private static final long COORDINATOR_WARN_MS = com.sparrowwallet.sparrow.whirlpool.CoordinatorStatus.STUCK_MS;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {

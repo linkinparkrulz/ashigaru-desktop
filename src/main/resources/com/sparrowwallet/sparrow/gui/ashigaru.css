@@ -139,6 +139,7 @@
 .connected    { -fx-text-fill: -ag-green-ink !important; }
 .disconnected { -fx-text-fill: -ag-warn-ink !important; }
 .connecting   { -fx-text-fill: -ag-warn-ink !important; }
+.unreachable  { -fx-text-fill: -ag-accent-ink !important; }
 .connection-toggle { -fx-cursor: hand; }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────────── */
@@ -1353,6 +1354,7 @@
 .status-pill.connected    { -fx-border-color: derive(-ag-green, -45%); }
 .status-pill.connecting   { -fx-border-color: derive(-ag-warn, -45%); }
 .status-pill.disconnected { -fx-border-color: -ag-warn; }
+.status-pill.unreachable  { -fx-border-color: -ag-accent; }
 .status-pill.connection-toggle:hover { -fx-background-color: -ag-bg-raised; }
 .status-strip .network-label { -fx-background-color: transparent; -fx-border-radius: 5; -fx-border-width: 1; -fx-padding: 5 9 5 9; -fx-font-size: 10px; }
 .status-strip .network-label.mainnet { -fx-border-color: derive(-ag-mainnet, -45%); -fx-text-fill: -ag-green-ink; }

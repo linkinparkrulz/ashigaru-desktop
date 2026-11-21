@@ -100,4 +100,35 @@ public final class SwapOffers {
     public static String percent(double value) {
         return (value < 0 ? "−" : "+") + String.format(Locale.ROOT, "%.1f%%", Math.abs(value));
     }
+
+    /**
+     * How an offer's rate compares with the market, in words. A bare sign is read both ways: "−3.4%" looked like a
+     * discount to some and a penalty to others. Negative here means fewer XMR than the market pays.
+     */
+    public static String versusMarketText(double value) {
+        double rounded = Math.round(Math.abs(value) * 10) / 10.0;
+        if(rounded == 0) {
+            return "at market";
+        }
+        return String.format(Locale.ROOT, "%.1f%%", rounded) + (value < 0 ? " worse than market" : " better than market");
+    }
+
+    /** How many XMR fewer than the offer with the most, in words */
+    public static String behindMostText(double xmr) {
+        return String.format(Locale.ROOT, "%.4f", xmr) + " XMR less than the most";
+    }
+
+    /**
+     * The share of the locked BTC that comes back if the swap is cancelled, as eigenwallet's own screen shows it: "98% refund".
+     * A maker that keeps nothing gives "100% refund". Null when the terms could not be read (a ratio of 1 or more, or none),
+     * so a figure that is not known is never shown as "0% refund".
+     */
+    public static String refundText(double depositRatio) {
+        if(Double.isNaN(depositRatio) || depositRatio < 0 || depositRatio >= 1) {
+            return null;
+        }
+        double refund = (1 - depositRatio) * 100;
+        double rounded = Math.round(refund * 10) / 10.0;
+        return (rounded == Math.rint(rounded) ? String.format(Locale.ROOT, "%d", (long)rounded) : String.format(Locale.ROOT, "%.1f", rounded)) + "% refund";
+    }
 }

@@ -18,7 +18,7 @@ import com.sparrowwallet.drongo.protocol.TransactionOutput;
 import com.sparrowwallet.drongo.psbt.PSBT;
 import com.sparrowwallet.drongo.wallet.*;
 import com.sparrowwallet.sparrow.AppServices;
-import com.sparrowwallet.sparrow.control.WalletPasswordDialog;
+import com.sparrowwallet.sparrow.gui.WalletPasswordPrompt;
 import com.sparrowwallet.sparrow.gui.PriceWarningDialog;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Storage;
@@ -315,11 +315,9 @@ public class BadbankSwapHost {
                 return;
             }
 
-            WalletPasswordDialog dialog = new WalletPasswordDialog(badbank.getMasterName(), WalletPasswordDialog.PasswordRequirement.LOAD);
-            dialog.initOwner(owner);
-            Optional<SecureString> password = dialog.showAndWait();
+            Optional<SecureString> password = WalletPasswordPrompt.ask(owner, badbank.getMasterName(), "SWAP");
             if(password.isEmpty()) {
-                unlocked.completeExceptionally(new IllegalStateException("Cancelled"));
+                unlocked.completeExceptionally(new SwapSetupStopped(SwapSetupStopped.Reason.CANCELLED, null));
                 return;
             }
             Storage.DecryptWalletService decrypt = new Storage.DecryptWalletService(badbank.copy(), password.get());
@@ -328,8 +326,9 @@ public class BadbankSwapHost {
                 unlocked.complete(null);
             });
             decrypt.setOnFailed(event -> {
-                AppServices.showErrorDialog("Incorrect Password", decrypt.getException().getMessage());
-                unlocked.completeExceptionally(decrypt.getException());
+                //Not the cipher's own words: they say nothing a person can use. The swap screen adds no second message for this.
+                WalletPasswordPrompt.showWrongPassword(badbank.getMasterName());
+                unlocked.completeExceptionally(new SwapSetupStopped(SwapSetupStopped.Reason.WRONG_PASSWORD, decrypt.getException()));
             });
             decrypt.start();
         });

@@ -135,6 +135,10 @@
                     <Label fx:id="connectionLabel" text="Offline" minWidth="-Infinity"
                            styleClass="status-pill, disconnected, connection-toggle" onMouseClicked="#onConnectionLabelClicked"/>
                     <Label fx:id="serverLabel" styleClass="status-pill" minWidth="-Infinity" visible="false" managed="false"/>
+                    <!-- Two lights, from what Ashigaru already knows (nothing is asked of either for them): the Whirlpool
+                         coordinator while the open wallet can mix, and the swap engine while swaps are on -->
+                    <Label fx:id="coordinatorLabel" text="Coordinator" styleClass="status-pill" minWidth="-Infinity" visible="false" managed="false"/>
+                    <Label fx:id="swapLightLabel" text="Swaps" styleClass="status-pill" minWidth="-Infinity" visible="false" managed="false"/>
                     <Label fx:id="blockHeightLabel" text="Block —" styleClass="status-pill" minWidth="-Infinity"/>
                     <Label fx:id="networkLabel" text="MAINNET" styleClass="network-label, mainnet" minWidth="-Infinity"/>
                 </HBox>

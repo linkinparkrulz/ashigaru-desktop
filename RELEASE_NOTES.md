@@ -116,6 +116,28 @@ misunderstand, and the interface typeface changes across the whole app.
 
 ## Tester fixes
 
+- **A wrong wallet password says so in plain words.** Starting a swap, viewing the seed and pairing with Sentinel used to
+  show the cipher's own message ("Could not decrypt bytes") and, for a swap, then repeated it in a second banner. They now
+  say "That is not the password for <wallet>. Nothing was unlocked, locked or sent. Try again." once, and cancelling the
+  password window shows only a quiet "Swap setup cancelled".
+- **One small password window.** View seed, Pair with Sentinel and starting a swap used Sparrow's large fixed-size
+  password dialog; they now use the same compact window as opening a wallet.
+- **The top bar goes back to "Ready".** A message such as "Updating to new block height" or "Requested new Tor circuits" stayed
+  until a wallet happened to finish syncing. Messages now expire after their time (20 seconds), and "Syncing" counts the
+  wallets that are syncing and clears if a sync's end is never reported.
+- **Two lights in the top bar.** **Coordinator** (shown while the open wallet can mix): online, connecting, unreachable, or
+  idle when nothing is mixing; **Swaps** (shown while swaps are on): on, starting, or not running. Hover either for why. They
+  are worked out from what Ashigaru already knows (mixing progress and start-up, and the swap engine's own status), so
+  neither asks the coordinator or a maker anything.
+- **Offers say "worse than market" and show the refund.** "−3.4% vs market" is now "3.4% worse than market" (or "better"),
+  because a bare minus read as a discount to some people. The column that said what the maker may keep now leads with
+  the share that comes back, as eigenwallet's own screen does: "98% refund" (or "100% refund"), with what the maker may keep
+  underneath.
+- **"Could not list offers" is a calm sentence and goes away by itself.** It now reads "Could not load the offer list. Ashigaru
+  will try again in a few seconds." with the technical reason only in the log, and the next good list takes it off the screen
+  (it used to stay until you tried a swap). With no coin chosen the card says "Go to Badbank, tick one coin and press Swap to XMR."
+- **The review's note points the right way.** It said the fee breakdown and address were below; they are above the Approve bar.
+
 - **The wallet's picture is now its PayNym robot.** The picture beside the wallet name was meant to be the
   wallet's PayNym avatar when PayNyms were on, but nothing in Settings turned them on, so it was always a picture
   drawn from the fingerprint. It is now the real PayNym robot, fetched from paynym.rs through Tor a few seconds after

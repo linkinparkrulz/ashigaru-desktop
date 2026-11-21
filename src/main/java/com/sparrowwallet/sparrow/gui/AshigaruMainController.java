@@ -14,6 +14,10 @@ import com.sparrowwallet.sparrow.UnitFormat;
 import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
 import javafx.css.PseudoClass;
+import com.samourai.whirlpool.client.mix.listener.MixStep;
+import com.sparrowwallet.sparrow.swap.SwapLight;
+import com.sparrowwallet.sparrow.swap.SwapService;
+import com.sparrowwallet.sparrow.whirlpool.CoordinatorStatus;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.Mode;
@@ -85,10 +89,88 @@ public class AshigaruMainController implements Initializable {
     @FXML private Button settingsBtn;
     @FXML private Label crumbLabel;
     @FXML private Label swapConnector;
+    @FXML private Label coordinatorLabel;
+    @FXML private Label swapLightLabel;
     @FXML private StackPane walletAvatar;
     @FXML private Label walletFingerprint;
 
     private WalletIdentityAvatar walletIdentity;
+
+    /** What the top bar says and when it returns to Ready */
+    private final StatusLine statusLine = new StatusLine(text -> statusLabel.setText(text), (seconds, task) -> {
+        javafx.animation.PauseTransition wait = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(seconds));
+        wait.setOnFinished(event -> task.run());
+        wait.play();
+    });
+
+    /**
+     * The two lights at the top right. The coordinator one shows while the open wallet can mix; the swap one while swaps are
+     * on. They read what Ashigaru already knows, so they cost no request; a timer re-reads them because "stuck for 90
+     * seconds" is a state that arrives with no event.
+     */
+    private void refreshLights() {
+        boolean canMix = currentWalletForm != null && WhirlpoolServices.canWalletMix(currentWalletForm.getWallet());
+        WhirlpoolServices whirlpoolServices = AppServices.getWhirlpoolServices();
+        if (canMix && whirlpoolServices != null) {
+            CoordinatorStatus status = CoordinatorStatus.get();
+            status.whirlpool(whirlpoolServices.anyStarted(), whirlpoolServices.anyStarting());
+            CoordinatorStatus.State state = status.state();
+            String text = switch (state) {
+                case OK -> "Coordinator \u00b7 online";
+                case CONNECTING -> "Coordinator \u00b7 connecting\u2026";
+                case UNREACHABLE -> "Coordinator \u00b7 unreachable";
+                case UNKNOWN -> "Coordinator \u00b7 idle";
+            };
+            setLight(coordinatorLabel, text, status.detail(), switch (state) {
+                case OK -> "connected";
+                case CONNECTING -> "connecting";
+                case UNREACHABLE -> "unreachable";
+                case UNKNOWN -> null;
+            });
+        } else {
+            setLight(coordinatorLabel, null, null, null);
+        }
+
+        SwapService swapService = SwapService.get();
+        SwapLight.State swapState = SwapLight.state(swapService.isEnabled(), swapService.runningProperty().get(), swapService.statusProperty().get());
+        switch (swapState) {
+            case OK -> setLight(swapLightLabel, "Swaps \u00b7 on", swapService.statusProperty().get(), "connected");
+            case STARTING -> setLight(swapLightLabel, "Swaps \u00b7 starting\u2026", swapService.statusProperty().get(), "connecting");
+            case FAILED -> setLight(swapLightLabel, "Swaps \u00b7 not running", swapService.statusProperty().get(), "unreachable");
+            case HIDDEN -> setLight(swapLightLabel, null, null, null);
+        }
+    }
+
+    /** Shows a pill in one of the connection colours, or hides it when there is no text */
+    private static void setLight(Label label, String text, String tooltip, String stateClass) {
+        boolean show = text != null;
+        label.setVisible(show);
+        label.setManaged(show);
+        label.getStyleClass().removeAll("connected", "connecting", "disconnected", "unreachable");
+        if (!show) {
+            return;
+        }
+        label.setText(text);
+        if (stateClass != null) {
+            label.getStyleClass().add(stateClass);
+        }
+        label.setTooltip(tooltip == null ? null : new Tooltip(tooltip));
+    }
+
+    @Subscribe
+    public void coordinatorMixEvent(WhirlpoolMixEvent event) {
+        Platform.runLater(() -> {
+            CoordinatorStatus status = CoordinatorStatus.get();
+            if (event.getMixProgress() != null && event.getMixProgress().getMixStep() == MixStep.CONNECTING) {
+                status.connecting(event.getUtxo());
+            } else if (event.getMixFailReason() != null) {
+                status.failed(event.getUtxo());
+            } else {
+                status.progressed();
+            }
+            refreshLights();
+        });
+    }
 
     /**
      * Shows who the open wallet is beside its name: the master fingerprint, and a picture. The picture is the wallet's
@@ -187,6 +269,14 @@ public class AshigaruMainController implements Initializable {
         Icons.set(lockWalletBtn, FontAwesome5.Glyph.LOCK);
         Icons.set(deleteWalletBtn, FontAwesome5.Glyph.TRASH_ALT);
         buildPipeline();
+
+        //The lights are re-read now and then, and when swaps start, stop or change what they say
+        javafx.animation.Timeline lightsTick = new javafx.animation.Timeline(new javafx.animation.KeyFrame(javafx.util.Duration.seconds(5), event -> refreshLights()));
+        lightsTick.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        lightsTick.play();
+        SwapService.get().runningProperty().addListener((observable, old, running) -> Platform.runLater(this::refreshLights));
+        SwapService.get().statusProperty().addListener((observable, old, text) -> Platform.runLater(this::refreshLights));
+        refreshLights();
     }
 
     // -------------------------------------------------------------------------
@@ -235,7 +325,7 @@ public class AshigaruMainController implements Initializable {
             return;
         }
         WalletPrivacy privacy = WalletPrivacy.of(currentWalletForm);
-        boolean swaps = com.sparrowwallet.sparrow.swap.SwapService.get().isEnabled();
+        boolean swaps = SwapService.get().isEnabled();
         swapConnector.setVisible(swaps);
         swapConnector.setManaged(swaps);
         UnitFormat fmt = UnitFormat.DOT;
@@ -296,6 +386,7 @@ public class AshigaruMainController implements Initializable {
         walletMenuBtn.setVisible(false);
         walletMenuBtn.setManaged(false);
         showWalletIdentity(null);
+        refreshLights();
         noWalletBox.setVisible(true);
         noWalletBox.setManaged(true);
         crumbLabel.setText("ASHIGARU");
@@ -318,6 +409,7 @@ public class AshigaruMainController implements Initializable {
         walletMenuBtn.setVisible(true);
         walletMenuBtn.setManaged(true);
         showWalletIdentity(walletForm.getWallet());
+        refreshLights();
         noWalletBox.setVisible(false);
         noWalletBox.setManaged(false);
 
@@ -464,7 +556,7 @@ public class AshigaruMainController implements Initializable {
         MenuItem newIdentity = new MenuItem("New Tor Identity");
         newIdentity.setOnAction(event -> {
             TorUtils.changeIdentity(AppServices.getTorProxy());
-            statusLabel.setText("Requested new Tor circuits");
+            statusLine.message("Requested new Tor circuits", StatusEvent.DEFAULT_SHOW_DURATION_SECS);
         });
         MenuItem restartTor = new MenuItem("Restart Tor");
         restartTor.setOnAction(event -> restartTor());
@@ -491,7 +583,7 @@ public class AshigaruMainController implements Initializable {
     void restartTor() {
         if(AppServices.get().restartTor()) {
             setConnState(ConnState.CONNECTING);
-            statusLabel.setText("Restarting Tor…");
+            statusLine.message("Restarting Tor…", StatusEvent.DEFAULT_SHOW_DURATION_SECS);
         }
     }
 
@@ -833,13 +925,11 @@ public class AshigaruMainController implements Initializable {
         }
         Wallet copy = wallet.copy();
         if (copy.isEncrypted()) {
-            WalletPasswordDialog dlg = new WalletPasswordDialog(copy.getMasterName(), WalletPasswordDialog.PasswordRequirement.LOAD);
-            dlg.initOwner(AshigaruGui.get().getMainStage());
-            Optional<SecureString> password = dlg.showAndWait();
+            Optional<SecureString> password = WalletPasswordPrompt.ask(AshigaruGui.get().getMainStage(), copy.getMasterName(), "VIEW SEED");
             if (password.isPresent()) {
                 Storage.DecryptWalletService svc = new Storage.DecryptWalletService(copy, password.get());
                 svc.setOnSucceeded(e -> showSeedDialog(svc.getValue().getKeystores().get(0)));
-                svc.setOnFailed(e -> AppServices.showErrorDialog("Incorrect Password", svc.getException().getMessage()));
+                svc.setOnFailed(e -> WalletPasswordPrompt.showWrongPassword(copy.getMasterName()));
                 svc.start();
             }
         } else {
@@ -866,13 +956,11 @@ public class AshigaruMainController implements Initializable {
 
         Wallet copy = wallet.copy();
         if (copy.isEncrypted()) {
-            WalletPasswordDialog dlg = new WalletPasswordDialog(copy.getMasterName(), WalletPasswordDialog.PasswordRequirement.LOAD);
-            dlg.initOwner(AshigaruGui.get().getMainStage());
-            Optional<SecureString> password = dlg.showAndWait();
+            Optional<SecureString> password = WalletPasswordPrompt.ask(AshigaruGui.get().getMainStage(), copy.getMasterName(), "PAIR WITH SENTINEL");
             if (password.isPresent()) {
                 Storage.DecryptWalletService svc = new Storage.DecryptWalletService(copy, password.get());
                 svc.setOnSucceeded(e -> showSentinelPairing(wallet, svc.getValue().getKeystores().get(0), copy));
-                svc.setOnFailed(e -> AppServices.showErrorDialog("Incorrect Password", svc.getException().getMessage()));
+                svc.setOnFailed(e -> WalletPasswordPrompt.showWrongPassword(copy.getMasterName()));
                 svc.start();
             }
         } else {
@@ -1249,24 +1337,7 @@ public class AshigaruMainController implements Initializable {
     }
 
     private Dialog<String> buildPasswordDialog(String walletName) {
-        Dialog<String> dialog = new Dialog<>();
-        dialog.setTitle("Wallet Password");
-        dialog.initOwner(AshigaruGui.get().getMainStage());
-        WalletCreationFlow.styleWizardDialog(dialog, "OPEN WALLET", "Wallet password",
-                "Enter the password for " + walletName + ".");
-
-        ButtonType okBtn = new ButtonType("Unlock", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(okBtn, ButtonType.CANCEL);
-        WalletCreationFlow.styleWizardButtons(dialog.getDialogPane());
-
-        ViewPasswordField pf = new ViewPasswordField();
-        pf.setPromptText("Password");
-        VBox vbox = new VBox(pf);
-        vbox.setSpacing(8);
-        dialog.getDialogPane().setContent(vbox);
-        Platform.runLater(pf::requestFocus);
-        dialog.setResultConverter(btn -> btn == okBtn ? pf.getText() : null);
-        return dialog;
+        return WalletPasswordPrompt.dialog(AshigaruGui.get().getMainStage(), walletName, "OPEN WALLET");
     }
 
     /**
@@ -1468,7 +1539,11 @@ public class AshigaruMainController implements Initializable {
 
     @Subscribe
     public void disconnectionEvent(DisconnectionEvent event) {
-        Platform.runLater(() -> setConnState(ConnState.DISCONNECTED));
+        Platform.runLater(() -> {
+            setConnState(ConnState.DISCONNECTED);
+            //Syncs that were running will not report their end
+            statusLine.connectionLost();
+        });
     }
 
     @Subscribe
@@ -1483,14 +1558,14 @@ public class AshigaruMainController implements Initializable {
 
     @Subscribe
     public void torReadyStatusEvent(TorReadyStatusEvent event) {
-        Platform.runLater(() -> statusLabel.setText("Tor is running"));
+        Platform.runLater(() -> statusLine.message("Tor is running", StatusEvent.DEFAULT_SHOW_DURATION_SECS));
     }
 
     @Subscribe
     public void torFailedStatusEvent(TorFailedStatusEvent event) {
         Platform.runLater(() -> {
             setConnState(ConnState.DISCONNECTED);
-            statusLabel.setText("Tor failed to start. Open the connection menu, top right, to restart it.");
+            statusLine.message("Tor failed to start. Open the connection menu, top right, to restart it.", 120);
         });
     }
 
@@ -1506,20 +1581,20 @@ public class AshigaruMainController implements Initializable {
 
     @Subscribe
     public void statusEvent(StatusEvent event) {
-        Platform.runLater(() -> statusLabel.setText(event.getStatus()));
+        Platform.runLater(() -> statusLine.message(event.getStatus(), event.getShowDuration()));
     }
 
     @Subscribe
     public void walletHistoryStarted(WalletHistoryStartedEvent event) {
         if (event.getWallet().isMasterWallet()) {
-            Platform.runLater(() -> statusLabel.setText("Syncing " + event.getWallet().getDisplayName() + "\u2026"));
+            Platform.runLater(() -> statusLine.syncStarted(event.getWallet().getDisplayName()));
         }
     }
 
     @Subscribe
     public void walletHistoryFinished(WalletHistoryFinishedEvent event) {
         if (event.getWallet().isMasterWallet()) {
-            Platform.runLater(() -> statusLabel.setText("Ready"));
+            Platform.runLater(statusLine::syncFinished);
         }
         Platform.runLater(this::refreshPipeline);
     }

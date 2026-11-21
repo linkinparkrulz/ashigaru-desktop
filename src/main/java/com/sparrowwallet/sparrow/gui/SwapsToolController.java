@@ -7,6 +7,7 @@ import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.swap.ReviewPresenter;
 import com.sparrowwallet.sparrow.swap.SwapAttention;
 import com.sparrowwallet.sparrow.swap.SwapCopy;
+import com.sparrowwallet.sparrow.swap.SwapSetupStopped;
 import com.sparrowwallet.sparrow.swap.SwapDashboard;
 import com.sparrowwallet.sparrow.swap.SwapEngine.Quote;
 import com.sparrowwallet.sparrow.swap.SwapProgress;
@@ -384,6 +385,9 @@ public class SwapsToolController implements Initializable {
         refreshPrice();
     }
 
+    /** The notice for a list that could not be loaded; only this one is taken away again by a good list */
+    private static final String LIST_FAILED = "Could not load the offer list. Ashigaru will try again in a few seconds.";
+
     private void refreshQuotes() {
         if(!SwapService.get().runningProperty().get()) {
             return;
@@ -391,8 +395,16 @@ public class SwapsToolController implements Initializable {
         SwapService.get().listQuotes(list -> {
             quotes.setAll(list);
             quotesUpdated = Instant.now();
+            //A failure notice is about the last try only: a good list takes it away
+            if(LIST_FAILED.equals(offersPane.getMessage())) {
+                offersPane.setMessage(null);
+            }
             renderOffers();
-        }, e -> offersPane.setMessage("Could not list offers: " + e.getMessage()));
+        }, e -> {
+            //Why goes to the log; the screen says what will happen next, in words that do not need the engine's
+            org.slf4j.LoggerFactory.getLogger(SwapsToolController.class).info("Could not list swap offers: " + e.getMessage());
+            offersPane.setMessage(LIST_FAILED);
+        });
     }
 
     private void refreshSwaps() {
@@ -505,7 +517,12 @@ public class SwapsToolController implements Initializable {
                 refreshSwaps();
             }, e -> {
                 endTaking();
-                offersPane.setMessage("Could not start the swap: " + e.getMessage());
+                if(e instanceof SwapSetupStopped stopped) {
+                    //A wrong password was already explained in its own window; cancelling needs no error
+                    offersPane.setMessage(stopped.reason() == SwapSetupStopped.Reason.CANCELLED ? "Swap setup cancelled. Nothing was locked or sent." : null);
+                } else {
+                    offersPane.setMessage("Could not start the swap: " + e.getMessage());
+                }
             });
         }, e -> {
             endTaking();

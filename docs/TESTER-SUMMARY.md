@@ -57,6 +57,16 @@ Start with a small coin. Report the maker you used and what the screen said.
 - [ ] The note under the message says what line is added; untick "Add my payment code" and it is signed as typed.
 - [ ] If you can, check the block in another BIP47 wallet's verifier and tell us which one.
 
+## 3e. Tester round fixes
+
+- [ ] A wrong wallet password (start a swap, View seed, Pair with Sentinel) gives one plain message, and the password
+      window is the same small one as opening a wallet.
+- [ ] A top-bar message goes back to "Ready" by itself after about 20 seconds.
+- [ ] New **Coordinator** and **Swaps** lights at the top right (hover for why). Tell us if the Coordinator light says
+      unreachable while mixing works, or online while it does not.
+- [ ] Offers read "x.x% worse than market" and show "98% refund" / "100% refund".
+- [ ] "Could not load the offer list" goes away by itself; the review's note says the fee breakdown is above.
+
 ## 3d. Pair with Sentinel, new
 
 Needs Sentinel, the Dojo Bay edition, on an Android phone.
