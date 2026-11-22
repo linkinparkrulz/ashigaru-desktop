@@ -126,6 +126,12 @@ misunderstand, and the interface typeface changes across the whole app.
   exact BTC amount, and the Logs redaction now covers Monero addresses (95 and 106 characters), so a shared log cannot tie them together. The lock's amount and fee must be
   the ones agreed when the swap started, the amount swapped is checked against the maker's limits at that moment, a stop event of an old swap no longer clears the swap being set up, the XMR price is only fetched
   with a Tor client, and a swap record missing a field no longer crashes the list.
+- **Second round of swap hardening.** Identity recovery only takes the identity named beside the identity file (never "the newest"), refuses when swap data is left and none can be recovered, and does not replace the
+  identity in a run that recovered it. Seeds of identities whose swaps are all finished are deleted; the rest are owner-only on every platform (an access list on Windows). Raw engine lines no longer put a full XMR address or lock
+  transaction id in `ashigaru.log`, and the swap-start line leaves out the amount, wallet and maker address. The final approval only accepts the lock Ashigaru built (same amount and same network fee) and shows the fee of that transaction.
+  A Tor restart in the middle of setting up a swap no longer restarts the engine under it. When swaps are off or the engine is down while a swap is unfinished, the Swaps light turns red and says how many. The XMR price is fetched with a client built from
+  the Tor proxy that was checked. A native swap engine library can only be chosen from how Ashigaru is started (`-Dashigaru.swap.engine` or `ASHIGARU_SWAP_ENGINE`), not from the config file. Tools → Sign refuses a message that contains an `auth47://` login challenge.
+  The Rust engine's configuration and swap request no longer print their seed or addresses in Debug output.
 - **Pair with Sentinel clears the clipboard.** Words or pairing text copied from the window are removed from the clipboard after a minute, if the clipboard still holds them.
   **View seed words** wipes its decrypted copy when the window closes.
 

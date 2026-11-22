@@ -46,7 +46,7 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(60);
 /// As in eigenwallet's `swap/src/network/transport.rs`
 const MAX_NUM_STREAMS: usize = 5;
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EngineConfig {
     /// Swap database and state live here, one directory per engine identity
@@ -82,7 +82,7 @@ pub struct SwapConfig {
     pub monero_nodes: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StartSwap {
     pub peer_id: String,
@@ -97,6 +97,37 @@ pub struct StartSwap {
     pub quoted_price_sats: u64,
     /// The anti-spam deposit ratio of that offer's refund policy, as a decimal string; "0" for a full refund
     pub anti_spam_deposit_ratio: String,
+}
+
+// Debug is written by hand, not derived: a derived one prints every field, and these carry the engine's seed and the user's addresses,
+// which must not reach a log by a stray `{:?}` or a panic message.
+impl std::fmt::Debug for EngineConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EngineConfig")
+            .field("data_dir", &self.data_dir)
+            .field("socks_host", &self.socks_host)
+            .field("socks_port", &self.socks_port)
+            .field("seed_hex", &"[redacted]")
+            .field("rendezvous_points", &self.rendezvous_points)
+            .field("swap", &self.swap)
+            .field("past_data_dirs", &self.past_data_dirs)
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for StartSwap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StartSwap")
+            .field("peer_id", &self.peer_id)
+            .field("multiaddr", &self.multiaddr)
+            .field("btc_sats", &self.btc_sats)
+            .field("tx_lock_fee_sats", &self.tx_lock_fee_sats)
+            .field("xmr_address", &"[redacted]")
+            .field("refund_address", &"[redacted]")
+            .field("quoted_price_sats", &self.quoted_price_sats)
+            .field("anti_spam_deposit_ratio", &self.anti_spam_deposit_ratio)
+            .finish()
+    }
 }
 
 /// How far below the XMR that the chosen offer implies the maker's final terms may be. eigenwallet's own GUI
@@ -735,5 +766,47 @@ mod local_server_tests {
         ] {
             assert!(!is_local_server(url), "{url} is not local");
         }
+    }
+}
+
+#[cfg(test)]
+mod debug_redaction_tests {
+    use super::{EngineConfig, StartSwap};
+
+    const SEED: &str = "9f3a6c1e5b7d4a2c8e0f1b3d5a7c9e2f4b6d8a0c1e3f5a7b9d2c4e6f8a0b1c3d";
+    const XMR: &str = "4q2Dkq6ozw8yQ3t9g3QygMp3xMYfnw6f2mr16unD8uzXkyQBS7As25AhCje1UdemiPgTYu21LugRY98q6ZvjEKvdgq2mtVY";
+    const REFUND: &str = "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq";
+
+    #[test]
+    fn the_seed_never_appears_in_the_debug_output_of_the_config() {
+        let config: EngineConfig = serde_json::from_value(serde_json::json!({
+            "dataDir": "/tmp/swaps/abc",
+            "socksHost": "127.0.0.1",
+            "socksPort": 9050,
+            "seedHex": SEED,
+        }))
+        .expect("config");
+        let shown = format!("{config:?}");
+        assert!(!shown.contains(SEED), "{shown}");
+        assert!(shown.contains("[redacted]"), "{shown}");
+        assert!(shown.contains("9050"), "the rest is still shown: {shown}");
+    }
+
+    #[test]
+    fn the_addresses_never_appear_in_the_debug_output_of_a_swap_request() {
+        let request: StartSwap = serde_json::from_value(serde_json::json!({
+            "peerId": "12D3KooWMaker",
+            "multiaddr": "/ip4/10.0.0.1/tcp/9939",
+            "btcSats": 4998760,
+            "txLockFeeSats": 1240,
+            "xmrAddress": XMR,
+            "refundAddress": REFUND,
+            "quotedPriceSats": 33000000,
+            "antiSpamDepositRatio": "0.02",
+        }))
+        .expect("request");
+        let shown = format!("{request:?}");
+        assert!(!shown.contains(XMR) && !shown.contains(REFUND), "{shown}");
+        assert!(shown.contains("btc_sats"), "{shown}");
     }
 }

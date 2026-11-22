@@ -156,6 +156,10 @@ Turn swaps on in **Settings → Swaps**. They are off by default, mainnet only, 
 allows, minus network fees; the refund must be published within about 24 hours of the cancel. A swap that is not running has a **Cancel and refund** button once the timelock has
 expired. A maker that refuses is left out of the offers for that coin.
 
+**The swaps folder and backups.** Ashigaru keeps the swap engine's data in `swaps/` in its home folder. It holds each swap's records and, for the identity in use and for any swap that is unfinished, the
+seed the swap's keys are made from: without that seed, locked BTC cannot be refunded. The files are readable by their owner only, and the seed of an identity whose swaps are all finished is deleted. A backup of the
+home folder therefore holds that seed; keep it as private as a wallet backup, and restore the whole folder if you ever have to. If swaps are off or the engine is not running while a swap is unfinished, the **Swaps** light in the top bar turns red and says so.
+
 What leaves your computer: the swap engine talks to makers, your Bitcoin server and the Monero nodes you tick, all through Tor (a Bitcoin server on your own network is reached directly).
 The market price comes from Kraken over Tor.
 

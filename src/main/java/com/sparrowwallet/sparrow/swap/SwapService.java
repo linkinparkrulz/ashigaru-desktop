@@ -586,6 +586,28 @@ public class SwapService implements SwapHost {
         start(false);
     }
 
+    /** A Java system property that names a native swap engine library to load instead of the bundled one, for developers */
+    static final String ENGINE_PROPERTY = "ashigaru.swap.engine";
+    /** The same, as an environment variable */
+    static final String ENGINE_ENVIRONMENT = "ASHIGARU_SWAP_ENGINE";
+
+    /**
+     * The library to load instead of the bundled engine, or null for the bundled one. It comes only from how Ashigaru was started (a system
+     * property or an environment variable), never from the config file: a file anyone who can write to the home folder could change must not
+     * be able to make Ashigaru load a native library of their choosing, with the swap keys and Tor access that come with it.
+     */
+    static File engineOverride(File fromConfigFile, String property, String environment) {
+        if(fromConfigFile != null) {
+            log.warn("The swapEngineLibrary setting in the config file is ignored. Use -D" + ENGINE_PROPERTY + " or " + ENGINE_ENVIRONMENT + " to load another engine.");
+        }
+        String path = property != null && !property.isBlank() ? property : environment;
+        if(path == null || path.isBlank()) {
+            return null;
+        }
+        log.warn("Loading the swap engine from " + path + " instead of the bundled one");
+        return new File(path.trim());
+    }
+
     /** The engine follows a new Tor proxy by restarting, which must not happen while a swap is being set up */
     static boolean restartAllowed(boolean swapBeingSetUp) {
         return !swapBeingSetUp;
@@ -798,13 +820,13 @@ public class SwapService implements SwapHost {
             if(swap.has("swapId")) {
                 listedSwapIds.add(swap.get("swapId").getAsString());
             }
-            if(swap.has("past") && swap.get("past").getAsBoolean() || !swap.has("swapId")) {
+            if(swap.has("past") && !swap.get("past").isJsonNull() && swap.get("past").getAsBoolean() || !swap.has("swapId")) {
                 continue;
             }
             String swapId = swap.get("swapId").getAsString();
             SwapProgress.Status known = progress.get(swapId);
-            boolean running = swap.has("running") && swap.get("running").getAsBoolean();
-            boolean complete = swap.has("complete") && swap.get("complete").getAsBoolean();
+            boolean running = isRunning(swap);
+            boolean complete = isComplete(swap);
             //A swap that stopped in this run has its own status, with the reason; a finished one is final
             if(known != null && (known.finished() || running)) {
                 continue;
@@ -995,7 +1017,7 @@ public class SwapService implements SwapHost {
     private SwapEngine loadEngine() {
         if(engine == null) {
             try {
-                File override = Config.get().getSwapEngineLibrary();
+                File override = engineOverride(Config.get().getSwapEngineLibrary(), System.getProperty(ENGINE_PROPERTY), System.getenv(ENGINE_ENVIRONMENT));
                 engine = override != null ? SwapEngine.load(override) : SwapEngine.loadBundled();
             } catch(SwapEngineException e) {
                 loadError = e.getMessage();

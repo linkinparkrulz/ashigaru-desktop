@@ -158,6 +158,21 @@ class Bip47SigningTest {
     }
 
     @Test
+    void aLoginChallengeIsNotSignedAsAMessage() throws Exception {
+        Wallet wallet = wallet();
+        for(String text : new String[] {"auth47://abc?r=https://example.org", "Please sign: AUTH47://abc?r=https://example.org\nthanks", "x auth47://abc"}) {
+            for(boolean addCode : new boolean[] {true, false}) {
+                IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> Bip47Signing.sign(wallet, text, addCode));
+                assertTrue(e.getMessage().contains("auth47://"), e.getMessage());
+            }
+        }
+        //The login itself still works, as it does not go through message signing
+        assertNotNull(Bip47Signing.signChallenge(wallet, "auth47://abc?r=https://example.org"));
+        //And an ordinary message that mentions neither is signed as before
+        assertNotNull(Bip47Signing.sign(wallet, "I control this payment code.", true));
+    }
+
+    @Test
     void theLoginSignatureIsTheSameKeyAsTheMessageSignature() throws Exception {
         //Auth47 signs with this key too; what it signs verifies against the same notification address
         Wallet wallet = wallet();

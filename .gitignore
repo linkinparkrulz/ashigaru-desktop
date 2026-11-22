@@ -20,3 +20,11 @@ src/main/resources/darwin-x86-64/
 *.whl
 hs_err_pid*
 appDir_IS_UNDEFINED/
+
+# Secrets and caches that must not be committed
+.env
+.env.*
+*.keystore
+*.jks
+*.p12
+__pycache__/

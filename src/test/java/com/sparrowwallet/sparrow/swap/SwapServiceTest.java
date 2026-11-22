@@ -116,6 +116,16 @@ class SwapServiceTest {
     }
 
     @Test
+    void aSwapEngineLibraryCanOnlyBeChosenWhenAshigaruIsStartedNotInTheConfigFile() {
+        java.io.File fromConfig = new java.io.File("/tmp/evil.so");
+        assertNull(SwapService.engineOverride(fromConfig, null, null), "the config file alone changes nothing");
+        assertNull(SwapService.engineOverride(null, "  ", ""));
+        assertEquals(new java.io.File("/opt/engine/libashigaru_swap.so"), SwapService.engineOverride(fromConfig, "/opt/engine/libashigaru_swap.so", null));
+        assertEquals(new java.io.File("/opt/env/lib.so"), SwapService.engineOverride(null, null, "/opt/env/lib.so"));
+        assertEquals(new java.io.File("/opt/prop/lib.so"), SwapService.engineOverride(null, "/opt/prop/lib.so", "/opt/env/lib.so"), "the property wins");
+    }
+
+    @Test
     void theEngineIsNotRestartedForANewTorProxyWhileASwapIsBeingSetUp() {
         assertFalse(SwapService.restartAllowed(true));
         assertTrue(SwapService.restartAllowed(false));

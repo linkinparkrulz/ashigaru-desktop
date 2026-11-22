@@ -29,16 +29,21 @@ public final class XmrPrice {
 
     /** Blocks; call off the JavaFX thread */
     public static Snapshot fetch() throws Exception {
-        //Check the client that will make the request, not Tor in general: Tor can stop between a check of its own and the request,
-        //and a client with no proxy would then go out directly
-        HttpClientService http = AppServices.getHttpClientService();
-        requireTor(http == null ? null : http.getTorProxy());
+        //A client of its own, built from the proxy that was checked and never from the shared one, whose proxy can change or go while this runs:
+        //a request that cannot reach that proxy fails, and does not go out directly
+        com.google.common.net.HostAndPort proxy = AppServices.getTorProxyIfUp();
+        requireTor(proxy);
+        HttpClientService http = new HttpClientService(proxy);
         try {
-            return fromCoinGecko(http);
-        } catch(Exception e) {
-            log.info("CoinGecko XMR price unavailable, trying Kraken: " + e.getMessage());
+            try {
+                return fromCoinGecko(http);
+            } catch(Exception e) {
+                log.info("CoinGecko XMR price unavailable, trying Kraken: " + e.getMessage());
+            }
+            return fromKraken(http);
+        } finally {
+            http.shutdown();
         }
-        return fromKraken(http);
     }
 
     /** The price is never fetched without Tor: a client with no Tor proxy is refused */

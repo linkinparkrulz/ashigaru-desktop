@@ -28,6 +28,9 @@ public final class Bip47Signing {
     private static final String BEGIN_SIGNATURE = "-----BEGIN BITCOIN SIGNATURE-----";
     private static final String END_SIGNATURE = "-----END BITCOIN SIGNATURE-----";
 
+    /** What an Auth47 login challenge starts with */
+    static final String AUTH47_SCHEME = "auth47://";
+
     private Bip47Signing() {}
 
     /**
@@ -100,6 +103,13 @@ public final class Bip47Signing {
         if(upper.contains(BEGIN_MESSAGE) || upper.contains(BEGIN_SIGNATURE) || upper.contains(END_SIGNATURE)) {
             throw new IllegalArgumentException("The message contains a signed-message marker (-----BEGIN or -----END text). "
                     + "That would break the signed block, so take it out.");
+        }
+
+        //An Auth47 login is a signature of its challenge, "auth47://..." and nothing else, made with this very key. Someone who asks you to "sign a message"
+        //that is such a challenge would be asking you to log in as yourself on their behalf, so these are not signed here.
+        if(message.toLowerCase(Locale.ROOT).contains(AUTH47_SCHEME)) {
+            throw new IllegalArgumentException("The message contains an auth47:// login challenge. Signing it here would log you in to that service with this payment code, "
+                    + "so it is not signed. If you mean to log in, use the login option of the service's own app or QR code.");
         }
 
         String signature = notificationKey(wallet).signMessage(message, ScriptType.P2PKH);
