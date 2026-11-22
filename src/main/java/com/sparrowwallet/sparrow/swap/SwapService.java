@@ -95,6 +95,9 @@ public class SwapService implements SwapHost {
     private final MakerRefusals refusals = new MakerRefusals();
     //Why the approval refused or rejected the maker's final terms, until the swap that stopped for it reports in
     private volatile String pendingRefusal;
+    //Swaps that existed when the swap now being set up began, so that a stop event of one of those is not taken for this setup's
+    private volatile Set<String> swapsBeforeSetup = Set.of();
+    private final Set<String> listedSwapIds = ConcurrentHashMap.newKeySet();
     //Each swap's latest step, as reported by the engine; the swap being set up is the latest started
     private final Map<String, SwapProgress.Status> progress = new ConcurrentHashMap<>();
     //Each swap's latest timelock state, from the engine's TimelockChange events: blocks left until cancel or punish
@@ -416,6 +419,33 @@ public class SwapService implements SwapHost {
         });
     }
 
+    /** Whether the engine's record of a swap says it is finished. A record with no such field counts as unfinished: it is not safe to assume it is over. */
+    public static boolean isComplete(JsonObject swap) {
+        return swap.has("complete") && !swap.get("complete").isJsonNull() && swap.get("complete").getAsBoolean();
+    }
+
+    /** Whether the engine's record says the swap is running; no field means it is not */
+    public static boolean isRunning(JsonObject swap) {
+        return swap.has("running") && !swap.get("running").isJsonNull() && swap.get("running").getAsBoolean();
+    }
+
+    /** Why this amount cannot be swapped with this maker, or null. The same limits the offers screen shows. */
+    static String amountProblem(SwapEngine.Quote maker, long sats, long maxSats) {
+        if(sats < maker.minSats() || sats > maker.maxSats()) {
+            return "This maker takes " + BadbankSwapHost.btc(maker.minSats()) + " to " + BadbankSwapHost.btc(maker.maxSats()) + " BTC; this coin swaps "
+                    + BadbankSwapHost.btc(sats) + " BTC now, at the current fee rate.";
+        }
+        if(sats > maxSats) {
+            return "Swaps are limited to " + BadbankSwapHost.btc(maxSats) + " BTC. Change the maximum in Settings → Swaps.";
+        }
+        return null;
+    }
+
+    /** Whether a stopped swap is the one being set up: there is a setup, and the swap was not there before it began */
+    static boolean isOfThisSetup(boolean setupActive, Set<String> swapsBeforeSetup, String swapId) {
+        return setupActive && !swapsBeforeSetup.contains(swapId);
+    }
+
     /** An address as its first and last characters, enough to recognise it and not to use it */
     static String shortAddress(String address) {
         return address == null || address.length() <= 12 ? address : address.substring(0, 4) + "\u2026" + address.substring(address.length() - 4);
@@ -574,6 +604,10 @@ public class SwapService implements SwapHost {
             return;
         }
 
+        Set<String> before = new HashSet<>(progress.keySet());
+        before.addAll(startedSwaps.keySet());
+        before.addAll(listedSwapIds);
+        swapsBeforeSetup = before;
         BadbankSwapHost host = new BadbankSwapHost(chosen.badbank(), chosen.outpoint(), AshigaruGui.get().getMainStage());
         host.setPresenterSource(this::getReviewPresenter);
         host.setSwapContext(xmrAddress, SwapReview.shortId(maker.peerId()));
@@ -598,6 +632,13 @@ public class SwapService implements SwapHost {
             return;
         }
         long sats = chosen.outpoint().getValue() - fee;
+        //The fee, and so the amount, moves with the fee rate: what is swapped is what is checked here, not what the offers screen last drew
+        String amountProblem = amountProblem(maker, sats, Config.get().getSwapMaxSats());
+        if(amountProblem != null) {
+            onFailure.accept(new IllegalStateException(amountProblem));
+            return;
+        }
+        host.setAgreedAmounts(sats, fee);
         String refundAddress = host.getFreshAddress();
         activeHost = host;
         //The wallet password is asked once, here: the maker wants proof of the coin during the setup, and the
@@ -691,6 +732,9 @@ public class SwapService implements SwapHost {
         java.time.Instant now = java.time.Instant.now();
         for(JsonElement element : swaps) {
             JsonObject swap = element.getAsJsonObject();
+            if(swap.has("swapId")) {
+                listedSwapIds.add(swap.get("swapId").getAsString());
+            }
             if(swap.has("past") && swap.get("past").getAsBoolean() || !swap.has("swapId")) {
                 continue;
             }
@@ -763,16 +807,21 @@ public class SwapService implements SwapHost {
         if("swap_stopped".equals(kind)) {
             String swapId = payload.get("swapId").getAsString();
             //A swap that stopped because its final terms were refused says that, not the engine's "rejected"
-            String ourRefusal = pendingRefusal;
-            pendingRefusal = null;
+            //Any swap can stop: one that was already there before this setup began (an old swap being refunded, say) says nothing
+            //about the setup, which keeps its refusal and its keys
+            boolean ofThisSetup = isOfThisSetup(activeHost != null, swapsBeforeSetup, swapId);
+            String ourRefusal = ofThisSetup ? pendingRefusal : null;
+            if(ofThisSetup) {
+                pendingRefusal = null;
+            }
             if(ourRefusal != null) {
                 payload.addProperty("error", ourRefusal);
             }
             runningSwaps.remove(swapId);
-            if(activeHost != null) {
+            if(ofThisSetup) {
                 activeHost.release();
+                activeHost = null;
             }
-            activeHost = null;
             SwapProgress.Status status = SwapProgress.stopped(payload, progress.get(swapId), java.time.Instant.now());
             progress.put(swapId, status);
             Started started = startedSwaps.get(swapId);
@@ -854,7 +903,7 @@ public class SwapService implements SwapHost {
         listSwaps(swaps -> {
             boolean unfinished = false;
             for(JsonElement swap : swaps) {
-                if(!swap.getAsJsonObject().get("complete").getAsBoolean()) {
+                if(!isComplete(swap.getAsJsonObject())) {
                     unfinished = true;
                 }
             }

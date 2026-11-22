@@ -225,6 +225,24 @@ public class BadbankSwapHost {
         return info;
     }
 
+    //The swap amount and lock fee this swap was started with; a lock asking for others is refused
+    private volatile Long agreedAmountSats;
+    private volatile Long agreedFeeSats;
+
+    /** The swap amount and network fee Ashigaru agreed with the maker when it started the swap */
+    public void setAgreedAmounts(long amountSats, long feeSats) {
+        agreedAmountSats = amountSats;
+        agreedFeeSats = feeSats;
+    }
+
+    /** Refuses a lock whose amount or fee is not the one agreed. Nothing is checked when none was agreed. */
+    static void checkAgreed(long amountSats, long feeSats, Long agreedAmount, Long agreedFee) {
+        if(agreedAmount != null && agreedFee != null && (amountSats != agreedAmount || feeSats != agreedFee)) {
+            throw new IllegalStateException("The lock asks for " + amountSats + " sats with a " + feeSats + " sat fee, but this swap was agreed at "
+                    + agreedAmount + " sats with a " + agreedFee + " sat fee");
+        }
+    }
+
     private JsonObject fundLock(JsonObject payload) throws Exception {
         Address lockAddress = Address.fromString(payload.get("address").getAsString());
         long amount = payload.get("amountSats").getAsLong();
@@ -239,6 +257,8 @@ public class BadbankSwapHost {
             throw new IllegalStateException("The lock (" + amount + " sats) and fee (" + fee + " sats) do not spend exactly the "
                     + coin.getValue() + " sats coin");
         }
+        //And they must be the ones Ashigaru worked out and agreed up front, not whatever the engine or maker now asks for
+        checkAgreed(amount, fee, agreedAmountSats, agreedFeeSats);
 
         WalletTransaction walletTransaction = buildLock(lockAddress, amount, fee);
         checkLockTransaction(walletTransaction.getTransaction(), lockAddress, amount);

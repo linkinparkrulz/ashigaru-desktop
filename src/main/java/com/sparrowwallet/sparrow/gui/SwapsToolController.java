@@ -315,8 +315,8 @@ public class SwapsToolController implements Initializable {
         id.setPrefWidth(280);
         TableColumn<JsonObject, String> state = column("State", swap -> swap.get("state").getAsString());
         state.setPrefWidth(220);
-        TableColumn<JsonObject, String> progress = column("", swap -> swap.get("complete").getAsBoolean() ? "Finished"
-                : swap.get("running").getAsBoolean() ? "Running" : "Stopped");
+        TableColumn<JsonObject, String> progress = column("", swap -> SwapService.isComplete(swap) ? "Finished"
+                : SwapService.isRunning(swap) ? "Running" : "Stopped");
         progress.setPrefWidth(90);
 
         TableColumn<JsonObject, JsonObject> action = new TableColumn<>("");
@@ -335,7 +335,7 @@ public class SwapsToolController implements Initializable {
                 super.updateItem(swap, empty);
                 //A running swap refunds by itself once its timelock allows; a stopped, unfinished one is cancelled from its
                 //recovery screen, which this opens. A past identity's swap is only shown: no engine holds its database to act on it
-                boolean canRefund = !empty && swap != null && !swap.get("complete").getAsBoolean() && !swap.get("running").getAsBoolean()
+                boolean canRefund = !empty && swap != null && !SwapService.isComplete(swap) && !SwapService.isRunning(swap)
                         && !(swap.has("past") && swap.get("past").getAsBoolean());
                 setGraphic(canRefund ? refund : null);
             }
@@ -488,6 +488,17 @@ public class SwapsToolController implements Initializable {
     private void onTake(Quote quote) {
         if(quote == null) {
             return;
+        }
+        //The fee rate may have moved since the offers were drawn, and the amount with it: check the one that will be swapped
+        if(SwapService.get().coinProperty().get() != null) {
+            try {
+                long[] feeAndAmount = SwapService.get().lockFeeAndAmount();
+                lockFee = feeAndAmount[0];
+                swapSats = feeAndAmount[1];
+            } catch(Exception e) {
+                offersPane.setMessage(e.getMessage());
+                return;
+            }
         }
         String problem = offerProblem(quote);
         if(problem != null) {

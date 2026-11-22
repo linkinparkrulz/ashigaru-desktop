@@ -29,16 +29,23 @@ public final class XmrPrice {
 
     /** Blocks; call off the JavaFX thread */
     public static Snapshot fetch() throws Exception {
-        if(AppServices.getTorProxyIfUp() == null) {
-            throw new IllegalStateException("The XMR price is only fetched through Tor");
-        }
+        //Check the client that will make the request, not Tor in general: Tor can stop between a check of its own and the request,
+        //and a client with no proxy would then go out directly
         HttpClientService http = AppServices.getHttpClientService();
+        requireTor(http == null ? null : http.getTorProxy());
         try {
             return fromCoinGecko(http);
         } catch(Exception e) {
             log.info("CoinGecko XMR price unavailable, trying Kraken: " + e.getMessage());
         }
         return fromKraken(http);
+    }
+
+    /** The price is never fetched without Tor: a client with no Tor proxy is refused */
+    static void requireTor(com.google.common.net.HostAndPort clientTorProxy) {
+        if(clientTorProxy == null) {
+            throw new IllegalStateException("The XMR price is only fetched through Tor");
+        }
     }
 
     private static Snapshot fromCoinGecko(HttpClientService http) throws Exception {

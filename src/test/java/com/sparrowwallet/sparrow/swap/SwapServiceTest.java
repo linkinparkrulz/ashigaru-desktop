@@ -80,6 +80,42 @@ class SwapServiceTest {
     }
 
     @Test
+    void aStopEventOfAnotherSwapDoesNotTakeTheSetupsRefusalOrKeys() throws Exception {
+        java.util.Set<String> before = java.util.Set.of("old-swap");
+        assertTrue(SwapService.isOfThisSetup(true, before, "new-swap"));
+        assertFalse(SwapService.isOfThisSetup(true, before, "old-swap"), "an old swap stopping says nothing about this setup");
+        assertFalse(SwapService.isOfThisSetup(false, before, "new-swap"), "no setup, nothing to release");
+
+        //Through the service: another swap stopping leaves the refusal waiting for the swap that was refused
+        SwapService service = newService();
+        java.lang.reflect.Field refusal = SwapService.class.getDeclaredField("pendingRefusal");
+        refusal.setAccessible(true);
+        refusal.set(service, "The maker changed the refund policy");
+        service.notification("swap_stopped", com.google.gson.JsonParser.parseString("{\"swapId\":\"old-swap\",\"state\":\"btc is refunded\"}").getAsJsonObject());
+        assertEquals("The maker changed the refund policy", refusal.get(service));
+    }
+
+    @Test
+    void theSwapAmountIsCheckedAgainstTheLimitsAtTheMomentItIsStarted() {
+        SwapEngine.Quote maker = new SwapEngine.Quote("12D3KooWMaker", "/ip4/10.0.0.1/tcp/9939", "5.0.4", 33_000_000, 100_000, 5_000_000, "{\"type\":\"FullRefund\"}");
+        assertNull(SwapService.amountProblem(maker, 4_998_760, 10_000_000));
+        //The fee rate rose between drawing the offers and pressing Review offer, and the amount fell below the maker's minimum
+        assertTrue(SwapService.amountProblem(maker, 99_000, 10_000_000).contains("takes 0.00100000 to 0.05000000 BTC"));
+        assertTrue(SwapService.amountProblem(maker, 5_000_001, 10_000_000).contains("takes"));
+        assertTrue(SwapService.amountProblem(maker, 4_998_760, 1_000_000).contains("Swaps are limited to 0.01000000 BTC"));
+    }
+
+    @Test
+    void aSwapRecordWithoutTheCompleteFieldCountsAsUnfinishedAndDoesNotCrash() {
+        com.google.gson.JsonObject bare = com.google.gson.JsonParser.parseString("{\"swapId\":\"abc\"}").getAsJsonObject();
+        assertFalse(SwapService.isComplete(bare));
+        assertFalse(SwapService.isRunning(bare));
+        assertFalse(SwapService.isComplete(com.google.gson.JsonParser.parseString("{\"complete\":null}").getAsJsonObject()));
+        assertTrue(SwapService.isComplete(com.google.gson.JsonParser.parseString("{\"complete\":true,\"running\":false}").getAsJsonObject()));
+        assertTrue(SwapService.isRunning(com.google.gson.JsonParser.parseString("{\"running\":true}").getAsJsonObject()));
+    }
+
+    @Test
     void addressesInTheSwapLogAreShortened() {
         String xmr = "4q2Dkq6ozw8yQ3t9g3QygMp3xMYfnw6f2mr16unD8uzXkyQBS7As25AhCje1UdemiPgTYu21LugRY98q6ZvjEKvdgq2mtVY";
         assertEquals("4q2D\u2026mtVY", SwapService.shortAddress(xmr));

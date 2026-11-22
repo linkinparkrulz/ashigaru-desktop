@@ -27,6 +27,15 @@ class BadbankSwapHostTest {
     }
 
     @Test
+    void aLockAskingForAnotherAmountOrFeeThanAgreedIsRefused() {
+        BadbankSwapHost.checkAgreed(4_998_760, 1_240, 4_998_760L, 1_240L);
+        BadbankSwapHost.checkAgreed(1, 2, null, null);
+        //A larger fee, with the amount lowered to match, would burn the difference to miners
+        assertThrows(IllegalStateException.class, () -> BadbankSwapHost.checkAgreed(4_500_000, 499_999, 4_998_760L, 1_240L));
+        assertThrows(IllegalStateException.class, () -> BadbankSwapHost.checkAgreed(4_998_759, 1_240, 4_998_760L, 1_240L));
+    }
+
+    @Test
     void lockFeeNeverGoesBelowWhatMakersAccept() {
         //A maker refused a 121 sats lock fee: "too low compared to our estimate (0.00000121 BTC vs 0.00001000 BTC)"
         assertEquals(1_000, BadbankSwapHost.lockFee(121));
