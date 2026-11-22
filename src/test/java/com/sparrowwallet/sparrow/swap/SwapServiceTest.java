@@ -125,6 +125,22 @@ class SwapServiceTest {
     }
 
     @Test
+    void theLogFileNeverGetsAnXmrAddressOrALockTxid() {
+        String xmr = "4q2Dkq6ozw8yQ3t9g3QygMp3xMYfnw6f2mr16unD8uzXkyQBS7As25AhCje1UdemiPgTYu21LugRY98q6ZvjEKvdgq2mtVY";
+        String txid = "0ad8c9aa5d7e11b4f0c2a9e3b6d85f4c1a7e90b23d4c5f6a7b8c9d0e1f2a3b4c";
+        String line = SwapService.forLogFile("{\"btc_lock_txid\":\"" + txid + "\"} destination " + xmr);
+        assertTrue(line.startsWith("Swap engine: "));
+        assertFalse(line.contains(txid) || line.contains(xmr.substring(0, 30)), line);
+        assertTrue(line.contains("[txid]") && line.contains("[xmr address]"), line);
+    }
+
+    @Test
+    void makerPeersAreShortenedInTheSwapLog() {
+        assertEquals("\u2026xyz123", SwapService.shortPeer("12D3KooWMakerabcdefghijklmnopqrstuvwxyz123".substring(0, 33) + "xyz123"));
+        assertEquals("short", SwapService.shortPeer("short"));
+    }
+
+    @Test
     void addressesInTheSwapLogAreShortened() {
         String xmr = "4q2Dkq6ozw8yQ3t9g3QygMp3xMYfnw6f2mr16unD8uzXkyQBS7As25AhCje1UdemiPgTYu21LugRY98q6ZvjEKvdgq2mtVY";
         assertEquals("4q2D\u2026mtVY", SwapService.shortAddress(xmr));

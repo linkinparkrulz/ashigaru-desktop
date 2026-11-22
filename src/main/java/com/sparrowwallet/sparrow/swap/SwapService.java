@@ -16,6 +16,7 @@ import com.sparrowwallet.sparrow.event.TorDiedEvent;
 import com.sparrowwallet.sparrow.event.TorFailedStatusEvent;
 import com.sparrowwallet.sparrow.event.TorReadyStatusEvent;
 import com.sparrowwallet.sparrow.gui.AshigaruGui;
+import com.sparrowwallet.sparrow.gui.LogRedaction;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Server;
 import com.sparrowwallet.sparrow.io.Storage;
@@ -455,6 +456,16 @@ public class SwapService implements SwapHost {
         return setupActive && !swapsBeforeSetup.contains(swapId);
     }
 
+    /** What is written to the log file for an engine line: redacted, as the file is the one that gets sent around */
+    static String forLogFile(String line) {
+        return "Swap engine: " + LogRedaction.redact(line);
+    }
+
+    /** A peer id as its last characters only */
+    static String shortPeer(String peerId) {
+        return peerId == null || peerId.length() <= 10 ? peerId : "\u2026" + peerId.substring(peerId.length() - 6);
+    }
+
     /** Whether every swap in the engine's list, of every identity, is finished */
     static boolean allFinished(JsonArray swaps) {
         for(JsonElement swap : swaps) {
@@ -676,9 +687,9 @@ public class SwapService implements SwapHost {
                 progress.putIfAbsent(swapId, new SwapProgress.Status(SwapProgress.Step.NODES, null, java.time.Instant.now(), false));
                 coin.set(null);
                 //Addresses are shortened: a shared log must not tie an XMR address to the exact amount of a lock that can be found on chain
-                appendLog("Swap " + swapId + " started: " + BadbankSwapHost.btc(sats) + " BTC from " + chosen.walletName()
-                        + "'s Badbank coin to XMR address " + shortAddress(xmrAddress) + ", network fee " + fee + " sats, refunds to " + shortAddress(refundAddress)
-                        + ", with maker " + maker.peerId() + (maker.version() == null ? "" : " v" + maker.version()) + " at " + maker.multiaddr());
+                //No amount, wallet, fee, refund address or maker address: the log is shared, and these would tie the swap to its transactions on chain
+                appendLog("Swap " + swapId + " started to XMR address " + shortAddress(xmrAddress) + ", with maker " + shortPeer(maker.peerId())
+                        + (maker.version() == null ? "" : " v" + maker.version()));
                 swapListeners.forEach(Runnable::run);
                 onSuccess.accept(swapId);
             }, e -> {
@@ -817,7 +828,7 @@ public class SwapService implements SwapHost {
             String message = ("INFO".equals(level) ? "" : level + " ") + (payload.has("message") ? payload.get("message").getAsString() : "");
             //Routine chatter (wallet2, maker connections coming and going) is kept for the log file only
             if(payload.has("quiet") && payload.get("quiet").getAsBoolean()) {
-                log.info("Swap engine: " + message);
+                log.info(forLogFile(message));
             } else {
                 appendLog(message);
             }
@@ -888,7 +899,7 @@ public class SwapService implements SwapHost {
                 SwapProgress.Status status = SwapProgress.read(body.getAsJsonObject(), previous, java.time.Instant.now());
                 progress.put(swapId, status);
                 //The swap log gets a readable line per step; the raw event stays in the log file
-                log.info("Swap engine: " + raw);
+                log.info(forLogFile(raw));
                 if(previous == null || previous.step() != status.step() || !java.util.Objects.equals(previous.detail(), status.detail())) {
                     appendLog("Swap " + swapId.substring(0, Math.min(8, swapId.length())) + ": " + status.step().getTitle()
                             + (status.detail() == null || status.detail().isEmpty() ? "" : " (" + status.detail() + ")"));
@@ -938,7 +949,8 @@ public class SwapService implements SwapHost {
         if(logText.length() > MAX_LOG_CHARS) {
             logText.delete(0, logText.length() - MAX_LOG_CHARS);
         }
-        log.info("Swap engine: " + line);
+        //The in-app swap log keeps the line as it is; the file, which people send around, gets it redacted
+        log.info(forLogFile(line));
         logListeners.forEach(listener -> listener.accept(stamped));
     }
 

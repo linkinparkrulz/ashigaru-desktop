@@ -45,25 +45,8 @@ public class LogsController implements Initializable {
     //Matches the leading date of the logback pattern: %date [%thread] %level %logger.%method(%file:%line) - %msg
     private static final Pattern ENTRY_START = Pattern.compile("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3} \\[[^]]*] (TRACE|DEBUG|INFO|WARN|ERROR)\\b");
 
-    //Values that identify a user or their coins. Ordered longest-match-first so an xpub is not
-    //partially consumed by the base58 address pattern.
-    private static final List<Redaction> REDACTIONS = List.of(
-            new Redaction(Pattern.compile("\\bPM8T[1-9A-HJ-NP-Za-km-z]{100,}"), "[paymentcode]"),
-            new Redaction(Pattern.compile("\\b[xyztuvXYZTUV](?:pub|prv)[1-9A-HJ-NP-Za-km-z]{100,}"), "[xpub]"),
-            //Monero: 95 characters (106 with a payment id) starting with 4 (main address) or 8 (subaddress). Before the base58 pattern below,
-            //which would take its first characters. A swap ties this address to an exact BTC amount that can be found on chain.
-            new Redaction(Pattern.compile("\\b[48][1-9A-HJ-NP-Za-km-z]{94}(?:[1-9A-HJ-NP-Za-km-z]{11})?\\b"), "[xmr address]"),
-            new Redaction(Pattern.compile("\\b(?:bc|tb|bcrt)1[023456789acdefghjklmnpqrstuvwxyz]{20,}\\b"), "[address]"),
-            new Redaction(Pattern.compile("\\b[13][1-9A-HJ-NP-Za-km-z]{25,34}\\b"), "[address]"),
-            new Redaction(Pattern.compile("\\b[0-9a-fA-F]{64}\\b"), "[txid]"),
-            new Redaction(Pattern.compile("\\b[a-z2-7]{16,56}\\.onion\\b"), "[onion]"),
-            new Redaction(Pattern.compile("\\bm(?:/\\d+['h]?)+"), "[path]")
-    );
-
     //The swap engine's lines, as SwapService keeps them: HH:mm:ss, two spaces, the level unless INFO, the message
     private static final Pattern ENGINE_LEVEL = Pattern.compile("^\\d{2}:\\d{2}:\\d{2}  (WARN|ERROR)\\b");
-
-    private record Redaction(Pattern pattern, String replacement) {}
 
     @FXML private HBox sourceBar;
     @FXML private ToggleGroup sourceGroup;
@@ -395,10 +378,7 @@ public class LogsController implements Initializable {
      * handed to a developer as-is.
      */
     static String redact(String text, Collection<String> walletNames) {
-        String redacted = text;
-        for(Redaction redaction : REDACTIONS) {
-            redacted = redaction.pattern().matcher(redacted).replaceAll(redaction.replacement());
-        }
+        String redacted = LogRedaction.redact(text);
 
         //Wallet names are user-chosen and so cannot be matched by shape.
         for(String name : walletNames) {
