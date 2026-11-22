@@ -99,6 +99,8 @@ public class SwapService implements SwapHost {
     //Swaps that existed when the swap now being set up began, so that a stop event of one of those is not taken for this setup's
     private volatile Set<String> swapsBeforeSetup = Set.of();
     private final Set<String> listedSwapIds = ConcurrentHashMap.newKeySet();
+    //Swaps the engine last said were unfinished, kept on disk so the top bar can warn about them while the engine is not running
+    private volatile UnfinishedSwaps unfinished = new UnfinishedSwaps(null);
     //Each swap's latest step, as reported by the engine; the swap being set up is the latest started
     private final Map<String, SwapProgress.Status> progress = new ConcurrentHashMap<>();
     //Each swap's latest timelock state, from the engine's TimelockChange events: blocks left until cancel or punish
@@ -117,9 +119,15 @@ public class SwapService implements SwapHost {
     public static synchronized SwapService get() {
         if(instance == null) {
             instance = new SwapService();
+            instance.unfinished = new UnfinishedSwaps(new File(Storage.getSparrowHome(), "swaps"));
             EventManager.get().register(instance);
         }
         return instance;
+    }
+
+    /** How many swaps are known to be unfinished: they hold BTC, and only a running engine can complete or refund them */
+    public int unfinishedCount() {
+        return unfinished.count();
     }
 
     /** Whether this build can swap at all: the engine is bundled (or configured) and this is mainnet */
@@ -366,6 +374,7 @@ public class SwapService implements SwapHost {
             JsonArray listed = loaded.listSwaps();
             boolean used = usedByThisIdentity(listed);
             boolean allFinished = allFinished(listed);
+            unfinished.replaceAll(notFinishedIds(listed));
             //Identity already used and nothing left to finish: makers have seen it, so take a new one. Not in a run that just recovered
             //its identity from a damaged file: whatever went wrong should be looked at before the identity is changed.
             if(!renewIdentity && !identity.wasRecovered() && resumed.isEmpty() && used) {
@@ -464,6 +473,17 @@ public class SwapService implements SwapHost {
     /** A peer id as its last characters only */
     static String shortPeer(String peerId) {
         return peerId == null || peerId.length() <= 10 ? peerId : "\u2026" + peerId.substring(peerId.length() - 6);
+    }
+
+    /** The ids of the swaps in the engine's list that are not finished */
+    static List<String> notFinishedIds(JsonArray swaps) {
+        List<String> ids = new ArrayList<>();
+        for(JsonElement element : swaps) {
+            if(element.isJsonObject() && element.getAsJsonObject().has("swapId") && !isComplete(element.getAsJsonObject())) {
+                ids.add(element.getAsJsonObject().get("swapId").getAsString());
+            }
+        }
+        return ids;
     }
 
     /** Whether every swap in the engine's list, of every identity, is finished */
@@ -566,6 +586,11 @@ public class SwapService implements SwapHost {
         start(false);
     }
 
+    /** The engine follows a new Tor proxy by restarting, which must not happen while a swap is being set up */
+    static boolean restartAllowed(boolean swapBeingSetUp) {
+        return !swapBeingSetUp;
+    }
+
     /** Whether the engine, started with one server, should be restarted for the server Ashigaru uses now */
     static boolean serverChanged(String engineUrl, String currentUrl) {
         return currentUrl != null && !currentUrl.equals(engineUrl);
@@ -604,6 +629,11 @@ public class SwapService implements SwapHost {
                 return null;
             }, ignored -> {}, e -> {});
         } else if(!proxy.equals(engineProxy)) {
+            if(!restartAllowed(activeHost != null)) {
+                //Restarting now would stop the swap being set up, in the middle of the maker's exchange, so wait until it ends
+                appendLog("Tor restarted on " + proxy + ". The swap engine stays as it is while a swap is being set up, and follows Tor when that ends.");
+                return;
+            }
             appendLog("Tor restarted on " + proxy + "; restarting the swap engine to use it");
             running.set(false);
             start(false);
@@ -676,11 +706,13 @@ public class SwapService implements SwapHost {
         host.unlock().whenComplete((ignored, unlockFailure) -> Platform.runLater(() -> {
             if(unlockFailure != null) {
                 activeHost = null;
+                Platform.runLater(this::followTor);  //Tor may have moved while this was being set up
                 onFailure.accept(unlockFailure instanceof CompletionException && unlockFailure.getCause() != null ? unlockFailure.getCause() : unlockFailure);
                 return;
             }
             runInBackground(() -> engine.startSwap(maker, sats, fee, xmrAddress, refundAddress), swapId -> {
                 runningSwaps.add(swapId);
+                unfinished.add(swapId);
                 startedSwaps.put(swapId, new Started(maker.peerId(), sats));
                 currentSwapId = swapId;
                 saveDetails(swapId, SwapDetails.started(sats, fee, xmrAddress, SwapReview.shortId(maker.peerId())));
@@ -695,6 +727,7 @@ public class SwapService implements SwapHost {
             }, e -> {
                 host.release();
                 activeHost = null;
+                Platform.runLater(this::followTor);  //Tor may have moved while this was being set up
                 onFailure.accept(e);
             });
         }));
@@ -782,6 +815,7 @@ public class SwapService implements SwapHost {
                 progress.put(swapId, placed);
             }
         }
+        unfinished.replaceAll(notFinishedIds(swaps));
     }
 
     public void refund(String swapId, Consumer<String> onSuccess, Consumer<Throwable> onFailure) {
@@ -851,6 +885,7 @@ public class SwapService implements SwapHost {
             if(ofThisSetup) {
                 activeHost.release();
                 activeHost = null;
+                Platform.runLater(this::followTor);  //Tor may have moved while this was being set up
             }
             SwapProgress.Status status = SwapProgress.stopped(payload, progress.get(swapId), java.time.Instant.now());
             progress.put(swapId, status);
@@ -898,6 +933,9 @@ public class SwapService implements SwapHost {
                 SwapProgress.Status previous = progress.get(swapId);
                 SwapProgress.Status status = SwapProgress.read(body.getAsJsonObject(), previous, java.time.Instant.now());
                 progress.put(swapId, status);
+                if(status.finished()) {
+                    unfinished.remove(swapId);
+                }
                 //The swap log gets a readable line per step; the raw event stays in the log file
                 log.info(forLogFile(raw));
                 if(previous == null || previous.step() != status.step() || !java.util.Objects.equals(previous.detail(), status.detail())) {
@@ -931,13 +969,13 @@ public class SwapService implements SwapHost {
             return;
         }
         listSwaps(swaps -> {
-            boolean unfinished = false;
+            boolean anyUnfinished = false;
             for(JsonElement swap : swaps) {
                 if(!isComplete(swap.getAsJsonObject())) {
-                    unfinished = true;
+                    anyUnfinished = true;
                 }
             }
-            if(!unfinished && !isSwapActive() && problem() == null) {
+            if(!anyUnfinished && !isSwapActive() && problem() == null) {
                 start(true);
             }
         }, e -> {});

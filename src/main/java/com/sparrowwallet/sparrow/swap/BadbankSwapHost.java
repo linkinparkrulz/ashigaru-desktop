@@ -493,13 +493,15 @@ public class BadbankSwapHost {
 
         JsonObject details = request.getAsJsonObject("content");
         long lockAmount = details.get("btc_lock_amount").getAsLong();
-        long networkFee = details.get("btc_network_fee").getAsLong();
+        long reportedFee = details.get("btc_network_fee").getAsLong();
         long piconero = details.get("xmr_receive_amount").getAsLong();
         long amnesty = details.has("btc_amnesty_amount") ? details.get("btc_amnesty_amount").getAsLong() : 0;
         boolean fullRefund = details.has("has_full_refund_signature") && details.get("has_full_refund_signature").getAsBoolean();
-        if(funded.values().stream().noneMatch(lock -> lock.amount() == lockAmount)) {
-            throw new IllegalStateException("The lock amount does not match any lock transaction Ashigaru built");
-        }
+        //The approval carries the swap's id and amounts, not the transaction's id, so the lock is matched by amount AND fee against what Ashigaru built,
+        //and the fee shown below is that of the transaction Ashigaru built, never a number the engine or maker supplied
+        FundedLock built = funded.values().stream().filter(lock -> isBuiltLock(lock.amount(), lock.fee(), lockAmount, reportedFee)).findFirst()
+                .orElseThrow(() -> new IllegalStateException("The lock amount and network fee do not match any lock transaction Ashigaru built"));
+        final long networkFee = built.fee();
 
         termsListener.terms(piconero, amnesty, fullRefund);
         //The engine's clock for this approval started when it asked. Everything below, the price warning included, shares it.
@@ -608,6 +610,11 @@ public class BadbankSwapHost {
     }
 
     private record FundedLock(PSBT psbt, long amount, long fee) {}
+
+    /** Whether the lock the engine asks about is the one built: the same amount and the same network fee */
+    static boolean isBuiltLock(long builtAmount, long builtFee, long amount, long fee) {
+        return builtAmount == amount && builtFee == fee;
+    }
 
     private Alert alert(Alert.AlertType type, String header, String content, ButtonType... buttons) {
         Alert alert = new Alert(type, content, buttons);

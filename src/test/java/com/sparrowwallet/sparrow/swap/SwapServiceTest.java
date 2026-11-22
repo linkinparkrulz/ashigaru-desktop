@@ -116,6 +116,36 @@ class SwapServiceTest {
     }
 
     @Test
+    void theEngineIsNotRestartedForANewTorProxyWhileASwapIsBeingSetUp() {
+        assertFalse(SwapService.restartAllowed(true));
+        assertTrue(SwapService.restartAllowed(false));
+    }
+
+    @Test
+    void unfinishedSwapsAreKeptOnDiskSoTheyAreKnownWhileTheEngineIsOff(@org.junit.jupiter.api.io.TempDir java.io.File swapsDir) {
+        UnfinishedSwaps list = new UnfinishedSwaps(swapsDir);
+        assertEquals(0, list.count());
+        list.add("a");
+        list.add("b");
+        list.add("a");
+        assertEquals(2, new UnfinishedSwaps(swapsDir).count(), "a new run knows them before any engine starts");
+        list.remove("a");
+        assertEquals(java.util.Set.of("b"), new UnfinishedSwaps(swapsDir).ids());
+        list.replaceAll(java.util.List.of("c", "d"));
+        assertEquals(java.util.Set.of("c", "d"), new UnfinishedSwaps(swapsDir).ids());
+        list.replaceAll(java.util.List.of());
+        assertEquals(0, new UnfinishedSwaps(swapsDir).count());
+        assertEquals(0, new UnfinishedSwaps(null).count());
+    }
+
+    @Test
+    void theEnginesListSaysWhichSwapsAreUnfinished() {
+        com.google.gson.JsonArray list = com.google.gson.JsonParser.parseString(
+                "[{\"swapId\":\"a\",\"complete\":true},{\"swapId\":\"b\",\"complete\":false},{\"swapId\":\"c\"},{\"complete\":false}]").getAsJsonArray();
+        assertEquals(java.util.List.of("b", "c"), SwapService.notFinishedIds(list));
+    }
+
+    @Test
     void seedsAreOnlyRetiredWhenEverySwapOfEveryIdentityIsFinished() {
         com.google.gson.JsonArray done = com.google.gson.JsonParser.parseString("[{\"complete\":true},{\"complete\":true,\"past\":true}]").getAsJsonArray();
         assertTrue(SwapService.allFinished(done));

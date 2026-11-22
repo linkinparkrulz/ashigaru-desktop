@@ -36,4 +36,17 @@ class SwapLightTest {
         assertEquals(State.HIDDEN, SwapLight.state(true, false, "Off."));
         assertEquals(State.HIDDEN, SwapLight.state(true, false, null));
     }
+
+    @Test
+    void anUnfinishedSwapWithNoRunningEngineIsRedWhetherSwapsAreOnOrOff() {
+        //Swaps off: the swap still holds BTC and nothing is working on it
+        assertEquals(State.UNFINISHED_DOWN, SwapLight.state(false, false, "Off.", 1));
+        assertEquals(State.UNFINISHED_DOWN, SwapLight.state(true, false, "Off.", 2));
+        assertEquals(State.UNFINISHED_DOWN, SwapLight.state(true, false, "Waiting for Tor. Swaps only connect through Tor.", 1));
+        assertEquals(State.UNFINISHED_DOWN, SwapLight.state(true, false, "Could not start: the engine did not load", 1));
+        //Starting is on its way, so amber; running is green; nothing unfinished changes nothing
+        assertEquals(State.STARTING, SwapLight.state(true, false, "Starting through Tor\u2026", 1));
+        assertEquals(State.OK, SwapLight.state(true, true, "On. Using 2 public Monero nodes.", 1));
+        assertEquals(State.HIDDEN, SwapLight.state(false, false, "Off.", 0));
+    }
 }

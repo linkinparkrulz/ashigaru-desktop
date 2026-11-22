@@ -132,11 +132,18 @@ public class AshigaruMainController implements Initializable {
         }
 
         SwapService swapService = SwapService.get();
-        SwapLight.State swapState = SwapLight.state(swapService.isEnabled(), swapService.runningProperty().get(), swapService.statusProperty().get());
+        SwapLight.State swapState = SwapLight.state(swapService.isEnabled(), swapService.runningProperty().get(), swapService.statusProperty().get(),
+                swapService.unfinishedCount());
         switch (swapState) {
             case OK -> setLight(swapLightLabel, "Swaps \u00b7 on", swapService.statusProperty().get(), "connected");
             case STARTING -> setLight(swapLightLabel, "Swaps \u00b7 starting\u2026", swapService.statusProperty().get(), "connecting");
             case FAILED -> setLight(swapLightLabel, "Swaps \u00b7 not running", swapService.statusProperty().get(), "unreachable");
+            case UNFINISHED_DOWN -> {
+                int count = swapService.unfinishedCount();
+                setLight(swapLightLabel, "Swaps \u00b7 " + count + " unfinished, not running", count + (count == 1 ? " swap still holds" : " swaps still hold")
+                        + " BTC, and nothing is working to complete or refund " + (count == 1 ? "it" : "them") + " while the swap engine is not running. "
+                        + "Turn swaps on in Settings \u2192 Swaps, keep Tor running and keep Ashigaru open. " + swapService.statusProperty().get(), "unreachable");
+            }
             case HIDDEN -> setLight(swapLightLabel, null, null, null);
         }
     }

@@ -36,6 +36,13 @@ class BadbankSwapHostTest {
     }
 
     @Test
+    void theApprovedLockMustBeTheOneBuiltInAmountAndFee() {
+        assertTrue(BadbankSwapHost.isBuiltLock(4_998_760, 1_240, 4_998_760, 1_240));
+        assertFalse(BadbankSwapHost.isBuiltLock(4_998_760, 1_240, 4_998_760, 9_000), "the same amount with another fee is not the lock Ashigaru built");
+        assertFalse(BadbankSwapHost.isBuiltLock(4_998_760, 1_240, 4_990_000, 1_240));
+    }
+
+    @Test
     void lockFeeNeverGoesBelowWhatMakersAccept() {
         //A maker refused a 121 sats lock fee: "too low compared to our estimate (0.00000121 BTC vs 0.00001000 BTC)"
         assertEquals(1_000, BadbankSwapHost.lockFee(121));
