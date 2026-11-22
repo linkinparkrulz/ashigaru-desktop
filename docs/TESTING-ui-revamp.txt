@@ -233,7 +233,7 @@ WHAT THE REVAMP IS FOR
       the card on the right turns green, "Signature verified", with the
       notification address and the recovered signer address, each with
       a copy button, and "The message names this payment code".
-  [ ] At the minimum window width (1024) the Verify button and the
+  [ ] At the minimum window size (1280 x 800) the Verify button and the
       result card are both on screen without scrolling.
   [ ] Change one character of the message in the block and verify
       again. The card turns amber, "Signature does not match this
@@ -538,16 +538,17 @@ WHAT THE REVAMP IS FOR
   [ ] Tooltip reads "Show what you type" / "Hide what you type".
 
   Window:
-  [ ] The window can be dragged down to about 1024 wide (it was
-      1200). Nothing is clipped on the wallet screen, Tools or
-      Settings at that width.
+  [ ] The window opens at 1280 x 800 and cannot be dragged smaller
+      than that on a screen big enough to hold it (on a smaller
+      screen it fits the screen). Nothing is clipped on the wallet
+      screen, Tools or Settings at that size.
 
   Swap screens (needs the build with swaps):
   [ ] Tools, Swaps opens with a "Swaps" title, one sentence, and the
       engine's state on a small line. No "Send BTC -> Receive XMR"
       heading on the page; the final review is titled "Send BTC,
       receive XMR".
-  [ ] At 1024 wide the offers table still shows every column and the
+  [ ] At 1280 x 800 the offers table still shows every column and the
       Approve bar stays pinned on the review.
   [ ] Icons are drawn, not characters: the warning and done marks in
       banners, the numbered steps (a tick when done, a dot on the

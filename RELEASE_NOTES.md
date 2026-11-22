@@ -205,8 +205,8 @@ misunderstand, and the interface typeface changes across the whole app.
   supporting detail. Nikkyou Sans is kept for titles and key headings, and Roboto Mono for
   amounts, addresses and transaction ids. Labels smaller than 13 pixels were raised, apart from small
   uppercase headings.
-- **The window starts at 1280 pixels wide and cannot be made narrower than 1200**, both capped at
-  your screen. Swaps sits beside two menus, and the offers table needs room to be read. On a
+- **The window opens at 1280 x 800 and cannot be made smaller than that**, both capped at
+  your screen (on a smaller screen the window fits the screen instead). Swaps sits beside two menus, and the offers table needs room to be read. On a
   smaller screen the table folds the maker and rate under the amount.
 
 # Ashigaru Desktop 1.5.2
