@@ -81,14 +81,74 @@ class SwapIdentityTest {
     }
 
     @Test
-    void theNewestIdentityIsRecoveredWhenThereAreSeveral() throws Exception {
+    void onlyTheIdentityNamedBesideTheFileIsRecoveredNeverAnOlderOne() throws Exception {
         SwapIdentity old = SwapIdentity.current(swapsDir);
         database(old);
-        assertTrue(new File(old.getDataDir(), "sqlite").setLastModified(1_000_000L));
-        SwapIdentity newer = SwapIdentity.renew(swapsDir);
-        database(newer);
+        SwapIdentity current = SwapIdentity.renew(swapsDir);
+        database(current);
+        //The older identity's data is the newer by modification time: recovery must not be fooled by that
+        assertTrue(new File(old.getDataDir(), "sqlite").setLastModified(System.currentTimeMillis() + 60_000));
+        assertTrue(new File(current.getDataDir(), "sqlite").setLastModified(1_000_000L));
         Files.writeString(new File(swapsDir, "identity").toPath(), "", StandardCharsets.UTF_8);
-        assertArrayEquals(newer.getSeed(), SwapIdentity.current(swapsDir).getSeed());
+
+        SwapIdentity recovered = SwapIdentity.current(swapsDir);
+        assertArrayEquals(current.getSeed(), recovered.getSeed());
+        assertTrue(recovered.wasRecovered());
+        assertFalse(SwapIdentity.current(swapsDir).wasRecovered(), "the file is written again, so the next start is an ordinary one");
+    }
+
+    @Test
+    void withoutTheFolderMarkerSwapDataIsNotGuessedAt() throws Exception {
+        SwapIdentity identity = SwapIdentity.current(swapsDir);
+        database(identity);
+        assertTrue(new File(swapsDir, SwapIdentity.FOLDER).delete());
+        Files.writeString(new File(swapsDir, "identity").toPath(), "damaged", StandardCharsets.UTF_8);
+        assertThrows(IOException.class, () -> SwapIdentity.current(swapsDir));
+    }
+
+    @Test
+    void aMarkerThatPointsOutOfTheSwapsFolderIsIgnored() throws Exception {
+        SwapIdentity identity = SwapIdentity.current(swapsDir);
+        database(identity);
+        Files.writeString(new File(swapsDir, SwapIdentity.FOLDER).toPath(), "../../etc", StandardCharsets.UTF_8);
+        Files.writeString(new File(swapsDir, "identity").toPath(), "damaged", StandardCharsets.UTF_8);
+        assertThrows(IOException.class, () -> SwapIdentity.current(swapsDir));
+    }
+
+    @Test
+    void retiringDeletesTheSeedsOfOtherIdentitiesAndRecoveryNoLongerNeedsThem() throws Exception {
+        SwapIdentity old = SwapIdentity.current(swapsDir);
+        database(old);
+        SwapIdentity current = SwapIdentity.renew(swapsDir);
+        database(current);
+
+        SwapIdentity.retireOthers(swapsDir, current.getDataDir());
+        assertFalse(new File(old.getDataDir(), SwapIdentity.SEED_COPY).exists(), "the old seed is gone");
+        assertTrue(new File(old.getDataDir(), SwapIdentity.RETIRED).isFile());
+        assertTrue(new File(old.getDataDir(), "sqlite").isFile(), "the history stays");
+        assertTrue(new File(current.getDataDir(), SwapIdentity.SEED_COPY).isFile(), "the current identity keeps its seed");
+
+        //A retired identity's missing seed is no reason to refuse, and the current one is still recovered
+        Files.writeString(new File(swapsDir, "identity").toPath(), "damaged", StandardCharsets.UTF_8);
+        assertArrayEquals(current.getSeed(), SwapIdentity.current(swapsDir).getSeed());
+        //Even with no marker: only retired swap data is left, so a new identity is fine
+        assertTrue(new File(current.getDataDir(), "sqlite").delete());
+        assertTrue(new File(swapsDir, SwapIdentity.FOLDER).delete());
+        Files.writeString(new File(swapsDir, "identity").toPath(), "damaged", StandardCharsets.UTF_8);
+        assertEquals(32, SwapIdentity.current(swapsDir).getSeed().length);
+    }
+
+    @Test
+    void theIdentityFilesAreReadableByTheirOwnerOnly() throws Exception {
+        SwapIdentity identity = SwapIdentity.current(swapsDir);
+        java.nio.file.attribute.PosixFileAttributeView posix = Files.getFileAttributeView(swapsDir.toPath(), java.nio.file.attribute.PosixFileAttributeView.class);
+        org.junit.jupiter.api.Assumptions.assumeTrue(posix != null, "POSIX permissions only; Windows gets an access list");
+        for(File file : new File[] {new File(swapsDir, "identity"), new File(swapsDir, SwapIdentity.FOLDER), new File(identity.getDataDir(), SwapIdentity.SEED_COPY)}) {
+            assertEquals(java.util.Set.of(java.nio.file.attribute.PosixFilePermission.OWNER_READ, java.nio.file.attribute.PosixFilePermission.OWNER_WRITE),
+                    Files.getPosixFilePermissions(file.toPath()), file.getName());
+        }
+        assertEquals(java.util.Set.of(java.nio.file.attribute.PosixFilePermission.OWNER_READ, java.nio.file.attribute.PosixFilePermission.OWNER_WRITE,
+                java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE), Files.getPosixFilePermissions(identity.getDataDir().toPath()));
     }
 
     @Test

@@ -116,6 +116,15 @@ class SwapServiceTest {
     }
 
     @Test
+    void seedsAreOnlyRetiredWhenEverySwapOfEveryIdentityIsFinished() {
+        com.google.gson.JsonArray done = com.google.gson.JsonParser.parseString("[{\"complete\":true},{\"complete\":true,\"past\":true}]").getAsJsonArray();
+        assertTrue(SwapService.allFinished(done));
+        assertTrue(SwapService.allFinished(new com.google.gson.JsonArray()));
+        assertFalse(SwapService.allFinished(com.google.gson.JsonParser.parseString("[{\"complete\":true},{\"complete\":false,\"past\":true}]").getAsJsonArray()));
+        assertFalse(SwapService.allFinished(com.google.gson.JsonParser.parseString("[{\"swapId\":\"no complete field\"}]").getAsJsonArray()));
+    }
+
+    @Test
     void addressesInTheSwapLogAreShortened() {
         String xmr = "4q2Dkq6ozw8yQ3t9g3QygMp3xMYfnw6f2mr16unD8uzXkyQBS7As25AhCje1UdemiPgTYu21LugRY98q6ZvjEKvdgq2mtVY";
         assertEquals("4q2D\u2026mtVY", SwapService.shortAddress(xmr));

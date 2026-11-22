@@ -356,17 +356,26 @@ public class SwapService implements SwapHost {
         long startedAt = System.currentTimeMillis();
         status.set(renewIdentity ? "Taking a fresh identity for the next swap…" : "Starting through Tor…");
         runInBackground(() -> {
+            boolean renewed = false;
             SwapIdentity identity = renewIdentity ? SwapIdentity.renew(swapsDir) : SwapIdentity.current(swapsDir);
             loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes,
                     SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
             List<String> resumed = new ArrayList<>();
             loaded.resumeAll().forEach(id -> resumed.add(id.getAsString()));
-            boolean used = usedByThisIdentity(loaded.listSwaps());
-            //Identity already used and nothing left to finish: makers have seen it, so take a new one
-            if(!renewIdentity && resumed.isEmpty() && used) {
+            JsonArray listed = loaded.listSwaps();
+            boolean used = usedByThisIdentity(listed);
+            boolean allFinished = allFinished(listed);
+            //Identity already used and nothing left to finish: makers have seen it, so take a new one. Not in a run that just recovered
+            //its identity from a damaged file: whatever went wrong should be looked at before the identity is changed.
+            if(!renewIdentity && !identity.wasRecovered() && resumed.isEmpty() && used) {
                 identity = SwapIdentity.renew(swapsDir);
                 loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes,
                     SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
+                renewed = true;
+            }
+            //Every swap of the identities left behind is finished, so their seeds are not needed any more
+            if((renewIdentity || renewed) && allFinished && resumed.isEmpty()) {
+                SwapIdentity.retireOthers(swapsDir, identity.getDataDir());
             }
             detailsStore = new SwapDetails.Store(identity.getDataDir());
             pastDetailsStores = SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()).stream().map(SwapDetails.Store::new).toList();
@@ -444,6 +453,16 @@ public class SwapService implements SwapHost {
     /** Whether a stopped swap is the one being set up: there is a setup, and the swap was not there before it began */
     static boolean isOfThisSetup(boolean setupActive, Set<String> swapsBeforeSetup, String swapId) {
         return setupActive && !swapsBeforeSetup.contains(swapId);
+    }
+
+    /** Whether every swap in the engine's list, of every identity, is finished */
+    static boolean allFinished(JsonArray swaps) {
+        for(JsonElement swap : swaps) {
+            if(!swap.isJsonObject() || !isComplete(swap.getAsJsonObject())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** An address as its first and last characters, enough to recognise it and not to use it */
