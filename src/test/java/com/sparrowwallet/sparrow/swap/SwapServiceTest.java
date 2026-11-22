@@ -71,6 +71,24 @@ class SwapServiceTest {
     }
 
     @Test
+    void anEngineThatFinishesStartingAfterSwapsWereTurnedOffIsShutDown() {
+        //Turning swaps off during the start used to leave the new engine running, dialling makers, while Settings said Off
+        assertEquals(SwapService.Arrival.SHUT_DOWN_OFF, SwapService.arrival(false, false));
+        assertEquals(SwapService.Arrival.SHUT_DOWN_OFF, SwapService.arrival(false, true), "off wins over paused");
+        assertEquals(SwapService.Arrival.SHUT_DOWN_PAUSED, SwapService.arrival(true, true));
+        assertEquals(SwapService.Arrival.KEEP, SwapService.arrival(true, false));
+    }
+
+    @Test
+    void addressesInTheSwapLogAreShortened() {
+        String xmr = "4q2Dkq6ozw8yQ3t9g3QygMp3xMYfnw6f2mr16unD8uzXkyQBS7As25AhCje1UdemiPgTYu21LugRY98q6ZvjEKvdgq2mtVY";
+        assertEquals("4q2D\u2026mtVY", SwapService.shortAddress(xmr));
+        assertFalse(SwapService.shortAddress(xmr).contains(xmr.substring(10, 30)));
+        assertEquals("short", SwapService.shortAddress("short"));
+        assertNull(SwapService.shortAddress(null));
+    }
+
+    @Test
     void walletRequestsAreRefusedWhenNoSwapIsBeingSetUp() throws Exception {
         SwapService service = newService();
         assertFalse(service.isSwapActive());

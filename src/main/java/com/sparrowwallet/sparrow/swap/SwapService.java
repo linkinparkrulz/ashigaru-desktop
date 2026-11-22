@@ -370,17 +370,21 @@ public class SwapService implements SwapHost {
             return resumed;
         }, resumed -> {
             starting = false;
-            if(!Config.get().isSwapsEnabled()) {
-                stop();
-                return;
-            }
-            //Tor stopped by itself, for the second time, while this engine was starting: do not keep it
-            if(pausedForTor) {
+            //Swaps were turned off, or Tor stopped by itself for the second time, while this engine was starting: do not keep it.
+            //stop() cannot do this, as it finds nothing running and returns, so the engine that just came up is shut down here.
+            Arrival arrival = arrival(Config.get().isSwapsEnabled(), pausedForTor);
+            if(arrival != Arrival.KEEP) {
                 runInBackground(() -> {
                     loaded.shutdown();
                     return null;
-                }, ignored -> {}, e -> {});
-                status.set(PAUSED_FOR_TOR);
+                }, ignored -> appendLog("Swap engine stopped"), e -> {});
+                if(arrival == Arrival.SHUT_DOWN_OFF) {
+                    pausedForTor = false;
+                    torLostAfterStart = 0;
+                    status.set("Off.");
+                } else {
+                    status.set(PAUSED_FOR_TOR);
+                }
                 return;
             }
             runningSwaps.addAll(resumed);
@@ -400,11 +404,31 @@ public class SwapService implements SwapHost {
             followServer();
         }, e -> {
             starting = false;
+            //The engine may have come up before the step that failed, and nothing else holds it: stop it, ignoring a failure
+            runInBackground(() -> {
+                loaded.shutdown();
+                return null;
+            }, ignored -> {}, ignored -> {});
             status.set("Could not start: " + e.getMessage());
             if(!Objects.equals(AppServices.getTorProxyIfUp(), engineProxy)) {
                 followTor();
             }
         });
+    }
+
+    /** An address as its first and last characters, enough to recognise it and not to use it */
+    static String shortAddress(String address) {
+        return address == null || address.length() <= 12 ? address : address.substring(0, 4) + "\u2026" + address.substring(address.length() - 4);
+    }
+
+    /** What to do with an engine whose start has just finished */
+    enum Arrival { KEEP, SHUT_DOWN_OFF, SHUT_DOWN_PAUSED }
+
+    static Arrival arrival(boolean swapsEnabled, boolean pausedForTor) {
+        if(!swapsEnabled) {
+            return Arrival.SHUT_DOWN_OFF;
+        }
+        return pausedForTor ? Arrival.SHUT_DOWN_PAUSED : Arrival.KEEP;
     }
 
     @Subscribe
@@ -591,8 +615,9 @@ public class SwapService implements SwapHost {
                 saveDetails(swapId, SwapDetails.started(sats, fee, xmrAddress, SwapReview.shortId(maker.peerId())));
                 progress.putIfAbsent(swapId, new SwapProgress.Status(SwapProgress.Step.NODES, null, java.time.Instant.now(), false));
                 coin.set(null);
+                //Addresses are shortened: a shared log must not tie an XMR address to the exact amount of a lock that can be found on chain
                 appendLog("Swap " + swapId + " started: " + BadbankSwapHost.btc(sats) + " BTC from " + chosen.walletName()
-                        + "'s Badbank coin to " + xmrAddress + ", network fee " + fee + " sats, refunds to " + refundAddress
+                        + "'s Badbank coin to XMR address " + shortAddress(xmrAddress) + ", network fee " + fee + " sats, refunds to " + shortAddress(refundAddress)
                         + ", with maker " + maker.peerId() + (maker.version() == null ? "" : " v" + maker.version()) + " at " + maker.multiaddr());
                 swapListeners.forEach(Runnable::run);
                 onSuccess.accept(swapId);

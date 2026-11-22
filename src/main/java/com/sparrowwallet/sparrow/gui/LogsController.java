@@ -50,6 +50,9 @@ public class LogsController implements Initializable {
     private static final List<Redaction> REDACTIONS = List.of(
             new Redaction(Pattern.compile("\\bPM8T[1-9A-HJ-NP-Za-km-z]{100,}"), "[paymentcode]"),
             new Redaction(Pattern.compile("\\b[xyztuvXYZTUV](?:pub|prv)[1-9A-HJ-NP-Za-km-z]{100,}"), "[xpub]"),
+            //Monero: 95 characters (106 with a payment id) starting with 4 (main address) or 8 (subaddress). Before the base58 pattern below,
+            //which would take its first characters. A swap ties this address to an exact BTC amount that can be found on chain.
+            new Redaction(Pattern.compile("\\b[48][1-9A-HJ-NP-Za-km-z]{94}(?:[1-9A-HJ-NP-Za-km-z]{11})?\\b"), "[xmr address]"),
             new Redaction(Pattern.compile("\\b(?:bc|tb|bcrt)1[023456789acdefghjklmnpqrstuvwxyz]{20,}\\b"), "[address]"),
             new Redaction(Pattern.compile("\\b[13][1-9A-HJ-NP-Za-km-z]{25,34}\\b"), "[address]"),
             new Redaction(Pattern.compile("\\b[0-9a-fA-F]{64}\\b"), "[txid]"),
