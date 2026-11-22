@@ -15,3 +15,8 @@ src/main/resources/linux-x86-64/
 src/main/resources/win32-x86-64/
 src/main/resources/darwin-aarch64/
 src/main/resources/darwin-x86-64/
+
+# Stray files from tools and crashes
+*.whl
+hs_err_pid*
+appDir_IS_UNDEFINED/

@@ -928,7 +928,15 @@ public class AshigaruMainController implements Initializable {
             Optional<SecureString> password = WalletPasswordPrompt.ask(AshigaruGui.get().getMainStage(), copy.getMasterName(), "VIEW SEED");
             if (password.isPresent()) {
                 Storage.DecryptWalletService svc = new Storage.DecryptWalletService(copy, password.get());
-                svc.setOnSucceeded(e -> showSeedDialog(svc.getValue().getKeystores().get(0)));
+                svc.setOnSucceeded(e -> {
+                    //The decrypted copy holds the seed in memory: wipe it as soon as the window is closed
+                    Wallet decrypted = svc.getValue();
+                    try {
+                        showSeedDialog(decrypted.getKeystores().get(0));
+                    } finally {
+                        decrypted.clearPrivate();
+                    }
+                });
                 svc.setOnFailed(e -> WalletPasswordPrompt.showWrongPassword(copy.getMasterName()));
                 svc.start();
             }

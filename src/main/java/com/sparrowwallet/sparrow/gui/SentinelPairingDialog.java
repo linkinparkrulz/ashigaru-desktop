@@ -134,7 +134,7 @@ final class SentinelPairingDialog {
 
         Label privacy = new Label("The QR code holds this wallet's public keys (XPUB, YPUB and ZPUB), never a seed or private key. Anyone who has both the QR code "
                 + "and the 3 words can see every address and balance of these accounts, so show it only to your own phone. "
-                + "The words are new each time this window opens and are not saved.");
+                + "The words are new each time this window opens and are not saved. Text you copy here is cleared from the clipboard after a minute.");
         privacy.getStyleClass().addAll("ag-read", "exposure-warning");
         privacy.setWrapText(true);
         privacy.setMinHeight(Region.USE_PREF_SIZE);
@@ -186,8 +186,7 @@ final class SentinelPairingDialog {
     }
 
     private static void copy(String text) {
-        ClipboardContent content = new ClipboardContent();
-        content.putString(text);
-        Clipboard.getSystemClipboard().setContent(content);
+        //The words and the pairing text open the wallet's addresses to whoever holds both: take them off the clipboard again
+        TimedClipboard.copy(text);
     }
 }

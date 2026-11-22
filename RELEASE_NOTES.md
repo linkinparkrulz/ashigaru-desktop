@@ -119,6 +119,16 @@ misunderstand, and the interface typeface changes across the whole app.
 
 ## Security
 
+- **Bug-hunt fixes in swaps.** Turning swaps off while the engine was still starting left the new engine running, dialling makers over Tor,
+  while Settings said Off; it is now shut down when it finishes starting. A damaged swap identity file no longer replaces the identity under unfinished
+  swaps: each identity's seed is also kept in its own swap folder and recovered from there, and starting is refused if swap data exists and no seed can be
+  recovered (the engine derives every swap's keys from that seed, so losing it can cost the locked BTC). The swap log no longer carries a full XMR address next to the
+  exact BTC amount, and the Logs redaction now covers Monero addresses (95 and 106 characters), so a shared log cannot tie them together. The lock's amount and fee must be
+  the ones agreed when the swap started, the amount swapped is checked against the maker's limits at that moment, a stop event of an old swap no longer clears the swap being set up, the XMR price is only fetched
+  with a Tor client, and a swap record missing a field no longer crashes the list.
+- **Pair with Sentinel clears the clipboard.** Words or pairing text copied from the window are removed from the clipboard after a minute, if the clipboard still holds them.
+  **View seed words** wipes its decrypted copy when the window closes.
+
 - **Release files carry a build attestation, and the README says what each check proves.** From the next release, every file also has a
   GitHub build attestation (`gh attestation verify <file> --repo linkinparkrulz/ashigaru-desktop`) showing which workflow and commit built it, in
   addition to the release signature. The README now states who publishes these builds and what the signature and the attestation do and do not
