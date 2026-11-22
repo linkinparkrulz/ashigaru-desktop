@@ -85,6 +85,24 @@ It is also where a layout is held to the smallest supported window: no screen ma
 width it was designed for (713 pixels; the 1280 pixel minimum window gives Swaps 984), and the offers table must
 fold below 700.
 
+### 2.2 Regenerating the pictures in `docs/images`
+
+The README and [FEATURES.md](FEATURES.md) pictures are taken from the real application, so they can be redone after any UI change.
+`DocScreenshotsTest` starts the real app (`AshigaruTerminal.main`) under a virtual display with a throw-away home folder and a made-up wallet
+(the "abandon" test seed, with Whirlpool accounts and a few coins that were never on any chain, from `testutil/SampleWallets`), opens
+the real windows and dialogs through their own controls, and captures the screen. It is skipped unless `DOC_SCREENSHOTS` names a folder.
+The screen must be exactly 1280x800, the window's default and minimum size:
+
+```bash
+DOC_SCREENSHOTS=docs/images xvfb-run -a -s "-screen 0 1280x800x24" ./gradlew :test --tests '*DocScreenshotsTest*'
+```
+
+What is simulated, and shown as the app would show it, because the sandbox has no servers: a healthy connection (a `ConnectionEvent` for a made-up server,
+the Coordinator light, and the Swaps light on the Swaps screens), and the Swaps screens, whose offers, review and dashboard are filled with made-up data
+(`SwapService` is told the engine is available; nothing is started). Screens that need real data are not drawn: Tx0 and Mix To (they need the
+coordinator's pools), Statistics (whirlpoolstats.xyz), Logs and Settings → Server (they show this machine's real state). Take those by hand on a test wallet at 1280x800.
+Look at every picture before committing it: a screen that changed may need a step in the test changed too.
+
 ## 3. Runtime Layout & Debugging
 
 **Home directory:** `~/.ashigaru` (Linux/macOS), `%APPDATA%\Ashigaru` (Windows), overridable
