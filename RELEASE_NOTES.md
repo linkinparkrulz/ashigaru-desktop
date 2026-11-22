@@ -117,6 +117,15 @@ misunderstand, and the interface typeface changes across the whole app.
   payment code, so a block that would not verify is never handed out. A message that contains `-----BEGIN` or
   `-----END` signature markers is refused, as it would break the block.
 
+## Security
+
+- **The packages are built with the patched Java runtime.** Every Ashigaru package bundles the Java runtime it was built with,
+  and builds used Temurin 21.0.7. Oracle's November 2026 Java 21 vulnerability (CVE-2026-114938, a memory-corruption flaw in the
+  Java compiler, rated 8.1 out of 10) is addressed by the out-of-cycle Temurin 21.0.13.1 (released the day the advisory appeared; its own notes say only that it is an official
+  release, so confirm the fix against Adoptium's and Oracle's notes). The build now uses the newest released Temurin 21 and stops
+  unless it is 21.0.13.1 or newer. Ashigaru has no listening server, so an attack would need a hostile or intercepted server to reach it,
+  but builds made before this carry the old runtime, so update when a build with this note is available.
+
 ## Tester fixes
 
 - **A wrong wallet password says so in plain words.** Starting a swap, viewing the seed and pairing with Sentinel used to

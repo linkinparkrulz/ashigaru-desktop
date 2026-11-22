@@ -18,11 +18,17 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: Set up JDK 21.0.7
+      - name: Set up JDK 21 (21.0.13.1 or newer)
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: temurin
-          java-version: 21.0.7
+          # The newest released Temurin 21; the next step stops the build if it is older than 21.0.13.1 (Java 21 security fix)
+          java-version: 21
+          check-latest: true
+
+      - name: Require the patched Java runtime
+        shell: bash
+        run: bash .github/scripts/require-java.sh 21.0.13.1
 
       # WhirlpoolServicesTest starts the JavaFX platform, which needs a display
       - name: Install virtual display
