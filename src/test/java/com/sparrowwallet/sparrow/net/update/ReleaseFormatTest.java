@@ -107,4 +107,44 @@ class ReleaseFormatTest {
         //The release job takes only the release artifacts, so the raw engine artifacts do not collide as assets
         assertTrue(workflow.contains("pattern: release-*"));
     }
+
+    @Test
+    void theReleaseOnlyBuildsTheEngineWithLockedDependencies() throws IOException {
+        String release = text(".github/workflows/release.yaml");
+        String engine = text(".github/workflows/swap-engine.yaml");
+        String fetch = text("swap-engine/fetch.sh");
+        assertTrue(release.contains("require_lock: true"));
+        assertTrue(engine.contains("require_lock:") && engine.contains("Cargo.lock.overlay"));
+        assertTrue(engine.contains("steps.lock.outputs.flag"), "the test and build commands carry --locked when the overlay is there");
+        assertTrue(engine.contains("name: swap-engine-cargo-lock"), "the resolved lock is kept for review");
+        assertTrue(fetch.contains("Cargo.lock.overlay"), "fetch.sh puts the overlay in place");
+    }
+
+    @Test
+    void everyActionInEveryWorkflowIsPinnedToACommit() throws IOException {
+        try(var files = Files.list(Path.of(".github/workflows"))) {
+            for(Path file : files.filter(f -> f.toString().endsWith(".yaml")).toList()) {
+                for(String line : Files.readAllLines(file)) {
+                    String trimmed = line.trim().replaceFirst("^- ", "");
+                    if(trimmed.startsWith("uses: ") && !trimmed.startsWith("uses: ./")) {
+                        assertTrue(trimmed.matches("uses: [\\w./-]+@[0-9a-f]{40}( #.*)?"), file.getFileName() + ": " + trimmed + " is not pinned to a commit");
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void theReleaseEngineBuildDoesNotUseCaches() throws IOException {
+        String engine = text(".github/workflows/swap-engine.yaml");
+        //Each step that restores or saves a cache is skipped when the build is a release (require_lock), so a cache cannot change what a release contains
+        int caches = 0;
+        for(String step : engine.split("\n      - name: ")) {
+            if(step.contains("uses: actions/cache")) {
+                caches++;
+                assertTrue(step.contains("!inputs.require_lock"), "this cache step is used in releases: " + step.split("\n")[0]);
+            }
+        }
+        assertEquals(3, caches);
+    }
 }

@@ -71,3 +71,16 @@ diff -r squashfs-root/usr build/jpackage/Ashigaru && echo "Reproduced"
   `-PappImageToolSha256=...` (recorded per release) so the tool itself is verified.
 - If a build does not reproduce, double-check the JDK build number first — it is the most common
   source of drift.
+
+## The swap engine in a release
+
+A release builds the swap engine itself (`release.yaml` calls `swap-engine.yaml`), bundles it into every package, and publishes the four platforms' library files as release assets named
+`swap-engine-<target>-<file>`, so they carry the checksum manifest and the build attestation like the packages do.
+
+What is fixed, and what is not:
+
+- **Actions** in every workflow are pinned to commits, and a test fails if one is not. The engine build uses no cache in a release.
+- **Dependencies of the engine** are fixed by `swap-engine/Cargo.lock.overlay` (built `--locked`). A release **refuses to build until that file is committed**: run the Swap engine workflow, take its
+  `swap-engine-cargo-lock` artifact, review it, and commit it under that name. The same run's summary lists `cargo audit` results; raise the vulnerable versions in the overlay until it is clean.
+- **Not done**: a pinned build container with path remapping (so builds reproduce byte for byte across machines), pinned apt/brew package versions, and failing the build on `cargo audit` findings. The runner images
+  are version-named (`ubuntu-22.04`, `macos-15`, `macos-15-intel`, `windows-2022`) but still receive their own updates. The JDK is held to 21.0.13.1 or newer by `require-java.sh`, not to one exact build.

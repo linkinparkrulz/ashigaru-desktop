@@ -132,6 +132,9 @@ misunderstand, and the interface typeface changes across the whole app.
   A Tor restart in the middle of setting up a swap no longer restarts the engine under it. When swaps are off or the engine is down while a swap is unfinished, the Swaps light turns red and says how many. The XMR price is fetched with a client built from
   the Tor proxy that was checked. A native swap engine library can only be chosen from how Ashigaru is started (`-Dashigaru.swap.engine` or `ASHIGARU_SWAP_ENGINE`), not from the config file. Tools → Sign refuses a message that contains an `auth47://` login challenge.
   The Rust engine's configuration and swap request no longer print their seed or addresses in Debug output.
+- **Releases build and attest the swap engine.** The release workflow now builds the engine for all four platforms, bundles it into every package and lists the library files as release assets
+  with the checksums and build attestation; it used to ship packages without it. Every action in every workflow is pinned to a commit, the engine build uses no caches in a release, and the macOS DMG check now fails
+  when it finds no DMG instead of passing. A release will not build until `swap-engine/Cargo.lock.overlay` (the reviewed, locked Rust dependencies) is committed; see `docs/ReproducibleBuilds.md`.
 - **Pair with Sentinel clears the clipboard.** Words or pairing text copied from the window are removed from the clipboard after a minute, if the clipboard still holds them.
   **View seed words** wipes its decrypted copy when the window closes.
 

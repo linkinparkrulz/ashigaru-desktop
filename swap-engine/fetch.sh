@@ -27,6 +27,12 @@ for patch in "$here"/patches/*.patch; do
   git -C "$dest" apply --whitespace=nowarn "$patch"
 done
 
+# The dependency lock for the whole workspace, resolved once and reviewed, when one is committed: the build then uses it as it is (--locked)
+if [ -f "$here/Cargo.lock.overlay" ]; then
+  cp "$here/Cargo.lock.overlay" "$dest/Cargo.lock"
+  echo "Using swap-engine/Cargo.lock.overlay"
+fi
+
 cp -R "$here/ashigaru-swap" "$dest/ashigaru-swap"
 # Add the crate as a workspace member, right after the opening of the members list
 sed -i.bak 's/^members = \[/members = [\n  "ashigaru-swap",/' "$dest/Cargo.toml"

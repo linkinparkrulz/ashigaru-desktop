@@ -7,6 +7,11 @@ name: Swap engine
 # Called by the Swap build workflow, which packages Ashigaru with the library inside
 on:
   workflow_call:
+    inputs:
+      require_lock:
+        description: Fail unless swap-engine/Cargo.lock.overlay is committed, so every dependency is fixed (the release sets this)
+        type: boolean
+        default: false
   workflow_dispatch:
 
 permissions:
@@ -48,13 +53,34 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # The dependencies are fixed by swap-engine/Cargo.lock.overlay, which fetch.sh puts over eigenwallet's own Cargo.lock; with it the build is
+      # --locked, so no dependency can change between a review and a release. Without it the build still works, from eigenwallet's lock plus
+      # whatever ashigaru-swap adds, and says so; a release does not accept that.
+      - name: Require the dependency lock (releases)
+        if: ${{ inputs.require_lock }}
+        run: |
+          if [ ! -f swap-engine/Cargo.lock.overlay ]; then
+            echo "::error::swap-engine/Cargo.lock.overlay is not committed. A release must build with locked dependencies. Run the Swap engine workflow, download its swap-engine-cargo-lock artifact, review it, and commit it as swap-engine/Cargo.lock.overlay."
+            exit 1
+          fi
 
       - name: Fetch eigenwallet and apply patches
         run: swap-engine/fetch.sh
 
+      - name: Decide whether the build is locked
+        id: lock
+        run: |
+          if [ -f swap-engine/Cargo.lock.overlay ]; then
+            echo "flag=--locked" >> "$GITHUB_OUTPUT"
+          else
+            echo "flag=" >> "$GITHUB_OUTPUT"
+            echo "::warning::swap-engine/Cargo.lock.overlay is not committed: this build resolves ashigaru-swap's dependencies afresh. Commit the swap-engine-cargo-lock artifact as that file."
+          fi
+
       - name: Install Rust 1.92
-        uses: dtolnay/rust-toolchain@1.92
+        uses: dtolnay/rust-toolchain@3334128f4a3bea6d0d6718ee50ff473f7f275e31 # 1.92
         with:
           targets: ${{ matrix.target }}
 
@@ -80,9 +106,9 @@ jobs:
       # keys fetched from keyservers. Any of those failing to answer failed the whole build, so the
       # built toolchain is kept and only rebuilt when the eigenwallet revision (and its script) changes.
       - name: Restore MinGW gcc (Windows cross-build)
-        if: contains(matrix.target, 'windows')
+        if: ${{ !inputs.require_lock && (contains(matrix.target, 'windows')) }}
         id: mingw
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/opt/gcc-mingw-14.3
           key: mingw-gcc-14.3-${{ runner.os }}-${{ hashFiles('swap-engine/EIGENWALLET_REV') }}
@@ -94,8 +120,8 @@ jobs:
 
       # Saved here rather than at the end of the job, so a later step failing does not lose it
       - name: Keep MinGW gcc (Windows cross-build)
-        if: contains(matrix.target, 'windows') && steps.mingw.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        if: ${{ !inputs.require_lock && (contains(matrix.target, 'windows') && steps.mingw.outputs.cache-hit != 'true') }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/opt/gcc-mingw-14.3
           key: ${{ steps.mingw.outputs.cache-primary-key }}
@@ -124,7 +150,8 @@ jobs:
           echo "CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-g++" >> "$GITHUB_ENV"
 
       - name: Cache cargo and the Monero build
-        uses: actions/cache@v4
+        if: ${{ !inputs.require_lock }}
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ~/.cargo/registry
@@ -136,13 +163,13 @@ jobs:
       - name: Test ashigaru-swap
         if: matrix.test
         working-directory: swap-engine/build/eigenwallet
-        run: cargo test -p ashigaru-swap --target ${{ matrix.target }} --release
+        run: cargo test -p ashigaru-swap --target ${{ matrix.target }} --release ${{ steps.lock.outputs.flag }}
 
       - name: Build ashigaru-swap
         working-directory: swap-engine/build/eigenwallet
         run: |
           start=$(date +%s)
-          cargo build -p ashigaru-swap --lib --target ${{ matrix.target }} --release
+          cargo build -p ashigaru-swap --lib --target ${{ matrix.target }} --release ${{ steps.lock.outputs.flag }}
           lib="target/${{ matrix.target }}/release/${{ matrix.lib }}"
           size=$(wc -c < "$lib")
           echo "### ${{ matrix.target }}" >> "$GITHUB_STEP_SUMMARY"
@@ -198,8 +225,30 @@ jobs:
           ls -l out
 
       - name: Upload library
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: swap-engine-${{ matrix.target }}
           path: out/*
+          if-no-files-found: error
+
+      # Known vulnerabilities in the dependencies this library is built from. Informational for now: it lists what is open, in the run summary, so the
+      # versions can be raised (in the overlay) until it is clean, and then it can be made to fail the build.
+      - name: Audit the dependencies
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
+        continue-on-error: true
+        working-directory: swap-engine/build/eigenwallet
+        run: |
+          cargo install cargo-audit --locked
+          {
+            echo "### cargo audit"
+            cargo audit 2>&1 | tail -n 60
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # What the build resolved, to be reviewed and committed as swap-engine/Cargo.lock.overlay
+      - name: Upload the resolved dependency lock
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: swap-engine-cargo-lock
+          path: swap-engine/build/eigenwallet/Cargo.lock
           if-no-files-found: error
