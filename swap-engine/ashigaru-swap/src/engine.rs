@@ -54,8 +54,9 @@ pub struct EngineConfig {
     /// Ashigaru's Tor SOCKS5 proxy. Required: there is no direct-connection mode.
     pub socks_host: String,
     pub socks_port: u16,
-    /// 32-byte engine identity, hex. Ashigaru picks it at random and keeps it beside the swap
-    /// database; a swap's own keys are random too and live in that database, not in any seed.
+    /// 32-byte engine identity, hex. Ashigaru picks it at random and keeps a copy in the swap
+    /// data directory. Each swap's secret keys are derived from it (and the swap id), so an unfinished
+    /// swap cannot complete or be refunded without the seed it started with.
     pub seed_hex: String,
     /// Rendezvous points to discover makers through. Empty uses eigenwallet's defaults.
     #[serde(default)]
