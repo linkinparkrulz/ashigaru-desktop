@@ -26,7 +26,7 @@ public final class SwapProgress {
                 "Next, the lock confirms on the Bitcoin chain.", Duration.ofMinutes(5)),
         LOCK_CONFIRM("Your BTC lock is confirming", "Waiting for the lock transaction to confirm.",
                 "Once it does, the maker locks the XMR.", Duration.ofMinutes(60)),
-        MAKER_LOCK("Waiting for the maker's XMR", "The maker is locking the XMR; checking it pays the agreed amount.",
+        MAKER_LOCK("Waiting for the maker's XMR", "Your BTC lock is confirmed. The maker locks its XMR once it has seen the lock, and Ashigaru checks it pays the agreed amount.",
                 "If the maker never locks, Ashigaru cancels the swap and refunds your BTC " + SwapCopy.cancelAfter() + " after your lock confirms.", Duration.ofMinutes(30)),
         MAKER_CONFIRM("The maker's XMR is confirming", "Every Monero node must see the maker's lock fully confirmed.",
                 "Then Ashigaru releases its side so the maker can take the BTC.", Duration.ofMinutes(40)),
@@ -121,12 +121,14 @@ public final class SwapProgress {
             case "ReceivedQuote", "SwapSetupInflight", "RetrievingMoneroBlockheight" -> step = Step.TERMS;
             case "BtcLockPublishInflight" -> step = Step.LOCK_PUBLISH;
             case "BtcLockTxInMempool" -> {
-                step = Step.LOCK_CONFIRM;
+                //The engine repeats this event on every new confirmation until the maker's XMR lock arrives, so once the lock is
+                //confirmed the wait is on the maker, however many confirmations it has by then
+                step = lockConfirmed(content) ? Step.MAKER_LOCK : Step.LOCK_CONFIRM;
                 detail = confirmations(content, "btc_lock_confirmations", null) + " · " + txid(content, "btc_lock_txid");
             }
             case "VerifyingXmrLockTx" -> {
                 step = Step.MAKER_LOCK;
-                detail = "Maker's lock " + txid(content, "xmr_lock_txid") + " seen, checking it on every node";
+                detail = MAKER_LOCK_DETAIL + txid(content, "xmr_lock_txid") + " seen, checking it on every node";
             }
             case "XmrLockTxInMempool", "WaitingForXmrConfirmationsBeforeRedeem" -> {
                 step = type.equals("XmrLockTxInMempool") ? Step.MAKER_CONFIRM : Step.CLAIM;
@@ -273,6 +275,17 @@ public final class SwapProgress {
             return payload.getAsJsonObject("event");
         }
         return payload;
+    }
+
+    /** Confirmations the maker needs to see on our BTC lock before it locks its XMR (eigenwallet's mainnet bitcoin_finality_confirmations) */
+    static final int LOCK_FINAL_CONFIRMATIONS = 1;
+
+    /** Start of the detail of the maker's own XMR lock, as opposed to the detail of our BTC lock while the maker is awaited */
+    static final String MAKER_LOCK_DETAIL = "Maker's lock ";
+
+    private static boolean lockConfirmed(JsonObject content) {
+        JsonElement value = content.get("btc_lock_confirmations");
+        return value != null && value.isJsonPrimitive() && value.getAsLong() >= LOCK_FINAL_CONFIRMATIONS;
     }
 
     private static String confirmations(JsonObject content, String field, String targetField) {

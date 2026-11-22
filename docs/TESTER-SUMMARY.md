@@ -28,6 +28,8 @@ Start with a small coin. Report the maker you used and what the screen said.
 - [ ] Nothing is locked until you press Approve on the final review, in every case above.
 - [ ] A maker that refuses is left out of the offers for that coin and the stopped swap says why.
 - [ ] Swaps say which Monero nodes they use. With your own node ticked, only it is used (the status says so).
+- [ ] The swap screen moves from "Your BTC lock is confirming" to "Waiting for the maker's XMR" as soon as the lock has 1
+      confirmation (it used to stay on "confirming" however many confirmations the lock had). It says "Waiting on the maker".
 - [ ] The Monero node settings are greyed out while swaps are on, like the Bitcoin server. "Edit nodes" turns
       swaps off so you can change them (unless a swap is running).
 

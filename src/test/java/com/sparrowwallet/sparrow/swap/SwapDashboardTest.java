@@ -76,6 +76,20 @@ class SwapDashboardTest {
     }
 
     @Test
+    void aConfirmedLockWaitsOnTheMakerAndSaysSo() {
+        SwapDashboard d = of(at(Step.MAKER_LOCK, "4 confirmations · 9c1f4a2e…77e0a1b3"), before(26), true, TERMS);
+        assertEquals(2, d.milestones().current(), "the BTC lock stage is done");
+        assertEquals("Waiting for the maker's XMR", d.now().title());
+        assertEquals("the maker", d.now().waitingOn());
+        assertEquals("Your BTC lock", d.now().facts().get(0).label());
+        assertEquals("4 confirmations", d.now().facts().get(0).value());
+        assertEquals("Transaction", d.now().facts().get(1).label());
+
+        SwapDashboard theirs = of(at(Step.MAKER_LOCK, "Maker's lock 1234abcd seen, checking it on every node"), before(26), true, TERMS);
+        assertEquals("Maker’s XMR lock", theirs.now().facts().get(0).label());
+    }
+
+    @Test
     void withoutTimelockDataRecoveryIsStatedPlainly() {
         SwapDashboard d = of(at(Step.LOCK_CONFIRM, null), null, true, null);
         assertTrue(d.summary().recoveryText().startsWith("Cancellation opens about 5 hours after your lock confirms."));

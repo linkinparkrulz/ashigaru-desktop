@@ -55,6 +55,33 @@ class SwapProgressTest {
     }
 
     @Test
+    void onceTheLockIsConfirmedTheWaitIsOnTheMaker() {
+        String txid = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+        for(String confirmations : new String[] {"null", "0"}) {
+            SwapProgress.Status waiting = SwapProgress.read(event("BtcLockTxInMempool", "{\"btc_lock_txid\":\"" + txid + "\",\"btc_lock_confirmations\":" + confirmations + "}"), null, T0);
+            assertEquals(SwapProgress.Step.LOCK_CONFIRM, waiting.step(), confirmations);
+        }
+        SwapProgress.Status first = SwapProgress.read(event("BtcLockTxInMempool", "{\"btc_lock_txid\":\"" + txid + "\",\"btc_lock_confirmations\":1}"), null, T0);
+        assertEquals(SwapProgress.Step.MAKER_LOCK, first.step());
+        assertTrue(first.detail().startsWith("1 confirmation ·"));
+
+        //The engine repeats the event with each new confirmation: the step and its start stay, the count follows
+        SwapProgress.Status fourth = SwapProgress.read(event("BtcLockTxInMempool", "{\"btc_lock_txid\":\"" + txid + "\",\"btc_lock_confirmations\":4}"), first, T0.plusSeconds(1800));
+        assertEquals(SwapProgress.Step.MAKER_LOCK, fourth.step());
+        assertEquals(T0, fourth.since());
+        assertTrue(fourth.detail().startsWith("4 confirmations ·"));
+
+        //A reorg that drops the lock back to the mempool returns the screen to confirming
+        SwapProgress.Status dropped = SwapProgress.read(event("BtcLockTxInMempool", "{\"btc_lock_txid\":\"" + txid + "\",\"btc_lock_confirmations\":0}"), fourth, T0.plusSeconds(2400));
+        assertEquals(SwapProgress.Step.LOCK_CONFIRM, dropped.step());
+
+        //The maker's own lock then replaces the detail
+        SwapProgress.Status seen = SwapProgress.read(event("VerifyingXmrLockTx", "{\"xmr_lock_txid\":\"" + txid + "\"}"), fourth, T0.plusSeconds(2000));
+        assertEquals(SwapProgress.Step.MAKER_LOCK, seen.step());
+        assertTrue(seen.detail().startsWith(SwapProgress.MAKER_LOCK_DETAIL));
+    }
+
+    @Test
     void endsAreFinished() {
         SwapProgress.Status done = SwapProgress.read(event("XmrRedeemed", "{\"xmr_redeem_txids\":[\"cafe\"],\"xmr_receive_pool\":[]}"), null, T0);
         assertEquals(SwapProgress.Step.DONE, done.step());

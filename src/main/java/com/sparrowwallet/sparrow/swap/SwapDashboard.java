@@ -401,7 +401,11 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
             case LOCK_CONFIRM -> parts.length == 2
                     ? List.of(new Fact("Bitcoin lock transaction", parts[0]), new Fact("Transaction", parts[1]))
                     : List.of(new Fact("Bitcoin lock transaction", parts[0]));
-            case MAKER_LOCK -> List.of(new Fact("Maker’s XMR lock", detail));
+            case MAKER_LOCK -> detail.startsWith(SwapProgress.MAKER_LOCK_DETAIL)
+                    ? List.of(new Fact("Maker’s XMR lock", detail))
+                    : parts.length == 2
+                            ? List.of(new Fact("Your BTC lock", parts[0]), new Fact("Transaction", parts[1]))
+                            : List.of(new Fact("Your BTC lock", parts[0]));
             case MAKER_CONFIRM -> List.of(new Fact("Maker’s XMR lock (their transaction)", detail));
             case CLAIM -> List.of(new Fact("XMR transaction", detail));
             default -> List.of(new Fact("Detail", detail));
@@ -413,7 +417,8 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
             case NODES -> "the Monero nodes, through Tor";
             case TERMS -> "the maker, over Tor";
             case LOCK_PUBLISH, LOCK_CONFIRM -> "the Bitcoin network";
-            case MAKER_LOCK, MAKER_CONFIRM, CLAIM -> "the Monero network";
+            case MAKER_LOCK -> "the maker";
+            case MAKER_CONFIRM, CLAIM -> "the Monero network";
             case RELEASE -> "the maker";
             default -> "the network";
         };

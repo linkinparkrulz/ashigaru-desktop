@@ -321,7 +321,8 @@ class SwapScreenshotsTest {
     void dashboardShowsEachStateAndOffersOneAction() throws Exception {
         record Case(String name, com.sparrowwallet.sparrow.swap.SwapDashboard dashboard, SwapDashboardPane.Connections connections) {}
         List<Case> cases = List.of(
-                new Case("dash-1-lock-confirming", dashboard(at(com.sparrowwallet.sparrow.swap.SwapProgress.Step.LOCK_CONFIRM, "1 confirmation · 9c1f4a2e…77e0a1b3"), before(13), true), HEALTHY),
+                new Case("dash-1-lock-confirming", dashboard(at(com.sparrowwallet.sparrow.swap.SwapProgress.Step.LOCK_CONFIRM, "0 confirmations · 9c1f4a2e…77e0a1b3"), before(30), true), HEALTHY),
+                new Case("dash-1b-lock-confirmed-waiting-maker", dashboard(at(com.sparrowwallet.sparrow.swap.SwapProgress.Step.MAKER_LOCK, "4 confirmations · 9c1f4a2e…77e0a1b3"), before(26), true), HEALTHY),
                 new Case("dash-2-maker-confirming", dashboard(at(com.sparrowwallet.sparrow.swap.SwapProgress.Step.MAKER_CONFIRM, "6 of 10 confirmations"), before(9), true),
                         new SwapDashboardPane.Connections(List.of("Tor", "Bitcoin server"), List.of("The swap engine is off, so the swap is paused. Turn swaps on in Settings → Swaps."))),
                 new Case("dash-3-recovery-automatic", dashboard(at(com.sparrowwallet.sparrow.swap.SwapProgress.Step.REFUND_WAIT, null), open(120), true), HEALTHY),
