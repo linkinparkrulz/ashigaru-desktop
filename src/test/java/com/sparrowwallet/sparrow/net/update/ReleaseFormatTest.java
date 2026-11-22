@@ -88,4 +88,23 @@ class ReleaseFormatTest {
             assertTrue(format.contains(needle), needle);
         }
     }
+
+    @Test
+    void theReleaseBuildsBundlesAndAttestsTheSwapEngine() throws IOException {
+        String workflow = text(".github/workflows/release.yaml");
+        //The engine is built by the release itself, and the packages wait for it
+        assertTrue(workflow.contains("uses: ./.github/workflows/swap-engine.yaml"));
+        assertTrue(workflow.matches("(?s).*build:\\s+needs: engine.*"), "the packages need the engine");
+        for(String target : new String[] {"x86_64-pc-windows-gnu", "x86_64-unknown-linux-gnu", "aarch64-apple-darwin", "x86_64-apple-darwin"}) {
+            assertTrue(workflow.contains("target: " + target), target);
+            assertTrue(workflow.contains("swap-engine-") , "engine artifacts are named by target");
+        }
+        //It is bundled where the app looks, checked inside the app, and its files are release assets like the packages
+        assertTrue(workflow.contains("src/main/resources/${{ matrix.prefix }}"));
+        assertTrue(workflow.contains("Check the engine is in the app"));
+        assertTrue(workflow.contains("engine-assets/*"));
+        assertTrue(workflow.contains("swap-engine-${{ matrix.target }}-"), "named by platform, since both Mac libraries share a file name");
+        //The release job takes only the release artifacts, so the raw engine artifacts do not collide as assets
+        assertTrue(workflow.contains("pattern: release-*"));
+    }
 }

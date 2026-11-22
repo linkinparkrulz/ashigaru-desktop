@@ -11,19 +11,38 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # The swap engine is built here, in the release, from the pinned eigenwallet revision and Ashigaru's patches, and bundled into every package
+  # below. If it does not build for a platform the release stops: a release must not ship without it, or with an engine from somewhere else.
+  engine:
+    uses: ./.github/workflows/swap-engine.yaml
+
   build:
+    needs: engine
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
+          # target, prefix and lib locate the swap engine: the artifact it was built as, the folder JNA looks in on the class path, and the library's file name
           - os: windows-2022
             artifact-name: Windows
+            target: x86_64-pc-windows-gnu
+            prefix: win32-x86-64
+            lib: ashigaru_swap.dll
           - os: ubuntu-22.04
             artifact-name: Linux
+            target: x86_64-unknown-linux-gnu
+            prefix: linux-x86-64
+            lib: libashigaru_swap.so
           - os: macos-latest
             artifact-name: macOS-arm64
+            target: aarch64-apple-darwin
+            prefix: darwin-aarch64
+            lib: libashigaru_swap.dylib
           - os: macos-15-intel
             artifact-name: macOS-x64
+            target: x86_64-apple-darwin
+            prefix: darwin-x86-64
+            lib: libashigaru_swap.dylib
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -39,6 +58,23 @@ jobs:
       - name: Require the patched Java runtime
         shell: bash
         run: bash .github/scripts/require-java.sh 21.0.13.1
+
+      - name: Download the swap engine
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: swap-engine-${{ matrix.target }}
+          path: engine
+
+      # JNA looks for a bundled library under <os>-<arch>/ on the class path
+      - name: Bundle the swap engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "src/main/resources/${{ matrix.prefix }}"
+          # The library, and on Windows the MinGW runtime DLLs it needs
+          cp engine/* "src/main/resources/${{ matrix.prefix }}/"
+          ls -l "src/main/resources/${{ matrix.prefix }}"
+          test -f "src/main/resources/${{ matrix.prefix }}/${{ matrix.lib }}"
 
       - name: Extract version (Windows)
         if: ${{ runner.os == 'Windows' }}
@@ -63,6 +99,24 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
         run: ./gradlew packageAppImage
 
+      - name: Check the engine is in the app
+        shell: bash
+        run: |
+          jar=$(find build/libs -name '*.jar' | head -1)
+          unzip -l "$jar" | grep "${{ matrix.prefix }}/${{ matrix.lib }}"
+
+      # The engine files are also release assets, named by platform so that no two share a name, so that they get the checksum manifest and the
+      # build attestation like the packages do, and anyone can compare the library inside a package with the one the release names.
+      - name: Collect the engine files as release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p engine-assets
+          for file in engine/*; do
+            cp "$file" "engine-assets/swap-engine-${{ matrix.target }}-$(basename "$file")"
+          done
+          ls -l engine-assets
+
       - name: Rename macOS DMG (arm64)
         if: ${{ matrix.artifact-name == 'macOS-arm64' }}
         run: mv build/jpackage/*.dmg build/jpackage/Ashigaru-${VERSION}-aarch64.dmg
@@ -82,6 +136,7 @@ jobs:
             build/jpackage/*.exe
             build/jpackage/*.dmg
             build/distributions/*.AppImage
+            engine-assets/*
 
   validate-macos:
     needs: build
@@ -117,13 +172,17 @@ jobs:
               || { echo "FAIL: codesign verify failed"; exit 1; }
             echo "  PASS"
           }
-          for dmg in artifacts/Ashigaru-*.dmg; do
-            [ -f "$dmg" ] || continue
+          # upload-artifact keeps the folders the files were in (build/jpackage/...), so look for them rather than assuming the top level,
+          # and fail if there are none: a validation that finds nothing to validate must not pass.
+          found=0
+          while IFS= read -r dmg; do
+            found=$((found + 1))
             mnt="/Volumes/AshigaruCheck-$(basename "$dmg" .dmg)"
             hdiutil attach "$dmg" -mountpoint "$mnt" -nobrowse -quiet
             validate_app "$mnt/Ashigaru.app" "$(basename "$dmg")"
             hdiutil detach "$mnt" -quiet
-          done
+          done < <(find artifacts -name 'Ashigaru-*.dmg' -type f | sort)
+          [ "$found" -ge 1 ] || { echo "FAIL: no DMG found to validate"; exit 1; }
 
   release:
     needs: [build, validate-macos]
@@ -141,6 +200,8 @@ jobs:
 
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
+          # Only the release artifacts: the engine's own artifacts (swap-engine-*) hold files with the same names for both macOS architectures
+          pattern: release-*
           path: release-assets
           merge-multiple: true
 
