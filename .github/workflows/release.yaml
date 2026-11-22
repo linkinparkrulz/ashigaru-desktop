@@ -128,9 +128,12 @@ jobs:
   release:
     needs: [build, validate-macos]
     runs-on: ubuntu-22.04
-    # Only this job creates the draft release, so only it gets write access
+    # Only this job creates the draft release, so only it gets write access. The two extra permissions are for the
+    # build attestation below: id-token lets GitHub sign it for this workflow run, attestations lets it be stored.
     permissions:
       contents: write
+      id-token: write
+      attestations: write
 
     steps:
       - name: Extract version
@@ -237,6 +240,14 @@ jobs:
           Prefer the block above: it carries the message and the signature together, so the two cannot
           be mismatched.
           EOF
+
+      # A signed record, kept by GitHub, of which workflow, commit and runner produced each release file. Anyone can check
+      # one with:  gh attestation verify <file> --repo linkinparkrulz/ashigaru-desktop
+      # It shows what built the file, not that anyone endorses it (the release signature below covers who published it).
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release-assets/**
 
       - name: Create draft GitHub release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2

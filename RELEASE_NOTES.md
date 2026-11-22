@@ -119,6 +119,11 @@ misunderstand, and the interface typeface changes across the whole app.
 
 ## Security
 
+- **Release files carry a build attestation, and the README says what each check proves.** From the next release, every file also has a
+  GitHub build attestation (`gh attestation verify <file> --repo linkinparkrulz/ashigaru-desktop`) showing which workflow and commit built it, in
+  addition to the release signature. The README now states who publishes these builds and what the signature and the attestation do and do not
+  show. The release file names and the `MESSAGE.txt` fields that other tools verify are fixed in `docs/ReleaseFormat.md` and tested.
+
 - **The packages are built with the patched Java runtime.** Every Ashigaru package bundles the Java runtime it was built with,
   and builds used Temurin 21.0.7. Oracle's November 2026 Java 21 vulnerability (CVE-2026-114938, a memory-corruption flaw in the
   Java compiler, rated 8.1 out of 10) is addressed by the out-of-cycle Temurin 21.0.13.1 (released the day the advisory appeared; its own notes say only that it is an official

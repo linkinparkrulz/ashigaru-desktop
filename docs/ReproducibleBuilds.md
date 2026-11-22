@@ -4,6 +4,10 @@ The purpose of this guide is to aid you in confirming that the official Ashigaru
 binaries can be independently reproduced — that the Ashigaru Open Source Project released binaries
 built **only** from the source code in this repository.
 
+Release builds are published by the GitHub account `linkinparkrulz` from this repository. Besides the release signature, each file carries a GitHub
+build attestation (`gh attestation verify <file> --repo linkinparkrulz/ashigaru-desktop`) that records which workflow and commit built it; a rebuild as
+described here is the stronger, independent check that the binary matches the source.
+
 Every release publishes `SHA256SUMS`, `MESSAGE.txt`, and `RELEASE-BIP47-SIGNATURE.txt` alongside
 the binaries (see **Verifying a release** in the [README](../README.md) for the signature side).
 This guide covers rebuilding a binary from source and comparing its hash.

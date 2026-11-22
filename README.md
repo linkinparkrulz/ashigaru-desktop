@@ -100,6 +100,17 @@ After a blocked launch attempt, go to **System Settings → Privacy & Security**
 
 ---
 
+### What these builds are
+
+These release builds are published by the GitHub account `linkinparkrulz`, from this repository, by the release workflow in `.github/workflows/release.yaml`. Two independent records let you check them, and it helps to know what each one does and does not tell you:
+
+| Check | What it shows | What it does not show |
+|---|---|---|
+| **Release signature** (`RELEASE-BIP47-SIGNATURE.txt`, steps 1 to 3 below) | The release message, and through it every file's checksum, was signed by whoever holds the release-signing key listed below. | That the files were built from this source, or that any other project or person vouches for them. |
+| **Build provenance** (step 4 below) | Which workflow, commit and runner produced each file, as recorded by GitHub when the release was built. | Who published it (that is the signature's job), or that the build is bit-for-bit reproducible (see [Reproducible Builds](docs/ReproducibleBuilds.md) for rebuilding it yourself). |
+
+Neither check means that anyone else endorses these builds. Both together say: this file was built by this repository's workflow at this commit, and the maintainer who holds the signing key signed that release.
+
 ### Verifying a release
 
 Every release is signed by the maintainer using the private key for the notification address derived from the Ashigaru release-signing BIP47 Payment Code. This lets users verify that the release message was signed by the owner of the payment code, without exposing private keys.
@@ -148,6 +159,16 @@ The simplest check is in Ashigaru itself — **Tools → Verifier**, use the rel
 - **Signature**: the base64 value from `RELEASE-BIP47-SIGNATURE.txt`
 
 The verifier derives the notification address from the payment code and checks the signature against it. Confirm the recovered signer is the notification address published above — that is what ties the release to the maintainer's key.
+
+**Step 4 — Verify the build provenance**
+
+Releases built from 1.5.2 onward also carry a GitHub build attestation for each file. With the [GitHub CLI](https://cli.github.com/):
+
+```bash
+gh attestation verify Ashigaru-<version>-x86_64.AppImage --repo linkinparkrulz/ashigaru-desktop
+```
+
+It must report that the file was built by the `release.yaml` workflow of `linkinparkrulz/ashigaru-desktop`, from the tag you expect (and the commit named in `MESSAGE.txt`). The release signature (steps 1 to 3) is still the check that ties a release to the maintainer's key; the attestation is the check that ties a file to the source and workflow that built it.
 
 ---
 
