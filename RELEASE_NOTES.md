@@ -95,13 +95,16 @@ misunderstand, and the interface typeface changes across the whole app.
 - **Pair with Sentinel, in the wallet's three-dot menu.** It shows a QR that Sentinel (the Dojo Bay edition) scans to
   watch this wallet, and three one-time words (from the EFF word list, as Samourai and Ashigaru phones do) that it asks
   for before it can read the QR. The QR holds the Deposit BIP44, BIP49 and BIP84 keys, Premix, Postmix and Bad Bank, and
-  the wallet fingerprint: public keys only, never a seed or private key. The BIP44 and BIP49 Deposit keys are worked out
+  the wallet fingerprint: public keys only (XPUB, YPUB and ZPUB), never a seed or private key. The BIP44 and BIP49 Deposit keys are worked out
   from the seed, so an encrypted wallet asks for its password once, and the open copy is wiped straight away; if
   the seed alone does not give the wallet's own key (a BIP39 passphrase), those two are left out rather than guessed.
   Keys the wallet does not have (a watch-only wallet, or one with no Whirlpool accounts) are left out and the window
   says which. New words and a fresh QR are made each time the window opens or you press New words, nothing is saved
   or logged, and nothing is sent anywhere. Anyone who has both the QR and the words can see the accounts' addresses and
-  balances. Also: **Copy pairing text** for Sentinel's paste box.
+  balances. The window lists the four steps (pair Sentinel with a Dojo you control or trust, tap NEW, scan the QR code or
+  paste the pairing text, type the 3 pairing words with their hyphens and tap DECRYPT) above the words, and links to
+  Sentinel on GitHub (https://github.com/tetragrammalol/sentinel-android-dojobay) for anyone who does not have it; the link
+  opens through the Leaving Tor window. Also: **Copy pairing text** for Sentinel's paste box.
 
 - **Tools has a Sign tab, the counterpart of the Verifier.** Choose an open wallet, enter a message (a challenge
   someone gave you, or a statement), and Sign Message gives you the signed block to send. It is signed as that

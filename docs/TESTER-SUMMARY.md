@@ -71,8 +71,11 @@ Start with a small coin. Report the maker you used and what the screen said.
 
 Needs Sentinel, the Dojo Bay edition, on an Android phone.
 - [ ] The wallet's "..." menu has **Pair with Sentinel...**. An encrypted wallet asks for its password first.
-- [ ] The window shows a QR and three words. In Sentinel add a wallet from an Ashigaru pairing, scan the QR, and type
-      the words: the wallet comes across with its accounts. Tell us exactly what Sentinel says if anything is "skipped".
+- [ ] The window lists four steps above the three words (pair Sentinel with a Dojo you control or trust; tap NEW; scan the
+      QR code or paste the pairing text; type the 3 pairing words with their hyphens and tap DECRYPT). Follow them: the wallet
+      comes across with its accounts. Tell us exactly what Sentinel says if anything is "skipped", and whether the steps match
+      what you see in Sentinel.
+- [ ] A link under the steps (github.com/tetragrammalol/sentinel-android-dojobay) takes you to Sentinel on GitHub, through the Leaving Tor window.
 - [ ] **New words** gives different words and a different QR; the old words no longer work.
 - [ ] A watch-only wallet shows only the keys it has and says which are not in the pairing.
 - Note: whoever has both the QR and the words can see the wallet's addresses and balances. No seed or private key is in it.

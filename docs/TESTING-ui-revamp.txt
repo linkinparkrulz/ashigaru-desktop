@@ -617,9 +617,15 @@ WHAT THE REVAMP IS FOR
   [ ] The window shows a QR, three words (like word-word-word), and
       which keys are in the pairing. A mixing wallet lists all six:
       Deposit BIP44, BIP49, BIP84, Premix, Postmix, Bad Bank.
-  [ ] In Sentinel (Dojo Bay edition), add a wallet from an Ashigaru
-      pairing, scan the QR, type the three words: the wallet is added
-      with its accounts, and nothing is "skipped" for a mixing wallet.
+  [ ] The four steps are listed ABOVE the words: 1 pair Sentinel with
+      a Dojo you control or trust, 2 tap NEW, 3 scan the QR code (or
+      COPY PAIRING TEXT and paste), 4 type the 3 pairing words with
+      their hyphens and tap DECRYPT. They match what Sentinel shows.
+  [ ] A "Don't have Sentinel?" link goes through the Leaving Tor
+      window to github.com/tetragrammalol/sentinel-android-dojobay.
+  [ ] In Sentinel (Dojo Bay edition), follow those steps: the wallet is
+      added with its accounts, and nothing is "skipped" for a mixing
+      wallet.
   [ ] "New words" changes the words and the QR; the old words no
       longer open the new QR. "Copy pairing text" and "Copy words" copy.
   [ ] A watch-only wallet imported from a zpub still opens it, with

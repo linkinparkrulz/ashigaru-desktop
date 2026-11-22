@@ -7,6 +7,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
@@ -32,13 +33,17 @@ final class SentinelPairingDialog {
 
     /** A built dialog and the pieces a test needs to reach */
     record Built(Dialog<ButtonType> dialog, Label wordsLabel, ImageView qrView, Button newWordsButton, Button copyWordsButton,
-                 Button copyPairingButton, Label includedLabel, Label missingLabel, State state) {}
+                 Button copyPairingButton, Label includedLabel, Label missingLabel, State state, Label stepsLabel, Hyperlink sentinelLink,
+                 VBox column) {}
 
-    /** New words, what they make, and its picture */
+    /** Where Sentinel (the Dojo Bay edition, for Android) comes from */
+    static final String SENTINEL_URL = "https://github.com/tetragrammalol/sentinel-android-dojobay";
+
+    /** New words, what they make, and its QR code */
     record Pairing(String words, String envelope, java.awt.image.BufferedImage qr) {}
 
     /**
-     * Makes a pairing whose QR a plain reader gets back out. The words are random, so a pairing whose picture does not read
+     * Makes a pairing whose QR a plain reader gets back out. The words are random, so a pairing whose QR code does not read
      * (see {@link QrImages#reads}) is simply replaced by one with other words; it takes a few tries at most.
      */
     static Pairing readablePairing(SentinelPairing.Slots slots, int size) {
@@ -84,7 +89,7 @@ final class SentinelPairingDialog {
         qrBox.setMinSize(QR_BOX, QR_BOX);
         qrBox.setMaxSize(QR_BOX, QR_BOX);
 
-        Label wordsHeading = new Label("Type these three words in Sentinel");
+        Label wordsHeading = new Label("Your 3 pairing words");
         wordsHeading.getStyleClass().addAll("ag-read", "faint");
         Label wordsLabel = new Label();
         wordsLabel.getStyleClass().add("sentinel-words");
@@ -100,12 +105,23 @@ final class SentinelPairingDialog {
         HBox wordButtons = new HBox(8, copyWords, newWords);
         wordButtons.setAlignment(Pos.CENTER_LEFT);
 
-        Label steps = new Label("1. In Sentinel, choose to add a wallet from an Ashigaru pairing.\n"
-                + "2. Scan the picture on the left, or paste the pairing text.\n"
-                + "3. Type the three words above when Sentinel asks for the password.");
+        Label steps = new Label("1. In Sentinel, pair the app with a Dojo you control or trust.\n"
+                + "2. Tap 'NEW'.\n"
+                + "3. Scan the QR code on the left, or press 'COPY PAIRING TEXT' and paste it into Sentinel.\n"
+                + "4. Type the 3 pairing words below (with the hyphen between each word) and tap 'DECRYPT'.");
         steps.getStyleClass().add("ag-read");
         steps.setWrapText(true);
         steps.setMinHeight(Region.USE_PREF_SIZE);
+
+        //Opens through the Leaving Tor window: the browser does not use Ashigaru's Tor connection
+        Hyperlink sentinelLink = new Hyperlink("github.com/tetragrammalol/sentinel-android-dojobay");
+        sentinelLink.setWrapText(true);
+        sentinelLink.setOnAction(event -> ExposureDialogs.openOutsideTor(SENTINEL_URL));
+        Label getSentinel = new Label("Don't have Sentinel? It is an Android app:");
+        getSentinel.getStyleClass().addAll("ag-read", "faint");
+        getSentinel.setWrapText(true);
+        getSentinel.setMinHeight(Region.USE_PREF_SIZE);
+        VBox getBox = new VBox(0, getSentinel, sentinelLink);
 
         Label included = new Label();
         included.getStyleClass().addAll("ag-read", "faint");
@@ -116,8 +132,8 @@ final class SentinelPairingDialog {
         missing.setWrapText(true);
         missing.setMinHeight(Region.USE_PREF_SIZE);
 
-        Label privacy = new Label("The picture holds this wallet's public keys, never a seed or private key. Anyone who has both the picture "
-                + "and the three words can see every address and balance of these accounts, so show it only to your own phone. "
+        Label privacy = new Label("The QR code holds this wallet's public keys (XPUB, YPUB and ZPUB), never a seed or private key. Anyone who has both the QR code "
+                + "and the 3 words can see every address and balance of these accounts, so show it only to your own phone. "
                 + "The words are new each time this window opens and are not saved.");
         privacy.getStyleClass().addAll("ag-read", "exposure-warning");
         privacy.setWrapText(true);
@@ -125,7 +141,8 @@ final class SentinelPairingDialog {
         privacy.setGraphic(Icons.of(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13));
         privacy.setGraphicTextGap(10);
 
-        VBox right = new VBox(12, wordsHeading, wordsLabel, wordButtons, steps, copyPairing, included, missing, privacy);
+        //The steps lead to the words, so they come first
+        VBox right = new VBox(12, steps, getBox, wordsHeading, wordsLabel, wordButtons, copyPairing, included, missing, privacy);
         right.setMinWidth(300);
         right.setPrefWidth(340);
         HBox.setHgrow(right, Priority.ALWAYS);
@@ -165,7 +182,7 @@ final class SentinelPairingDialog {
         WalletCreationFlow.styleWizardButtons(pane);
         pane.setPrefWidth(900);
 
-        return new Built(dlg, wordsLabel, qrView, newWords, copyWords, copyPairing, included, missing, state);
+        return new Built(dlg, wordsLabel, qrView, newWords, copyWords, copyPairing, included, missing, state, steps, sentinelLink, right);
     }
 
     private static void copy(String text) {

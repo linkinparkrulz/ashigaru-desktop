@@ -24,7 +24,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-/** QR pictures for the Ashigaru screens, made on this computer */
+/** QR codes for the Ashigaru screens, drawn on this computer */
 final class QrImages {
     private static final Logger log = LoggerFactory.getLogger(QrImages.class);
 

@@ -141,4 +141,59 @@ class SentinelPairingDialogTest {
         Dialog<ButtonType> dlg = holder.get().dialog();
         assertEquals(java.util.List.of(ButtonType.CLOSE), dlg.getDialogPane().getButtonTypes());
     }
+
+    @Test
+    void theStepsComeBeforeTheWordsAndNameTheButtonsInSentinel() throws Exception {
+        AtomicReference<SentinelPairingDialog.Built> holder = new AtomicReference<>();
+        onFx(() -> holder.set(SentinelPairingDialog.build(null, slots(true, true))));
+        SentinelPairingDialog.Built built = holder.get();
+
+        java.util.List<javafx.scene.Node> column = built.column().getChildren();
+        int steps = column.indexOf(built.stepsLabel());
+        int words = column.indexOf(built.wordsLabel());
+        assertTrue(steps >= 0 && words >= 0);
+        assertTrue(steps < words, "the numbered steps are above the pairing words");
+
+        String text = built.stepsLabel().getText();
+        String[] lines = text.split("\n");
+        assertEquals(4, lines.length);
+        assertTrue(lines[0].startsWith("1. In Sentinel, pair the app with a Dojo you control or trust"));
+        assertTrue(lines[1].equals("2. Tap 'NEW'."));
+        assertTrue(lines[2].startsWith("3. Scan the QR code on the left") && lines[2].contains("'COPY PAIRING TEXT'"));
+        assertTrue(lines[3].startsWith("4. Type the 3 pairing words") && lines[3].contains("hyphen") && lines[3].contains("'DECRYPT'"));
+    }
+
+    @Test
+    void aLinkSaysWhereToGetSentinel() throws Exception {
+        AtomicReference<SentinelPairingDialog.Built> holder = new AtomicReference<>();
+        onFx(() -> holder.set(SentinelPairingDialog.build(null, slots(true, true))));
+        SentinelPairingDialog.Built built = holder.get();
+        assertEquals("https://github.com/tetragrammalol/sentinel-android-dojobay", SentinelPairingDialog.SENTINEL_URL);
+        assertTrue(built.sentinelLink().getText().contains("tetragrammalol/sentinel-android-dojobay"));
+        assertTrue(built.column().getChildren().stream().anyMatch(node -> node instanceof javafx.scene.layout.VBox box && box.getChildren().contains(built.sentinelLink())));
+    }
+
+    @Test
+    void itSaysQrCodeNotPictureAndWhichKeys() throws Exception {
+        AtomicReference<SentinelPairingDialog.Built> holder = new AtomicReference<>();
+        onFx(() -> holder.set(SentinelPairingDialog.build(null, slots(true, true))));
+        StringBuilder all = new StringBuilder();
+        collect(holder.get().column(), all);
+        collect(holder.get().dialog().getDialogPane().getContent(), all);
+        String text = all.toString();
+        assertFalse(text.toLowerCase().contains("picture"), text);
+        assertTrue(text.contains("QR code"));
+        assertTrue(text.contains("XPUB, YPUB and ZPUB"));
+    }
+
+    private static void collect(javafx.scene.Node node, StringBuilder out) {
+        if(node instanceof javafx.scene.control.Labeled labeled && labeled.getText() != null) {
+            out.append(labeled.getText()).append('\n');
+        }
+        if(node instanceof javafx.scene.Parent parent) {
+            for(javafx.scene.Node child : parent.getChildrenUnmodifiable()) {
+                collect(child, out);
+            }
+        }
+    }
 }
