@@ -373,7 +373,6 @@ public class SwapService implements SwapHost {
             loaded.resumeAll().forEach(id -> resumed.add(id.getAsString()));
             JsonArray listed = loaded.listSwaps();
             boolean used = usedByThisIdentity(listed);
-            boolean allFinished = allFinished(listed);
             unfinished.replaceAll(notFinishedIds(listed));
             //Identity already used and nothing left to finish: makers have seen it, so take a new one. Not in a run that just recovered
             //its identity from a damaged file: whatever went wrong should be looked at before the identity is changed.
@@ -383,9 +382,10 @@ public class SwapService implements SwapHost {
                     SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
                 renewed = true;
             }
-            //Every swap of the identities left behind is finished, so their seeds are not needed any more
-            if((renewIdentity || renewed) && allFinished && resumed.isEmpty()) {
-                SwapIdentity.retireOthers(swapsDir, identity.getDataDir());
+            //Identities left behind whose swaps were read and are all finished no longer need their seeds. Decided folder by folder:
+            //a folder whose database could not be read has no entries in the list, so it is not retired.
+            if((renewIdentity || renewed) && resumed.isEmpty()) {
+                SwapIdentity.retire(swapsDir, identity.getDataDir(), finishedFolders(listed));
             }
             detailsStore = new SwapDetails.Store(identity.getDataDir());
             pastDetailsStores = SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()).stream().map(SwapDetails.Store::new).toList();
@@ -486,14 +486,31 @@ public class SwapService implements SwapHost {
         return ids;
     }
 
-    /** Whether every swap in the engine's list, of every identity, is finished */
-    static boolean allFinished(JsonArray swaps) {
-        for(JsonElement swap : swaps) {
-            if(!swap.isJsonObject() || !isComplete(swap.getAsJsonObject())) {
-                return false;
+    /**
+     * The identity folders (by name) whose swaps the engine read and found all finished. A folder counts only when at least one entry names it
+     * as its {@code dataDir} and every entry that names it is complete; a folder whose database could not be read has no entries, and an engine
+     * too old to name folders gives none, so neither is ever retired.
+     */
+    static java.util.Set<String> finishedFolders(JsonArray swaps) {
+        java.util.Map<String, Boolean> folders = new java.util.HashMap<>();
+        for(JsonElement element : swaps) {
+            if(!element.isJsonObject()) {
+                continue;
             }
+            JsonObject swap = element.getAsJsonObject();
+            if(!swap.has("dataDir") || swap.get("dataDir").isJsonNull()) {
+                continue;
+            }
+            String folder = new File(swap.get("dataDir").getAsString()).getName();
+            folders.merge(folder, isComplete(swap), Boolean::logicalAnd);
         }
-        return true;
+        java.util.Set<String> finished = new java.util.TreeSet<>();
+        folders.forEach((folder, done) -> {
+            if(done) {
+                finished.add(folder);
+            }
+        });
+        return finished;
     }
 
     /** An address as its first and last characters, enough to recognise it and not to use it */
@@ -613,6 +630,14 @@ public class SwapService implements SwapHost {
         return !swapBeingSetUp;
     }
 
+    /**
+     * Whether a swap is in its setup: from the moment it is started until the lock is signed or the keys held for it are wiped. The host stays
+     * active after that (a refusal or a stop still belongs to it), but the exchange with the maker is over and a restart only resumes the swap.
+     */
+    static boolean isSettingUp(BadbankSwapHost host) {
+        return host != null && !host.isSetupOver();
+    }
+
     /** Whether the engine, started with one server, should be restarted for the server Ashigaru uses now */
     static boolean serverChanged(String engineUrl, String currentUrl) {
         return currentUrl != null && !currentUrl.equals(engineUrl);
@@ -651,8 +676,9 @@ public class SwapService implements SwapHost {
                 return null;
             }, ignored -> {}, e -> {});
         } else if(!proxy.equals(engineProxy)) {
-            if(!restartAllowed(activeHost != null)) {
-                //Restarting now would stop the swap being set up, in the middle of the maker's exchange, so wait until it ends
+            if(!restartAllowed(isSettingUp(activeHost))) {
+                //Restarting now would stop the swap being set up, in the middle of the maker's exchange, so wait until the lock is signed or
+                //the keys are wiped. Not longer: a swap whose lock is out must not sit on a dead Tor proxy while its timelocks run.
                 appendLog("Tor restarted on " + proxy + ". The swap engine stays as it is while a swap is being set up, and follows Tor when that ends.");
                 return;
             }
@@ -722,6 +748,8 @@ public class SwapService implements SwapHost {
         }
         host.setAgreedAmounts(sats, fee);
         String refundAddress = host.getFreshAddress();
+        //A Tor move that waited for the setup is followed as soon as the setup is over, not when the whole swap ends
+        host.setSetupOverListener(() -> Platform.runLater(this::followTor));
         activeHost = host;
         //The wallet password is asked once, here: the maker wants proof of the coin during the setup, and the
         //lock is signed straight after, so the keys are held (and then wiped) until the lock is signed or the swap fails

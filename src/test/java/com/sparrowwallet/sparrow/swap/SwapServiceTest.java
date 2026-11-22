@@ -129,6 +129,8 @@ class SwapServiceTest {
     void theEngineIsNotRestartedForANewTorProxyWhileASwapIsBeingSetUp() {
         assertFalse(SwapService.restartAllowed(true));
         assertTrue(SwapService.restartAllowed(false));
+        //No host, no setup; a host's setup lasts only until its keys are wiped (checked through BadbankSwapHost.isSetupOver)
+        assertFalse(SwapService.isSettingUp(null));
     }
 
     @Test
@@ -156,12 +158,16 @@ class SwapServiceTest {
     }
 
     @Test
-    void seedsAreOnlyRetiredWhenEverySwapOfEveryIdentityIsFinished() {
-        com.google.gson.JsonArray done = com.google.gson.JsonParser.parseString("[{\"complete\":true},{\"complete\":true,\"past\":true}]").getAsJsonArray();
-        assertTrue(SwapService.allFinished(done));
-        assertTrue(SwapService.allFinished(new com.google.gson.JsonArray()));
-        assertFalse(SwapService.allFinished(com.google.gson.JsonParser.parseString("[{\"complete\":true},{\"complete\":false,\"past\":true}]").getAsJsonArray()));
-        assertFalse(SwapService.allFinished(com.google.gson.JsonParser.parseString("[{\"swapId\":\"no complete field\"}]").getAsJsonArray()));
+    void seedsAreOnlyRetiredFolderByFolderWhenTheirSwapsWereReadAndAreFinished() {
+        com.google.gson.JsonArray list = com.google.gson.JsonParser.parseString("["
+                + "{\"complete\":true,\"dataDir\":\"/s/swaps/aaaaaaaaaaaaaaaa\"},{\"complete\":true,\"past\":true,\"dataDir\":\"/s/swaps/aaaaaaaaaaaaaaaa\"},"
+                + "{\"complete\":true,\"past\":true,\"dataDir\":\"/s/swaps/bbbbbbbbbbbbbbbb\"},{\"complete\":false,\"past\":true,\"dataDir\":\"/s/swaps/bbbbbbbbbbbbbbbb\"},"
+                + "{\"past\":true,\"dataDir\":\"/s/swaps/cccccccccccccccc\"},"
+                + "{\"complete\":true,\"past\":true}]").getAsJsonArray();
+        //b has an unfinished swap, c one with no complete field, and the last entry names no folder (an older engine)
+        assertEquals(java.util.Set.of("aaaaaaaaaaaaaaaa"), SwapService.finishedFolders(list));
+        //A folder whose database could not be read has no entries, so it is never named
+        assertEquals(java.util.Set.of(), SwapService.finishedFolders(new com.google.gson.JsonArray()));
     }
 
     @Test

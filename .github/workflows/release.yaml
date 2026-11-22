@@ -116,7 +116,10 @@ jobs:
           set -euo pipefail
           mkdir -p engine-assets
           for file in engine/*; do
-            cp "$file" "engine-assets/swap-engine-${{ matrix.target }}-$(basename "$file")"
+            # Only letters, digits, dot, underscore and dash: GitHub renames other characters in asset names (libstdc++-6.dll), and the
+            # renamed asset would no longer match its line in SHA256SUMS
+            name=$(printf '%s' "swap-engine-${{ matrix.target }}-$(basename "$file")" | LC_ALL=C sed 's/[^A-Za-z0-9._-]/_/g')
+            cp "$file" "engine-assets/$name"
           done
           ls -l engine-assets
 
@@ -216,6 +219,21 @@ jobs:
           # upload-artifact roots each artifact at the least common ancestor of its path patterns,
           # so downloads arrive under distributions/ and jpackage/ rather than at the top level.
           # Release assets are flat, so record basenames - that is what a user downloads.
+          # GitHub replaces characters other than letters, digits, dot, underscore and dash in asset names, so a file named with any
+          # other is renamed here first: SHA256SUMS then lists exactly the names the release shows.
+          while IFS= read -r -d '' file; do
+            name=${file##*/}
+            safe=$(printf '%s' "$name" | LC_ALL=C sed 's/[^A-Za-z0-9._-]/_/g')
+            if [ "$safe" != "$name" ]; then
+              if [ -e "${file%/*}/$safe" ]; then
+                echo "Cannot rename $file to $safe: that name is taken" >&2
+                exit 1
+              fi
+              echo "Renaming release asset $name to $safe"
+              mv "$file" "${file%/*}/$safe"
+            fi
+          done < <(find . -type f -print0)
+
           tmp=$(mktemp)
           while IFS= read -r -d '' file; do
             name=${file##*/}

@@ -135,6 +135,11 @@ misunderstand, and the interface typeface changes across the whole app.
 - **Releases build and attest the swap engine.** The release workflow now builds the engine for all four platforms, bundles it into every package and lists the library files as release assets
   with the checksums and build attestation; it used to ship packages without it. Every action in every workflow is pinned to a commit, the engine build uses no caches in a release, and the macOS DMG check now fails
   when it finds no DMG instead of passing. A release will not build until `swap-engine/Cargo.lock.overlay` (the reviewed, locked Rust dependencies) is committed; see `docs/ReproducibleBuilds.md`.
+- **Third round: seed cleanup fails safe, Tor moves are followed once a swap is set up, release asset names.** An earlier identity's seed is now only retired when the engine read
+  that identity's own swap database and found every swap in it finished, decided folder by folder: a database that cannot be opened keeps its seed. A retired seed is moved aside
+  (`seed.retired` in the same owner-only folder) instead of deleted. The engine waits for a Tor restart only while a swap is being set up (until its lock is signed or the keys held for
+  it are wiped), not for the whole swap, so a swap whose lock is out reconnects through the new Tor instead of sitting on a dead proxy while its timelocks run. Release asset names are
+  limited to letters, digits, `.`, `_` and `-` before `SHA256SUMS` is written, so the Windows engine's `libstdc++-6.dll` keeps a matching checksum line.
 - **Pair with Sentinel clears the clipboard.** Words or pairing text copied from the window are removed from the clipboard after a minute, if the clipboard still holds them.
   **View seed words** wipes its decrypted copy when the window closes.
 

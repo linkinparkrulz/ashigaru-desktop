@@ -109,6 +109,20 @@ class ReleaseFormatTest {
     }
 
     @Test
+    void assetNamesAreLimitedToTheCharactersGitHubKeepsBeforeTheSumsAreTaken() throws IOException {
+        String workflow = text(".github/workflows/release.yaml");
+        String rule = "sed 's/[^A-Za-z0-9._-]/_/g'";
+        //The engine files are named safely when collected (libstdc++-6.dll would otherwise be renamed by GitHub and miss its checksum line)
+        int collect = workflow.indexOf("Collect the engine files as release assets");
+        assertTrue(collect >= 0 && workflow.indexOf(rule, collect) > collect);
+        //and every asset is checked again before SHA256SUMS is written
+        int sums = workflow.indexOf("- name: Generate SHA256SUMS");
+        int rename = workflow.indexOf(rule, sums);
+        assertTrue(sums >= 0 && rename > sums && rename < workflow.indexOf("sha256sum \"$file\"", sums), "renamed before the sums are taken");
+        assertEquals("swap-engine-x86_64-pc-windows-gnu-libstdc__-6.dll", "swap-engine-x86_64-pc-windows-gnu-libstdc++-6.dll".replaceAll("[^A-Za-z0-9._-]", "_"));
+    }
+
+    @Test
     void theReleaseOnlyBuildsTheEngineWithLockedDependencies() throws IOException {
         String release = text(".github/workflows/release.yaml");
         String engine = text(".github/workflows/swap-engine.yaml");

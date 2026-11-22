@@ -89,6 +89,10 @@ public class BadbankSwapHost {
     private SwapEngine.Quote quote;
     //Told why when a swap is refused here, so the stopped swap can say so
     private RefusalListener refusalListener = reason -> {};
+    //Set once keys that were held are wiped: the lock was signed, the setup failed or the keys expired. The setup's exchange with the maker
+    //is then over (a signed lock is published and watched by the engine from its database), so the engine may be restarted.
+    private volatile boolean setupOver;
+    private Runnable setupOverListener = () -> {};
 
     public BadbankSwapHost(Wallet badbank, BlockTransactionHashIndex coin, Window owner) {
         if(badbank.getStandardAccountType() != StandardAccount.WHIRLPOOL_BADBANK) {
@@ -116,6 +120,19 @@ public class BadbankSwapHost {
     /** Hears why a swap was refused at the approval, whether Ashigaru refused it or the user did */
     public interface RefusalListener {
         void refused(String reason);
+    }
+
+    /** Told, on the JavaFX thread, when the setup is over: see {@link #isSetupOver()} */
+    public void setSetupOverListener(Runnable listener) {
+        setupOverListener = listener == null ? () -> {} : listener;
+    }
+
+    /**
+     * True once the keys held for the setup have been wiped after being held: the lock is signed (and handed to the engine to publish),
+     * or the setup can no longer sign it. A restart of the engine from then on only resumes the swap from its database.
+     */
+    public boolean isSetupOver() {
+        return setupOver;
     }
 
     public void setRefusalListener(RefusalListener listener) {
@@ -370,11 +387,16 @@ public class BadbankSwapHost {
                 keysExpiry.stop();
                 keysExpiry = null;
             }
+            boolean wasHeld = signer != null;
             if(signer != null && signerIsCopy) {
                 signer.clearPrivate();
             }
             signer = null;
             signerIsCopy = false;
+            if(wasHeld && !setupOver) {
+                setupOver = true;
+                setupOverListener.run();
+            }
         };
         if(Platform.isFxApplicationThread()) {
             wipe.run();

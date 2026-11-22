@@ -28,8 +28,10 @@ import java.util.List;
  * seed copy, never "the newest one": that could put an older identity in charge of the swaps of a newer one. If that cannot be done and
  * any swap data is left that is not marked {@value #RETIRED}, starting is refused rather than taking a new identity over those swaps.
  *
- * <p>An identity whose swaps are all finished is retired: its seed is deleted (nothing needs it any more), the data stays, and a
- * {@value #RETIRED} marker tells recovery that the missing seed is intended. Every file here is readable by its owner only.
+ * <p>An identity whose swaps were all read from its database and are all finished is retired: its seed is moved aside to
+ * {@value #RETIRED_SEED} (nothing should need it, but it is never deleted), the data stays, and a {@value #RETIRED} marker tells
+ * recovery that the missing seed is intended. An identity whose database could not be read is never retired. Every file here is
+ * readable by its owner only.
  */
 public final class SwapIdentity {
     private static final Logger log = LoggerFactory.getLogger(SwapIdentity.class);
@@ -38,8 +40,10 @@ public final class SwapIdentity {
     static final String FOLDER = "identity.folder";
     /** The seed, kept in the identity's own data directory */
     static final String SEED_COPY = "seed";
-    /** Marks a directory whose swaps are all finished and whose seed was deleted on purpose */
+    /** Marks a directory whose swaps are all finished and whose seed was moved aside on purpose */
     static final String RETIRED = "retired";
+    /** Where a retired identity's seed is kept: out of recovery's way, but not deleted */
+    static final String RETIRED_SEED = "seed.retired";
     private static final String DATABASE = "sqlite";
 
     private final byte[] seed;
@@ -115,23 +119,27 @@ public final class SwapIdentity {
     }
 
     /**
-     * Retires every identity but the current one: its seed is deleted and a marker says so. Only call this when every swap
-     * of those identities is finished, since nothing can complete or refund a swap without its seed.
+     * Retires the identities named in {@code finishedFolders}, never the current one: each seed is moved aside to {@value #RETIRED_SEED}
+     * and a marker says so. Pass only folders whose swap database was read and whose swaps are all finished: a folder whose database
+     * could not be read must keep its seed, since nothing can complete or refund a swap without it. Folders not named are left alone.
      */
-    public static void retireOthers(File swapsDir, File current) {
+    public static void retire(File swapsDir, File current, java.util.Set<String> finishedFolders) {
         File[] dirs = swapsDir.listFiles(File::isDirectory);
         if(dirs == null) {
             return;
         }
         for(File dir : dirs) {
-            if(dir.equals(current)) {
+            if(dir.equals(current) || !finishedFolders.contains(dir.getName())) {
                 continue;
             }
             File copy = new File(dir, SEED_COPY);
             if(copy.exists()) {
                 try {
-                    Files.writeString(new File(dir, RETIRED).toPath(), "Every swap of this identity was finished; its seed was deleted.", StandardCharsets.UTF_8);
-                    Files.delete(copy.toPath());
+                    //The marker first: if the move then fails, the seed is still where recovery looks for it
+                    Files.writeString(new File(dir, RETIRED).toPath(), "Every swap of this identity was finished; its seed was moved to " + RETIRED_SEED + ".", StandardCharsets.UTF_8);
+                    restrictToOwner(new File(dir, RETIRED).toPath(), false);
+                    Files.move(copy.toPath(), new File(dir, RETIRED_SEED).toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                    restrictToOwner(new File(dir, RETIRED_SEED).toPath(), false);
                 } catch(IOException e) {
                     log.warn("Could not retire swap identity " + dir.getName() + ": " + e.getMessage());
                 }

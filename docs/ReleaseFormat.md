@@ -13,6 +13,9 @@ here breaks verifiers, so `ReleaseFormatTest` fails if `release.yaml` stops matc
 | `RELEASE-BIP47-SIGNATURE.txt` | a Bitcoin signed-message block over the exact bytes of `MESSAGE.txt` |
 | `RELEASE-SIGNING-INSTRUCTIONS.txt` | how the maintainer produces the signature |
 
+Asset file names use only letters, digits, `.`, `_` and `-`: the release renames any other character to `_` before `SHA256SUMS` is written (so the swap engine's
+`libstdc++-6.dll` is published as `swap-engine-x86_64-pc-windows-gnu-libstdc__-6.dll`), since GitHub would otherwise rename the asset and its checksum line would not match.
+
 Every payload file also has a GitHub build attestation (`gh attestation verify <file> --repo linkinparkrulz/ashigaru-desktop`).
 
 ## MESSAGE.txt

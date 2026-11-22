@@ -156,6 +156,8 @@ pub struct Engine {
     running: Mutex<HashMap<Uuid, JoinHandle<()>>>,
     /// Swaps recorded under earlier identities, as `list_swaps` entries
     past_swaps: Vec<Value>,
+    /// This identity's data directory, named in each of its `list_swaps` entries
+    data_dir: PathBuf,
     /// The event loop and the Tor relays, stopped with the engine
     tasks: Vec<JoinHandle<()>>,
 }
@@ -275,6 +277,7 @@ impl Engine {
             swap,
             running: Mutex::new(HashMap::new()),
             past_swaps,
+            data_dir: config.data_dir.clone(),
             tasks,
         })
     }
@@ -618,7 +621,7 @@ impl Engine {
         for (peer_id, swap_id, state) in self.db.all().await? {
             let State::Bob(bob_state) = state else { continue };
             let running = running.get(&swap_id).is_some_and(|t| !t.is_finished());
-            swaps.push(swap_entry(self.db.as_ref(), peer_id, swap_id, &bob_state, running, false).await);
+            swaps.push(swap_entry(self.db.as_ref(), peer_id, swap_id, &bob_state, running, false, &self.data_dir).await);
         }
         for past in &self.past_swaps {
             if !swaps.iter().any(|swap| swap["swapId"] == past["swapId"]) {
@@ -658,8 +661,18 @@ where
 }
 
 /// One `list_swaps` entry. `past` marks a swap recorded under an earlier identity: it can only be
-/// shown, as no engine holds its database for writing.
-async fn swap_entry(db: &(dyn Database + Send + Sync), peer_id: PeerId, swap_id: Uuid, state: &BobState, running: bool, past: bool) -> Value {
+/// shown, as no engine holds its database for writing. `dataDir` is the directory whose database
+/// the entry was read from: a directory is only known to have finished swaps when its database was
+/// read, so one that could not be read has no entries and keeps its seed.
+async fn swap_entry(
+    db: &(dyn Database + Send + Sync),
+    peer_id: PeerId,
+    swap_id: Uuid,
+    state: &BobState,
+    running: bool,
+    past: bool,
+    data_dir: &std::path::Path,
+) -> Value {
     json!({
         "swapId": swap_id,
         "peerId": peer_id.to_string(),
@@ -667,6 +680,7 @@ async fn swap_entry(db: &(dyn Database + Send + Sync), peer_id: PeerId, swap_id:
         "complete": bob::is_swap_complete(state),
         "running": running,
         "past": past,
+        "dataDir": data_dir.display().to_string(),
         "startedAt": db.get_swap_start_date(swap_id).await.ok(),
     })
 }
@@ -692,7 +706,7 @@ async fn read_past_swaps(dirs: &[PathBuf], current: &std::path::Path) -> Vec<Val
             Ok(all) => {
                 for (peer_id, swap_id, state) in all {
                     let State::Bob(bob_state) = state else { continue };
-                    swaps.push(swap_entry(db.as_ref(), peer_id, swap_id, &bob_state, false, true).await);
+                    swaps.push(swap_entry(db.as_ref(), peer_id, swap_id, &bob_state, false, true, dir).await);
                 }
             }
             Err(e) => tracing::warn!(dir = %dir.display(), "Could not read past swaps: {e:#}"),

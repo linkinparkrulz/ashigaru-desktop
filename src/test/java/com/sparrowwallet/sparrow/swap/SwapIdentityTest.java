@@ -116,14 +116,22 @@ class SwapIdentityTest {
     }
 
     @Test
-    void retiringDeletesTheSeedsOfOtherIdentitiesAndRecoveryNoLongerNeedsThem() throws Exception {
+    void retiringMovesTheSeedsOfFinishedIdentitiesAsideAndRecoveryNoLongerNeedsThem() throws Exception {
         SwapIdentity old = SwapIdentity.current(swapsDir);
         database(old);
+        SwapIdentity unread = SwapIdentity.renew(swapsDir);
+        database(unread);
         SwapIdentity current = SwapIdentity.renew(swapsDir);
         database(current);
 
-        SwapIdentity.retireOthers(swapsDir, current.getDataDir());
-        assertFalse(new File(old.getDataDir(), SwapIdentity.SEED_COPY).exists(), "the old seed is gone");
+        //Only the folders named as read and finished; the current one never, even if named
+        SwapIdentity.retire(swapsDir, current.getDataDir(), java.util.Set.of(old.getDataDir().getName(), current.getDataDir().getName()));
+        assertFalse(new File(old.getDataDir(), SwapIdentity.SEED_COPY).exists(), "the old seed is out of recovery's way");
+        assertEquals(Files.readString(new File(unread.getDataDir(), SwapIdentity.SEED_COPY).toPath()).trim(),
+                com.sparrowwallet.drongo.Utils.bytesToHex(unread.getSeed()), "a folder not confirmed finished keeps its seed");
+        assertFalse(new File(unread.getDataDir(), SwapIdentity.RETIRED).exists());
+        assertEquals(com.sparrowwallet.drongo.Utils.bytesToHex(old.getSeed()),
+                Files.readString(new File(old.getDataDir(), SwapIdentity.RETIRED_SEED).toPath()).trim(), "the retired seed is kept, not deleted");
         assertTrue(new File(old.getDataDir(), SwapIdentity.RETIRED).isFile());
         assertTrue(new File(old.getDataDir(), "sqlite").isFile(), "the history stays");
         assertTrue(new File(current.getDataDir(), SwapIdentity.SEED_COPY).isFile(), "the current identity keeps its seed");
@@ -133,6 +141,7 @@ class SwapIdentityTest {
         assertArrayEquals(current.getSeed(), SwapIdentity.current(swapsDir).getSeed());
         //Even with no marker: only retired swap data is left, so a new identity is fine
         assertTrue(new File(current.getDataDir(), "sqlite").delete());
+        assertTrue(new File(unread.getDataDir(), "sqlite").delete());
         assertTrue(new File(swapsDir, SwapIdentity.FOLDER).delete());
         Files.writeString(new File(swapsDir, "identity").toPath(), "damaged", StandardCharsets.UTF_8);
         assertEquals(32, SwapIdentity.current(swapsDir).getSeed().length);
