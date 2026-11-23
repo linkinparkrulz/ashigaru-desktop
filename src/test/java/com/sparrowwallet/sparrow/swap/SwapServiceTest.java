@@ -185,6 +185,30 @@ class SwapServiceTest {
     }
 
     @Test
+    void throughASettingsProxyOnlyOnionOrLocalHostsAreUsed() {
+        com.google.common.net.HostAndPort proxy = com.google.common.net.HostAndPort.fromParts("127.0.0.1", 9050);
+        TorRoute.Route settings = new TorRoute.Route(proxy, false);
+        TorRoute.Route own = new TorRoute.Route(proxy, true);
+        String onion = "abcdefghijklmnopqrstuvwxyz234567abcdefghijklmnopqrstuvwx.onion";
+        java.util.List<String> onionNodes = java.util.List.of(onion + ":18081");
+        assertNull(SwapService.clearnetOverSettingsProxy(settings, java.util.List.of("tcp://" + onion + ":50001"), onionNodes));
+        assertNull(SwapService.clearnetOverSettingsProxy(settings, java.util.List.of("ssl://192.168.1.20:50002"), java.util.List.of("10.0.0.5:18081")), "the user's own network");
+        assertNotNull(SwapService.clearnetOverSettingsProxy(settings, java.util.List.of("ssl://electrum.example.org:50002"), onionNodes));
+        assertNotNull(SwapService.clearnetOverSettingsProxy(settings, java.util.List.of("tcp://" + onion + ":50001"), java.util.List.of("node.example.org:18081")));
+        assertNotNull(SwapService.clearnetOverSettingsProxy(settings, java.util.List.of("tcp://8.8.8.8:50001"), onionNodes));
+        assertNull(SwapService.clearnetOverSettingsProxy(own, java.util.List.of("ssl://electrum.example.org:50002"), java.util.List.of("node.example.org:18081")),
+                "Ashigaru's own Tor reaches the clearnet through Tor");
+        assertTrue(SwapService.onionOrLocal("localhost") && SwapService.onionOrLocal("::1") && SwapService.onionOrLocal("fd00::1"));
+        assertFalse(SwapService.onionOrLocal("2001:4860::8888"));
+    }
+
+    @Test
+    void aFailedProxyRecheckDoesNotCutOffASwapBeingSetUp() {
+        assertFalse(SwapService.mayStopForProxy(true));
+        assertTrue(SwapService.mayStopForProxy(false));
+    }
+
+    @Test
     void aProxysProofOfTorExpires() {
         java.time.Instant t0 = java.time.Instant.parse("2026-11-23T00:00:00Z");
         assertTrue(TorRoute.stillProven(t0, t0.plusSeconds(60)));

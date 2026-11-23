@@ -106,6 +106,16 @@ public class SwapService implements SwapHost {
     //An engine left loaded by a restart that failed before reaching it (AD-17): not running for Ashigaru (it may be on a proxy that is gone),
     //but still there, so turning swaps off must still shut it down
     private volatile boolean engineLeftLoaded;
+    //The route the running engine was started on, and the re-check of a Settings proxy while it runs (AD-24)
+    private volatile TorRoute.Route engineRoute;
+    private javafx.animation.Timeline proxyRecheck;
+
+    /** A start refused because its route is not Tor: the proxy failed the check, or a clearnet host would go through a Settings proxy */
+    static final class NotTorException extends java.io.IOException {
+        NotTorException(String message) {
+            super(message);
+        }
+    }
     //Each swap's latest step, as reported by the engine; the swap being set up is the latest started
     private final Map<String, SwapProgress.Status> progress = new ConcurrentHashMap<>();
     //Each swap's latest timelock state, from the engine's TimelockChange events: blocks left until cancel or punish
@@ -412,8 +422,13 @@ public class SwapService implements SwapHost {
         status.set(startingStatus(renewIdentity, route));
         runInBackground(() -> {
             if(!TorRoute.isTor(route)) {
-                throw new java.io.IOException(route == null ? "Tor is not running. Swaps only connect through Tor."
+                throw new NotTorException(route == null ? "Tor is not running. Swaps only connect through Tor."
                         : "The proxy in Settings is not marked as Tor in Settings → Server, or did not answer through Tor. Swaps only connect through Tor.");
+            }
+            //Through a Settings proxy, only onion (or local) servers and nodes: a clearnet host there would rely on the proxy alone
+            String clearnet = clearnetOverSettingsProxy(route, electrumUrls, moneroNodes);
+            if(clearnet != null) {
+                throw new NotTorException(clearnet);
             }
             boolean renewed = false;
             SwapIdentity identity = renewIdentity ? SwapIdentity.renew(swapsDir) : SwapIdentity.current(swapsDir);
@@ -487,6 +502,8 @@ public class SwapService implements SwapHost {
             }
             running.set(true);
             engineStartedAt = System.currentTimeMillis();
+            engineRoute = route;
+            scheduleProxyRecheck();
             status.set("On. Using " + nodeUse + ".");
             appendLog("Swap engine running with " + nodeUse + " (ready in " + (System.currentTimeMillis() - startedAt) / 1000 + " s)");
             if(!resumed.isEmpty()) {
@@ -519,6 +536,13 @@ public class SwapService implements SwapHost {
                 //running, and the next Tor or settings change starts it again; turning swaps off still shuts it down.
                 engineProxy = previousProxy;
                 engineServerUrl = previousServerUrl;
+                if(e instanceof NotTorException) {
+                    //The route itself is not Tor (the proxy failed the check, or a clearnet host would go through it): the running engine is on
+                    //that route as well, so it is stopped, not kept, and not shown as On (AD-24)
+                    appendLog("Stopping the swap engine: " + e.getMessage());
+                    stopForProxy(e.getMessage());
+                    return;
+                }
                 if(renewIdentity) {
                     //Taking a fresh identity while idle: nothing about the engine changed (same Tor, same settings), so it is still running
                     appendLog("A fresh swap identity could not be taken; the engine keeps its current one: " + e.getMessage());
@@ -815,6 +839,103 @@ public class SwapService implements SwapHost {
     /** Whether an engine kept loaded after a failed restart is shut down now: once Tor is gone, its proxy is too */
     static boolean shutDownKeptEngine(boolean engineLeftLoaded, boolean torGone) {
         return engineLeftLoaded && torGone;
+    }
+
+    /**
+     * Why these hosts must not be reached through this route, or null. Ashigaru's own Tor reaches anything; through a Settings proxy only onion
+     * hosts (and hosts on the user's own network or computer) are allowed, so nothing on the clearnet depends on that proxy being Tor.
+     */
+    static String clearnetOverSettingsProxy(TorRoute.Route route, List<String> electrumUrls, List<String> moneroNodes) {
+        if(route == null || route.internal()) {
+            return null;
+        }
+        for(String url : electrumUrls) {
+            String host = hostOf(url.replaceFirst("^[a-z]+://", ""));
+            if(!onionOrLocal(host)) {
+                return "The Bitcoin server " + host + " is not an onion address, and the swap engine would reach it through the proxy in Settings. "
+                        + "With that proxy, swaps only use onion servers and nodes (or ones on your own network).";
+            }
+        }
+        for(String node : moneroNodes) {
+            String host = hostOf(node);
+            if(!onionOrLocal(host)) {
+                return "The Monero node " + host + " is not an onion address, and the swap engine would reach it through the proxy in Settings. "
+                        + "With that proxy, swaps only use onion servers and nodes (or ones on your own network).";
+            }
+        }
+        return null;
+    }
+
+    private static String hostOf(String hostAndPort) {
+        try {
+            return HostAndPort.fromString(hostAndPort.replaceFirst("/.*$", "")).getHost().toLowerCase(java.util.Locale.ROOT);
+        } catch(IllegalArgumentException e) {
+            return hostAndPort;
+        }
+    }
+
+    static boolean onionOrLocal(String host) {
+        if(host == null) {
+            return false;
+        }
+        if(host.endsWith(".onion") || host.equals("localhost") || host.endsWith(".local") || host.endsWith(".localhost")) {
+            return true;
+        }
+        if(!com.google.common.net.InetAddresses.isInetAddress(host)) {
+            return false;
+        }
+        java.net.InetAddress address = com.google.common.net.InetAddresses.forString(host);
+        return address.isLoopbackAddress() || address.isSiteLocalAddress() || address.isLinkLocalAddress()
+                || address instanceof java.net.Inet6Address && (address.getAddress()[0] & 0xfe) == 0xfc;
+    }
+
+    /** Every ten minutes while the engine runs on a Settings proxy, that proxy is checked again; on failure the engine stops (AD-24) */
+    private void scheduleProxyRecheck() {
+        if(proxyRecheck != null) {
+            proxyRecheck.stop();
+            proxyRecheck = null;
+        }
+        TorRoute.Route route = engineRoute;
+        if(route == null || route.internal()) {
+            return;
+        }
+        proxyRecheck = new javafx.animation.Timeline(new javafx.animation.KeyFrame(javafx.util.Duration.minutes(TorRoute.PROOF_MINUTES), event -> recheckProxy()));
+        proxyRecheck.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        proxyRecheck.play();
+    }
+
+    private void recheckProxy() {
+        TorRoute.Route route = engineRoute;
+        if(!running.get() || route == null || route.internal()) {
+            return;
+        }
+        if(!mayStopForProxy(isSettingUp(activeHost))) {
+            //A swap being set up is not cut off in the maker's exchange; the next check, after the setup, decides
+            return;
+        }
+        runInBackground(() -> TorRoute.isTor(route), stillTor -> {
+            if(stillTor || !running.get() || engineRoute != route) {
+                return;
+            }
+            appendLog("The proxy in Settings no longer answers as Tor; stopping the swap engine");
+            stopForProxy("Stopped: the proxy in Settings is no longer marked as Tor, or no longer answers through Tor. Swaps only connect through Tor.");
+        }, e -> {});
+    }
+
+    /** Whether a failed proxy check may stop the engine now: not while a swap is being set up */
+    static boolean mayStopForProxy(boolean swapBeingSetUp) {
+        return !swapBeingSetUp;
+    }
+
+    private void stopForProxy(String reason) {
+        SwapEngine stopping = engine;
+        running.set(false);
+        engineLeftLoaded = false;
+        status.set("Could not start: " + reason);
+        runInBackground(() -> {
+            stopping.shutdown();
+            return null;
+        }, ignored -> {}, e -> {});
     }
 
     /** What the status says after a restart that failed: read by the light as a failure to start */
