@@ -148,6 +148,10 @@ misunderstand, and the interface typeface changes across the whole app.
   shuts down the running engine. Files in the swaps folder written by older versions are made owner-only on the next start, leftover temporary seed files are
   removed, and on Windows the owner-only access list is inherited by files the engine creates and no longer inherits from the parent folder.
   Every workflow job now has a timeout.
+- **Tools → Sign marks what it signs; the XMR price checks its proxy is Tor.** Every message signed with a payment code now starts with the line
+  "Ashigaru BIP47 signed message:", so a signed message can never be the PayNym directory's login token or an Auth47 challenge, which the same key signs.
+  When Ashigaru's own Tor is not running, the XMR price is only fetched through the proxy in Settings once the Tor Project's check confirms the proxy is Tor.
+  Release workflows use fixed macOS runners, a pinned `cargo-audit`, record their build package versions, and check themselves before a release is built.
 - **Pair with Sentinel clears the clipboard.** Words or pairing text copied from the window are removed from the clipboard after a minute, if the clipboard still holds them.
   **View seed words** wipes its decrypted copy when the window closes.
 
