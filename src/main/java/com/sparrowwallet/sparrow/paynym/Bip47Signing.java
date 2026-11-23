@@ -34,6 +34,9 @@ public final class Bip47Signing {
      */
     public static final String MESSAGE_PREFIX = "Ashigaru BIP47 signed message:\n";
 
+    /** The first line every Dojo directory listing must start with (DojoNodeDiscovery): Tools -> Sign never signs text that starts with it */
+    public static final String DOJO_LISTING_TAG = "Dojo node listing v1";
+
     /** What an Auth47 login challenge starts with */
     static final String AUTH47_SCHEME = "auth47://";
 
@@ -138,6 +141,12 @@ public final class Bip47Signing {
         if(upper.contains(BEGIN_MESSAGE) || upper.contains(BEGIN_SIGNATURE) || upper.contains(END_SIGNATURE)) {
             throw new IllegalArgumentException("The message contains a signed-message marker (-----BEGIN or -----END text). "
                     + "That would break the signed block, so take it out.");
+        }
+
+        //A Dojo directory listing is its own kind of signed text, made by the operator's listing tool, never here
+        if(message.stripLeading().startsWith(DOJO_LISTING_TAG)) {
+            throw new IllegalArgumentException("The message starts with \"" + DOJO_LISTING_TAG + "\", which marks a Dojo directory listing. "
+                    + "Listings are signed with the Dojo's own listing tool, so this is not signed here.");
         }
 
         //An Auth47 login is a signature of its challenge, "auth47://..." and nothing else, made with this very key. Someone who asks you to "sign a message"

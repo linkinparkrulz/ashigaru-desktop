@@ -212,4 +212,12 @@ class Bip47SigningTest {
         assertFalse(Bip47Signing.isSignMessageOrLogin("{\"pairing\":{\"url\":\"http://x.onion/pairing\"}}\n\nBIP47: PM8T"));
         assertFalse(Bip47Signing.isSignMessageOrLogin(null));
     }
+
+    @Test
+    void textThatStartsWithTheDojoListingTagIsNotSigned() throws Exception {
+        Wallet wallet = wallet();
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> Bip47Signing.sign(wallet, Bip47Signing.DOJO_LISTING_TAG + "\n{\"pairing\":{}}", true));
+        assertTrue(refused.getMessage().contains("Dojo"), refused.getMessage());
+    }
 }
