@@ -35,6 +35,13 @@ public final class XmrPrice {
         requireTor(proxy);
         HttpClientService http = new HttpClientService(proxy);
         try {
+            //Any proxy set in Settings is offered as "the Tor proxy" when Ashigaru's own Tor is not running; it may be a VPN or SSH tunnel.
+            //Only Ashigaru's own Tor is taken as Tor without asking; any other proxy must be shown to be Tor first.
+            boolean internal = AppServices.isTorRunning();
+            if(!internal && !confirmedTor.contains(proxy)) {
+                requireTorExit(isTorExit(http));
+                confirmedTor.add(proxy);
+            }
             try {
                 return fromCoinGecko(http);
             } catch(Exception e) {
@@ -43,6 +50,27 @@ public final class XmrPrice {
             return fromKraken(http);
         } finally {
             http.shutdown();
+        }
+    }
+
+    //Proxies already shown to exit through Tor in this run, so the check is made once per proxy
+    private static final java.util.Set<com.google.common.net.HostAndPort> confirmedTor = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /** Asks the Tor Project, through the client's proxy, whether the request came out of Tor. Any failure is a no. */
+    private static boolean isTorExit(HttpClientService http) {
+        try {
+            TorCheck check = http.requestJson("https://check.torproject.org/api/ip", TorCheck.class, HEADERS);
+            return check != null && check.IsTor;
+        } catch(Exception e) {
+            log.info("Could not check that the proxy is Tor: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** A configured proxy that is not shown to be Tor is refused, not trusted */
+    static void requireTorExit(boolean exitsThroughTor) {
+        if(!exitsThroughTor) {
+            throw new IllegalStateException("The XMR price is only fetched through Tor, and the proxy in Settings could not be shown to be Tor");
         }
     }
 
@@ -107,6 +135,11 @@ public final class XmrPrice {
 
     private static class CoinGeckoChart {
         public List<List<Number>> prices = new ArrayList<>();
+    }
+
+    @SuppressWarnings("unused")
+    private static class TorCheck {
+        public boolean IsTor;
     }
 
     private static class KrakenOhlc {

@@ -17,4 +17,10 @@ class XmrPriceTest {
         assertThrows(IllegalStateException.class, () -> XmrPrice.requireTor(null));
         XmrPrice.requireTor(com.google.common.net.HostAndPort.fromParts("127.0.0.1", 9050));
     }
+
+    @Test
+    void aConfiguredProxyThatIsNotShownToBeTorIsRefused() {
+        assertThrows(IllegalStateException.class, () -> XmrPrice.requireTorExit(false));
+        XmrPrice.requireTorExit(true);
+    }
 }
