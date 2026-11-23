@@ -162,7 +162,7 @@ class ReleaseFormatTest {
     void runnersAndToolsAreFixed() throws IOException {
         for(Path file : workflows()) {
             String workflow = text(file.toString());
-            assertFalse(workflow.matches("(?s).*(runs-on|os):\\s*(macos|ubuntu|windows)-latest.*"), file + ": a -latest runner changes without notice");
+            assertFalse(LATEST_RUNNER.matcher(workflow).find(), file + ": a -latest runner changes without notice");
             for(String line : workflow.split("\n")) {
                 if(line.contains("cargo install ")) {
                     assertTrue(line.contains("--version ") && line.contains("--locked"), file + ": " + line.trim() + " is not pinned");
@@ -171,9 +171,20 @@ class ReleaseFormatTest {
         }
     }
 
+    //runs-on, or a matrix's os: or host:, with the value quoted or not
+    private static final java.util.regex.Pattern LATEST_RUNNER = java.util.regex.Pattern.compile("(?m)^\\s*-?\\s*(runs-on|os|host):\\s*[\"']?(macos|ubuntu|windows)-latest[\"']?\\s*(#.*)?$");
+
+    @Test
+    void theLatestRunnerCheckSeesEveryWayOfWritingIt() {
+        for(String line : new String[] {"    runs-on: macos-latest", "          - os: 'ubuntu-latest'", "            host: \"windows-latest\"", "      - host: macos-latest # arm"}) {
+            assertTrue(LATEST_RUNNER.matcher(line).find(), line);
+        }
+        assertFalse(LATEST_RUNNER.matcher("    runs-on: macos-15").find());
+    }
+
     @Test
     void theReleaseRunsTheseChecks() throws IOException {
-        assertTrue(text(".github/workflows/release.yaml").contains("--tests 'com.sparrowwallet.sparrow.net.update.ReleaseFormatTest'"));
+        assertTrue(text(".github/workflows/release.yaml").contains("./gradlew :test --tests 'com.sparrowwallet.sparrow.net.update.ReleaseFormatTest'"));
     }
 
     /** Every workflow file, .yaml and .yml, and at least one: a check that scanned nothing would pass for nothing */

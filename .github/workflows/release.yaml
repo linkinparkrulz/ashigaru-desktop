@@ -93,7 +93,8 @@ jobs:
       # The checks on the workflows themselves (pinned actions, timeouts, asset names, the release format), run by the release that relies on them
       - name: Check the release workflows
         if: ${{ runner.os == 'Linux' }}
-        run: ./gradlew test --tests 'com.sparrowwallet.sparrow.net.update.ReleaseFormatTest'
+        # :test, the app's own: a bare "test" also runs drongo's, which fails with "No tests found" for this filter
+        run: ./gradlew :test --tests 'com.sparrowwallet.sparrow.net.update.ReleaseFormatTest'
 
       - name: Build installer (Windows)
         if: ${{ runner.os == 'Windows' }}
