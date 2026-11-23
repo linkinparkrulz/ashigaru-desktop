@@ -351,10 +351,6 @@ public class SwapService implements SwapHost {
     }
 
     /**
-     * Starts (or replaces) the engine. With {@code renewIdentity}, a fresh identity is used: after a
-     * swap finished, or at start when the last identity's swaps are all finished.
-     */
-    /**
      * Replaces the running engine (Tor moved, the server or nodes changed). Whether an engine was running is taken here, before it is marked
      * stopped, so that a start that fails before reaching the engine knows there is one to keep.
      */
@@ -364,13 +360,19 @@ public class SwapService implements SwapHost {
         start(false, wasRunning);
     }
 
+    /**
+     * Starts (or replaces) the engine. With {@code renewIdentity}, a fresh identity is used: after a
+     * swap finished, or at start when the last identity's swaps are all finished.
+     */
     private void start(boolean renewIdentity) {
         start(renewIdentity, running.get());
     }
 
     /** @param engineWasRunning whether an engine was running when this start was asked for, taken before any caller marked it stopped */
     private void start(boolean renewIdentity, boolean engineWasRunning) {
-        HostAndPort torProxy = AppServices.getTorProxyIfUp();
+        //One look at Tor: the proxy, and whether it is Ashigaru's own. Any other proxy (the one in Settings) is shown to be Tor before the engine uses it.
+        TorRoute.Route route = TorRoute.current();
+        HostAndPort torProxy = route == null ? null : route.proxy();
         HostAndPort previousProxy = engineProxy;
         String previousServerUrl = engineServerUrl;
         engineProxy = torProxy;
@@ -389,8 +391,12 @@ public class SwapService implements SwapHost {
         //Set once this start hands the engine its configuration: until then the engine already loaded (if any) is untouched by this start
         java.util.concurrent.atomic.AtomicBoolean initReached = new java.util.concurrent.atomic.AtomicBoolean();
         long startedAt = System.currentTimeMillis();
-        status.set(renewIdentity ? "Taking a fresh identity for the next swap…" : "Starting through Tor…");
+        status.set(startingStatus(renewIdentity, route));
         runInBackground(() -> {
+            if(!TorRoute.isTor(route)) {
+                throw new java.io.IOException(route == null ? "Tor is not running. Swaps only connect through Tor."
+                        : "The proxy in Settings could not be shown to be Tor (the Tor Project's check, and an onion service through it). Swaps only connect through Tor.");
+            }
             boolean renewed = false;
             SwapIdentity identity = renewIdentity ? SwapIdentity.renew(swapsDir) : SwapIdentity.current(swapsDir);
             initReached.set(true);
@@ -477,6 +483,14 @@ public class SwapService implements SwapHost {
                 followTor();
             }
         });
+    }
+
+    /** What the status says while the engine starts: the proxy in Settings is not called Tor until it has been shown to be */
+    static String startingStatus(boolean renewIdentity, TorRoute.Route route) {
+        if(renewIdentity) {
+            return "Taking a fresh identity for the next swap…";
+        }
+        return route != null && !route.internal() ? "Starting through the proxy in Settings, once it is shown to be Tor…" : "Starting through Tor…";
     }
 
     /** Whether the engine's record of a swap says it is finished. A record with no such field counts as unfinished: it is not safe to assume it is over. */

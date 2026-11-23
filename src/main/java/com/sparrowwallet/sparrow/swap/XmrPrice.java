@@ -1,6 +1,5 @@
 package com.sparrowwallet.sparrow.swap;
 
-import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.net.HttpClientService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,17 +30,12 @@ public final class XmrPrice {
     public static Snapshot fetch() throws Exception {
         //A client of its own, built from the proxy that was checked and never from the shared one, whose proxy can change or go while this runs:
         //a request that cannot reach that proxy fails, and does not go out directly
-        com.google.common.net.HostAndPort proxy = AppServices.getTorProxyIfUp();
-        requireTor(proxy);
-        HttpClientService http = new HttpClientService(proxy);
+        //One look at Tor gives both the proxy and whether it is Ashigaru's own; any other proxy must be shown to be Tor (TorRoute)
+        TorRoute.Route route = TorRoute.current();
+        requireTor(route == null ? null : route.proxy());
+        requireTorExit(TorRoute.isTor(route));
+        HttpClientService http = new HttpClientService(route.proxy());
         try {
-            //Any proxy set in Settings is offered as "the Tor proxy" when Ashigaru's own Tor is not running; it may be a VPN or SSH tunnel.
-            //Only Ashigaru's own Tor is taken as Tor without asking; any other proxy must be shown to be Tor first.
-            boolean internal = AppServices.isTorRunning();
-            if(!internal && !confirmedTor.contains(proxy)) {
-                requireTorExit(isTorExit(http));
-                confirmedTor.add(proxy);
-            }
             try {
                 return fromCoinGecko(http);
             } catch(Exception e) {
@@ -50,20 +44,6 @@ public final class XmrPrice {
             return fromKraken(http);
         } finally {
             http.shutdown();
-        }
-    }
-
-    //Proxies already shown to exit through Tor in this run, so the check is made once per proxy
-    private static final java.util.Set<com.google.common.net.HostAndPort> confirmedTor = java.util.concurrent.ConcurrentHashMap.newKeySet();
-
-    /** Asks the Tor Project, through the client's proxy, whether the request came out of Tor. Any failure is a no. */
-    private static boolean isTorExit(HttpClientService http) {
-        try {
-            TorCheck check = http.requestJson("https://check.torproject.org/api/ip", TorCheck.class, HEADERS);
-            return check != null && check.IsTor;
-        } catch(Exception e) {
-            log.info("Could not check that the proxy is Tor: " + e.getMessage());
-            return false;
         }
     }
 
@@ -135,11 +115,6 @@ public final class XmrPrice {
 
     private static class CoinGeckoChart {
         public List<List<Number>> prices = new ArrayList<>();
-    }
-
-    @SuppressWarnings("unused")
-    private static class TorCheck {
-        public boolean IsTor;
     }
 
     private static class KrakenOhlc {

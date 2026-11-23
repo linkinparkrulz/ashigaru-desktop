@@ -166,6 +166,25 @@ class SwapServiceTest {
     }
 
     @Test
+    void theProxyInSettingsIsNotCalledTorUntilItIsShownToBe() {
+        com.google.common.net.HostAndPort proxy = com.google.common.net.HostAndPort.fromParts("127.0.0.1", 9050);
+        assertEquals("Starting through Tor…", SwapService.startingStatus(false, new TorRoute.Route(proxy, true)));
+        assertTrue(SwapService.startingStatus(false, new TorRoute.Route(proxy, false)).startsWith("Starting through the proxy in Settings"));
+        assertTrue(SwapLight.state(true, false, SwapService.startingStatus(false, new TorRoute.Route(proxy, false))) == SwapLight.State.STARTING);
+        //No route at all: not Tor, and no network is touched to find that out
+        assertFalse(TorRoute.isTor(null));
+        assertTrue(TorRoute.isTor(new TorRoute.Route(proxy, true)), "Ashigaru's own Tor needs no proof");
+    }
+
+    @Test
+    void aProxysProofOfTorExpires() {
+        java.time.Instant t0 = java.time.Instant.parse("2026-11-23T00:00:00Z");
+        assertTrue(TorRoute.stillProven(t0, t0.plusSeconds(60)));
+        assertFalse(TorRoute.stillProven(t0, t0.plus(java.time.Duration.ofMinutes(TorRoute.PROOF_MINUTES))));
+        assertFalse(TorRoute.stillProven(null, t0));
+    }
+
+    @Test
     void unfinishedSwapsOfEarlierIdentitiesAreCountedApart() {
         com.google.gson.JsonArray list = com.google.gson.JsonParser.parseString(
                 "[{\"complete\":false},{\"complete\":false,\"past\":true},{\"past\":true},{\"complete\":true,\"past\":true}]").getAsJsonArray();
