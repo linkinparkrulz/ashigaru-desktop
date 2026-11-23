@@ -29,6 +29,7 @@ jobs:
     # engine that is missing fails at its download.
     if: ${{ !cancelled() }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     strategy:
       #One runner's network hiccup should not cancel the other platforms
       fail-fast: false

@@ -27,6 +27,8 @@ jobs:
   build:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.host }}
+    # Monero, and on a cold run the MinGW gcc, are built from source; a hung step must not hold a runner for six hours
+    timeout-minutes: 240
     strategy:
       fail-fast: false
       matrix:

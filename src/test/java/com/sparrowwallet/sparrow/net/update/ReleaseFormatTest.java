@@ -123,6 +123,18 @@ class ReleaseFormatTest {
     }
 
     @Test
+    void everyJobThatTakesARunnerHasATimeout() throws IOException {
+        try(java.util.stream.Stream<Path> files = Files.list(Path.of(".github/workflows"))) {
+            for(Path file : files.filter(path -> path.toString().endsWith(".yaml") || path.toString().endsWith(".yml")).toList()) {
+                String workflow = text(file.toString());
+                int runners = workflow.split("\n    runs-on:", -1).length - 1;
+                int timeouts = workflow.split("\n    timeout-minutes: \\d+", -1).length - 1;
+                assertEquals(runners, timeouts, file + ": a job without timeout-minutes can hold a runner for six hours");
+            }
+        }
+    }
+
+    @Test
     void theReleaseOnlyBuildsTheEngineWithLockedDependencies() throws IOException {
         String release = text(".github/workflows/release.yaml");
         String engine = text(".github/workflows/swap-engine.yaml");

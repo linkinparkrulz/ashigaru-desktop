@@ -25,6 +25,7 @@ jobs:
     # should not hold back the other three. A platform without an engine fails at its download.
     if: ${{ !cancelled() }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:

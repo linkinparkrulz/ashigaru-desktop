@@ -22,6 +22,7 @@ jobs:
   build:
     needs: engine
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     strategy:
       matrix:
         include:
@@ -147,6 +148,7 @@ jobs:
   validate-macos:
     needs: build
     runs-on: macos-latest
+    timeout-minutes: 30
 
     steps:
       - name: Extract version
@@ -193,6 +195,7 @@ jobs:
   release:
     needs: [build, validate-macos]
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     # Only this job creates the draft release, so only it gets write access. The two extra permissions are for the
     # build attestation below: id-token lets GitHub sign it for this workflow run, attestations lets it be stored.
     permissions:

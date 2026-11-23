@@ -140,6 +140,14 @@ misunderstand, and the interface typeface changes across the whole app.
   (`seed.retired` in the same owner-only folder) instead of deleted. The engine waits for a Tor restart only while a swap is being set up (until its lock is signed or the keys held for
   it are wiped), not for the whole swap, so a swap whose lock is out reconnects through the new Tor instead of sitting on a dead proxy while its timelocks run. Release asset names are
   limited to letters, digits, `.`, `_` and `-` before `SHA256SUMS` is written, so the Windows engine's `libstdc++-6.dll` keeps a matching checksum line.
+- **Swap fixes from the third review.** Every line written to `ashigaru.log` and every stack trace is now redacted where it is written (by the log
+  appender), not only the lines the swap service redacted itself, and swap lines also have their amounts redacted; so does the swaps part of the shared diagnostics.
+  The swap light no longer gives a false all-clear: it says the count is unknown when swap data is there but the list of unfinished swaps is not, it turns red
+  for unfinished swaps of an earlier identity (which the running engine does not work on), and a swap whose deposit the maker still holds counts as unfinished.
+  An identity file restored from a backup cannot put an older identity in charge of a newer one's swaps. A failed attempt to take a fresh identity no longer
+  shuts down the running engine. Files in the swaps folder written by older versions are made owner-only on the next start, leftover temporary seed files are
+  removed, and on Windows the owner-only access list is inherited by files the engine creates and no longer inherits from the parent folder.
+  Every workflow job now has a timeout.
 - **Pair with Sentinel clears the clipboard.** Words or pairing text copied from the window are removed from the clipboard after a minute, if the clipboard still holds them.
   **View seed words** wipes its decrypted copy when the window closes.
 
