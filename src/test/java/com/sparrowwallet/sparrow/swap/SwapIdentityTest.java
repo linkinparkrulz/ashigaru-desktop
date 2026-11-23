@@ -220,6 +220,14 @@ class SwapIdentityTest {
     }
 
     @Test
+    void icaclsIsOnlyTakenFromSystem32ByItsFullPath() throws Exception {
+        //No Windows folder here: nothing is found, and nothing is looked up by name
+        assertNull(SwapIdentity.icaclsPath("C:\\Windows"));
+        assertNull(SwapIdentity.icaclsPath("relative\\folder"));
+        assertNull(SwapIdentity.icaclsPath(null));
+    }
+
+    @Test
     void swapDataWithNoSeedIsNotTakenOverByANewIdentity() throws Exception {
         SwapIdentity identity = SwapIdentity.current(swapsDir);
         database(identity);

@@ -319,8 +319,13 @@ public final class SwapIdentity {
         if(!os.toLowerCase(java.util.Locale.ROOT).startsWith("windows")) {
             return;
         }
+        File icacls = icaclsPath(System.getenv("SystemRoot"));
+        if(icacls == null) {
+            log.debug("icacls not found in System32; " + path + " keeps the access list set through Java");
+            return;
+        }
         try {
-            Process process = new ProcessBuilder("icacls", path.toString(), "/inheritance:r", "/Q").redirectErrorStream(true)
+            Process process = new ProcessBuilder(icacls.getAbsolutePath(), path.toString(), "/inheritance:r", "/Q").redirectErrorStream(true)
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD).start();
             if(!process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)) {
                 process.destroyForcibly();
@@ -333,6 +338,16 @@ public final class SwapIdentity {
         } catch(InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /**
+     * icacls from System32 by its full path, never by name: a name is looked up in the working directory and on PATH first, where any icacls.exe
+     * would run. SystemRoot names the Windows folder; when it is unset or odd, C:\Windows is used. Null when it is not there.
+     */
+    static File icaclsPath(String systemRoot) {
+        String root = systemRoot != null && systemRoot.matches("[A-Za-z]:\\\\[^;\"*?<>|]*") ? systemRoot : "C:\\Windows";
+        File icacls = new File(new File(root, "System32"), "icacls.exe");
+        return icacls.isFile() ? icacls : null;
     }
 
     /** Whether any identity that has not been retired holds a swap database */
