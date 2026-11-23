@@ -31,8 +31,10 @@ public record SwapAttention(String swapId, String title, boolean lockUnconfirmed
             String state = swap.has("state") ? swap.get("state").getAsString() : "";
             SwapProgress.Status status = SwapProgress.fromState(state, false, false, now);
             SwapProgress.Step reached = status.step() == SwapProgress.Step.STOPPED ? status.stoppedAfter() : status.step();
+            //A partial refund or withheld deposit is not over: the maker's amnesty is still to come, and only a running engine collects it
+            boolean depositOut = SwapProgress.awaitsDeposit(state);
             if(reached == null || reached == SwapProgress.Step.WORKING || reached.ordinal() < SwapProgress.Step.LOCK_PUBLISH.ordinal()
-                    || reached == SwapProgress.Step.DONE || reached == SwapProgress.Step.REFUNDED) {
+                    || reached == SwapProgress.Step.DONE || (reached == SwapProgress.Step.REFUNDED && !depositOut)) {
                 continue;
             }
             needing.add(new SwapAttention(swap.get("swapId").getAsString(), reached.getTitle(), reached == SwapProgress.Step.LOCK_PUBLISH));

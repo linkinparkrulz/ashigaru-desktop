@@ -186,4 +186,29 @@ class SwapProgressTest {
         assertFalse(stopped.detail().contains("Your BTC is locked"), stopped.detail());
         assertFalse(stopped.detail().contains("Nothing was locked: the coin"), stopped.detail());
     }
+
+    @Test
+    void aHeldDepositIsNotFinishedUntilTheEngineSaysSo() {
+        SwapProgress.Status partial = SwapProgress.fromState("btc is partially refunded", false, true, T0);
+        assertEquals(SwapProgress.Step.REFUNDED, partial.step());
+        assertFalse(partial.finished(), "the maker's amnesty is still to come");
+        assertFalse(SwapProgress.fromState("btc is withheld", false, true, T0).finished());
+        //Not running: it stopped with the deposit out, which is what lets it be offered for recovery
+        SwapProgress.Status stopped = SwapProgress.fromState("btc is partially refunded", false, false, T0);
+        assertEquals(SwapProgress.Step.STOPPED, stopped.step());
+        assertEquals(SwapProgress.Step.REFUNDED, stopped.stoppedAfter());
+        //Once the engine counts it complete, it is
+        assertTrue(SwapProgress.fromState("btc is partially refunded", true, false, T0).finished());
+        assertTrue(SwapProgress.fromState("btc is refunded", false, false, T0).finished());
+    }
+
+    @Test
+    void aSwapStoppedWithItsDepositOutNeedsAttention() {
+        com.google.gson.JsonArray list = com.google.gson.JsonParser.parseString(
+                "[{\"swapId\":\"aaaaaaaa-1\",\"state\":\"btc is partially refunded\",\"complete\":false,\"running\":false},"
+                + "{\"swapId\":\"bbbbbbbb-2\",\"state\":\"btc is refunded\",\"complete\":true,\"running\":false}]").getAsJsonArray();
+        java.util.List<SwapAttention> needing = SwapAttention.of(list, T0);
+        assertEquals(1, needing.size());
+        assertEquals("aaaaaaaa-1", needing.get(0).swapId());
+    }
 }

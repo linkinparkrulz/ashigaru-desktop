@@ -158,6 +158,13 @@ class SwapServiceTest {
     }
 
     @Test
+    void unfinishedSwapsOfEarlierIdentitiesAreCountedApart() {
+        com.google.gson.JsonArray list = com.google.gson.JsonParser.parseString(
+                "[{\"complete\":false},{\"complete\":false,\"past\":true},{\"past\":true},{\"complete\":true,\"past\":true}]").getAsJsonArray();
+        assertEquals(2, SwapService.olderIdentityUnfinished(list));
+    }
+
+    @Test
     void seedsAreOnlyRetiredFolderByFolderWhenTheirSwapsWereReadAndAreFinished() {
         com.google.gson.JsonArray list = com.google.gson.JsonParser.parseString("["
                 + "{\"complete\":true,\"dataDir\":\"/s/swaps/aaaaaaaaaaaaaaaa\"},{\"complete\":true,\"past\":true,\"dataDir\":\"/s/swaps/aaaaaaaaaaaaaaaa\"},"

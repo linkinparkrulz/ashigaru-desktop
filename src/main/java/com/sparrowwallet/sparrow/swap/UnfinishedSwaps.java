@@ -16,17 +16,25 @@ import java.util.TreeSet;
  * The ids of the swaps the swap engine last said were unfinished, kept in a small file in the swaps folder, so that Ashigaru can tell the user a swap
  * still holds their BTC when the engine is not running (swaps turned off, Tor gone, a failed start) and so cannot be asked.
  * Only ids: nothing about amounts or addresses.
+ *
+ * <p>When the file is missing but swap data is there (an install from before the file existed, or a file that was lost), the count is
+ * {@linkplain #UNKNOWN unknown}, not zero, until the engine lists its swaps again: an empty list would say "nothing holds BTC" without
+ * knowing it. Nothing is written while the count is unknown, so a partial list is never taken for the whole one on the next start.
  */
 final class UnfinishedSwaps {
     private static final Logger log = LoggerFactory.getLogger(UnfinishedSwaps.class);
     static final String FILE_NAME = "unfinished";
+    /** What {@link #count()} returns when it is not known */
+    static final int UNKNOWN = -1;
 
     private final File file;
     private final Set<String> ids = new TreeSet<>();
+    private boolean known;
 
     /** @param swapsDir where the list is kept, or null to keep it in memory only */
     UnfinishedSwaps(File swapsDir) {
         file = swapsDir == null ? null : new File(swapsDir, FILE_NAME);
+        known = file == null || file.isFile() || !SwapIdentity.hasSwapData(swapsDir);
         if(file != null && file.isFile()) {
             try {
                 for(String line : Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)) {
@@ -36,12 +44,14 @@ final class UnfinishedSwaps {
                 }
             } catch(IOException e) {
                 log.warn("Could not read the list of unfinished swaps: " + e.getMessage());
+                known = false;
             }
         }
     }
 
+    /** How many swaps are unfinished, or {@link #UNKNOWN} */
     synchronized int count() {
-        return ids.size();
+        return known ? ids.size() : UNKNOWN;
     }
 
     synchronized Set<String> ids() {
@@ -63,7 +73,8 @@ final class UnfinishedSwaps {
     /** The engine's full list of swaps says which are unfinished: that replaces what was known */
     synchronized void replaceAll(Collection<String> unfinished) {
         Set<String> now = new TreeSet<>(unfinished);
-        if(!now.equals(ids)) {
+        if(!now.equals(ids) || !known) {
+            known = true;
             ids.clear();
             ids.addAll(now);
             save();
@@ -71,7 +82,7 @@ final class UnfinishedSwaps {
     }
 
     private void save() {
-        if(file == null) {
+        if(file == null || !known) {
             return;
         }
         try {

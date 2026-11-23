@@ -231,7 +231,7 @@ public final class SwapIdentity {
     }
 
     /** Whether any identity that has not been retired holds a swap database */
-    private static boolean hasSwapData(File swapsDir) {
+    static boolean hasSwapData(File swapsDir) {
         File[] dirs = swapsDir.listFiles(dir -> dir.isDirectory() && new File(dir, DATABASE).isFile() && !new File(dir, RETIRED).isFile());
         return dirs != null && dirs.length > 0;
     }

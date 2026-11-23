@@ -133,16 +133,31 @@ public class AshigaruMainController implements Initializable {
 
         SwapService swapService = SwapService.get();
         SwapLight.State swapState = SwapLight.state(swapService.isEnabled(), swapService.runningProperty().get(), swapService.statusProperty().get(),
-                swapService.unfinishedCount());
+                swapService.unfinishedCount(), swapService.olderIdentityUnfinishedCount());
         switch (swapState) {
             case OK -> setLight(swapLightLabel, "Swaps \u00b7 on", swapService.statusProperty().get(), "connected");
             case STARTING -> setLight(swapLightLabel, "Swaps \u00b7 starting\u2026", swapService.statusProperty().get(), "connecting");
             case FAILED -> setLight(swapLightLabel, "Swaps \u00b7 not running", swapService.statusProperty().get(), "unreachable");
             case UNFINISHED_DOWN -> {
                 int count = swapService.unfinishedCount();
+                if(count < 0) {
+                    //Swap data is there and the list of unfinished swaps is not: say so, rather than "0"
+                    setLight(swapLightLabel, "Swaps \u00b7 unfinished unknown, not running", "Ashigaru has swap data but does not know whether any swap is "
+                            + "unfinished, and the swap engine is not running to say. An unfinished swap holds BTC that only a running engine can complete or "
+                            + "refund. Turn swaps on in Settings \u2192 Swaps, keep Tor running and keep Ashigaru open, so the engine can check. "
+                            + swapService.statusProperty().get(), "unreachable");
+                    return;
+                }
                 setLight(swapLightLabel, "Swaps \u00b7 " + count + " unfinished, not running", count + (count == 1 ? " swap still holds" : " swaps still hold")
                         + " BTC, and nothing is working to complete or refund " + (count == 1 ? "it" : "them") + " while the swap engine is not running. "
                         + "Turn swaps on in Settings \u2192 Swaps, keep Tor running and keep Ashigaru open. " + swapService.statusProperty().get(), "unreachable");
+            }
+            case OLDER_IDENTITY_UNFINISHED -> {
+                int count = swapService.olderIdentityUnfinishedCount();
+                setLight(swapLightLabel, "Swaps \u00b7 " + count + " unfinished under an older identity", count + (count == 1 ? " swap" : " swaps")
+                        + " recorded under an earlier swap identity " + (count == 1 ? "is" : "are") + " unfinished. The running engine only works on its own "
+                        + "identity's swaps, so nothing is completing or refunding " + (count == 1 ? "it" : "them") + ". Keep the swaps folder as it is and "
+                        + "ask for help before starting a new swap.", "unreachable");
             }
             case HIDDEN -> setLight(swapLightLabel, null, null, null);
         }

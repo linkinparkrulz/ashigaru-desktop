@@ -49,4 +49,18 @@ class SwapLightTest {
         assertEquals(State.OK, SwapLight.state(true, true, "On. Using 2 public Monero nodes.", 1));
         assertEquals(State.HIDDEN, SwapLight.state(false, false, "Off.", 0));
     }
+
+    @Test
+    void anUnknownCountIsNotTakenForNone() {
+        assertEquals(State.UNFINISHED_DOWN, SwapLight.state(false, false, "Off.", -1));
+        assertEquals(State.STARTING, SwapLight.state(true, false, "Starting through Tor\u2026", -1));
+        assertEquals(State.OK, SwapLight.state(true, true, "On.", -1));
+    }
+
+    @Test
+    void unfinishedSwapsOfAnOlderIdentityAreRedEvenWhileTheEngineRuns() {
+        assertEquals(State.OLDER_IDENTITY_UNFINISHED, SwapLight.state(true, true, "On.", 1, 1));
+        assertEquals(State.UNFINISHED_DOWN, SwapLight.state(true, false, "Off.", 1, 1), "not running says that first");
+        assertEquals(State.OK, SwapLight.state(true, true, "On.", 1, 0));
+    }
 }

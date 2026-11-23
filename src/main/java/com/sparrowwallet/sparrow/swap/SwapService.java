@@ -101,6 +101,8 @@ public class SwapService implements SwapHost {
     private final Set<String> listedSwapIds = ConcurrentHashMap.newKeySet();
     //Swaps the engine last said were unfinished, kept on disk so the top bar can warn about them while the engine is not running
     private volatile UnfinishedSwaps unfinished = new UnfinishedSwaps(null);
+    //Unfinished swaps in earlier identities' databases, as the engine last listed them
+    private volatile int olderUnfinished;
     //Each swap's latest step, as reported by the engine; the swap being set up is the latest started
     private final Map<String, SwapProgress.Status> progress = new ConcurrentHashMap<>();
     //Each swap's latest timelock state, from the engine's TimelockChange events: blocks left until cancel or punish
@@ -125,9 +127,14 @@ public class SwapService implements SwapHost {
         return instance;
     }
 
-    /** How many swaps are known to be unfinished: they hold BTC, and only a running engine can complete or refund them */
+    /** How many swaps are known to be unfinished: they hold BTC, and only a running engine can complete or refund them. Negative when not known. */
     public int unfinishedCount() {
         return unfinished.count();
+    }
+
+    /** How many unfinished swaps the running engine listed under earlier identities: it does not work on those */
+    public int olderIdentityUnfinishedCount() {
+        return olderUnfinished;
     }
 
     /** Whether this build can swap at all: the engine is bundled (or configured) and this is mainnet */
@@ -375,6 +382,10 @@ public class SwapService implements SwapHost {
             JsonArray listed = loaded.listSwaps();
             boolean used = usedByThisIdentity(listed);
             unfinished.replaceAll(notFinishedIds(listed));
+            olderUnfinished = olderIdentityUnfinished(listed);
+            if(olderUnfinished > 0) {
+                log.warn(olderUnfinished + " unfinished swap(s) belong to an earlier swap identity; this engine does not work on them");
+            }
             //Identity already used and nothing left to finish: makers have seen it, so take a new one. Not in a run that just recovered
             //its identity from a damaged file: whatever went wrong should be looked at before the identity is changed.
             if(!renewIdentity && !identity.wasRecovered() && resumed.isEmpty() && used) {
@@ -485,6 +496,20 @@ public class SwapService implements SwapHost {
             }
         }
         return ids;
+    }
+
+    /** How many swaps in the engine's list are unfinished and were recorded under an earlier identity, which the engine does not work on */
+    static int olderIdentityUnfinished(JsonArray swaps) {
+        int count = 0;
+        for(JsonElement element : swaps) {
+            if(element.isJsonObject()) {
+                JsonObject swap = element.getAsJsonObject();
+                if(swap.has("past") && !swap.get("past").isJsonNull() && swap.get("past").getAsBoolean() && !isComplete(swap)) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     /**
@@ -867,6 +892,7 @@ public class SwapService implements SwapHost {
             }
         }
         unfinished.replaceAll(notFinishedIds(swaps));
+        olderUnfinished = olderIdentityUnfinished(swaps);
     }
 
     public void refund(String swapId, Consumer<String> onSuccess, Consumer<Throwable> onFailure) {

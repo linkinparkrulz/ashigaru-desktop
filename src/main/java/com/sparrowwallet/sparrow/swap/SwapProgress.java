@@ -214,12 +214,20 @@ public final class SwapProgress {
         } else {
             step = Step.WORKING;
         }
-        boolean finished = step == Step.DONE || step == Step.REFUNDED;
+        //A partial refund or a withheld deposit leaves the maker's amnesty to come: the engine does not count the swap complete until it is
+        //confirmed, and neither does Ashigaru, so the swap stays on the unfinished list and its recovery is offered
+        boolean finished = (step == Step.DONE || step == Step.REFUNDED) && (complete || !awaitsDeposit(state));
         if(finished || running) {
             return new Status(step, detail, now, finished);
         }
         //Not running and not over: it stopped at the step it reached
         return new Status(Step.STOPPED, "The swap is not running.", now, true, step);
+    }
+
+    /** Whether the engine's state for a swap says part of the BTC (the maker's deposit, its amnesty) has still to come back */
+    static boolean awaitsDeposit(String state) {
+        String s = state == null ? "" : state.toLowerCase(Locale.ROOT);
+        return s.contains("partially refunded") || (s.contains("withheld") && !s.contains("withhold is published"));
     }
 
     /** The status of a swap that stopped, from its swap_stopped notification */
