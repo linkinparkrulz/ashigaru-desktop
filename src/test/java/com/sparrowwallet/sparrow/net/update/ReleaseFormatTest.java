@@ -208,6 +208,14 @@ class ReleaseFormatTest {
     }
 
     @Test
+    void theEngineBuildKeepsCheckoutPathsOutOfTheCAndCppToo() throws IOException {
+        String engine = text(".github/workflows/swap-engine.yaml");
+        assertTrue(engine.contains("echo \"CFLAGS_${target}=$cmaps\"") && engine.contains("echo \"CXXFLAGS_${target}=$cmaps\""));
+        assertTrue(engine.contains("-ffile-prefix-map=$GITHUB_WORKSPACE=/build"));
+        assertFalse(engine.matches("(?s).*\\n\\s*(C|CXX)FLAGS=.*"), "plain CFLAGS would also change how Monero's depends are built");
+    }
+
+    @Test
     void theReleaseRunsTheseChecks() throws IOException {
         assertTrue(text(".github/workflows/release.yaml").contains("./gradlew :test --tests 'com.sparrowwallet.sparrow.net.update.ReleaseFormatTest'"));
     }

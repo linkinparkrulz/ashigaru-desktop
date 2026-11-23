@@ -99,13 +99,20 @@ jobs:
 
       # Toward a reproducible engine: no build machine paths in the library (the home folder, which holds the cargo registry, and the checkout),
       # and the commit's time for tools that read SOURCE_DATE_EPOCH. Set per target (CARGO_TARGET_<TRIPLE>_RUSTFLAGS), which cargo joins with
-      # eigenwallet's own target flags; RUSTFLAGS would replace them and lose the Windows link settings. The C++ of Monero is not covered.
+      # eigenwallet's own target flags; RUSTFLAGS would replace them and lose the Windows link settings.
+      # The C and C++ the same way: CFLAGS_<target> and CXXFLAGS_<target> are added by the cc and cmake crates to their own flags, so Monero
+      # (built through cmake) and the Rust-C++ bridge (cxx) get -ffile-prefix-map. The two maps do not overlap, so their order does not matter.
+      # Monero's depends libraries (built by its own make, which reads plain CFLAGS) are left as they are.
       - name: Remove build paths and fix the build time
         shell: bash
         run: |
           triple=$(echo "${{ matrix.target }}" | tr 'a-z-' 'A-Z_')
           echo "CARGO_TARGET_${triple}_RUSTFLAGS=--remap-path-prefix=$HOME=/home/build --remap-path-prefix=$GITHUB_WORKSPACE=/build" >> "$GITHUB_ENV"
           echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+          target=$(echo "${{ matrix.target }}" | tr '-' '_')
+          cmaps="-ffile-prefix-map=$GITHUB_WORKSPACE=/build -ffile-prefix-map=$HOME/.cargo=/cargo"
+          echo "CFLAGS_${target}=$cmaps" >> "$GITHUB_ENV"
+          echo "CXXFLAGS_${target}=$cmaps" >> "$GITHUB_ENV"
 
       - name: Install build dependencies (Ubuntu)
         if: startsWith(matrix.host, 'ubuntu')
