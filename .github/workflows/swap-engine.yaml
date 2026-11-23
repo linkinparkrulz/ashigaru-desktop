@@ -81,13 +81,21 @@ jobs:
             echo "::warning::swap-engine/Cargo.lock.overlay is not committed: this build resolves ashigaru-swap's dependencies afresh. Commit the swap-engine-cargo-lock artifact as that file."
           fi
 
-      - name: Install Rust 1.92
-        uses: dtolnay/rust-toolchain@3334128f4a3bea6d0d6718ee50ff473f7f275e31 # 1.92
-        with:
-          # The exact release, not the newest 1.92.x: the same as eigenwallet's rust-toolchain.toml
-          toolchain: 1.92.0
-          targets: ${{ matrix.target }}
-          components: clippy
+      # The exact release, not the newest 1.92.x. dtolnay/rust-toolchain's version branches take no toolchain input (it was ignored), so
+      # rustup, which the runner images carry, installs it. eigenwallet's rust-toolchain.toml selects it for the build; the next step checks that.
+      - name: Install Rust 1.92.0
+        shell: bash
+        run: |
+          rustup toolchain install 1.92.0 --profile minimal --component clippy --target ${{ matrix.target }} --no-self-update
+          rustup default 1.92.0
+
+      - name: Check the build uses Rust 1.92.0
+        shell: bash
+        working-directory: swap-engine/build/eigenwallet
+        run: |
+          rustc --version
+          cargo clippy --version
+          rustc --version | grep -q '^rustc 1\.92\.0 ' || { echo "::error::The engine would not build with Rust 1.92.0 (eigenwallet's rust-toolchain.toml changed?)"; exit 1; }
 
       # Toward a reproducible engine: no build machine paths in the library (the home folder, which holds the cargo registry, and the checkout),
       # and the commit's time for tools that read SOURCE_DATE_EPOCH. Set per target (CARGO_TARGET_<TRIPLE>_RUSTFLAGS), which cargo joins with

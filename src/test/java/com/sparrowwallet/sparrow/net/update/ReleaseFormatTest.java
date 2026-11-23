@@ -162,7 +162,7 @@ class ReleaseFormatTest {
     void runnersAndToolsAreFixed() throws IOException {
         for(Path file : workflows()) {
             String workflow = text(file.toString());
-            assertFalse(LATEST_RUNNER.matcher(workflow).find(), file + ": a -latest runner changes without notice");
+            assertFalse(namesLatestRunner(workflow), file + ": a -latest runner changes without notice");
             for(String line : workflow.split("\n")) {
                 if(line.contains("cargo install ")) {
                     assertTrue(line.contains("--version ") && line.contains("--locked"), file + ": " + line.trim() + " is not pinned");
@@ -171,15 +171,40 @@ class ReleaseFormatTest {
         }
     }
 
-    //runs-on, or a matrix's os: or host:, with the value quoted or not
-    private static final java.util.regex.Pattern LATEST_RUNNER = java.util.regex.Pattern.compile("(?m)^\\s*-?\\s*(runs-on|os|host):\\s*[\"']?(macos|ubuntu|windows)-latest[\"']?\\s*(#.*)?$");
+    //runs-on, or a matrix's os: or host:, and the whole value after it: a name, quoted or not, or a list of them ([ubuntu-latest, macos-15])
+    private static final java.util.regex.Pattern RUNNER_KEY = java.util.regex.Pattern.compile("(?m)^\\s*-?\\s*(runs-on|os|host):(.*)$");
+    private static final java.util.regex.Pattern LATEST_NAME = java.util.regex.Pattern.compile("(?<![\\w.-])(macos|ubuntu|windows)-latest(?![\\w.-])");
+
+    /** Whether a workflow names a -latest runner anywhere a runner is named, in any of the forms YAML allows */
+    static boolean namesLatestRunner(String workflow) {
+        java.util.regex.Matcher key = RUNNER_KEY.matcher(workflow);
+        while(key.find()) {
+            String value = key.group(2).replaceFirst("\\s#.*$", "");
+            if(LATEST_NAME.matcher(value).find()) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     @Test
     void theLatestRunnerCheckSeesEveryWayOfWritingIt() {
-        for(String line : new String[] {"    runs-on: macos-latest", "          - os: 'ubuntu-latest'", "            host: \"windows-latest\"", "      - host: macos-latest # arm"}) {
-            assertTrue(LATEST_RUNNER.matcher(line).find(), line);
+        for(String line : new String[] {"    runs-on: macos-latest", "          - os: 'ubuntu-latest'", "            host: \"windows-latest\"", "      - host: macos-latest # arm",
+                "    runs-on: [ubuntu-latest]", "    runs-on: [self-hosted, \"ubuntu-latest\"]", "        os: [macos-15, ubuntu-latest]", "    runs-on: [ 'windows-latest' ]"}) {
+            assertTrue(namesLatestRunner(line), line);
         }
-        assertFalse(LATEST_RUNNER.matcher("    runs-on: macos-15").find());
+        for(String line : new String[] {"    runs-on: macos-15", "    runs-on: [ubuntu-22.04]", "    runs-on: ${{ matrix.os }}", "    runs-on: macos-15 # not macos-latest",
+                "    runs-on: my-ubuntu-latest-mirror"}) {
+            assertFalse(namesLatestRunner(line), line);
+        }
+    }
+
+    @Test
+    void theEngineIsBuiltWithExactlyRust1920() throws IOException {
+        String engine = text(".github/workflows/swap-engine.yaml");
+        assertTrue(engine.contains("rustup toolchain install 1.92.0 "));
+        assertTrue(engine.contains("grep -q '^rustc 1\\.92\\.0 '"), "and the build checks that it is the one used");
+        assertFalse(engine.contains("toolchain: 1.92"), "an input the action does not have is ignored");
     }
 
     @Test
