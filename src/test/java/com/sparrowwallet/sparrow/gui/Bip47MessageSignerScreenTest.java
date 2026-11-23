@@ -203,8 +203,11 @@ class Bip47MessageSignerScreenTest {
             assertTrue(s.note().isVisible());
             assertTrue(s.note().getText().contains("BIP47: " + wallet.getPaymentCode()));
 
+            assertTrue(s.note().getText().contains(com.sparrowwallet.sparrow.paynym.Bip47Signing.MESSAGE_PREFIX.strip()), "the first line is said too");
+
             s.addCode().setSelected(false);
-            assertFalse(s.note().isVisible());
+            assertTrue(s.note().isVisible(), "the first line is still added");
+            assertFalse(s.note().getText().contains("BIP47: " + wallet.getPaymentCode()));
 
             s.addCode().setSelected(true);
             s.message().setText("hello\nBIP47: " + wallet.getPaymentCode());
@@ -213,13 +216,13 @@ class Bip47MessageSignerScreenTest {
     }
 
     @Test
-    void withTheBoxUntickedTheMessageIsSignedAsTyped() throws Exception {
+    void withTheBoxUntickedTheMessageIsSignedAsTypedAfterTheFirstLine() throws Exception {
         Wallet wallet = wallet("main");
         screen(List.of(wallet), s -> {
             s.addCode().setSelected(false);
             s.message().setText("exactly this");
             s.sign();
-            assertEquals("exactly this", SignedMessageVerifier.parse(s.block().getText()).message());
+            assertEquals(com.sparrowwallet.sparrow.paynym.Bip47Signing.MESSAGE_PREFIX + "exactly this", SignedMessageVerifier.parse(s.block().getText()).message());
         });
     }
 

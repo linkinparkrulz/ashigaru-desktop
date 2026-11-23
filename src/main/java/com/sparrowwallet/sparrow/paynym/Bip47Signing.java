@@ -28,6 +28,12 @@ public final class Bip47Signing {
     private static final String BEGIN_SIGNATURE = "-----BEGIN BITCOIN SIGNATURE-----";
     private static final String END_SIGNATURE = "-----END BITCOIN SIGNATURE-----";
 
+    /**
+     * The first line of every message signed here. The notification key also signs the PayNym directory's login token (an arbitrary string the
+     * server chooses) and Auth47 challenges, so a message signed here must never be exactly such a string: with this line it cannot be.
+     */
+    public static final String MESSAGE_PREFIX = "Ashigaru BIP47 signed message:\n";
+
     /** What an Auth47 login challenge starts with */
     static final String AUTH47_SCHEME = "auth47://";
 
@@ -110,6 +116,11 @@ public final class Bip47Signing {
         if(message.toLowerCase(Locale.ROOT).contains(AUTH47_SCHEME)) {
             throw new IllegalArgumentException("The message contains an auth47:// login challenge. Signing it here would log you in to that service with this payment code, "
                     + "so it is not signed. If you mean to log in, use the login option of the service's own app or QR code.");
+        }
+
+        //Never the bare text: see MESSAGE_PREFIX. A message that already starts with it (signed again) is not given a second one.
+        if(!message.startsWith(MESSAGE_PREFIX)) {
+            message = MESSAGE_PREFIX + message;
         }
 
         String signature = notificationKey(wallet).signMessage(message, ScriptType.P2PKH);

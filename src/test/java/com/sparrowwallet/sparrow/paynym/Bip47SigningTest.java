@@ -75,15 +75,27 @@ class Bip47SigningTest {
         assertEquals(Boolean.TRUE, Bip47Verification.verify(named.paymentCode(), named.message(), named.signature()).namedCode());
 
         Signed plain = Bip47Signing.sign(wallet, "Challenge 4711", false);
-        assertEquals("Challenge 4711", plain.message());
+        assertEquals(Bip47Signing.MESSAGE_PREFIX + "Challenge 4711", plain.message());
         assertNull(Bip47Verification.verify(plain.paymentCode(), plain.message(), plain.signature()).namedCode());
+    }
+
+    @Test
+    void aSignedMessageCanNeverBeExactlyAPayNymTokenOrAuth47Challenge() throws Exception {
+        Wallet wallet = wallet();
+        String token = "a1b2c3d4e5f6";
+        Signed signed = Bip47Signing.sign(wallet, token, false);
+        assertEquals(Bip47Signing.MESSAGE_PREFIX + token, signed.message());
+        assertNotEquals(Bip47Signing.signChallenge(wallet, token), signed.signature(), "not the signature a login with this token would send");
+        assertEquals(Outcome.VERIFIED, Bip47Verification.verify(signed.paymentCode(), signed.message(), signed.signature()).outcome());
+        //Signing a signed message's text again does not stack the line
+        assertEquals(signed.message(), Bip47Signing.sign(wallet, signed.message(), false).message());
     }
 
     @Test
     void aMessageThatAlreadyNamesACodeIsNotGivenASecondLine() throws Exception {
         Wallet wallet = wallet();
         String text = "https://example.org/\n\nBIP47: " + wallet.getPaymentCode();
-        assertEquals(text, Bip47Signing.sign(wallet, text, true).message());
+        assertEquals(Bip47Signing.MESSAGE_PREFIX + text, Bip47Signing.sign(wallet, text, true).message());
     }
 
     @Test
@@ -128,7 +140,7 @@ class Bip47SigningTest {
         //A message with Windows line breaks and blank lines around it still verifies after the round trip
         Wallet wallet = wallet();
         Signed signed = Bip47Signing.sign(wallet, "\r\n\r\nhello\r\nworld\r\n\r\n", true);
-        assertEquals("hello\nworld\n\nBIP47: " + signed.paymentCode(), signed.message());
+        assertEquals(Bip47Signing.MESSAGE_PREFIX + "hello\nworld\n\nBIP47: " + signed.paymentCode(), signed.message());
         assertEquals(Outcome.VERIFIED, Bip47Verification.verify(signed.paymentCode(), SignedMessageVerifier.parse(signed.block()).message(), signed.signature()).outcome());
     }
 

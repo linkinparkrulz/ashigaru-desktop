@@ -151,12 +151,15 @@ public class Bip47MessageSignerController {
     private void updateNote() {
         Wallet wallet = walletCombo.getValue();
         String text = messageArea.getText();
+        String prefix = "The message will start with the line \"" + Bip47Signing.MESSAGE_PREFIX.strip() + "\", so it cannot be used as a login.";
         String note = null;
         if(wallet != null && Bip47Signing.canSign(wallet) && addCodeCheck.isSelected() && text != null && !text.isBlank()
                 && SignedMessageVerifier.extractPaymentCode(text) == null) {
-            note = "This line will be added to the end of the message: BIP47: " + wallet.getPaymentCode();
+            note = prefix + " This line will be added to the end of the message: BIP47: " + wallet.getPaymentCode();
         } else if(text != null && SignedMessageVerifier.extractPaymentCode(text) != null) {
-            note = "The message already names a payment code, so nothing is added.";
+            note = prefix + " The message already names a payment code, so nothing is added at the end.";
+        } else if(text != null && !text.isBlank()) {
+            note = prefix;
         }
         messageNote.setText(note == null ? "" : note);
         messageNote.setVisible(note != null);
