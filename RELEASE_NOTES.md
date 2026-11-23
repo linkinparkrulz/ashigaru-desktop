@@ -148,6 +148,8 @@ misunderstand, and the interface typeface changes across the whole app.
   shuts down the running engine. Files in the swaps folder written by older versions are made owner-only on the next start, leftover temporary seed files are
   removed, and on Windows the owner-only access list is inherited by files the engine creates and no longer inherits from the parent folder.
   Every workflow job now has a timeout.
+- **Offline mode stays offline.** A first run with Ashigaru already set to offline no longer switches it online, connects to the default server or starts
+  Tor, and swaps do not start in offline mode. A swap engine restart that fails is now shown as not running (it used to say On).
 - **Fourth review.** A proxy set in Settings is only used for swaps and the XMR price once it is shown to be Tor (the Tor Project's check and its onion
   service, through that proxy; asked again every ten minutes), and the swap status no longer calls it Tor before then. A failed engine restart (Tor moved,
   the server or nodes changed) keeps the engine that was running. If a backup put an older swap identity back, the identity whose swaps are unfinished is put
