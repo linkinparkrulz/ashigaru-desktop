@@ -158,6 +158,13 @@ class SwapServiceTest {
     }
 
     @Test
+    void aStartThatFailsBeforeTheEngineIsTouchedLeavesARunningEngineAlone() {
+        assertTrue(SwapService.keepEngineAfterFailedStart(false, true), "a fresh identity could not be taken while the engine ran");
+        assertFalse(SwapService.keepEngineAfterFailedStart(true, true), "the engine was reached: it may be half up, so it is stopped");
+        assertFalse(SwapService.keepEngineAfterFailedStart(false, false), "a restart already marked it stopped");
+    }
+
+    @Test
     void unfinishedSwapsOfEarlierIdentitiesAreCountedApart() {
         com.google.gson.JsonArray list = com.google.gson.JsonParser.parseString(
                 "[{\"complete\":false},{\"complete\":false,\"past\":true},{\"past\":true},{\"complete\":true,\"past\":true}]").getAsJsonArray();

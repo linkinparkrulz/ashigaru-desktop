@@ -357,6 +357,8 @@ public class SwapService implements SwapHost {
      */
     private void start(boolean renewIdentity) {
         HostAndPort torProxy = AppServices.getTorProxyIfUp();
+        HostAndPort previousProxy = engineProxy;
+        String previousServerUrl = engineServerUrl;
         engineProxy = torProxy;
         String serverUrl = Config.get().getServer().getUrl();
         engineServerUrl = serverUrl;
@@ -370,11 +372,14 @@ public class SwapService implements SwapHost {
         SwapEngine loaded = loadEngine();
 
         starting = true;
+        //Set once this start hands the engine its configuration: until then the engine already loaded (if any) is untouched by this start
+        java.util.concurrent.atomic.AtomicBoolean initReached = new java.util.concurrent.atomic.AtomicBoolean();
         long startedAt = System.currentTimeMillis();
         status.set(renewIdentity ? "Taking a fresh identity for the next swap…" : "Starting through Tor…");
         runInBackground(() -> {
             boolean renewed = false;
             SwapIdentity identity = renewIdentity ? SwapIdentity.renew(swapsDir) : SwapIdentity.current(swapsDir);
+            initReached.set(true);
             loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes,
                     SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
             List<String> resumed = new ArrayList<>();
@@ -438,6 +443,14 @@ public class SwapService implements SwapHost {
             followServer();
         }, e -> {
             starting = false;
+            if(keepEngineAfterFailedStart(initReached.get(), running.get())) {
+                //Failed before the engine was touched (the identity could not be read or renewed) while an engine is running and meant to:
+                //the engine is shared, so shutting it down here would stop its swaps while Ashigaru still showed it running
+                appendLog("The swap engine keeps running as it was: " + e.getMessage());
+                engineProxy = previousProxy;
+                engineServerUrl = previousServerUrl;
+                return;
+            }
             //The engine may have come up before the step that failed, and nothing else holds it: stop it, ignoring a failure
             runInBackground(() -> {
                 loaded.shutdown();
@@ -649,6 +662,15 @@ public class SwapService implements SwapHost {
         }
         log.warn("Loading the swap engine from " + path + " instead of the bundled one");
         return new File(path.trim());
+    }
+
+    /**
+     * Whether a start that failed should leave the loaded engine alone: only when the failure came before the engine was given its configuration
+     * and an engine is running that is meant to keep running (taking a fresh identity while idle). A restart that has already marked the engine
+     * stopped, or a start that reached the engine, shuts it down as before.
+     */
+    static boolean keepEngineAfterFailedStart(boolean initReached, boolean runningBefore) {
+        return !initReached && runningBefore;
     }
 
     /** The engine follows a new Tor proxy by restarting, which must not happen while a swap is being set up */
