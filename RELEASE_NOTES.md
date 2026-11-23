@@ -148,6 +148,12 @@ misunderstand, and the interface typeface changes across the whole app.
   shuts down the running engine. Files in the swaps folder written by older versions are made owner-only on the next start, leftover temporary seed files are
   removed, and on Windows the owner-only access list is inherited by files the engine creates and no longer inherits from the parent folder.
   Every workflow job now has a timeout.
+- **Fourth review.** A proxy set in Settings is only used for swaps and the XMR price once it is shown to be Tor (the Tor Project's check and its onion
+  service, through that proxy; asked again every ten minutes), and the swap status no longer calls it Tor before then. A failed engine restart (Tor moved,
+  the server or nodes changed) keeps the engine that was running. If a backup put an older swap identity back, the identity whose swaps are unfinished is put
+  back in charge, and no fresh identity is taken while earlier ones have unfinished swaps. PayNym login tokens, Tools → Sign messages, Auth47 logins and
+  Dojo listings can no longer be passed off as one another. On Windows, icacls is run from System32 by its full path. The release's own workflow check now
+  runs (it failed every Linux release build), clippy denies warnings, and the engine build uses Rust 1.92.0 exactly with build paths kept out of the library.
 - **Tools → Sign marks what it signs; the XMR price checks its proxy is Tor.** Every message signed with a payment code now starts with the line
   "Ashigaru BIP47 signed message:", so a signed message can never be the PayNym directory's login token or an Auth47 challenge, which the same key signs.
   When Ashigaru's own Tor is not running, the XMR price is only fetched through the proxy in Settings once the Tor Project's check confirms the proxy is Tor.
