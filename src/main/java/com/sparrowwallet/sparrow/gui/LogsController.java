@@ -1,5 +1,6 @@
 package com.sparrowwallet.sparrow.gui;
 
+import com.sparrowwallet.drongo.log.LogRedaction;
 import com.sparrowwallet.drongo.Network;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.sparrow.AppServices;

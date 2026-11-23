@@ -16,7 +16,7 @@ import com.sparrowwallet.sparrow.event.TorDiedEvent;
 import com.sparrowwallet.sparrow.event.TorFailedStatusEvent;
 import com.sparrowwallet.sparrow.event.TorReadyStatusEvent;
 import com.sparrowwallet.sparrow.gui.AshigaruGui;
-import com.sparrowwallet.sparrow.gui.LogRedaction;
+import com.sparrowwallet.drongo.log.LogRedaction;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Server;
 import com.sparrowwallet.sparrow.io.Storage;
@@ -230,7 +230,8 @@ public class SwapService implements SwapHost {
 
     /**
      * What a bug report needs to know about swaps: whether they are on, whether the engine loaded, and what the
-     * Swaps screen says. Paths under the user's home folder are shortened so the report does not carry the user name.
+     * Swaps screen says. Paths under the user's home folder are shortened so the report does not carry the user name, and the status (which can
+     * carry an engine error) is redacted like the log file, amounts included.
      */
     public String diagnostics() {
         String home = System.getProperty("user.home");
@@ -238,7 +239,7 @@ public class SwapService implements SwapHost {
                 + (engine != null ? "loaded" : loadError != null ? "not loaded (" + loadError + ")" : "not loaded yet")
                 + (running.get() ? ", running" : ", not running") + "\n"
                 + "          " + status.get() + "\n";
-        return home == null || home.isEmpty() ? text : text.replace(home, "~");
+        return LogRedaction.redactAmounts(home == null || home.isEmpty() ? text : text.replace(home, "~"));
     }
 
     public String getLog() {
@@ -467,7 +468,7 @@ public class SwapService implements SwapHost {
 
     /** What is written to the log file for an engine line: redacted, as the file is the one that gets sent around */
     static String forLogFile(String line) {
-        return "Swap engine: " + LogRedaction.redact(line);
+        return "Swap engine: " + LogRedaction.redactAmounts(line);
     }
 
     /** A peer id as its last characters only */
