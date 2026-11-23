@@ -202,6 +202,13 @@ class SwapServiceTest {
     }
 
     @Test
+    void aFailedRestartIsShownAsNotRunning() {
+        String status = SwapService.restartFailedStatus("The proxy in Settings could not be shown to be Tor.");
+        assertEquals(SwapLight.State.FAILED, SwapLight.state(true, false, status), "red, not On");
+        assertEquals(SwapLight.State.UNFINISHED_DOWN, SwapLight.state(true, false, status, 1), "and with a swap unfinished, it says so");
+    }
+
+    @Test
     void swapsDoNotStartInOfflineMode() {
         assertTrue(SwapService.blockedOffline(com.sparrowwallet.sparrow.Mode.OFFLINE));
         assertFalse(SwapService.blockedOffline(com.sparrowwallet.sparrow.Mode.ONLINE));

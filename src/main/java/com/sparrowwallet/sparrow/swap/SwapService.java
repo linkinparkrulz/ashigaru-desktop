@@ -103,6 +103,9 @@ public class SwapService implements SwapHost {
     private volatile UnfinishedSwaps unfinished = new UnfinishedSwaps(null);
     //Unfinished swaps in earlier identities' databases, as the engine last listed them
     private volatile int olderUnfinished;
+    //An engine left loaded by a restart that failed before reaching it (AD-17): not running for Ashigaru (it may be on a proxy that is gone),
+    //but still there, so turning swaps off must still shut it down
+    private volatile boolean engineLeftLoaded;
     //Each swap's latest step, as reported by the engine; the swap being set up is the latest started
     private final Map<String, SwapProgress.Status> progress = new ConcurrentHashMap<>();
     //Each swap's latest timelock state, from the engine's TimelockChange events: blocks left until cancel or punish
@@ -321,10 +324,11 @@ public class SwapService implements SwapHost {
         //Turning swaps off and on again is how the user asks for another try
         pausedForTor = false;
         torLostAfterStart = 0;
-        if(!running.get() && !starting) {
+        if(!running.get() && !starting && !engineLeftLoaded) {
             status.set("Off.");
             return;
         }
+        engineLeftLoaded = false;
         SwapEngine stopping = engine;
         running.set(false);
         status.set("Off.");
@@ -403,6 +407,7 @@ public class SwapService implements SwapHost {
         //Set once this start hands the engine its configuration: until then the engine already loaded (if any) is untouched by this start
         java.util.concurrent.atomic.AtomicBoolean initReached = new java.util.concurrent.atomic.AtomicBoolean();
         long startedAt = System.currentTimeMillis();
+        String previousStatus = status.get();
         status.set(startingStatus(renewIdentity, route));
         runInBackground(() -> {
             if(!TorRoute.isTor(route)) {
@@ -412,6 +417,8 @@ public class SwapService implements SwapHost {
             boolean renewed = false;
             SwapIdentity identity = renewIdentity ? SwapIdentity.renew(swapsDir) : SwapIdentity.current(swapsDir);
             initReached.set(true);
+            //This start replaces whatever engine was left loaded
+            engineLeftLoaded = false;
             loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes,
                     SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
             List<String> resumed = new ArrayList<>();
@@ -491,13 +498,22 @@ public class SwapService implements SwapHost {
         }, e -> {
             starting = false;
             if(keepEngineAfterFailedStart(initReached.get(), engineWasRunning)) {
-                //Failed before the engine was touched (the identity could not be read or renewed) while an engine was running: the engine is
-                //shared, so shutting it down here would stop its swaps. It keeps running as it was, and is shown as running again.
-                appendLog("The swap engine keeps running as it was: " + e.getMessage());
+                //Failed before the engine was touched (the identity could not be read or renewed, the proxy not shown to be Tor) while an engine
+                //was running. It is not shut down here, since its swaps' state stays as it was, but it is not shown as running either (AD-27): a
+                //restart is asked for because it can no longer do its job (Tor moved, the server or nodes changed). The light says it is not
+                //running, and the next Tor or settings change starts it again; turning swaps off still shuts it down.
                 engineProxy = previousProxy;
                 engineServerUrl = previousServerUrl;
-                running.set(true);
-                status.set("On, but could not restart: " + e.getMessage());
+                if(renewIdentity) {
+                    //Taking a fresh identity while idle: nothing about the engine changed (same Tor, same settings), so it is still running
+                    appendLog("A fresh swap identity could not be taken; the engine keeps its current one: " + e.getMessage());
+                    status.set(previousStatus);
+                    return;
+                }
+                appendLog("The swap engine could not be restarted: " + e.getMessage());
+                engineLeftLoaded = true;
+                running.set(false);
+                status.set(restartFailedStatus(e.getMessage()));
                 return;
             }
             //The engine may have come up before the step that failed, and nothing else holds it: stop it, ignoring a failure
@@ -764,6 +780,11 @@ public class SwapService implements SwapHost {
      */
     static boolean keepEngineAfterFailedStart(boolean initReached, boolean runningBefore) {
         return !initReached && runningBefore;
+    }
+
+    /** What the status says after a restart that failed: read by the light as a failure to start */
+    static String restartFailedStatus(String reason) {
+        return "Could not start again after a change: " + reason + " Swaps are not running; Ashigaru tries again when Tor or the settings change.";
     }
 
     /** The engine follows a new Tor proxy by restarting, which must not happen while a swap is being set up */
