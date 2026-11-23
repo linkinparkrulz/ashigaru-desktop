@@ -202,6 +202,15 @@ class SwapServiceTest {
     }
 
     @Test
+    void swapsDoNotStartInOfflineMode() {
+        assertTrue(SwapService.blockedOffline(com.sparrowwallet.sparrow.Mode.OFFLINE));
+        assertFalse(SwapService.blockedOffline(com.sparrowwallet.sparrow.Mode.ONLINE));
+        assertFalse(SwapService.blockedOffline(null), "no mode chosen yet is not offline");
+        //What the status says is not taken for a start or a failure by the light
+        assertEquals(SwapLight.State.HIDDEN, SwapLight.state(true, false, SwapService.OFFLINE));
+    }
+
+    @Test
     void unfinishedSwapsOfEarlierIdentitiesAreCountedApart() {
         com.google.gson.JsonArray list = com.google.gson.JsonParser.parseString(
                 "[{\"complete\":false},{\"complete\":false,\"past\":true},{\"past\":true},{\"complete\":true,\"past\":true}]").getAsJsonArray();

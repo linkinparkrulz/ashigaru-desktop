@@ -148,22 +148,42 @@ public class AshigaruTerminal {
         }
     }
 
+    /**
+     * What the first run sets up: the public server for the network, and, unless the user already chose offline, online mode and a connection.
+     * A mode of OFFLINE is kept as it is and nothing connects, so nothing (not even Tor) reaches the network until the user turns Ashigaru online.
+     *
+     * @param mode    the mode to set: ONLINE, or OFFLINE when the user had already chosen it
+     * @param connect whether to ask for a connection now
+     */
+    record FirstRunDefaults(Mode mode, ServerType serverType, PublicElectrumServer server, boolean connect) {}
+
+    /** The first run's defaults for this network and the mode already set; null when this network has none */
+    static FirstRunDefaults firstRunDefaults(Network network, Mode currentMode) {
+        PublicElectrumServer server = network == Network.TESTNET4 ? PublicElectrumServer.TEST4_ARANGUREN_CLEARNET
+                : network == Network.MAINNET ? PublicElectrumServer.FOUNDATION_DEVICES : null;
+        if(server == null) {
+            return null;
+        }
+        boolean offline = currentMode == Mode.OFFLINE;
+        return new FirstRunDefaults(offline ? Mode.OFFLINE : Mode.ONLINE, ServerType.PUBLIC_ELECTRUM_SERVER, server, !offline);
+    }
+
     private static void setDefaultServer() {
-        if (Network.get() == Network.TESTNET4) {
-            Config.get().setMode(Mode.ONLINE);
-            Config.get().setServerType(ServerType.PUBLIC_ELECTRUM_SERVER);
-            Config.get().setPublicElectrumServer(PublicElectrumServer.TEST4_ARANGUREN_CLEARNET.getServer());
-            EventManager.get().post(new RequestConnectEvent());
-            Config.get().setFirstRun(false);
+        FirstRunDefaults defaults = firstRunDefaults(Network.get(), Config.get().getMode());
+        if(defaults == null) {
             return;
         }
-        if (Network.get() == Network.MAINNET) {
-            Config.get().setMode(Mode.ONLINE);
-            Config.get().setServerType(ServerType.PUBLIC_ELECTRUM_SERVER);
-            Config.get().setPublicElectrumServer(PublicElectrumServer.FOUNDATION_DEVICES.getServer());
-            EventManager.get().post(new RequestConnectEvent());
-            Config.get().setFirstRun(false);
+        if(defaults.mode() != Config.get().getMode()) {
+            Config.get().setMode(defaults.mode());
         }
+        Config.get().setServerType(defaults.serverType());
+        Config.get().setPublicElectrumServer(defaults.server().getServer());
+        if(defaults.connect()) {
+            EventManager.get().post(new RequestConnectEvent());
+        } else {
+            getLogger().info("First run in offline mode: no server is connected and Tor is not started");
+        }
+        Config.get().setFirstRun(false);
     }
 
     public static Instance getSparrowInstance() {

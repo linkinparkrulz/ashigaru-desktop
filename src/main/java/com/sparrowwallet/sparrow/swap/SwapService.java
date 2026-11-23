@@ -283,10 +283,22 @@ public class SwapService implements SwapHost {
         }
     }
 
+    static final String OFFLINE = "Off: Ashigaru is in offline mode. Swaps start when it goes online.";
+
+    /** Whether the engine must not start: Ashigaru is in offline mode */
+    static boolean blockedOffline(com.sparrowwallet.sparrow.Mode mode) {
+        return mode == com.sparrowwallet.sparrow.Mode.OFFLINE;
+    }
+
     /** Starts the engine if swaps are on and everything it needs is there; says why not otherwise */
     public void startIfEnabled() {
         if(!Config.get().isSwapsEnabled()) {
             status.set("Off.");
+            return;
+        }
+        //Offline mode means nothing reaches the network: the engine (and its Tor connections) is not started
+        if(blockedOffline(Config.get().getMode())) {
+            status.set(OFFLINE);
             return;
         }
         if(running.get() || starting) {
