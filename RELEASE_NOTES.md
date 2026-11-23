@@ -148,6 +148,15 @@ misunderstand, and the interface typeface changes across the whole app.
   shuts down the running engine. Files in the swaps folder written by older versions are made owner-only on the next start, leftover temporary seed files are
   removed, and on Windows the owner-only access list is inherited by files the engine creates and no longer inherits from the parent folder.
   Every workflow job now has a timeout.
+- **No clearnet fallbacks; offline means offline.** Tools → Stats, fee rates from mempool.space and the PayNym directory and avatars are only reached at their
+  onion addresses through Tor: without Tor they show nothing rather than connecting directly, and in offline mode they are not fetched at all. Going offline now
+  stops Tor and the swap engine, Tor that stops by itself is not revived in offline mode, and only a Tor restart you ask for turns Ashigaru online again. The Swaps
+  tool fetches no XMR price offline.
+- **A proxy set in Settings must be marked as Tor.** Settings → Server has a "Proxy is Tor" switch: swaps and the XMR price only use a proxy from Settings when it
+  is marked as a Tor SocksPort and also answers through Tor, it is checked again every ten minutes while swaps run, and through it the engine only uses onion (or
+  local) Bitcoin servers and Monero nodes. A failed swap engine restart no longer reports a failure after swaps were turned off.
+- **Dojo listings are tagged.** A Dojo directory listing must start with the line "Dojo node listing v1"; untagged listings are accepted until 30 June 2027.
+  Tools → Sign will not sign text that starts with that line.
 - **Offline mode stays offline.** A first run with Ashigaru already set to offline no longer switches it online, connects to the default server or starts
   Tor, and swaps do not start in offline mode. A swap engine restart that fails is now shown as not running (it used to say On).
 - **Fourth review.** A proxy set in Settings is only used for swaps and the XMR price once it is shown to be Tor (the Tor Project's check and its onion
