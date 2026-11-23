@@ -148,6 +148,11 @@ misunderstand, and the interface typeface changes across the whole app.
   shuts down the running engine. Files in the swaps folder written by older versions are made owner-only on the next start, leftover temporary seed files are
   removed, and on Windows the owner-only access list is inherited by files the engine creates and no longer inherits from the parent folder.
   Every workflow job now has a timeout.
+- **Onion makers can be reached.** The swap engine gave every connection 10 seconds, including the wait for its turn through Tor, so most onion makers
+  could never connect. Each connection now has 60 seconds from its turn, one address per maker is tried at a time (onion addresses first), a maker that keeps
+  failing is tried at most every ten minutes, and the log keeps one line per maker every ten minutes instead of one per failed attempt.
+- **Onion names are never looked up outside Tor.** Connections to an onion Electrum server or Dojo, Tools → Stats and PayNym avatars handed the onion name
+  to the computer's own DNS before reaching Tor; every name reached through a proxy now goes to the proxy unresolved.
 - **No clearnet fallbacks; offline means offline.** Tools → Stats, fee rates from mempool.space and the PayNym directory and avatars are only reached at their
   onion addresses through Tor: without Tor they show nothing rather than connecting directly, and in offline mode they are not fetched at all. Going offline now
   stops Tor and the swap engine, Tor that stops by itself is not revived in offline mode, and only a Tor restart you ask for turns Ashigaru online again. The Swaps
