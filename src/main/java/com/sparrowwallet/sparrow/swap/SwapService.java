@@ -325,8 +325,7 @@ public class SwapService implements SwapHost {
     /** Restarts the engine with the current settings, e.g. after the Monero nodes changed */
     public void restart() {
         if(running.get() && !isSwapActive()) {
-            running.set(false);
-            start(false);
+            restartEngine();
         } else if(!running.get()) {
             startIfEnabled();
         }
@@ -355,7 +354,22 @@ public class SwapService implements SwapHost {
      * Starts (or replaces) the engine. With {@code renewIdentity}, a fresh identity is used: after a
      * swap finished, or at start when the last identity's swaps are all finished.
      */
+    /**
+     * Replaces the running engine (Tor moved, the server or nodes changed). Whether an engine was running is taken here, before it is marked
+     * stopped, so that a start that fails before reaching the engine knows there is one to keep.
+     */
+    private void restartEngine() {
+        boolean wasRunning = running.get();
+        running.set(false);
+        start(false, wasRunning);
+    }
+
     private void start(boolean renewIdentity) {
+        start(renewIdentity, running.get());
+    }
+
+    /** @param engineWasRunning whether an engine was running when this start was asked for, taken before any caller marked it stopped */
+    private void start(boolean renewIdentity, boolean engineWasRunning) {
         HostAndPort torProxy = AppServices.getTorProxyIfUp();
         HostAndPort previousProxy = engineProxy;
         String previousServerUrl = engineServerUrl;
@@ -443,12 +457,14 @@ public class SwapService implements SwapHost {
             followServer();
         }, e -> {
             starting = false;
-            if(keepEngineAfterFailedStart(initReached.get(), running.get())) {
-                //Failed before the engine was touched (the identity could not be read or renewed) while an engine is running and meant to:
-                //the engine is shared, so shutting it down here would stop its swaps while Ashigaru still showed it running
+            if(keepEngineAfterFailedStart(initReached.get(), engineWasRunning)) {
+                //Failed before the engine was touched (the identity could not be read or renewed) while an engine was running: the engine is
+                //shared, so shutting it down here would stop its swaps. It keeps running as it was, and is shown as running again.
                 appendLog("The swap engine keeps running as it was: " + e.getMessage());
                 engineProxy = previousProxy;
                 engineServerUrl = previousServerUrl;
+                running.set(true);
+                status.set("On, but could not restart: " + e.getMessage());
                 return;
             }
             //The engine may have come up before the step that failed, and nothing else holds it: stop it, ignoring a failure
@@ -638,8 +654,7 @@ public class SwapService implements SwapHost {
             return;
         }
         appendLog("The Bitcoin server changed to " + server.getUrl() + "; restarting the swap engine to use it");
-        running.set(false);
-        start(false);
+        restartEngine();
     }
 
     /** A Java system property that names a native swap engine library to load instead of the bundled one, for developers */
@@ -666,8 +681,8 @@ public class SwapService implements SwapHost {
 
     /**
      * Whether a start that failed should leave the loaded engine alone: only when the failure came before the engine was given its configuration
-     * and an engine is running that is meant to keep running (taking a fresh identity while idle). A restart that has already marked the engine
-     * stopped, or a start that reached the engine, shuts it down as before.
+     * and an engine was running when the start was asked for (taking a fresh identity while idle, or a restart for Tor, the server or the nodes,
+     * whose running state is taken before the restart marks it stopped). A start that reached the engine shuts it down as before.
      */
     static boolean keepEngineAfterFailedStart(boolean initReached, boolean runningBefore) {
         return !initReached && runningBefore;
@@ -731,8 +746,7 @@ public class SwapService implements SwapHost {
                 return;
             }
             appendLog("Tor restarted on " + proxy + "; restarting the swap engine to use it");
-            running.set(false);
-            start(false);
+            restartEngine();
         }
     }
 

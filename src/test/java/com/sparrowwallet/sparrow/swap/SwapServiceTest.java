@@ -161,7 +161,8 @@ class SwapServiceTest {
     void aStartThatFailsBeforeTheEngineIsTouchedLeavesARunningEngineAlone() {
         assertTrue(SwapService.keepEngineAfterFailedStart(false, true), "a fresh identity could not be taken while the engine ran");
         assertFalse(SwapService.keepEngineAfterFailedStart(true, true), "the engine was reached: it may be half up, so it is stopped");
-        assertFalse(SwapService.keepEngineAfterFailedStart(false, false), "a restart already marked it stopped");
+        assertTrue(SwapService.keepEngineAfterFailedStart(false, true), "a restart for Tor: running is taken before the restart clears it");
+        assertFalse(SwapService.keepEngineAfterFailedStart(false, false), "no engine was running");
     }
 
     @Test
