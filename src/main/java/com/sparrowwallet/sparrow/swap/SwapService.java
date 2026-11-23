@@ -692,6 +692,17 @@ public class SwapService implements SwapHost {
         Platform.runLater(this::followTor);
     }
 
+    /** Going offline stops the engine: offline means nothing reaches the network, and the engine's Tor connections do */
+    @Subscribe
+    public void requestDisconnect(com.sparrowwallet.sparrow.event.RequestDisconnectEvent event) {
+        Platform.runLater(() -> {
+            if(blockedOffline(Config.get().getMode())) {
+                stop();
+                status.set(OFFLINE);
+            }
+        });
+    }
+
     /** Tor's daemon stopped without being asked to. Ashigaru restarts it; this decides whether the engine may follow. */
     @Subscribe
     public void torDied(TorDiedEvent event) {

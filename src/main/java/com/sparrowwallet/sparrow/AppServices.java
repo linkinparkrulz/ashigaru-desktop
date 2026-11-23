@@ -287,6 +287,15 @@ public class AppServices {
      * @return false when Tor is external or not in use, so there is nothing here to restart
      */
     public boolean restartTor() {
+        //Every caller of this is a person asking for it (Settings, the splash screen, the Tor menu): that is a request to be online
+        return restartTor(true);
+    }
+
+    /**
+     * @param userAsked true when a person asked for the restart, which also takes Ashigaru online; false for the automatic revival after Tor died,
+     *                  which never changes the mode the user chose
+     */
+    boolean restartTor(boolean userAsked) {
         if(!Config.get().requiresInternalTor()) {
             return false;
         }
@@ -303,14 +312,14 @@ public class AppServices {
         Tor tor = Tor.getDefault() != null ? Tor.getDefault() : torService.takeBootingTor();
         Tor.setDefault(null);
         if(tor == null) {
-            startFreshTor();
+            startFreshTor(userAsked);
             return true;
         }
 
         AtomicBoolean started = new AtomicBoolean(false);
         Runnable startOnce = () -> {
             if(started.compareAndSet(false, true)) {
-                startFreshTor();
+                startFreshTor(userAsked);
             }
         };
         tor.stop(() -> Platform.runLater(startOnce));
@@ -321,10 +330,37 @@ public class AppServices {
         return true;
     }
 
-    private void startFreshTor() {
-        //Restarting Tor is a request to get back online, so reconnect once it is up
-        Config.get().setMode(Mode.ONLINE);
+    private void startFreshTor(boolean userAsked) {
+        //A restart the user asked for is a request to get back online, so reconnect once it is up. An automatic one never overrides offline mode.
+        if(userAsked) {
+            Config.get().setMode(Mode.ONLINE);
+        } else if(Config.get().getMode() == Mode.OFFLINE) {
+            return;
+        }
         restartService(torService);
+    }
+
+    /** Whether Tor stopping by itself may be answered by starting it again: never in offline mode, which the user chose */
+    static boolean mayReviveTor(Mode mode, boolean internalTor, boolean torWasRunning) {
+        return mode != Mode.OFFLINE && internalTor && torWasRunning;
+    }
+
+    /** Going offline stops the bundled Tor too: offline means nothing reaches the network, and Tor itself does */
+    private void stopTorForOffline() {
+        if(!Config.get().requiresInternalTor()) {
+            return;
+        }
+        if(torService.isRunning()) {
+            torService.cancel();
+        }
+        Tor tor = Tor.getDefault() != null ? Tor.getDefault() : torService.takeBootingTor();
+        Tor.setDefault(null);
+        //Ready to start again when the user goes back online
+        torService.reset();
+        if(tor != null) {
+            log.info("Offline mode: stopping Tor");
+            tor.stop(() -> {});
+        }
     }
 
     private ElectrumServer.ConnectionService createConnectionService() {
@@ -1321,7 +1357,7 @@ public class AppServices {
     @Subscribe
     public void torDied(TorDiedEvent event) {
         Platform.runLater(() -> {
-            if(!Config.get().requiresInternalTor() || Tor.getDefault() == null) {
+            if(!mayReviveTor(Config.get().getMode(), Config.get().requiresInternalTor(), Tor.getDefault() != null)) {
                 return;
             }
             long now = System.currentTimeMillis();
@@ -1332,7 +1368,7 @@ public class AppServices {
             }
             torRevivals.add(now);
             log.warn("Tor stopped by itself; restarting it");
-            restartTor();
+            restartTor(false);
         });
     }
 
@@ -1496,6 +1532,9 @@ public class AppServices {
             connectionService.cancel();
             ratesService.cancel();
             updateCheckService.cancel();
+            if(Config.get().getMode() == Mode.OFFLINE) {
+                stopTorForOffline();
+            }
         });
     }
 

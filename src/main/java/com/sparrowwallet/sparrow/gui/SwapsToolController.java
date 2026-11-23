@@ -426,6 +426,12 @@ public class SwapsToolController implements Initializable {
     }
 
     private void refreshPrice() {
+        //Offline mode: nothing reaches the network, the price included
+        if(Config.get().getMode() == com.sparrowwallet.sparrow.Mode.OFFLINE) {
+            marketText = "Market price unavailable: Ashigaru is in offline mode";
+            renderOffers();
+            return;
+        }
         if(AppServices.getTorProxyIfUp() == null) {
             marketText = "Market price unavailable until Tor is running";
             renderOffers();
