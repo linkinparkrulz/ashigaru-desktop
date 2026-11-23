@@ -85,6 +85,7 @@ jobs:
         uses: dtolnay/rust-toolchain@3334128f4a3bea6d0d6718ee50ff473f7f275e31 # 1.92
         with:
           targets: ${{ matrix.target }}
+          components: clippy
 
       - name: Install build dependencies (Ubuntu)
         if: startsWith(matrix.host, 'ubuntu')
@@ -166,6 +167,12 @@ jobs:
         if: matrix.test
         working-directory: swap-engine/build/eigenwallet
         run: cargo test -p ashigaru-swap --target ${{ matrix.target }} --release ${{ steps.lock.outputs.flag }}
+
+      # Ashigaru's own crate only (--no-deps): eigenwallet's crates are linted upstream. Clippy's default lints, so an error fails the job.
+      - name: Clippy ashigaru-swap
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        working-directory: swap-engine/build/eigenwallet
+        run: cargo clippy -p ashigaru-swap --no-deps --all-targets --target ${{ matrix.target }} --release ${{ steps.lock.outputs.flag }}
 
       - name: Build ashigaru-swap
         working-directory: swap-engine/build/eigenwallet

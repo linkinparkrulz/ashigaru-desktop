@@ -192,8 +192,13 @@ pub extern "C" fn as_check_nodes() -> *mut c_char {
 }
 
 /// Releases a string returned by any `as_*` call.
+///
+/// # Safety
+///
+/// `ptr` must be null or a string returned by an `as_*` call that has not been freed yet; it must
+/// not be used afterwards.
 #[unsafe(no_mangle)]
-pub extern "C" fn as_free_string(ptr: *mut c_char) {
+pub unsafe extern "C" fn as_free_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         // SAFETY: ptr came from CString::into_raw in `respond` and is freed exactly once
         drop(unsafe { CString::from_raw(ptr) });

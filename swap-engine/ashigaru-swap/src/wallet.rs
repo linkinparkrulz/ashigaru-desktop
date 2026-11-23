@@ -274,10 +274,10 @@ pub fn check_lock_psbt(
     if inputs == 0 {
         bail!("Lock transaction has no inputs");
     }
-    if let Some(max) = max_inputs {
-        if inputs > max {
-            bail!("Lock transaction has {inputs} inputs; at most {max} are allowed");
-        }
+    if let Some(max) = max_inputs
+        && inputs > max
+    {
+        bail!("Lock transaction has {inputs} inputs; at most {max} are allowed");
     }
     if psbt.inputs.len() != inputs {
         bail!("Lock PSBT has {} input maps for {inputs} inputs", psbt.inputs.len());
