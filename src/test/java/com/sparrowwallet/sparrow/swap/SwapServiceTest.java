@@ -209,6 +209,21 @@ class SwapServiceTest {
     }
 
     @Test
+    void anEngineKeptByAFailedRestartIsShutDownWhenTorGoes() {
+        assertTrue(SwapService.shutDownKeptEngine(true, true));
+        assertFalse(SwapService.shutDownKeptEngine(true, false), "Tor still there: kept until the next start replaces it");
+        assertFalse(SwapService.shutDownKeptEngine(false, true));
+    }
+
+    @Test
+    void aFailedStartAfterSwapsWereTurnedOffOrPausedSaysSo() {
+        //The failure path asks the same question as the success path, with offline mode counted as off
+        assertEquals(SwapService.Arrival.SHUT_DOWN_OFF, SwapService.arrival(false, false));
+        assertEquals(SwapService.Arrival.SHUT_DOWN_PAUSED, SwapService.arrival(true, true));
+        assertEquals(SwapService.Arrival.KEEP, SwapService.arrival(true, false));
+    }
+
+    @Test
     void swapsDoNotStartInOfflineMode() {
         assertTrue(SwapService.blockedOffline(com.sparrowwallet.sparrow.Mode.OFFLINE));
         assertFalse(SwapService.blockedOffline(com.sparrowwallet.sparrow.Mode.ONLINE));

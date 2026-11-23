@@ -381,7 +381,8 @@ public class SwapService implements SwapHost {
      * swap finished, or at start when the last identity's swaps are all finished.
      */
     private void start(boolean renewIdentity) {
-        start(renewIdentity, running.get());
+        //An engine left loaded by an earlier failed restart is still there: a second failure must keep it too, not shut it down (AD-30)
+        start(renewIdentity, running.get() || engineLeftLoaded);
     }
 
     /** @param engineWasRunning whether an engine was running when this start was asked for, taken before any caller marked it stopped */
@@ -497,6 +498,20 @@ public class SwapService implements SwapHost {
             followServer();
         }, e -> {
             starting = false;
+            //As on success (AD-31): swaps turned off, Ashigaru gone offline or Tor paused while this was starting decide what is shown, not the failure
+            Arrival arrival = arrival(Config.get().isSwapsEnabled() && !blockedOffline(Config.get().getMode()), pausedForTor);
+            if(arrival != Arrival.KEEP) {
+                engineLeftLoaded = false;
+                runInBackground(() -> {
+                    loaded.shutdown();
+                    return null;
+                }, ignored -> {}, ignored -> {});
+                running.set(false);
+                engineProxy = previousProxy;
+                engineServerUrl = previousServerUrl;
+                status.set(arrival == Arrival.SHUT_DOWN_PAUSED ? PAUSED_FOR_TOR : blockedOffline(Config.get().getMode()) ? OFFLINE : "Off.");
+                return;
+            }
             if(keepEngineAfterFailedStart(initReached.get(), engineWasRunning)) {
                 //Failed before the engine was touched (the identity could not be read or renewed, the proxy not shown to be Tor) while an engine
                 //was running. It is not shut down here, since its swaps' state stays as it was, but it is not shown as running either (AD-27): a
@@ -793,6 +808,11 @@ public class SwapService implements SwapHost {
         return !initReached && runningBefore;
     }
 
+    /** Whether an engine kept loaded after a failed restart is shut down now: once Tor is gone, its proxy is too */
+    static boolean shutDownKeptEngine(boolean engineLeftLoaded, boolean torGone) {
+        return engineLeftLoaded && torGone;
+    }
+
     /** What the status says after a restart that failed: read by the light as a failure to start */
     static String restartFailedStatus(String reason) {
         return "Could not start again after a change: " + reason + " Swaps are not running; Ashigaru tries again when Tor or the settings change.";
@@ -832,6 +852,16 @@ public class SwapService implements SwapHost {
             return;
         }
         if(!running.get()) {
+            //An engine kept by a failed restart is on a proxy that is gone once Tor is: shut it down rather than leave it loaded (AD-30)
+            if(engineLeftLoaded && shutDownKeptEngine(true, AppServices.getTorProxyIfUp() == null)) {
+                engineLeftLoaded = false;
+                SwapEngine stopping = engine;
+                appendLog("Tor is gone; stopping the swap engine kept from the failed restart");
+                runInBackground(() -> {
+                    stopping.shutdown();
+                    return null;
+                }, ignored -> {}, e -> {});
+            }
             startIfEnabled();
             return;
         }
