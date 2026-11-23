@@ -14,7 +14,7 @@ use futures::FutureExt as _;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::transport::{Boxed, Transport as _};
 use libp2p::core::upgrade::Version;
-use libp2p::{Multiaddr, PeerId, SwarmBuilder, identity, noise, websocket, yamux};
+use libp2p::{Multiaddr, PeerId, Swarm, identity, noise, websocket, yamux};
 use serde::Deserialize;
 use rust_decimal::Decimal;
 use serde_json::{Value, json};
@@ -35,13 +35,16 @@ use uuid::Uuid;
 
 use crate::events::AshigaruSink;
 use crate::forward;
-use crate::socks::Socks5Transport;
+use crate::socks::{MAX_PENDING_DIALS, SlotLimited, Socks5Transport};
 use crate::wallet::{HybridWallet, QuoteOnlyWallet};
 
 /// Matches eigenwallet's CLI swarm (`swap/src/network/swarm.rs`)
 const IDLE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(60 * 2);
 /// eigenwallet allows 15 seconds to connect to a maker and set up the session; building a circuit to
-/// an onion maker through Tor often takes longer than that
+/// an onion maker through Tor often takes longer than that. Counted from the moment a dial gets one
+/// of the [`MAX_PENDING_DIALS`] slots ([`SlotLimited`]), and it is the only limit: the swarm is built
+/// with `Swarm::new`, since libp2p's `SwarmBuilder::build` wraps the transport in a fixed 10 s timeout
+/// that overrode this one and also had to cover the wait for a slot.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(60);
 /// As in eigenwallet's `swap/src/network/transport.rs`
 const MAX_NUM_STREAMS: usize = 5;
@@ -225,29 +228,42 @@ impl Engine {
             .or_transport(socks)
             .boxed();
         let transport = authenticate_and_multiplex(transport, &identity)?;
+        // Six connections set up through Tor at once, each with CONNECT_TIMEOUT from its turn
+        let transport = SlotLimited::new(transport, MAX_PENDING_DIALS, CONNECT_TIMEOUT).boxed();
 
-        let behaviour_identity = identity.clone();
-        let behaviour_db = sqlite.clone();
-        let mut swarm = SwarmBuilder::with_existing_identity(identity)
-            .with_tokio()
-            .with_other_transport(|_| transport)?
-            .with_relay_client(noise::Config::new, yamux::Config::default)?
-            .with_behaviour(|_, relay| {
-                Behaviour::new(
-                    env_config,
-                    wallet,
-                    behaviour_identity,
-                    relay,
-                    XmrBtcNamespace::Mainnet,
-                    rendezvous_peer_ids,
-                    behaviour_db,
-                )
-            })?
-            .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(IDLE_CONNECTION_TIMEOUT))
-            .build();
+        // What SwarmBuilder's with_relay_client and build do, without build's fixed 10 s timeout. Relay
+        // dials go over an existing connection, so they take no slot, only the same limit.
+        let local_peer_id = identity.public().to_peer_id();
+        let (relay_transport, relay_behaviour) = libp2p::relay::client::new(local_peer_id);
+        let relay_transport = relay_transport
+            .upgrade(Version::V1Lazy)
+            .authenticate(noise::Config::new(&identity)?)
+            .multiplex(yamux::Config::default())
+            .timeout(CONNECT_TIMEOUT)
+            .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)));
+        let transport = relay_transport
+            .or_transport(transport)
+            .map(|either, _| either.into_inner())
+            .boxed();
+
+        let behaviour = Behaviour::new(
+            env_config,
+            wallet,
+            identity.clone(),
+            relay_behaviour,
+            XmrBtcNamespace::Mainnet,
+            rendezvous_peer_ids,
+            sqlite.clone(),
+        );
+        // One address of a peer at a time: dialling all of a maker's addresses at once would take that many
+        // slots for one maker, and its onion address (added first, below) is the one most likely to work
+        let swarm_config = libp2p::swarm::Config::with_tokio_executor()
+            .with_idle_connection_timeout(IDLE_CONNECTION_TIMEOUT)
+            .with_dial_concurrency_factor(std::num::NonZeroU8::MIN);
+        let mut swarm = Swarm::new(transport, behaviour, local_peer_id, swarm_config);
 
         for (peer_id, addrs) in rendezvous_points {
-            for addr in addrs {
+            for addr in onion_first(addrs) {
                 swarm.add_peer_address(peer_id, addr);
             }
         }
@@ -257,7 +273,7 @@ impl Engine {
             .await
             .context("Could not read known maker addresses")?
         {
-            for addr in addrs {
+            for addr in onion_first(addrs) {
                 swarm.add_peer_address(peer_id, addr);
             }
         }
@@ -643,8 +659,15 @@ impl Engine {
     }
 }
 
-/// eigenwallet's `swap::network::transport::authenticate_and_multiplex` with a timeout long enough
-/// for onion makers
+/// A peer's addresses with its onion addresses first, otherwise in the order given. They are handed
+/// to the swarm in this order; which one is dialled first is then up to the behaviour that keeps them.
+fn onion_first(mut addrs: Vec<Multiaddr>) -> Vec<Multiaddr> {
+    addrs.sort_by_key(|addr| !addr.iter().any(|p| matches!(p, libp2p::core::multiaddr::Protocol::Onion3(_))));
+    addrs
+}
+
+/// eigenwallet's `swap::network::transport::authenticate_and_multiplex`. Its time limit is
+/// [`SlotLimited`]'s, which starts when the dial gets its slot, so none is added here.
 fn authenticate_and_multiplex<T>(transport: Boxed<T>, identity: &identity::Keypair) -> Result<Boxed<(PeerId, StreamMuxerBox)>>
 where
     T: futures::AsyncRead + futures::AsyncWrite + Unpin + Send + 'static,
@@ -655,7 +678,6 @@ where
         .upgrade(Version::V1)
         .authenticate(noise::Config::new(identity)?)
         .multiplex(multiplex)
-        .timeout(CONNECT_TIMEOUT)
         .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
         .boxed())
 }
@@ -780,6 +802,29 @@ mod local_server_tests {
         ] {
             assert!(!is_local_server(url), "{url} is not local");
         }
+    }
+}
+
+#[cfg(test)]
+mod onion_first_tests {
+    use super::onion_first;
+    use libp2p::Multiaddr;
+
+    #[test]
+    fn onion_addresses_come_first_and_the_rest_keep_their_order() {
+        let addrs: Vec<Multiaddr> = [
+            "/dns4/maker.example/tcp/9939",
+            "/onion3/3xl2zfur4tpebogsrgn3l7l2illzkhwi3755jplmycmn4q77nxsrl6qd:8888",
+            "/ip4/203.0.113.7/tcp/9939",
+            "/onion3/vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd:9939",
+        ]
+        .iter()
+        .map(|a| a.parse().unwrap())
+        .collect();
+        let sorted: Vec<String> = onion_first(addrs).iter().map(|a| a.to_string()).collect();
+        assert!(sorted[0].starts_with("/onion3/3xl2") && sorted[1].starts_with("/onion3/vww6"));
+        assert_eq!(sorted[2], "/dns4/maker.example/tcp/9939");
+        assert_eq!(sorted[3], "/ip4/203.0.113.7/tcp/9939");
     }
 }
 

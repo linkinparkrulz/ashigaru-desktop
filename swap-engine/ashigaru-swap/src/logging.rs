@@ -6,8 +6,10 @@
 //! notifications, where it lands in the swap log and Ashigaru's log file. Routine chatter, marked
 //! `quiet`, goes to the log file only.
 
+use std::collections::HashMap;
 use std::fmt::Write as _;
-use std::sync::Once;
+use std::sync::{Mutex, Once};
+use std::time::{Duration, Instant};
 
 use serde_json::json;
 use tracing::field::{Field, Visit};
@@ -46,6 +48,64 @@ pub fn quiet(target: &str, message: &str) -> bool {
             .any(|prefix| message.starts_with(prefix))
 }
 
+/// eigenwallet logs every failed dial to every maker, with libp2p's full error for each of its
+/// addresses: over Tor that is hundreds of long lines an hour for makers that are simply offline.
+/// Per peer, the first failure is kept, then at most one line per [`CONNECTION_ERROR_WINDOW`] that
+/// says how many it stands for. The error text is cut short; the count says the rest.
+const CONNECTION_ERROR: &str = "Outgoing connection error to peer";
+const CONNECTION_ERROR_WINDOW: Duration = Duration::from_secs(10 * 60);
+const CONNECTION_ERROR_MAX_CHARS: usize = 300;
+
+#[derive(Default)]
+struct ConnectionErrorDigest {
+    /// Per peer: when its last line was let through, and how many failures were held back since
+    peers: HashMap<String, (Instant, u32)>,
+}
+
+impl ConnectionErrorDigest {
+    /// None to hold this failure back; otherwise how many earlier ones were held back since the last line
+    fn admit(&mut self, peer: &str, now: Instant) -> Option<u32> {
+        match self.peers.get_mut(peer) {
+            Some((last, held)) if now.duration_since(*last) < CONNECTION_ERROR_WINDOW => {
+                *held += 1;
+                None
+            }
+            Some((last, held)) => {
+                let earlier = *held;
+                *last = now;
+                *held = 0;
+                Some(earlier)
+            }
+            None => {
+                self.peers.insert(peer.to_string(), (now, 0));
+                Some(0)
+            }
+        }
+    }
+}
+
+/// The value of `name=` in a line's fields, up to the next space
+fn field<'a>(fields: &'a str, name: &str) -> Option<&'a str> {
+    let start = fields.find(&format!(" {name}="))? + name.len() + 2;
+    fields[start..].split(' ').next()
+}
+
+/// The line to log for a failed dial, or None to hold it back: see [`CONNECTION_ERROR_WINDOW`]
+fn digest_connection_error(digest: &mut ConnectionErrorDigest, text: &str, fields: &str, now: Instant) -> Option<String> {
+    let peer = field(fields, "peer_id").unwrap_or("unknown");
+    let earlier = digest.admit(peer, now)?;
+    let mut line: String = text.chars().take(CONNECTION_ERROR_MAX_CHARS).collect();
+    if line.len() < text.len() {
+        line.push('…');
+    }
+    if earlier > 0 {
+        let _ = write!(line, " ({earlier} more failures to this peer since the last such line)");
+    }
+    Some(line)
+}
+
+static CONNECTION_ERRORS: Mutex<Option<ConnectionErrorDigest>> = Mutex::new(None);
+
 pub fn wanted(level: &Level, target: &str) -> bool {
     // In tracing, more verbose levels compare greater: keep INFO, WARN and ERROR
     *level <= Level::INFO && TARGETS.iter().any(|prefix| target.starts_with(prefix))
@@ -68,12 +128,20 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for Forward {
             return;
         }
         let message = compose(event, &ctx);
+        let mut text = message.text();
+        if message.message.starts_with(CONNECTION_ERROR) {
+            let Ok(mut digest) = CONNECTION_ERRORS.lock() else { return };
+            match digest_connection_error(digest.get_or_insert_with(Default::default), &text, &message.fields, Instant::now()) {
+                Some(line) => text = line,
+                None => return,
+            }
+        }
         bridge::notify(
             "log",
             &json!({
                 "level": metadata.level().as_str(),
                 "target": metadata.target(),
-                "message": message.text(),
+                "message": text,
                 "quiet": quiet(metadata.target(), &message.message),
             }),
         );
@@ -182,6 +250,33 @@ mod tests {
             tracing::warn!(error = "closed", "Swap setup failed");
         });
         assert_eq!(lines.lock().unwrap().as_slice(), ["Swap setup failed error=closed peer=12D3KooWmaker"]);
+    }
+
+    #[test]
+    fn connection_errors_are_digested_per_peer() {
+        let mut digest = ConnectionErrorDigest::default();
+        let t0 = Instant::now();
+        let fields = " peer_id=12D3KooWA connection_id=7 error=Transport([..])";
+        let text = format!("{CONNECTION_ERROR}{fields}");
+        // The first failure to a peer is kept, the next ones in the window are held back
+        assert_eq!(digest_connection_error(&mut digest, &text, fields, t0), Some(text.clone()));
+        assert_eq!(digest_connection_error(&mut digest, &text, fields, t0 + Duration::from_secs(20)), None);
+        assert_eq!(digest_connection_error(&mut digest, &text, fields, t0 + Duration::from_secs(40)), None);
+        // Another peer has its own count
+        let other = " peer_id=12D3KooWB connection_id=8 error=x";
+        assert!(digest_connection_error(&mut digest, &format!("{CONNECTION_ERROR}{other}"), other, t0 + Duration::from_secs(41)).is_some());
+        // After the window, one line says how many it stands for
+        let line = digest_connection_error(&mut digest, &text, fields, t0 + CONNECTION_ERROR_WINDOW).unwrap();
+        assert!(line.ends_with("(2 more failures to this peer since the last such line)"), "{line}");
+    }
+
+    #[test]
+    fn a_long_connection_error_is_cut_short() {
+        let mut digest = ConnectionErrorDigest::default();
+        let fields = format!(" peer_id=12D3KooWC error={}", "x".repeat(2000));
+        let text = format!("{CONNECTION_ERROR}{fields}");
+        let line = digest_connection_error(&mut digest, &text, &fields, Instant::now()).unwrap();
+        assert!(line.chars().count() <= CONNECTION_ERROR_MAX_CHARS + 1 && line.ends_with('…'));
     }
 
     #[test]

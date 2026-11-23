@@ -1,0 +1,39 @@
+diff --git a/swap-p2p/src/defaults.rs b/swap-p2p/src/defaults.rs
+index 3cca2b8..e1292ca 100644
+--- a/swap-p2p/src/defaults.rs
++++ b/swap-p2p/src/defaults.rs
+@@ -7,7 +7,8 @@ pub const BACKOFF_MULTIPLIER: f64 = 1.5;
+ 
+ // Redial
+ pub const REDIAL_INITIAL_INTERVAL: Duration = Duration::from_secs(1);
+-pub const REDIAL_MAX_INTERVAL: Duration = Duration::from_secs(10);
++/// Ashigaru: up to ten minutes between attempts at a peer that keeps failing (eigenwallet: 10 s)
++pub const REDIAL_MAX_INTERVAL: Duration = Duration::from_secs(10 * 60);
+ 
+ // Rendezvous
+ pub const RENDEZVOUS_REDIAL_MAX_INTERVAL: Duration = Duration::from_secs(60);
+@@ -25,7 +26,8 @@ pub const RENDEZVOUS_RETRY_MAX_INTERVAL: Duration = Duration::from_secs(60);
+ pub const CACHED_QUOTE_EXPIRY: Duration = Duration::from_secs(180);
+ pub const QUOTE_INTERVAL: Duration = Duration::from_secs(45);
+ pub const QUOTE_REDIAL_INTERVAL: Duration = Duration::from_secs(1);
+-pub const QUOTE_REDIAL_MAX_INTERVAL: Duration = Duration::from_secs(30);
++/// Ashigaru: up to ten minutes between attempts at a maker that keeps failing (eigenwallet: 30 s)
++pub const QUOTE_REDIAL_MAX_INTERVAL: Duration = Duration::from_secs(10 * 60);
+ pub const QUOTE_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+ 
+ // Swap setup
+diff --git a/swap/src/cli/behaviour.rs b/swap/src/cli/behaviour.rs
+index 662a5c6..aafcf24 100644
+--- a/swap/src/cli/behaviour.rs
++++ b/swap/src/cli/behaviour.rs
+@@ -18,7 +18,9 @@ pub use swap_p2p::out_event::bob::OutEvent;
+ const PROTOCOL_VERSION: &str = "/comit/xmr/btc/1.0.0";
+ 
+ const INITIAL_REDIAL_INTERVAL: Duration = Duration::from_secs(1);
+-const MAX_REDIAL_INTERVAL: Duration = Duration::from_secs(30);
++/// A maker that keeps failing is tried less and less often, up to every ten minutes, instead of every
++/// 30 seconds for as long as the engine runs (Ashigaru: over Tor every attempt costs a circuit)
++const MAX_REDIAL_INTERVAL: Duration = Duration::from_secs(10 * 60);
+ 
+ /// A `NetworkBehaviour` that represents an XMR/BTC swap node as Bob.
+ #[derive(NetworkBehaviour)]
