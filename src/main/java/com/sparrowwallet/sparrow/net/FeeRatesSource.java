@@ -18,7 +18,8 @@ public enum FeeRatesSource {
     MEMPOOL_SPACE("mempool.space") {
         @Override
         public Map<Integer, Double> getBlockTargetFeeRates(Map<Integer, Double> defaultblockTargetFeeRates) {
-            String url = AppServices.isUsingProxy() ? "http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/api/v1/fees/recommended" : "https://mempool.space/api/v1/fees/recommended";
+            //Only the onion address, only through Tor: without a Tor proxy (or offline) the server's own estimates are kept
+            String url = "http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/api/v1/fees/recommended";
             return getThreeTierFeeRates(this, defaultblockTargetFeeRates, url);
         }
     },
@@ -59,6 +60,11 @@ public enum FeeRatesSource {
     }
 
     private static Map<Integer, Double> getThreeTierFeeRates(FeeRatesSource feeRatesSource, Map<Integer, Double> defaultblockTargetFeeRates, String url) {
+        String refusal = TorOnly.refusal();
+        if(refusal != null) {
+            log.info("Fee rates not requested from " + feeRatesSource.getName() + ": " + refusal);
+            return Collections.emptyMap();
+        }
         if(log.isInfoEnabled()) {
             log.info("Requesting fee rates from " + url);
         }

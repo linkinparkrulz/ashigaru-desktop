@@ -49,7 +49,7 @@ public class PayNymService {
             log.info("Creating PayNym using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -71,7 +71,7 @@ public class PayNymService {
             log.info("Updating PayNym token using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -120,7 +120,7 @@ public class PayNymService {
             log.info("Claiming PayNym using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -149,7 +149,7 @@ public class PayNymService {
             log.info("Adding payment code to PayNym using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -173,7 +173,7 @@ public class PayNymService {
             log.info("Following payment code using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -191,7 +191,7 @@ public class PayNymService {
             log.info("Fetching PayNym using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -252,11 +252,20 @@ public class PayNymService {
         return masterWallet.getPaymentCode();
     }
 
+    /** The PayNym directory, only at its onion address: it is never reached directly (TorOnly) */
+    public static final String HOST_URL = "http://paynym25chftmsywv4v2r67agbrr62lcxagsf4tymbzpeeucucy2ivad.onion";
+
     private static String getHostUrl() {
-        return getHostUrl(AppServices.getHttpClientService().getTorProxy() != null);
+        return HOST_URL;
     }
 
-    public static String getHostUrl(boolean tor) {
-        return tor ? "http://paynym25chftmsywv4v2r67agbrr62lcxagsf4tymbzpeeucucy2ivad.onion" : "https://paynym.rs";
+    /** A request to the directory, through Tor; refused (as an error, not sent directly) offline or without a Tor proxy */
+    @SuppressWarnings("rawtypes")
+    private static Observable<java8.util.Optional<Map>> post(String url, Map<String, String> headers, Object body) {
+        String refusal = com.sparrowwallet.sparrow.net.TorOnly.refusal();
+        if(refusal != null) {
+            return Observable.error(new java.io.IOException("PayNym directory not contacted: " + refusal + "."));
+        }
+        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body);
     }
 }

@@ -142,14 +142,19 @@ public class PayNymAvatar extends StackPane {
                     }
 
                     synchronized(lock) {
+                        //Only through Tor, at the directory's onion address: offline or without a Tor proxy there is no avatar
+                        com.sparrowwallet.sparrow.net.TorOnly.require("PayNym avatar");
                         Proxy proxy = AppServices.getProxy();
-                        String url = PayNymService.getHostUrl(proxy != null) + "/" + paymentCodeStr + "/avatar";
+                        if(proxy == null) {
+                            throw new java.io.IOException("PayNym avatar not fetched: no Tor proxy.");
+                        }
+                        String url = PayNymService.HOST_URL + "/" + paymentCodeStr + "/avatar";
 
                         if(log.isDebugEnabled()) {
                             log.debug("Requesting PayNym avatar from " + url);
                         }
 
-                        try(InputStream is = (proxy == null ? new URL(url).openStream() : new URL(url).openConnection(proxy).getInputStream())) {
+                        try(InputStream is = new URL(url).openConnection(proxy).getInputStream()) {
                             Image image = new Image(is, 150, 150, true, false);
                             paymentCodeCache.put(cacheId, image);
                             Platform.runLater(() -> EventManager.get().post(new PayNymImageLoadedEvent(paymentCode, image)));

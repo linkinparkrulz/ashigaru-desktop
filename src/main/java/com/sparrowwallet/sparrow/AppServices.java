@@ -1362,6 +1362,10 @@ public class AppServices {
 
     @Subscribe
     public void feeRateSourceChanged(FeeRatesSourceChangedEvent event) {
+        //Offline, nothing is fetched: the rates come back with the next connection
+        if(Config.get().getMode() == Mode.OFFLINE) {
+            return;
+        }
         ElectrumServer.FeeRatesService feeRatesService = new ElectrumServer.FeeRatesService();
         feeRatesService.setOnSucceeded(workerStateEvent -> {
             EventManager.get().post(feeRatesService.getValue());

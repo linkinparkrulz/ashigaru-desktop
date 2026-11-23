@@ -37,15 +37,12 @@ import java.util.*;
 public class StatsController implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(StatsController.class);
 
-    // whirlpoolstats serves both clearnet and an onion mirror; prefer the onion when a Tor
-    // proxy is active (clearnet HTTPS over Tor is unreliable in packaged builds, whereas
-    // HTTP-to-onion over the proxy is the same path the avatar/fee-rate calls use).
+    // whirlpoolstats is only fetched at its onion address, through Tor: never directly, and nothing in offline mode (TorOnly)
     private static final String ONION_BASE = "http://25jmfjjzm24mjslbub27xnqdbf3dy2oafc7ydawdkz56nlb252hpenyd.onion/api";
-    private static final String CLEARNET_BASE = "https://whirlpoolstats.xyz/api";
     private static final String SOURCE_URL = "https://whirlpoolstats.xyz";
 
-    private static String apiBase() {
-        return AppServices.getProxy() != null ? ONION_BASE : CLEARNET_BASE;
+    static String apiBase() {
+        return ONION_BASE;
     }
 
     @FXML private Button refreshBtn;
@@ -128,6 +125,12 @@ public class StatsController implements Initializable {
     private void fetchStats() {
         statusLabel.setVisible(true);
         statusLabel.setManaged(true);
+        String refusal = com.sparrowwallet.sparrow.net.TorOnly.refusal();
+        if(refusal != null) {
+            statusLabel.setText("Statistics are only fetched through Tor: " + refusal + ".");
+            refreshBtn.setDisable(false);
+            return;
+        }
         statusLabel.setText("Fetching statistics from whirlpoolstats.xyz…");
         refreshBtn.setDisable(true);
 
@@ -277,11 +280,13 @@ public class StatsController implements Initializable {
     }
 
     private static String httpGet(String urlStr) throws IOException {
+        com.sparrowwallet.sparrow.net.TorOnly.require("Whirlpool statistics");
         URL url = new URL(urlStr);
         Proxy proxy = AppServices.getProxy();
-        HttpURLConnection conn = (HttpURLConnection) (proxy != null
-                ? url.openConnection(proxy)
-                : url.openConnection());
+        if(proxy == null) {
+            throw new IOException("Whirlpool statistics not fetched: no Tor proxy.");
+        }
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection(proxy);
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(30000);
         conn.setReadTimeout(60000);
