@@ -217,6 +217,13 @@ class ReleaseFormatTest {
     }
 
     @Test
+    void theEngineCacheKeyChangesWithTheLockAndTheWorkflow() throws IOException {
+        String engine = text(".github/workflows/swap-engine.yaml");
+        String key = engine.lines().filter(line -> line.trim().startsWith("key: swap-engine-")).findFirst().orElseThrow();
+        assertTrue(key.contains("'swap-engine/Cargo.lock.overlay'") && key.contains("'.github/workflows/swap-engine.yaml'"), key);
+    }
+
+    @Test
     void theEngineIsBuiltWithExactlyRust1920() throws IOException {
         String engine = text(".github/workflows/swap-engine.yaml");
         assertTrue(engine.contains("rustup toolchain install 1.92.0 "));

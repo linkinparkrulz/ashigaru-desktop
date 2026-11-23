@@ -80,7 +80,15 @@ A release builds the swap engine itself (`release.yaml` calls `swap-engine.yaml`
 What is fixed, and what is not:
 
 - **Actions** in every workflow are pinned to commits, and a test fails if one is not. The engine build uses no cache in a release.
-- **Dependencies of the engine** are fixed by `swap-engine/Cargo.lock.overlay` (built `--locked`). A release **refuses to build until that file is committed**: run the Swap engine workflow, take its
-  `swap-engine-cargo-lock` artifact, review it, and commit it under that name. The same run's summary lists `cargo audit` results; raise the vulnerable versions in the overlay until it is clean.
-- **Not done**: a pinned build container with path remapping (so builds reproduce byte for byte across machines), pinned apt/brew package versions, and failing the build on `cargo audit` findings. The runner images
-  are version-named (`ubuntu-22.04`, `macos-15`, `macos-15-intel`, `windows-2022`) but still receive their own updates. The JDK is held to 21.0.13.1 or newer by `require-java.sh`, not to one exact build.
+- **Dependencies of the engine** are fixed by `swap-engine/Cargo.lock.overlay`, which is committed: the engine is built and tested `--locked`, and a release refuses
+  to build without that file. To change a dependency, run the Swap engine workflow, take its `swap-engine-cargo-lock` artifact, review it and commit it over the overlay.
+- **Rust** is 1.92.0 exactly: installed by `rustup`, and a step fails the build unless the eigenwallet checkout (whose `rust-toolchain.toml` selects it) compiles with it.
+  `clippy` runs on Ashigaru's crate with warnings as errors.
+- **Build paths** are kept out of the library: `--remap-path-prefix` for the Rust code and `-ffile-prefix-map` for Monero's C++ and the Rust-C++ bridge, set per target so
+  eigenwallet's own flags are kept. `SOURCE_DATE_EPOCH` is the commit's time. Monero's bundled dependency libraries (built by its own `make`) are not remapped.
+- **`cargo audit`** (0.23.0, pinned) runs on every Linux engine build and writes its version, its findings and its exit status to the run summary. It does not fail
+  the build yet: it reports the advisories still open (several come from `sqlx` 0.8.0, which cannot move until upstream does) until they are cleared or accepted.
+- **Not done**: a pinned build container (so builds reproduce byte for byte across machines), pinned apt/brew package versions (their versions are recorded in the run
+  summary instead), a MinGW toolchain built from checksummed sources, Gradle dependency verification, and failing the build on `cargo audit` findings. The runner images
+  are version-named (`ubuntu-22.04`, `macos-15`, `macos-15-intel`, `windows-2022`) but still receive their own updates. The JDK is held to 21.0.13.1 or newer by
+  `require-java.sh`, not to one exact build.

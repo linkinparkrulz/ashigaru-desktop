@@ -205,7 +205,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             swap-engine/build/eigenwallet/target
-          key: swap-engine-${{ matrix.target }}-${{ hashFiles('swap-engine/EIGENWALLET_REV', 'swap-engine/patches/**', 'swap-engine/ashigaru-swap/Cargo.toml') }}
+          # The lock overlay and this workflow (its flags change every compiled file) are in the key: when either changes, the key changes, so the
+          # new build is saved instead of the old cache being restored from restore-keys and never saved again (Monero rebuilt every run)
+          key: swap-engine-${{ matrix.target }}-${{ hashFiles('swap-engine/EIGENWALLET_REV', 'swap-engine/patches/**', 'swap-engine/ashigaru-swap/Cargo.toml', 'swap-engine/Cargo.lock.overlay', '.github/workflows/swap-engine.yaml') }}
           restore-keys: swap-engine-${{ matrix.target }}-
 
       - name: Test ashigaru-swap
@@ -292,10 +294,25 @@ jobs:
         continue-on-error: true
         working-directory: swap-engine/build/eigenwallet
         run: |
-          cargo install cargo-audit --version 0.23.0 --locked
+          # Everything goes to the summary, the install too: a step that ends in seconds should say whether cargo-audit ran at all.
+          # It exits non-zero while advisories are open, which continue-on-error lets through until they are cleared.
           {
             echo "### cargo audit"
-            cargo audit 2>&1 | tail -n 60
+            if ! cargo install cargo-audit --version 0.23.0 --locked > "$RUNNER_TEMP/cargo-audit-install.log" 2>&1; then
+              echo "cargo-audit could not be installed:"
+              echo '```'
+              tail -n 30 "$RUNNER_TEMP/cargo-audit-install.log"
+              echo '```'
+              exit 1
+            fi
+            echo "Version: \`$(cargo audit --version)\`"
+            echo '```'
+            status=0
+            cargo audit > "$RUNNER_TEMP/cargo-audit.log" 2>&1 || status=$?
+            tail -n 60 "$RUNNER_TEMP/cargo-audit.log"
+            echo '```'
+            echo "cargo audit exit status: $status"
+            exit "$status"
           } >> "$GITHUB_STEP_SUMMARY"
 
       # What the build resolved, to be reviewed and committed as swap-engine/Cargo.lock.overlay
