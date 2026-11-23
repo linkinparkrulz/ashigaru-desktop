@@ -408,12 +408,27 @@ public class SwapService implements SwapHost {
             boolean used = usedByThisIdentity(listed);
             unfinished.replaceAll(notFinishedIds(listed));
             olderUnfinished = olderIdentityUnfinished(listed);
+            //Unfinished swaps of an earlier identity, and none of this one's: that identity is the one that should be in charge (a backup that
+            //restored both identity files to an older identity looks like this). Put it back, from its own seed, so its swaps are worked on.
+            String owner = resumed.isEmpty() && !hasUnfinishedOfThisIdentity(listed) ? soleUnfinishedFolder(listed) : null;
+            SwapIdentity adopted = owner == null ? null : SwapIdentity.adopt(swapsDir, owner);
+            if(adopted != null) {
+                identity = adopted;
+                loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes,
+                        SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
+                loaded.resumeAll().forEach(id -> resumed.add(id.getAsString()));
+                listed = loaded.listSwaps();
+                used = usedByThisIdentity(listed);
+                unfinished.replaceAll(notFinishedIds(listed));
+                olderUnfinished = olderIdentityUnfinished(listed);
+            }
             if(olderUnfinished > 0) {
                 log.warn(olderUnfinished + " unfinished swap(s) belong to an earlier swap identity; this engine does not work on them");
             }
             //Identity already used and nothing left to finish: makers have seen it, so take a new one. Not in a run that just recovered
-            //its identity from a damaged file: whatever went wrong should be looked at before the identity is changed.
-            if(!renewIdentity && !identity.wasRecovered() && resumed.isEmpty() && used) {
+            //its identity from a damaged file: whatever went wrong should be looked at before the identity is changed. Not while an earlier
+            //identity has unfinished swaps either: those need that identity, and a new one would only bury them deeper.
+            if(!renewIdentity && !identity.wasRecovered() && resumed.isEmpty() && used && olderUnfinished == 0) {
                 identity = SwapIdentity.renew(swapsDir);
                 loaded.start(identity.getDataDir(), torProxy, identity.getSeed(), this, electrumUrls, moneroNodes,
                     SwapIdentity.pastDataDirs(swapsDir, identity.getDataDir()));
@@ -539,6 +554,43 @@ public class SwapService implements SwapHost {
             }
         }
         return ids;
+    }
+
+    /** Whether the engine's own identity has an unfinished swap in the list */
+    static boolean hasUnfinishedOfThisIdentity(JsonArray swaps) {
+        for(JsonElement element : swaps) {
+            if(element.isJsonObject()) {
+                JsonObject swap = element.getAsJsonObject();
+                boolean past = swap.has("past") && !swap.get("past").isJsonNull() && swap.get("past").getAsBoolean();
+                if(!past && !isComplete(swap)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The one earlier identity folder (by name) that holds every unfinished swap of earlier identities, or null: when there are none, when they are
+     * spread over several folders (no single identity can be put in charge of them all), or when one does not name its folder.
+     */
+    static String soleUnfinishedFolder(JsonArray swaps) {
+        java.util.Set<String> folders = new java.util.TreeSet<>();
+        for(JsonElement element : swaps) {
+            if(!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject swap = element.getAsJsonObject();
+            boolean past = swap.has("past") && !swap.get("past").isJsonNull() && swap.get("past").getAsBoolean();
+            if(!past || isComplete(swap)) {
+                continue;
+            }
+            if(!swap.has("dataDir") || swap.get("dataDir").isJsonNull()) {
+                return null;
+            }
+            folders.add(new File(swap.get("dataDir").getAsString()).getName());
+        }
+        return folders.size() == 1 ? folders.iterator().next() : null;
     }
 
     /** How many swaps in the engine's list are unfinished and were recorded under an earlier identity, which the engine does not work on */

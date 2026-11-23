@@ -116,6 +116,26 @@ class SwapIdentityTest {
     }
 
     @Test
+    void anEarlierIdentityWithUnfinishedSwapsCanBePutBackInCharge() throws Exception {
+        SwapIdentity newer = SwapIdentity.current(swapsDir);
+        database(newer);
+        SwapIdentity restored = SwapIdentity.renew(swapsDir);
+        database(restored);
+
+        SwapIdentity adopted = SwapIdentity.adopt(swapsDir, newer.getDataDir().getName());
+        assertArrayEquals(newer.getSeed(), adopted.getSeed());
+        assertTrue(adopted.wasRecovered(), "not replaced in the same run");
+        assertArrayEquals(newer.getSeed(), SwapIdentity.current(swapsDir).getSeed(), "the identity file and folder name now name it");
+        assertTrue(new File(restored.getDataDir(), SwapIdentity.SEED_COPY).isFile(), "the identity it replaced keeps its seed");
+
+        //Never a folder without its own matching seed, a retired one, or a name that is not a folder name
+        Files.writeString(new File(restored.getDataDir(), SwapIdentity.RETIRED).toPath(), "x", StandardCharsets.UTF_8);
+        assertNull(SwapIdentity.adopt(swapsDir, restored.getDataDir().getName()));
+        assertNull(SwapIdentity.adopt(swapsDir, "../../etc"));
+        assertNull(SwapIdentity.adopt(swapsDir, "0123456789abcdef"));
+    }
+
+    @Test
     void aRenewalInterruptedBeforeItsFolderNameWasWrittenIsTakenAsBefore() throws Exception {
         SwapIdentity old = SwapIdentity.current(swapsDir);
         database(old);

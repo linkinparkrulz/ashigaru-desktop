@@ -185,6 +185,23 @@ class SwapServiceTest {
     }
 
     @Test
+    void theOneEarlierIdentityHoldingUnfinishedSwapsIsFound() {
+        com.google.gson.JsonArray one = com.google.gson.JsonParser.parseString("[{\"complete\":true},"
+                + "{\"complete\":false,\"past\":true,\"dataDir\":\"/s/swaps/aaaaaaaaaaaaaaaa\"},{\"past\":true,\"dataDir\":\"/s/swaps/aaaaaaaaaaaaaaaa\"},"
+                + "{\"complete\":true,\"past\":true,\"dataDir\":\"/s/swaps/bbbbbbbbbbbbbbbb\"}]").getAsJsonArray();
+        assertEquals("aaaaaaaaaaaaaaaa", SwapService.soleUnfinishedFolder(one));
+        assertFalse(SwapService.hasUnfinishedOfThisIdentity(one));
+
+        com.google.gson.JsonArray two = com.google.gson.JsonParser.parseString("[{\"complete\":false,\"past\":true,\"dataDir\":\"/s/swaps/aaaaaaaaaaaaaaaa\"},"
+                + "{\"complete\":false,\"past\":true,\"dataDir\":\"/s/swaps/bbbbbbbbbbbbbbbb\"}]").getAsJsonArray();
+        assertNull(SwapService.soleUnfinishedFolder(two), "no single identity can take both");
+        assertNull(SwapService.soleUnfinishedFolder(com.google.gson.JsonParser.parseString("[{\"complete\":false,\"past\":true}]").getAsJsonArray()),
+                "an engine too old to name folders");
+        assertNull(SwapService.soleUnfinishedFolder(new com.google.gson.JsonArray()));
+        assertTrue(SwapService.hasUnfinishedOfThisIdentity(com.google.gson.JsonParser.parseString("[{\"complete\":false}]").getAsJsonArray()));
+    }
+
+    @Test
     void unfinishedSwapsOfEarlierIdentitiesAreCountedApart() {
         com.google.gson.JsonArray list = com.google.gson.JsonParser.parseString(
                 "[{\"complete\":false},{\"complete\":false,\"past\":true},{\"past\":true},{\"complete\":true,\"past\":true}]").getAsJsonArray();

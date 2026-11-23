@@ -132,6 +132,30 @@ public final class SwapIdentity {
         }
     }
 
+    /**
+     * Puts an earlier identity back in charge: the one whose folder holds unfinished swaps, e.g. after a backup restored both the identity file and
+     * its folder name to an older identity. Only from that folder's own seed, and only when the seed matches the folder and it was not retired.
+     * The identity it replaces keeps its folder and its swaps. Returns null when that cannot be done.
+     */
+    public static SwapIdentity adopt(File swapsDir, String folder) throws IOException {
+        if(folder == null || !folder.matches("[0-9a-f]{16}")) {
+            return null;
+        }
+        File dir = new File(swapsDir, folder);
+        if(new File(dir, RETIRED).isFile()) {
+            return null;
+        }
+        byte[] seed = readSeed(new File(dir, SEED_COPY));
+        if(seed == null || !directoryName(seed).equals(folder)) {
+            return null;
+        }
+        writeCurrent(swapsDir, seed);
+        writeFolder(swapsDir, folder);
+        log.warn("Swap identity " + folder + " put back in charge: its swaps are unfinished");
+        //Counted as recovered, so it is not replaced in the same run
+        return new SwapIdentity(seed, swapsDir, true);
+    }
+
     /** Replaces the identity in use. The old one's directory, and any swap history in it, stays. */
     public static SwapIdentity renew(File swapsDir) throws IOException {
         protectExisting(swapsDir);
