@@ -162,7 +162,7 @@ class ReleaseFormatTest {
     void runnersAndToolsAreFixed() throws IOException {
         for(Path file : workflows()) {
             String workflow = text(file.toString());
-            assertFalse(namesLatestRunner(workflow), file + ": a -latest runner changes without notice");
+            assertFalse(WorkflowRunners.namesLatestRunner(workflow), file + ": a -latest runner changes without notice");
             for(String line : workflow.split("\n")) {
                 if(line.contains("cargo install ")) {
                     assertTrue(line.contains("--version ") && line.contains("--locked"), file + ": " + line.trim() + " is not pinned");
@@ -171,32 +171,49 @@ class ReleaseFormatTest {
         }
     }
 
-    //runs-on, or a matrix's os: or host:, and the whole value after it: a name, quoted or not, or a list of them ([ubuntu-latest, macos-15])
-    private static final java.util.regex.Pattern RUNNER_KEY = java.util.regex.Pattern.compile("(?m)^\\s*-?\\s*(runs-on|os|host):(.*)$");
-    private static final java.util.regex.Pattern LATEST_NAME = java.util.regex.Pattern.compile("(?<![\\w.-])(macos|ubuntu|windows)-latest(?![\\w.-])");
-
-    /** Whether a workflow names a -latest runner anywhere a runner is named, in any of the forms YAML allows */
-    static boolean namesLatestRunner(String workflow) {
-        java.util.regex.Matcher key = RUNNER_KEY.matcher(workflow);
-        while(key.find()) {
-            String value = key.group(2).replaceFirst("\\s#.*$", "");
-            if(LATEST_NAME.matcher(value).find()) {
-                return true;
-            }
+    @Test
+    void theLatestRunnerCheckSeesEveryWayOfWritingIt() {
+        String[] latest = {
+                "jobs:\n  a:\n    runs-on: macos-latest\n",
+                "jobs:\n  a:\n    runs-on: 'ubuntu-latest'\n",
+                "jobs:\n  a:\n    runs-on: \"Windows-Latest\" # mixed case\n",
+                "jobs:\n  a:\n    runs-on: [ubuntu-latest]\n",
+                "jobs:\n  a:\n    runs-on: [self-hosted, \"ubuntu-latest\"]\n",
+                "jobs:\n  a:\n    runs-on:\n      - self-hosted\n      - ubuntu-latest\n",
+                "jobs:\n  a:\n    runs-on:\n      group: big\n      labels: ubuntu-latest-xlarge\n",
+                "jobs:\n  a:\n    runs-on:\n      labels: [x64, macos-latest]\n",
+                "jobs:\n  a:\n    runs-on:\n      labels:\n        - macos-latest-large\n",
+                "jobs:\n  a:\n    runs-on: ${{ matrix.platform }}\n    strategy:\n      matrix:\n        platform: [macos-15, ubuntu-latest]\n",
+                "jobs:\n  a:\n    runs-on: ${{ matrix.runner }}\n    strategy:\n      matrix:\n        include:\n          - runner: windows-2022\n          - runner: windows-latest\n",
+                "jobs:\n  a:\n    strategy:\n      matrix:\n        image:\n          - macos-15\n          - macos-latest\n",
+                "jobs:\n  a:\n    runs-on: [\n      self-hosted,\n      ubuntu-latest\n    ]\n",
+        };
+        for(String workflow : latest) {
+            assertTrue(WorkflowRunners.namesLatestRunner(workflow), workflow);
         }
-        return false;
+        String[] fixed = {
+                "jobs:\n  a:\n    runs-on: macos-15\n",
+                "jobs:\n  a:\n    runs-on: [ubuntu-22.04]\n",
+                "jobs:\n  a:\n    runs-on: macos-15 # not macos-latest\n",
+                "jobs:\n  a:\n    runs-on: my-ubuntu-latest-mirror\n",
+                //os: under env: is not a runner, and neither is text in a script
+                "env:\n  os: ubuntu-latest\njobs:\n  a:\n    runs-on: ubuntu-22.04\n    env:\n      os: macos-latest\n    steps:\n      - run: |\n          echo runs-on: ubuntu-latest\n      - name: it's fine\n        with:\n          os: windows-latest\n",
+        };
+        for(String workflow : fixed) {
+            assertFalse(WorkflowRunners.namesLatestRunner(workflow), workflow);
+        }
     }
 
     @Test
-    void theLatestRunnerCheckSeesEveryWayOfWritingIt() {
-        for(String line : new String[] {"    runs-on: macos-latest", "          - os: 'ubuntu-latest'", "            host: \"windows-latest\"", "      - host: macos-latest # arm",
-                "    runs-on: [ubuntu-latest]", "    runs-on: [self-hosted, \"ubuntu-latest\"]", "        os: [macos-15, ubuntu-latest]", "    runs-on: [ 'windows-latest' ]"}) {
-            assertTrue(namesLatestRunner(line), line);
+    void theWorkflowReaderFindsTheRunnersOfTheRealWorkflows() throws IOException {
+        //Every job of the real workflows names its runner somewhere the reader looks: if it found none, the check above would pass for nothing
+        for(Path file : workflows()) {
+            String workflow = text(file.toString());
+            if(workflow.contains("\n    runs-on:")) {
+                assertFalse(WorkflowRunners.runnerValues(workflow).isEmpty(), file.toString());
+            }
         }
-        for(String line : new String[] {"    runs-on: macos-15", "    runs-on: [ubuntu-22.04]", "    runs-on: ${{ matrix.os }}", "    runs-on: macos-15 # not macos-latest",
-                "    runs-on: my-ubuntu-latest-mirror"}) {
-            assertFalse(namesLatestRunner(line), line);
-        }
+        assertTrue(WorkflowRunners.runnerValues(text(".github/workflows/release.yaml")).containsAll(List.of("windows-2022", "ubuntu-22.04", "macos-15", "macos-15-intel")));
     }
 
     @Test
