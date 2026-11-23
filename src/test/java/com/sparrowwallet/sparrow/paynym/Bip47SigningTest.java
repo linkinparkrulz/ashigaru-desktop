@@ -85,7 +85,7 @@ class Bip47SigningTest {
         String token = "a1b2c3d4e5f6";
         Signed signed = Bip47Signing.sign(wallet, token, false);
         assertEquals(Bip47Signing.MESSAGE_PREFIX + token, signed.message());
-        assertNotEquals(Bip47Signing.signChallenge(wallet, token), signed.signature(), "not the signature a login with this token would send");
+        assertNotEquals(Bip47Signing.notificationKey(wallet).signMessage(token, ScriptType.P2PKH), signed.signature(), "not the signature a login with this token would send");
         assertEquals(Outcome.VERIFIED, Bip47Verification.verify(signed.paymentCode(), signed.message(), signed.signature()).outcome());
         //Signing a signed message's text again does not stack the line
         assertEquals(signed.message(), Bip47Signing.sign(wallet, signed.message(), false).message());
@@ -121,7 +121,7 @@ class Bip47SigningTest {
             assertEquals(Outcome.VERIFIED, Bip47Verification.verify(signed.paymentCode(), signed.message(), signed.signature()).outcome());
         }
         assertTrue(Bip47Signing.canSign(wallet));
-        assertNotNull(Bip47Signing.signChallenge(wallet, "still works"));
+        assertNotNull(Bip47Signing.signChallenge(wallet, "auth47://still-works?r=https://example.org"));
     }
 
     @Test
@@ -190,5 +190,26 @@ class Bip47SigningTest {
         Wallet wallet = wallet();
         String signature = Bip47Signing.signChallenge(wallet, "auth47://abc?r=https://example.org");
         assertEquals(wallet.getPaymentCode().getNotificationAddress(), SignedMessageVerifier.recoverAddress("auth47://abc?r=https://example.org", signature));
+    }
+
+    @Test
+    void theFourKindsOfSignedTextCannotPassAsEachOther() throws Exception {
+        Wallet wallet = wallet();
+        //Logins: only an auth47:// challenge
+        assertThrows(IllegalArgumentException.class, () -> Bip47Signing.signChallenge(wallet, "a1b2c3"));
+        assertThrows(IllegalArgumentException.class, () -> Bip47Signing.signChallenge(wallet, Bip47Signing.MESSAGE_PREFIX + "hi"));
+        assertNotNull(Bip47Signing.signChallenge(wallet, "auth47://nonce?r=https://example.org"));
+
+        //PayNym tokens: plain opaque strings only
+        Bip47Signing.checkPayNymToken("eyJhbGciOi.JIUzI1NiJ9_-+/=~");
+        for(String bad : new String[] {null, "", "auth47://nonce?r=x", Bip47Signing.MESSAGE_PREFIX + "x", "pairing http://x.onion/ BIP47: PM8T", "a\nb", "a b"}) {
+            assertThrows(IllegalArgumentException.class, () -> Bip47Signing.checkPayNymToken(bad), String.valueOf(bad));
+        }
+
+        //Dojo listings: a Sign message or a login is not one
+        assertTrue(Bip47Signing.isSignMessageOrLogin(Bip47Signing.sign(wallet, "http://x.onion/pairing", true).message()));
+        assertTrue(Bip47Signing.isSignMessageOrLogin("AUTH47://nonce?r=http://x.onion/pairing"));
+        assertFalse(Bip47Signing.isSignMessageOrLogin("{\"pairing\":{\"url\":\"http://x.onion/pairing\"}}\n\nBIP47: PM8T"));
+        assertFalse(Bip47Signing.isSignMessageOrLogin(null));
     }
 }

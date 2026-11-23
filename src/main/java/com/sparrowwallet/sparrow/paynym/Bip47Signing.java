@@ -70,9 +70,38 @@ public final class Bip47Signing {
         return extendedPrivateKey.getKey(derivation);
     }
 
-    /** Signs a challenge as the wallet's payment code, for a login (Auth47) rather than a message block */
+    /** Signs a challenge as the wallet's payment code, for a login (Auth47) rather than a message block. Only an auth47:// challenge is signed. */
     public static String signChallenge(Wallet wallet, String challenge) {
+        if(challenge == null || !challenge.toLowerCase(Locale.ROOT).startsWith(AUTH47_SCHEME)) {
+            throw new IllegalArgumentException("Only an auth47:// challenge is signed as a login");
+        }
         return notificationKey(wallet).signMessage(challenge, ScriptType.P2PKH);
+    }
+
+    /*
+     * The notification key signs four kinds of text: Tools -> Sign messages (which start with MESSAGE_PREFIX), Auth47 challenges (auth47://...),
+     * the PayNym directory's login token, and, by Dojo operators with their own keys, Dojo directory listings (a message naming a pairing url and
+     * a payment code). None may pass as another: a token is only signed if it is a plain opaque string, which none of the others can be, and a
+     * Dojo listing is refused if it is a Sign message or a login challenge.
+     */
+
+    /** What a PayNym directory login token may be: an opaque string (letters, digits and . _ ~ + / = -), never a message, a link or a challenge */
+    private static final java.util.regex.Pattern PAYNYM_TOKEN = java.util.regex.Pattern.compile("[A-Za-z0-9._~+/=-]{1,1024}");
+
+    /** Refuses a PayNym directory token that is not a plain opaque string: a hostile directory could otherwise have a login, a message or a listing signed */
+    public static void checkPayNymToken(String token) {
+        if(token == null || !PAYNYM_TOKEN.matcher(token).matches()) {
+            throw new IllegalArgumentException("The PayNym directory sent a login token that is not a plain token, so it was not signed");
+        }
+    }
+
+    /** True when a signed message is a Tools -> Sign message or an Auth47 challenge, and so must not be taken as anything else (a Dojo listing) */
+    public static boolean isSignMessageOrLogin(String message) {
+        if(message == null) {
+            return false;
+        }
+        String start = message.stripLeading();
+        return start.startsWith(MESSAGE_PREFIX.strip()) || start.toLowerCase(Locale.ROOT).startsWith(AUTH47_SCHEME.substring(0, AUTH47_SCHEME.length() - 2));
     }
 
     /**

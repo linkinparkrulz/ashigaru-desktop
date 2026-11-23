@@ -237,6 +237,8 @@ public class PayNymService {
     }
 
     public static String getSignature(Wallet wallet, String authToken) {
+        //The directory chooses the token: it is only signed if it cannot be a login challenge, a signed message or a Dojo listing
+        Bip47Signing.checkPayNymToken(authToken);
         Wallet masterWallet = wallet.isMasterWallet() ? wallet : wallet.getMasterWallet();
         Keystore keystore = masterWallet.getKeystores().get(0);
         List<ChildNumber> derivation = keystore.getKeyDerivation().getDerivation();

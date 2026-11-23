@@ -186,6 +186,12 @@ public class DojoNodeDiscovery {
         int unverified = 0;
         Set<String> seenHosts = new HashSet<>();
         for(Candidate candidate : candidates) {
+            //A block made with Tools -> Sign, or an Auth47 login, is signed by the same kind of key; it is not a listing, whatever it contains
+            if(com.sparrowwallet.sparrow.paynym.Bip47Signing.isSignMessageOrLogin(signedMessage(candidate.signedBlock()))) {
+                unverified++;
+                log.info("Skipping a dojo directory entry signed as a message or a login, not as a listing: " + candidate.name());
+                continue;
+            }
             if(!SignedMessageVerifier.verify(candidate.signedBlock(), candidate.pairingUrl(), candidate.paymentCode())) {
                 unverified++;
                 log.info("Skipping unverified dojo directory entry: " + candidate.name());
