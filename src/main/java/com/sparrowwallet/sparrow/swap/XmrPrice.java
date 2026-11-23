@@ -50,7 +50,7 @@ public final class XmrPrice {
     /** A configured proxy that is not shown to be Tor is refused, not trusted */
     static void requireTorExit(boolean exitsThroughTor) {
         if(!exitsThroughTor) {
-            throw new IllegalStateException("The XMR price is only fetched through Tor, and the proxy in Settings could not be shown to be Tor");
+            throw new IllegalStateException("The XMR price is only fetched through Tor: the proxy in Settings is not marked as Tor, or did not answer through Tor");
         }
     }
 

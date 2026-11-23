@@ -176,6 +176,9 @@ public class ServerPreferencesController extends PreferencesDetailController {
     private TextField proxyPort;
 
     @FXML
+    private UnlabeledToggleSwitch proxyIsTor;
+
+    @FXML
     private Button testConnection;
 
     @FXML
@@ -440,8 +443,15 @@ public class ServerPreferencesController extends PreferencesDetailController {
             }
         });
 
+        proxyIsTor.selectedProperty().addListener((observable, oldValue, newValue) -> {
+            config.setProxyIsTor(newValue);
+            com.sparrowwallet.sparrow.swap.TorRoute.forget();
+        });
+
         useProxy.selectedProperty().addListener((observable, oldValue, newValue) -> {
             config.setUseProxy(newValue);
+            com.sparrowwallet.sparrow.swap.TorRoute.forget();
+            proxyIsTor.setDisable(!newValue);
             proxyHost.setText(proxyHost.getText() + " ");
             proxyHost.setText(proxyHost.getText().trim());
             proxyHost.setDisable(!newValue);
@@ -554,6 +564,8 @@ public class ServerPreferencesController extends PreferencesDetailController {
         }
 
         useProxy.setSelected(config.isUseProxy());
+        proxyIsTor.setSelected(config.isProxyIsTor());
+        proxyIsTor.setDisable(!config.isUseProxy());
         proxyHost.setDisable(!config.isUseProxy());
         proxyPort.setDisable(!config.isUseProxy());
         publicProxyHost.setDisable(!config.isUseProxy());
@@ -930,6 +942,8 @@ public class ServerPreferencesController extends PreferencesDetailController {
                 return;
             }
 
+            //A different proxy is not the one any earlier proof was about
+            com.sparrowwallet.sparrow.swap.TorRoute.forget();
             String hostAsString = getHost(proxyHost.getText());
             Integer portAsInteger = getPort(proxyPort.getText());
             if(hostAsString != null && portAsInteger != null && isValidPort(portAsInteger)) {

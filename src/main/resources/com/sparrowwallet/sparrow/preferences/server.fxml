@@ -127,6 +127,9 @@
                 <TextField fx:id="proxyHost" promptText="e.g. 127.0.0.1" />
                 <TextField fx:id="proxyPort" maxWidth="120" promptText="e.g. 9050/9150" />
             </Field>
+            <Field text="Proxy is Tor:">
+                <UnlabeledToggleSwitch fx:id="proxyIsTor"/><HelpLabel helpText="Turn on only if this proxy is a Tor SocksPort (for example the system Tor of Tails or Whonix). Swaps and the XMR price use a proxy only when it is marked as Tor, and only after it answers through Tor; anything else, such as a VPN or SSH tunnel, is never used for them." />
+            </Field>
         </Fieldset>
     </Form>
 

@@ -177,6 +177,14 @@ class SwapServiceTest {
     }
 
     @Test
+    void aSettingsProxyIsOnlyUsedWhenTheUserMarkedItAsTorAndItAnswersThroughTor() {
+        assertTrue(TorRoute.allowed(true, false, false), "Ashigaru's own Tor");
+        assertFalse(TorRoute.allowed(false, false, true), "answering through Tor is not enough: a split-routing proxy does");
+        assertFalse(TorRoute.allowed(false, true, false), "marked, but misconfigured");
+        assertTrue(TorRoute.allowed(false, true, true));
+    }
+
+    @Test
     void aProxysProofOfTorExpires() {
         java.time.Instant t0 = java.time.Instant.parse("2026-11-23T00:00:00Z");
         assertTrue(TorRoute.stillProven(t0, t0.plusSeconds(60)));

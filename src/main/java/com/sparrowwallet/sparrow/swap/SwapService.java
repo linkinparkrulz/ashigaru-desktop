@@ -413,7 +413,7 @@ public class SwapService implements SwapHost {
         runInBackground(() -> {
             if(!TorRoute.isTor(route)) {
                 throw new java.io.IOException(route == null ? "Tor is not running. Swaps only connect through Tor."
-                        : "The proxy in Settings could not be shown to be Tor (the Tor Project's check, and an onion service through it). Swaps only connect through Tor.");
+                        : "The proxy in Settings is not marked as Tor in Settings → Server, or did not answer through Tor. Swaps only connect through Tor.");
             }
             boolean renewed = false;
             SwapIdentity identity = renewIdentity ? SwapIdentity.renew(swapsDir) : SwapIdentity.current(swapsDir);
@@ -694,16 +694,19 @@ public class SwapService implements SwapHost {
 
     @Subscribe
     public void torReady(TorReadyStatusEvent event) {
+        TorRoute.forget();
         Platform.runLater(this::followTor);
     }
 
     @Subscribe
     public void torBooting(TorBootStatusEvent event) {
+        TorRoute.forget();
         Platform.runLater(this::followTor);
     }
 
     @Subscribe
     public void torFailed(TorFailedStatusEvent event) {
+        TorRoute.forget();
         Platform.runLater(this::followTor);
     }
 
@@ -721,6 +724,7 @@ public class SwapService implements SwapHost {
     /** Tor's daemon stopped without being asked to. Ashigaru restarts it; this decides whether the engine may follow. */
     @Subscribe
     public void torDied(TorDiedEvent event) {
+        TorRoute.forget();
         Platform.runLater(() -> {
             if(running.get() || starting) {
                 torLostAfterStart = diedSoonAfterStart(engineStartedAt, System.currentTimeMillis(), starting) ? torLostAfterStart + 1 : 0;

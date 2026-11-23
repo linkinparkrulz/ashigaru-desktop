@@ -47,13 +47,21 @@ public final class TorRoute {
         return configured == null ? null : new Route(configured, false);
     }
 
-    /** Whether this route may be used as Tor: Ashigaru's own Tor, or a proxy shown to be Tor recently. Blocks while a proxy is checked. */
+    /**
+     * Whether this route may be used as Tor: Ashigaru's own Tor, or a proxy the user marked as a Tor SocksPort in Settings that has also answered
+     * through Tor recently. The answer alone is not proof (a proxy that sends only torproject.org and .onion through Tor passes it), so it only
+     * guards against a misconfigured proxy; the user's statement is what lets a proxy be used. Blocks while a proxy is checked.
+     */
     public static boolean isTor(Route route) {
         if(route == null) {
             return false;
         }
         if(route.internal()) {
             return true;
+        }
+        if(!com.sparrowwallet.sparrow.io.Config.get().isProxyIsTor()) {
+            log.info("The proxy in Settings is not marked as Tor, so swaps and the XMR price do not use it");
+            return false;
         }
         Instant provenAt = proven.get(route.proxy());
         if(stillProven(provenAt, Instant.now())) {
@@ -65,6 +73,16 @@ public final class TorRoute {
             proven.put(route.proxy(), Instant.now());
         }
         return tor;
+    }
+
+    /** Forgets every proof: the proxy settings changed, or Tor started, stopped or moved */
+    public static void forget() {
+        proven.clear();
+    }
+
+    /** Whether a route may be used, from what is known about it: pure, for tests */
+    static boolean allowed(boolean internal, boolean markedTor, boolean answeredThroughTor) {
+        return internal || markedTor && answeredThroughTor;
     }
 
     static boolean stillProven(Instant provenAt, Instant now) {

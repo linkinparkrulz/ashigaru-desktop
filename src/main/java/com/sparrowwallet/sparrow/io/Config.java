@@ -102,6 +102,8 @@ public class Config {
     private File electrumServerCert;
     private boolean useProxy;
     private String proxyServer;
+    //The user says the proxy above is a Tor SocksPort: only then may swaps and the XMR price use it (TorRoute)
+    private boolean proxyIsTor;
     private boolean autoSwitchProxy = true;
     private int maxServerTimeout = DEFAULT_MAX_TIMEOUT;
     private int maxPageSize = DEFAULT_PAGE_SIZE;
@@ -829,6 +831,15 @@ public class Config {
 
     public String getProxyServer() {
         return proxyServer;
+    }
+
+    public boolean isProxyIsTor() {
+        return proxyIsTor;
+    }
+
+    public void setProxyIsTor(boolean proxyIsTor) {
+        this.proxyIsTor = proxyIsTor;
+        flush();
     }
 
     public void setProxyServer(String proxyServer) {
