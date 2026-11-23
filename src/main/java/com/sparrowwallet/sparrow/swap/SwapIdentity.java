@@ -80,6 +80,7 @@ public final class SwapIdentity {
             byte[] seed = readSeed(file);
             if(seed != null) {
                 SwapIdentity identity = new SwapIdentity(seed, swapsDir, false);
+                refuseOlderIdentity(swapsDir, file, identity.dataDir);
                 identity.keepSeedWithData();
                 writeFolder(swapsDir, identity.dataDir.getName());
                 return identity;
@@ -104,6 +105,30 @@ public final class SwapIdentity {
                     + "identity over them. Restore the swaps folder from a backup.");
         }
         return renew(swapsDir);
+    }
+
+    /**
+     * Refuses an identity file that names a different identity from the one last in use ({@value #FOLDER}) when that one still has swap data
+     * and the file's own identity has been used before (it has a database, or was retired): an identity file restored from a backup, which
+     * would put an older identity in charge and leave the newer one's unfinished swaps with nothing to complete or refund them.
+     *
+     * <p>A file whose identity has no data yet is a renewal that was interrupted between writing the identity file and its folder name, and is
+     * taken as it always was.
+     */
+    private static void refuseOlderIdentity(File swapsDir, File file, File fileDir) throws IOException {
+        String last = readFolder(swapsDir);
+        if(last == null || last.equals(fileDir.getName())) {
+            return;
+        }
+        File lastDir = new File(swapsDir, last);
+        boolean lastHasSwaps = new File(lastDir, DATABASE).isFile() && !new File(lastDir, RETIRED).isFile();
+        boolean fileUsedBefore = new File(fileDir, DATABASE).isFile() || new File(fileDir, RETIRED).isFile();
+        if(lastHasSwaps && fileUsedBefore) {
+            throw new IOException("The swap identity file (" + file.getAbsolutePath() + ") names an earlier identity (" + fileDir.getName()
+                    + ") than the one last in use (" + last + "), which has swap data. It may have been restored from a backup. Ashigaru will not put the "
+                    + "earlier identity in charge: the swaps of " + last + " could then not be completed or refunded. To go on with " + last
+                    + ", move the identity file out of the swaps folder and start again; it is recovered from " + last + "'s own seed.");
+        }
     }
 
     /** Replaces the identity in use. The old one's directory, and any swap history in it, stays. */

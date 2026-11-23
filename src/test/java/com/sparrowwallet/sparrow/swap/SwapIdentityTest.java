@@ -98,6 +98,35 @@ class SwapIdentityTest {
     }
 
     @Test
+    void anOlderIdentityFileRestoredFromABackupDoesNotTakeOver() throws Exception {
+        SwapIdentity old = SwapIdentity.current(swapsDir);
+        database(old);
+        byte[] backup = Files.readAllBytes(new File(swapsDir, "identity").toPath());
+        SwapIdentity current = SwapIdentity.renew(swapsDir);
+        database(current);
+
+        Files.write(new File(swapsDir, "identity").toPath(), backup);
+        IOException refused = assertThrows(IOException.class, () -> SwapIdentity.current(swapsDir));
+        assertTrue(refused.getMessage().contains(current.getDataDir().getName()), refused.getMessage());
+        assertEquals(current.getDataDir().getName(), Files.readString(new File(swapsDir, SwapIdentity.FOLDER).toPath()).trim(), "nothing was rewritten");
+
+        //Moving the restored file away, as the message says, recovers the identity last in use
+        assertTrue(new File(swapsDir, "identity").delete());
+        assertArrayEquals(current.getSeed(), SwapIdentity.current(swapsDir).getSeed());
+    }
+
+    @Test
+    void aRenewalInterruptedBeforeItsFolderNameWasWrittenIsTakenAsBefore() throws Exception {
+        SwapIdentity old = SwapIdentity.current(swapsDir);
+        database(old);
+        SwapIdentity fresh = SwapIdentity.renew(swapsDir);
+        //As if the process died after the identity file and before the folder name
+        Files.writeString(new File(swapsDir, SwapIdentity.FOLDER).toPath(), old.getDataDir().getName(), StandardCharsets.UTF_8);
+        assertArrayEquals(fresh.getSeed(), SwapIdentity.current(swapsDir).getSeed());
+        assertEquals(fresh.getDataDir().getName(), Files.readString(new File(swapsDir, SwapIdentity.FOLDER).toPath()).trim());
+    }
+
+    @Test
     void withoutTheFolderMarkerSwapDataIsNotGuessedAt() throws Exception {
         SwapIdentity identity = SwapIdentity.current(swapsDir);
         database(identity);
