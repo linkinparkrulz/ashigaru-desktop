@@ -90,6 +90,11 @@ jobs:
         if: ${{ runner.os != 'Windows' }}
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
 
+      # The checks on the workflows themselves (pinned actions, timeouts, asset names, the release format), run by the release that relies on them
+      - name: Check the release workflows
+        if: ${{ runner.os == 'Linux' }}
+        run: ./gradlew test --tests 'com.sparrowwallet.sparrow.net.update.ReleaseFormatTest'
+
       - name: Build installer (Windows)
         if: ${{ runner.os == 'Windows' }}
         shell: pwsh
@@ -147,7 +152,8 @@ jobs:
 
   validate-macos:
     needs: build
-    runs-on: macos-latest
+    # A fixed image, like the build jobs: macos-latest moves to a new macOS without notice
+    runs-on: macos-15
     timeout-minutes: 30
 
     steps:

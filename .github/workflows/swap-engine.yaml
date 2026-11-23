@@ -92,12 +92,30 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y $DEPS_BUILD_LINUX
+          # Ubuntu's archive drops superseded versions, so exact pins would break the build at the next security update;
+          # the versions used are recorded with the run instead
+          {
+            echo "### Build packages (${{ matrix.target }})"
+            echo '```'
+            dpkg-query -W -f='${Package} ${Version}\n' $DEPS_BUILD_LINUX 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install build dependencies (macOS)
         if: startsWith(matrix.host, 'macos')
+        env:
+          # The formulae of the runner image, not whatever Homebrew has published since
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_UPGRADE: 1
         run: |
           brew uninstall --force --ignore-dependencies $DEPS_BUILD_MACOS
           brew install --force $DEPS_BUILD_MACOS
+          {
+            echo "### Build packages (${{ matrix.target }})"
+            echo '```'
+            brew list --versions $DEPS_BUILD_MACOS || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Prefer MinGW POSIX threading (Windows cross-build)
         if: contains(matrix.target, 'windows')
@@ -247,7 +265,7 @@ jobs:
         continue-on-error: true
         working-directory: swap-engine/build/eigenwallet
         run: |
-          cargo install cargo-audit --locked
+          cargo install cargo-audit --version 0.23.0 --locked
           {
             echo "### cargo audit"
             cargo audit 2>&1 | tail -n 60

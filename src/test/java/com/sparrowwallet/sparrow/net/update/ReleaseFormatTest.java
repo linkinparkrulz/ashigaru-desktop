@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -124,13 +125,11 @@ class ReleaseFormatTest {
 
     @Test
     void everyJobThatTakesARunnerHasATimeout() throws IOException {
-        try(java.util.stream.Stream<Path> files = Files.list(Path.of(".github/workflows"))) {
-            for(Path file : files.filter(path -> path.toString().endsWith(".yaml") || path.toString().endsWith(".yml")).toList()) {
-                String workflow = text(file.toString());
-                int runners = workflow.split("\n    runs-on:", -1).length - 1;
-                int timeouts = workflow.split("\n    timeout-minutes: \\d+", -1).length - 1;
-                assertEquals(runners, timeouts, file + ": a job without timeout-minutes can hold a runner for six hours");
-            }
+        for(Path file : workflows()) {
+            String workflow = text(file.toString());
+            int runners = workflow.split("\n    runs-on:", -1).length - 1;
+            int timeouts = workflow.split("\n    timeout-minutes: \\d+", -1).length - 1;
+            assertEquals(runners, timeouts, file + ": a job without timeout-minutes can hold a runner for six hours");
         }
     }
 
@@ -148,15 +147,41 @@ class ReleaseFormatTest {
 
     @Test
     void everyActionInEveryWorkflowIsPinnedToACommit() throws IOException {
-        try(var files = Files.list(Path.of(".github/workflows"))) {
-            for(Path file : files.filter(f -> f.toString().endsWith(".yaml")).toList()) {
-                for(String line : Files.readAllLines(file)) {
-                    String trimmed = line.trim().replaceFirst("^- ", "");
-                    if(trimmed.startsWith("uses: ") && !trimmed.startsWith("uses: ./")) {
-                        assertTrue(trimmed.matches("uses: [\\w./-]+@[0-9a-f]{40}( #.*)?"), file.getFileName() + ": " + trimmed + " is not pinned to a commit");
-                    }
+        List<Path> workflows = workflows();
+        for(Path file : workflows) {
+            for(String line : Files.readAllLines(file)) {
+                String trimmed = line.trim().replaceFirst("^- ", "");
+                if(trimmed.startsWith("uses: ") && !trimmed.startsWith("uses: ./")) {
+                    assertTrue(trimmed.matches("uses: [\\w./-]+@[0-9a-f]{40}( #.*)?"), file.getFileName() + ": " + trimmed + " is not pinned to a commit");
                 }
             }
+        }
+    }
+
+    @Test
+    void runnersAndToolsAreFixed() throws IOException {
+        for(Path file : workflows()) {
+            String workflow = text(file.toString());
+            assertFalse(workflow.matches("(?s).*(runs-on|os):\\s*(macos|ubuntu|windows)-latest.*"), file + ": a -latest runner changes without notice");
+            for(String line : workflow.split("\n")) {
+                if(line.contains("cargo install ")) {
+                    assertTrue(line.contains("--version ") && line.contains("--locked"), file + ": " + line.trim() + " is not pinned");
+                }
+            }
+        }
+    }
+
+    @Test
+    void theReleaseRunsTheseChecks() throws IOException {
+        assertTrue(text(".github/workflows/release.yaml").contains("--tests 'com.sparrowwallet.sparrow.net.update.ReleaseFormatTest'"));
+    }
+
+    /** Every workflow file, .yaml and .yml, and at least one: a check that scanned nothing would pass for nothing */
+    private static List<Path> workflows() throws IOException {
+        try(var files = Files.list(Path.of(".github/workflows"))) {
+            List<Path> found = files.filter(f -> f.toString().endsWith(".yaml") || f.toString().endsWith(".yml")).sorted().toList();
+            assertFalse(found.isEmpty(), "no workflow files found: run the tests from the project directory");
+            return found;
         }
     }
 
