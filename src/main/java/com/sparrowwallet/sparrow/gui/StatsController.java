@@ -281,32 +281,15 @@ public class StatsController implements Initializable {
 
     private static String httpGet(String urlStr) throws IOException {
         com.sparrowwallet.sparrow.net.TorOnly.require("Whirlpool statistics");
-        URL url = new URL(urlStr);
-        Proxy proxy = AppServices.getProxy();
-        if(proxy == null) {
-            throw new IOException("Whirlpool statistics not fetched: no Tor proxy.");
+        //Through the shared client's SOCKS4a proxy: the onion name goes to Tor and is never looked up here (HttpURLConnection over SOCKS
+        //resolves the host locally first, which sends the .onion name to the system's DNS)
+        try {
+            return AppServices.getHttpClientService().requestString(urlStr, java.util.Map.of("User-Agent", "Ashigaru-Desktop", "Accept", "application/json"));
+        } catch(IOException e) {
+            throw e;
+        } catch(Exception e) {
+            throw new IOException("Could not fetch " + urlStr + ": " + e.getMessage(), e);
         }
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection(proxy);
-        conn.setRequestMethod("GET");
-        conn.setConnectTimeout(30000);
-        conn.setReadTimeout(60000);
-        conn.setRequestProperty("User-Agent", "Ashigaru-Desktop");
-        conn.setRequestProperty("Accept", "application/json");
-
-        int code = conn.getResponseCode();
-        if(code != 200) {
-            throw new IOException("HTTP " + code + " for " + urlStr);
-        }
-
-        StringBuilder sb = new StringBuilder();
-        try(BufferedReader br = new BufferedReader(
-                new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while((line = br.readLine()) != null) {
-                sb.append(line).append('\n');
-            }
-        }
-        return sb.toString();
     }
 
     private static StatsData parseStats(String summaryJson, String chartsJson, String txsJson) {
