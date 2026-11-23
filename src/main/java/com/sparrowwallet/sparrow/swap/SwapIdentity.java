@@ -75,6 +75,7 @@ public final class SwapIdentity {
      * data of the identity named beside it; with swap data and no way to recover, it refuses instead of taking a new identity.
      */
     public static SwapIdentity current(File swapsDir) throws IOException {
+        protectExisting(swapsDir);
         File file = new File(swapsDir, CURRENT);
         if(file.exists()) {
             byte[] seed = readSeed(file);
@@ -133,6 +134,7 @@ public final class SwapIdentity {
 
     /** Replaces the identity in use. The old one's directory, and any swap history in it, stays. */
     public static SwapIdentity renew(File swapsDir) throws IOException {
+        protectExisting(swapsDir);
         byte[] seed = new byte[32];
         new SecureRandom().nextBytes(seed);
         SwapIdentity identity = new SwapIdentity(seed, swapsDir, false);
@@ -219,6 +221,49 @@ public final class SwapIdentity {
         Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
 
+    /**
+     * Protects what is already in the swaps folder, on every start: versions before the files were made owner-only wrote the identity file, the
+     * seed copies and the identity folders (with the engine's database and Monero wallet) with the default permissions, and nothing rewrites a
+     * file that is already right. Also removes the temporary files a write that was interrupted left behind, which can hold a seed.
+     */
+    static void protectExisting(File swapsDir) {
+        if(!swapsDir.isDirectory()) {
+            return;
+        }
+        restrictToOwner(swapsDir.toPath(), true);
+        File[] entries = swapsDir.listFiles();
+        if(entries == null) {
+            return;
+        }
+        for(File entry : entries) {
+            if(entry.isDirectory()) {
+                restrictToOwner(entry.toPath(), true);
+                for(String name : new String[] {SEED_COPY, RETIRED_SEED, RETIRED}) {
+                    File inside = new File(entry, name);
+                    if(inside.isFile()) {
+                        restrictToOwner(inside.toPath(), false);
+                    }
+                }
+                deleteLeftoverTemp(new File(entry, SEED_COPY + ".tmp"));
+            } else if(entry.getName().equals(CURRENT + ".tmp") || entry.getName().equals(FOLDER + ".tmp")) {
+                //Only this class's own: another file's temporary copy may be being written right now
+                deleteLeftoverTemp(entry);
+            } else if(entry.isFile()) {
+                restrictToOwner(entry.toPath(), false);
+            }
+        }
+    }
+
+    private static void deleteLeftoverTemp(File temp) {
+        try {
+            if(Files.deleteIfExists(temp.toPath())) {
+                log.info("Removed a leftover temporary file from the swaps folder");
+            }
+        } catch(IOException e) {
+            log.warn("Could not remove a leftover temporary file from the swaps folder: " + e.getMessage());
+        }
+    }
+
     private static void createOwnerOnlyDirectory(File dir) throws IOException {
         Files.createDirectories(dir.toPath());
         restrictToOwner(dir.toPath(), true);
@@ -226,7 +271,9 @@ public final class SwapIdentity {
 
     /**
      * Makes a file or folder readable by its owner only: permissions 600 or 700 where the file system has them, and on Windows an access list with
-     * the owner as its only entry. A file system with neither is left to its folder's own protection.
+     * the owner as its only entry. A folder's entry is inherited by what is created in it later (the engine's database and wallet files), and the
+     * folder no longer inherits from its parent, so a change to the parent's permissions does not open it again. A file system with neither is
+     * left to its folder's own protection.
      */
     static void restrictToOwner(java.nio.file.Path path, boolean directory) {
         try {
@@ -243,15 +290,48 @@ public final class SwapIdentity {
             java.nio.file.attribute.AclFileAttributeView acl = Files.getFileAttributeView(path, java.nio.file.attribute.AclFileAttributeView.class);
             if(acl != null) {
                 java.nio.file.attribute.UserPrincipal owner = acl.getOwner();
-                java.nio.file.attribute.AclEntry entry = java.nio.file.attribute.AclEntry.newBuilder()
-                        .setType(java.nio.file.attribute.AclEntryType.ALLOW)
-                        .setPrincipal(owner)
-                        .setPermissions(java.nio.file.attribute.AclEntryPermission.values())
-                        .build();
-                acl.setAcl(List.of(entry));
+                acl.setAcl(List.of(ownerOnlyEntry(owner, directory)));
+                stopInheriting(path);
             }
         } catch(IOException | UnsupportedOperationException | SecurityException e) {
             log.debug("Could not restrict " + path + " to its owner: " + e.getMessage());
+        }
+    }
+
+    /** The one access list entry: everything for the owner, and for a folder, inherited by the files and folders created in it */
+    static java.nio.file.attribute.AclEntry ownerOnlyEntry(java.nio.file.attribute.UserPrincipal owner, boolean directory) {
+        java.nio.file.attribute.AclEntry.Builder builder = java.nio.file.attribute.AclEntry.newBuilder()
+                .setType(java.nio.file.attribute.AclEntryType.ALLOW)
+                .setPrincipal(owner)
+                .setPermissions(java.nio.file.attribute.AclEntryPermission.values());
+        if(directory) {
+            builder.setFlags(java.nio.file.attribute.AclEntryFlag.FILE_INHERIT, java.nio.file.attribute.AclEntryFlag.DIRECTORY_INHERIT);
+        }
+        return builder.build();
+    }
+
+    /**
+     * Java can set an access list but not mark it protected, so a later change to the parent's inheritable entries could be added to it again.
+     * On Windows, icacls marks it protected (inherited entries removed, the owner's own entry kept). Best effort: the list set above stands either way.
+     */
+    private static void stopInheriting(java.nio.file.Path path) {
+        String os = System.getProperty("os.name", "");
+        if(!os.toLowerCase(java.util.Locale.ROOT).startsWith("windows")) {
+            return;
+        }
+        try {
+            Process process = new ProcessBuilder("icacls", path.toString(), "/inheritance:r", "/Q").redirectErrorStream(true)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD).start();
+            if(!process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                log.debug("icacls did not finish for " + path);
+            } else if(process.exitValue() != 0) {
+                log.debug("icacls could not stop " + path + " inheriting permissions (exit " + process.exitValue() + ")");
+            }
+        } catch(IOException e) {
+            log.debug("Could not run icacls for " + path + ": " + e.getMessage());
+        } catch(InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 

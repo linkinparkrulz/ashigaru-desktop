@@ -190,6 +190,36 @@ class SwapIdentityTest {
     }
 
     @Test
+    void filesWrittenByOlderVersionsAreProtectedOnTheNextStart() throws Exception {
+        SwapIdentity identity = SwapIdentity.current(swapsDir);
+        java.nio.file.attribute.PosixFileAttributeView posix = Files.getFileAttributeView(swapsDir.toPath(), java.nio.file.attribute.PosixFileAttributeView.class);
+        org.junit.jupiter.api.Assumptions.assumeTrue(posix != null, "POSIX permissions only; Windows gets an access list");
+        File seed = new File(identity.getDataDir(), SwapIdentity.SEED_COPY);
+        File leftover = new File(identity.getDataDir(), SwapIdentity.SEED_COPY + ".tmp");
+        Files.writeString(leftover.toPath(), "00".repeat(32), StandardCharsets.UTF_8);
+        java.util.Set<java.nio.file.attribute.PosixFilePermission> open = java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--");
+        for(File file : new File[] {new File(swapsDir, "identity"), new File(swapsDir, SwapIdentity.FOLDER), seed}) {
+            Files.setPosixFilePermissions(file.toPath(), open);
+        }
+        Files.setPosixFilePermissions(identity.getDataDir().toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rwxr-xr-x"));
+
+        SwapIdentity.current(swapsDir);
+        for(File file : new File[] {new File(swapsDir, "identity"), new File(swapsDir, SwapIdentity.FOLDER), seed}) {
+            assertEquals(java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"), Files.getPosixFilePermissions(file.toPath()), file.getName());
+        }
+        assertEquals(java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"), Files.getPosixFilePermissions(identity.getDataDir().toPath()));
+        assertFalse(leftover.exists(), "a leftover temporary seed is removed");
+    }
+
+    @Test
+    void aFoldersAccessListEntryIsInheritedByWhatIsCreatedInIt() throws Exception {
+        java.nio.file.attribute.UserPrincipal owner = Files.getOwner(swapsDir.toPath());
+        assertEquals(java.util.Set.of(java.nio.file.attribute.AclEntryFlag.FILE_INHERIT, java.nio.file.attribute.AclEntryFlag.DIRECTORY_INHERIT),
+                SwapIdentity.ownerOnlyEntry(owner, true).flags());
+        assertTrue(SwapIdentity.ownerOnlyEntry(owner, false).flags().isEmpty());
+    }
+
+    @Test
     void swapDataWithNoSeedIsNotTakenOverByANewIdentity() throws Exception {
         SwapIdentity identity = SwapIdentity.current(swapsDir);
         database(identity);
