@@ -74,8 +74,8 @@ public class ReleaseFetcher {
 
     /** Downloads a small text asset, such as SHA256SUMS or the signature, into memory. */
     public static byte[] fetchBytes(String url, int maxBytes) throws IOException {
-        HttpURLConnection connection = open(url, "text/plain, */*");
-        try(InputStream in = connection.getInputStream()) {
+        Opened connection = open(url, "text/plain, */*");
+        try(InputStream in = connection.in()) {
             byte[] buffer = new byte[8192];
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
             int read;
@@ -87,7 +87,7 @@ public class ReleaseFetcher {
             }
             return out.toByteArray();
         } finally {
-            connection.disconnect();
+            connection.close();
         }
     }
 
@@ -100,13 +100,13 @@ public class ReleaseFetcher {
         checkFreeSpace(destination, expectedSize);
 
         Path partial = destination.resolveSibling(destination.getFileName() + ".part");
-        HttpURLConnection connection = open(url, "application/octet-stream, */*");
-        long total = connection.getContentLengthLong();
+        Opened connection = open(url, "application/octet-stream, */*");
+        long total = connection.contentLength();
         if(total <= 0) {
             total = expectedSize;
         }
 
-        try(InputStream in = connection.getInputStream(); OutputStream out = Files.newOutputStream(partial)) {
+        try(InputStream in = connection.in(); OutputStream out = Files.newOutputStream(partial)) {
             byte[] buffer = new byte[64 * 1024];
             long read = 0;
             int count;
@@ -121,7 +121,7 @@ public class ReleaseFetcher {
             Files.deleteIfExists(partial);
             throw e;
         } finally {
-            connection.disconnect();
+            connection.close();
         }
 
         Files.move(partial, destination, StandardCopyOption.REPLACE_EXISTING);
@@ -149,34 +149,55 @@ public class ReleaseFetcher {
     }
 
     private static String get(String url) throws IOException {
-        HttpURLConnection connection = open(url, "application/vnd.github+json");
+        Opened connection = open(url, "application/vnd.github+json");
         StringBuilder builder = new StringBuilder();
-        try(BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+        try(BufferedReader reader = new BufferedReader(new InputStreamReader(connection.in(), StandardCharsets.UTF_8))) {
             String line;
             while((line = reader.readLine()) != null) {
                 builder.append(line).append('\n');
             }
         } finally {
-            connection.disconnect();
+            connection.close();
         }
         return builder.toString();
     }
 
-    private static HttpURLConnection open(String url, String accept) throws IOException {
+    /** An open response: its body, its length if known (-1 otherwise), and how to close it */
+    record Opened(InputStream in, long contentLength, java.io.Closeable closer) implements java.io.Closeable {
+        @Override
+        public void close() {
+            try {
+                closer.close();
+            } catch(IOException e) {
+                //Closing after the body was read; nothing to do
+            }
+        }
+    }
+
+    private static Opened open(String url, String accept) throws IOException {
         if(Config.get().requiresInternalTor() && !AppServices.isTorRunning()) {
             throw new IOException("The bundled Tor is not running; refusing to connect to " + url + " over clearnet");
         }
 
         Proxy proxy = AppServices.getProxy();
-        HttpURLConnection connection = (HttpURLConnection)(proxy != null
-                ? new URL(url).openConnection(proxy)
-                : new URL(url).openConnection());
+        //GitHub rejects API requests without a User-Agent
+        java.util.Map<String, String> headers = java.util.Map.of("User-Agent", "Ashigaru-Desktop", "Accept", accept);
+        if(proxy != null) {
+            //Through the proxy with the name unresolved: HttpURLConnection would look github.com up on this computer first (AD-38)
+            com.sparrowwallet.sparrow.net.ProxiedHttp.Response response = com.sparrowwallet.sparrow.net.ProxiedHttp.request("GET", new URL(url), headers, null,
+                    proxy, null, CONNECT_TIMEOUT, READ_TIMEOUT);
+            if(response.status() != HttpURLConnection.HTTP_OK) {
+                response.close();
+                throw new IOException("HTTP " + response.status() + " for " + url);
+            }
+            return new Opened(response.body(), response.contentLength(), response);
+        }
+
+        HttpURLConnection connection = (HttpURLConnection)new URL(url).openConnection();
         connection.setRequestMethod("GET");
         connection.setConnectTimeout(CONNECT_TIMEOUT);
         connection.setReadTimeout(READ_TIMEOUT);
-        //GitHub rejects API requests without a User-Agent
-        connection.setRequestProperty("User-Agent", "Ashigaru-Desktop");
-        connection.setRequestProperty("Accept", accept);
+        headers.forEach(connection::setRequestProperty);
 
         int code = connection.getResponseCode();
         if(code != HttpURLConnection.HTTP_OK) {
@@ -184,7 +205,7 @@ public class ReleaseFetcher {
             throw new IOException("HTTP " + code + " for " + url);
         }
 
-        return connection;
+        return new Opened(connection.getInputStream(), connection.getContentLengthLong(), connection::disconnect);
     }
 
     private ReleaseFetcher() {}
