@@ -256,6 +256,16 @@ class SwapServiceTest {
     }
 
     @Test
+    void aRunningEngineStopsInOfflineModeAndAnArrivalOfflineIsNotKept() {
+        assertTrue(SwapService.stopForOffline(com.sparrowwallet.sparrow.Mode.OFFLINE, true));
+        assertFalse(SwapService.stopForOffline(com.sparrowwallet.sparrow.Mode.OFFLINE, false), "nothing running");
+        assertFalse(SwapService.stopForOffline(com.sparrowwallet.sparrow.Mode.ONLINE, true));
+        //The success path asks arrival() with offline counted as off, like the failure path
+        boolean swapsOnButOffline = true && !SwapService.blockedOffline(com.sparrowwallet.sparrow.Mode.OFFLINE);
+        assertEquals(SwapService.Arrival.SHUT_DOWN_OFF, SwapService.arrival(swapsOnButOffline, false));
+    }
+
+    @Test
     void swapsDoNotStartInOfflineMode() {
         assertTrue(SwapService.blockedOffline(com.sparrowwallet.sparrow.Mode.OFFLINE));
         assertFalse(SwapService.blockedOffline(com.sparrowwallet.sparrow.Mode.ONLINE));

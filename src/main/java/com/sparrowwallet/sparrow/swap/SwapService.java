@@ -481,7 +481,8 @@ public class SwapService implements SwapHost {
             starting = false;
             //Swaps were turned off, or Tor stopped by itself for the second time, while this engine was starting: do not keep it.
             //stop() cannot do this, as it finds nothing running and returns, so the engine that just came up is shut down here.
-            Arrival arrival = arrival(Config.get().isSwapsEnabled(), pausedForTor);
+            //Offline mode counts as off, as on the failure path (AD-35): an engine that finishes starting after Ashigaru went offline is not kept
+            Arrival arrival = arrival(Config.get().isSwapsEnabled() && !blockedOffline(Config.get().getMode()), pausedForTor);
             if(arrival != Arrival.KEEP) {
                 runInBackground(() -> {
                     loaded.shutdown();
@@ -490,7 +491,7 @@ public class SwapService implements SwapHost {
                 if(arrival == Arrival.SHUT_DOWN_OFF) {
                     pausedForTor = false;
                     torLostAfterStart = 0;
-                    status.set("Off.");
+                    status.set(blockedOffline(Config.get().getMode()) ? OFFLINE : "Off.");
                 } else {
                     status.set(PAUSED_FOR_TOR);
                 }
@@ -905,6 +906,10 @@ public class SwapService implements SwapHost {
     }
 
     private void recheckProxy() {
+        if(stopForOffline(Config.get().getMode(), running.get())) {
+            stopOffline();
+            return;
+        }
         TorRoute.Route route = engineRoute;
         if(!running.get() || route == null || route.internal()) {
             return;
@@ -920,6 +925,17 @@ public class SwapService implements SwapHost {
             appendLog("The proxy in Settings no longer answers as Tor; stopping the swap engine");
             stopForProxy("Stopped: the proxy in Settings is no longer marked as Tor, or no longer answers through Tor. Swaps only connect through Tor.");
         }, e -> {});
+    }
+
+    /** Whether a running engine must stop because Ashigaru is in offline mode */
+    static boolean stopForOffline(com.sparrowwallet.sparrow.Mode mode, boolean running) {
+        return running && blockedOffline(mode);
+    }
+
+    private void stopOffline() {
+        appendLog("Ashigaru is in offline mode; stopping the swap engine");
+        stop();
+        status.set(OFFLINE);
     }
 
     /** Whether a failed proxy check may stop the engine now: not while a swap is being set up */
@@ -991,6 +1007,11 @@ public class SwapService implements SwapHost {
             return;
         }
         if(!Config.get().isSwapsEnabled()) {
+            return;
+        }
+        //Offline mode: a running engine is stopped, whatever Tor is doing (AD-35)
+        if(stopForOffline(Config.get().getMode(), running.get())) {
+            stopOffline();
             return;
         }
         HostAndPort proxy = AppServices.getTorProxyIfUp();

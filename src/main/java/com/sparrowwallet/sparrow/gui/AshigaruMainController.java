@@ -542,7 +542,7 @@ public class AshigaruMainController implements Initializable {
         networkLabel.getStyleClass().add(network == Network.MAINNET ? "mainnet" : "testnet");
     }
 
-    private enum ConnState { DISCONNECTED, CONNECTING, CONNECTED }
+    enum ConnState { DISCONNECTED, CONNECTING, CONNECTED }
 
     private ConnState connState = ConnState.DISCONNECTED;
 
@@ -573,7 +573,8 @@ public class AshigaruMainController implements Initializable {
                 connectionLabel.setTooltip(new Tooltip("Connection and Tor options"));
             }
             case DISCONNECTED -> {
-                connectionLabel.setText("Offline");
+                //"Offline" only when the user chose it: a failed connection in online mode is not offline, and Tor keeps running (AD-34)
+                connectionLabel.setText(pillText(Config.get().getMode(), state));
                 connectionLabel.getStyleClass().add("disconnected");
                 connectionLabel.setTooltip(new Tooltip("Connection and Tor options"));
             }
@@ -596,10 +597,11 @@ public class AshigaruMainController implements Initializable {
         //Tor first, then the connection, then what it shows of you: the same grouping by lines as the wallet's menu
         ContextMenu menu = new ContextMenu(newIdentity, restartTor, new SeparatorMenuItem(), toggle, new SeparatorMenuItem(), whoLearns);
         menu.setOnShowing(event -> {
-            boolean disconnected = connState == ConnState.DISCONNECTED;
-            toggle.setText(disconnected ? "Connect" : "Disconnect");
-            Icons.set(toggle, disconnected ? FontAwesome5.Glyph.PLUG : FontAwesome5.Glyph.POWER_OFF);
-            toggle.setDisable(connState == ConnState.CONNECTING);
+            //From the mode the user chose, not the connection: going offline is always offered while online, connecting or not (AD-34)
+            boolean online = wantsOnline(Config.get().getMode());
+            toggle.setText(toggleLabel(Config.get().getMode()));
+            Icons.set(toggle, online ? FontAwesome5.Glyph.POWER_OFF : FontAwesome5.Glyph.PLUG);
+            toggle.setDisable(false);
             boolean internalTor = Config.get().requiresInternalTor();
             newIdentity.setDisable(!AppServices.isTorRunning());
             restartTor.setDisable(!internalTor);
@@ -630,21 +632,36 @@ public class AshigaruMainController implements Initializable {
     }
 
     private void toggleConnection() {
-        switch (connState) {
-            case DISCONNECTED -> {
-                // Remember the choice so future launches auto-connect, then request a connection.
-                Config.get().setMode(Mode.ONLINE);
-                setConnState(ConnState.CONNECTING);
-                EventManager.get().post(new RequestConnectEvent());
-            }
-            case CONNECTED -> {
-                Config.get().setMode(Mode.OFFLINE);
-                EventManager.get().post(new RequestDisconnectEvent());
-            }
-            case CONNECTING -> {
-                // Connection attempt already in flight — ignore clicks to avoid interrupting it.
-            }
+        if(wantsOnline(Config.get().getMode())) {
+            //Going offline works from any state: connected, still connecting, or after a failed connection with Tor still running
+            Config.get().setMode(Mode.OFFLINE);
+            EventManager.get().post(new RequestDisconnectEvent());
+            setConnState(ConnState.DISCONNECTED);
+        } else {
+            //Remember the choice so future launches auto-connect, then request a connection
+            Config.get().setMode(Mode.ONLINE);
+            setConnState(ConnState.CONNECTING);
+            EventManager.get().post(new RequestConnectEvent());
         }
+    }
+
+    /** Whether the user has Ashigaru online: the mode they chose, whatever the connection is doing */
+    static boolean wantsOnline(Mode mode) {
+        return mode == Mode.ONLINE;
+    }
+
+    /** The connection menu's item: the opposite of the mode the user chose */
+    static String toggleLabel(Mode mode) {
+        return wantsOnline(mode) ? "Go offline" : "Go online";
+    }
+
+    /** The connection pill: connected, connecting, online but not connected, or offline because the user chose it */
+    static String pillText(Mode mode, ConnState state) {
+        return switch(state) {
+            case CONNECTED -> "Tor \u00b7 connected";
+            case CONNECTING -> "Connecting\u2026";
+            case DISCONNECTED -> wantsOnline(mode) ? "Online \u00b7 not connected" : "Offline";
+        };
     }
 
     // -------------------------------------------------------------------------
