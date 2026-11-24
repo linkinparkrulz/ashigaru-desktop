@@ -41,4 +41,16 @@ public final class Icons {
     public static void set(MenuItem item, FontAwesome5.Glyph glyph) {
         item.setGraphic(of(glyph));
     }
+
+    /**
+     * A menu item as every menu in the app has them, like the wallet's 3-dot menu: its icon, then its words. Menus are built with this,
+     * so none gets an item without an icon.
+     */
+    public static MenuItem menuItem(String text, FontAwesome5.Glyph glyph, javafx.event.EventHandler<javafx.event.ActionEvent> onAction) {
+        MenuItem item = new MenuItem(text, of(glyph));
+        if(onAction != null) {
+            item.setOnAction(onAction);
+        }
+        return item;
+    }
 }

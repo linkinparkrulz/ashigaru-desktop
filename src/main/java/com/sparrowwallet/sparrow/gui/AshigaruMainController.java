@@ -290,6 +290,8 @@ public class AshigaruMainController implements Initializable {
         Icons.set(sentinelPairBtn, FontAwesome5.Glyph.QRCODE);
         Icons.set(lockWalletBtn, FontAwesome5.Glyph.LOCK);
         Icons.set(deleteWalletBtn, FontAwesome5.Glyph.TRASH_ALT);
+        Icons.set(openWalletItem, FontAwesome5.Glyph.FOLDER_OPEN);
+        Icons.set(createWalletItem, FontAwesome5.Glyph.PLUS);
         buildPipeline();
 
         //The lights are re-read now and then, and when swaps start, stop or change what they say
@@ -575,25 +577,20 @@ public class AshigaruMainController implements Initializable {
      * these are the recovery steps when the bundled Tor stops getting anywhere.
      */
     private ContextMenu createTorMenu() {
-        MenuItem newIdentity = new MenuItem("New Tor Identity");
-        newIdentity.setOnAction(event -> {
+        MenuItem newIdentity = Icons.menuItem("New Tor Identity", FontAwesome5.Glyph.SYNC_ALT, event -> {
             TorUtils.changeIdentity(AppServices.getTorProxy());
             statusLine.message("Requested new Tor circuits", StatusEvent.DEFAULT_SHOW_DURATION_SECS);
         });
-        MenuItem restartTor = new MenuItem("Restart Tor");
-        restartTor.setOnAction(event -> restartTor());
+        MenuItem restartTor = Icons.menuItem("Restart Tor", FontAwesome5.Glyph.BULLSEYE, event -> restartTor());
+        MenuItem toggle = Icons.menuItem("Disconnect", FontAwesome5.Glyph.POWER_OFF, event -> toggleConnection());
+        MenuItem whoLearns = Icons.menuItem("Who learns what\u2026", FontAwesome5.Glyph.EYE, event -> ExposureDialogs.showWhoLearnsWhat());
 
-        MenuItem toggle = new MenuItem("Disconnect");
-        toggle.setOnAction(event -> toggleConnection());
-        MenuItem whoLearns = new MenuItem("Who learns what\u2026");
-        whoLearns.setOnAction(event -> ExposureDialogs.showWhoLearnsWhat());
-        Icons.set(newIdentity, FontAwesome5.Glyph.SYNC_ALT);
-        Icons.set(restartTor, FontAwesome5.Glyph.BULLSEYE);
-        Icons.set(whoLearns, FontAwesome5.Glyph.EYE);
-
-        ContextMenu menu = new ContextMenu(newIdentity, restartTor, toggle, new SeparatorMenuItem(), whoLearns);
+        //Tor first, then the connection, then what it shows of you: the same grouping by lines as the wallet's menu
+        ContextMenu menu = new ContextMenu(newIdentity, restartTor, new SeparatorMenuItem(), toggle, new SeparatorMenuItem(), whoLearns);
         menu.setOnShowing(event -> {
-            toggle.setText(connState == ConnState.DISCONNECTED ? "Connect" : "Disconnect");
+            boolean disconnected = connState == ConnState.DISCONNECTED;
+            toggle.setText(disconnected ? "Connect" : "Disconnect");
+            Icons.set(toggle, disconnected ? FontAwesome5.Glyph.PLUG : FontAwesome5.Glyph.POWER_OFF);
             toggle.setDisable(connState == ConnState.CONNECTING);
             boolean internalTor = Config.get().requiresInternalTor();
             newIdentity.setDisable(!AppServices.isTorRunning());

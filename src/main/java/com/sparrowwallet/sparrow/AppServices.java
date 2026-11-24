@@ -929,6 +929,9 @@ public class AppServices {
         // surfaces, red accent); ashigaru.css adds the brand font + refined control
         // skins. (The legacy Theme.DARK gate is intentionally dropped — the config
         // theme defaults to LIGHT, which used to leave dialogs un-themed.)
+        //Text fields' right-click menus in the look of the app's other menus, in this window too
+        com.sparrowwallet.sparrow.gui.TextFieldMenu.install(stage.getScene());
+        stage.sceneProperty().addListener((observable, oldScene, newScene) -> com.sparrowwallet.sparrow.gui.TextFieldMenu.install(newScene));
         if(stage.getScene() != null) {
             addAshigaruStylesheets(stage.getScene().getStylesheets());
             // Also add at the scene-root (DialogPane) level. Dialogs add general.css
@@ -952,14 +955,75 @@ public class AppServices {
         if(!stylesheets.contains(ashigaruCss)) {
             stylesheets.add(ashigaruCss);
         }
-        //Popups need a transparent margin for their shadow. Where the desktop cannot give them one it
-        //shows as a white frame around every menu, so those desktops get an opaque variant.
-        if(!javafx.application.Platform.isSupported(javafx.application.ConditionalFeature.TRANSPARENT_WINDOW)) {
-            String opaqueCss = AppServices.class.getResource("gui/opaque-popups.css").toExternalForm();
-            if(!stylesheets.contains(opaqueCss)) {
-                stylesheets.add(opaqueCss);
+        installPopupStyling();
+    }
+
+    private static boolean popupStylingInstalled;
+    /** The inline style that takes a popup's shadow away */
+    static final String NO_SHADOW = "-fx-effect: null;";
+
+    /**
+     * Popups need a transparent margin for their shadow. Where the desktop cannot give them one, that margin shows as a white frame around
+     * every menu, drop-down and tooltip. There, each popup's shadow is taken away as it opens, by an inline style on its content (the menu
+     * panel, the drop-down list, the tooltip, the popover's border). Inline, because no stylesheet can do it everywhere: Tools, Settings and
+     * other pages list ashigaru.css on their own root pane, and a pane's stylesheets win over the scene's, so a separate sheet added to the
+     * scene (the earlier opaque-popups.css) lost there and the frame came back; and a popup's content is styled as if it sat under its
+     * owner, so a selector cannot reach it through the popup window's root. Call on the JavaFX thread; installs once.
+     */
+    public static void installPopupStyling() {
+        if(popupStylingInstalled) {
+            return;
+        }
+        popupStylingInstalled = true;
+        if(javafx.application.Platform.isSupported(javafx.application.ConditionalFeature.TRANSPARENT_WINDOW)) {
+            return;
+        }
+        javafx.collections.ObservableList<Window> windows = Window.getWindows();
+        windows.forEach(AppServices::markIfPopup);
+        windows.addListener((javafx.collections.ListChangeListener<Window>)change -> {
+            while(change.next()) {
+                change.getAddedSubList().forEach(AppServices::markIfPopup);
+            }
+        });
+    }
+
+    private static void markIfPopup(Window window) {
+        if(!(window instanceof javafx.stage.PopupWindow popup) || popup.getProperties().containsKey(NO_SHADOW)) {
+            return;
+        }
+        popup.getProperties().put(NO_SHADOW, Boolean.TRUE);
+        //The content is created or replaced when the popup is shown, so it is looked at each time
+        popup.addEventHandler(javafx.stage.WindowEvent.WINDOW_SHOWING, event -> removeShadows(popup));
+        popup.addEventHandler(javafx.stage.WindowEvent.WINDOW_SHOWN, event -> removeShadows(popup));
+        removeShadows(popup);
+    }
+
+    /**
+     * Takes the shadow off a popup's content. A menu, drop-down or tooltip passes its own style down to its content node (whose style is
+     * bound to it), so it is set there; nodes inside that carry a shadow of their own (a popover's border, a drop-down's list) get it directly.
+     */
+    static void removeShadows(javafx.stage.PopupWindow popup) {
+        if(popup instanceof javafx.scene.control.PopupControl control) {
+            control.setStyle(withoutShadow(control.getStyle()));
+        }
+        if(popup.getScene() != null && popup.getScene().getRoot() != null) {
+            //A popover's border and a drop-down's list carry their own shadow
+            java.util.Set<javafx.scene.Node> nodes = new java.util.LinkedHashSet<>(popup.getScene().getRoot().lookupAll(".border"));
+            nodes.addAll(popup.getScene().getRoot().lookupAll(".list-view"));
+            for(javafx.scene.Node node : nodes) {
+                if(!node.styleProperty().isBound()) {
+                    node.setStyle(withoutShadow(node.getStyle()));
+                }
             }
         }
+    }
+
+    public static String withoutShadow(String style) {
+        String current = style == null ? "" : style;
+        if(current.contains(NO_SHADOW)) {
+            return current;
+        }
+        return current + (current.isEmpty() || current.trim().endsWith(";") ? "" : ";") + NO_SHADOW;
     }
 
     public static Window getActiveWindow() {

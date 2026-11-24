@@ -99,6 +99,8 @@ public class AshigaruGui extends Application {
         Rectangle2D visualBounds = Screen.getPrimary().getVisualBounds();
         Scene scene = new Scene(root, WindowSizing.width(visualBounds.getWidth()), WindowSizing.height(visualBounds.getHeight()));
         AppServices.addAshigaruStylesheets(scene.getStylesheets());
+        //Every text field's right-click menu in the look of the app's other menus
+        TextFieldMenu.install(scene);
         //The scene fill also becomes the native window background, which is what shows in the area a
         //resize exposes before the next layout pass. Left at the default white it flashes on every drag.
         scene.setFill(APP_BACKGROUND);

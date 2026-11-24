@@ -601,9 +601,26 @@
 }
 .combo-box .list-cell {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;  /* server URLs */ -fx-text-fill: -ag-text; -fx-background-color: -ag-bg; }
-.combo-box-popup .list-view { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border; }
-.combo-box-popup .list-cell:hover { -fx-background-color: -ag-bg-raised; }
-.combo-box-popup .list-cell:selected { -fx-background-color: derive(-ag-accent, -60%); -fx-text-fill: -ag-accent-ink; }
+/* A drop-down list is a menu of values: the same panel, face, spacing and hover as the menus (Context menus, below) */
+.combo-box-popup > .list-view {
+    -fx-background-color: -ag-bg-raised;
+    -fx-background-insets: 0;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: -ag-radius;
+    -fx-background-radius: -ag-radius;
+    -fx-padding: 4 0 4 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 8, 0, 0, 2);
+}
+.combo-box-popup > .list-view:focused { -fx-background-color: -ag-bg-raised; -fx-background-insets: 0; }
+.combo-box-popup > .list-view .list-cell {
+    -fx-font-family: "Roboto", sans-serif;
+    -fx-font-size: 13px;
+    -fx-padding: 7 18 7 14;
+    -fx-text-fill: -ag-text;
+    -fx-background-color: transparent;
+}
+.combo-box-popup > .list-view .list-cell:hover,
+.combo-box-popup > .list-view .list-cell:selected { -fx-background-color: derive(-ag-accent, -65%); -fx-text-fill: -ag-accent-ink; }
 
 /* Monospace text area (seed / descriptor entry) */
 .mono-area {
@@ -864,6 +881,9 @@
 .menu-item:hover .label, .menu-item:focused .label {
     -fx-text-fill: -ag-accent-ink;
 }
+/* A disabled item is not a choice: no highlight when the keyboard or the pointer lands on it */
+.menu-item:disabled:hover, .menu-item:disabled:focused { -fx-background-color: transparent; }
+.menu-item:disabled:hover .label, .menu-item:disabled:focused .label { -fx-text-fill: -ag-text; }
 
 /* ── Account buttons (sidebar) ───────────────────────────────────────────── */
 .account-btn {
