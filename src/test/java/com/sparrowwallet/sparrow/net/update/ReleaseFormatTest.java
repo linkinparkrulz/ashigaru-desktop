@@ -185,8 +185,13 @@ class ReleaseFormatTest {
                 "jobs:\n  a:\n    runs-on:\n      labels:\n        - macos-latest-large\n",
                 "jobs:\n  a:\n    runs-on: ${{ matrix.platform }}\n    strategy:\n      matrix:\n        platform: [macos-15, ubuntu-latest]\n",
                 "jobs:\n  a:\n    runs-on: ${{ matrix.runner }}\n    strategy:\n      matrix:\n        include:\n          - runner: windows-2022\n          - runner: windows-latest\n",
-                "jobs:\n  a:\n    strategy:\n      matrix:\n        image:\n          - macos-15\n          - macos-latest\n",
+                "jobs:\n  a:\n    runs-on: ${{ matrix.image }}\n    strategy:\n      matrix:\n        image:\n          - macos-15\n          - macos-latest\n",
                 "jobs:\n  a:\n    runs-on: [\n      self-hosted,\n      ubuntu-latest\n    ]\n",
+                //An alias to an anchor elsewhere, as a scalar and as a block list
+                "x-runner: &runner ubuntu-latest\njobs:\n  a:\n    runs-on: *runner\n",
+                "x-runners: &runners\n  - self-hosted\n  - macos-latest-xlarge\njobs:\n  a:\n    runs-on: *runners\n",
+                //An input to a reusable workflow, which may run on it
+                "jobs:\n  a:\n    uses: ./.github/workflows/build.yaml\n    with:\n      os: ubuntu-latest\n",
         };
         for(String workflow : latest) {
             assertTrue(WorkflowRunners.namesLatestRunner(workflow), workflow);
@@ -198,6 +203,9 @@ class ReleaseFormatTest {
                 "jobs:\n  a:\n    runs-on: my-ubuntu-latest-mirror\n",
                 //os: under env: is not a runner, and neither is text in a script
                 "env:\n  os: ubuntu-latest\njobs:\n  a:\n    runs-on: ubuntu-22.04\n    env:\n      os: macos-latest\n    steps:\n      - run: |\n          echo runs-on: ubuntu-latest\n      - name: it's fine\n        with:\n          os: windows-latest\n",
+                //A matrix value runs-on does not use is not a runner
+                "jobs:\n  a:\n    runs-on: ubuntu-22.04\n    strategy:\n      matrix:\n        image: [ubuntu-latest]\n",
+                "jobs:\n  a:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix:\n        os: [ubuntu-22.04]\n        tool: [macos-latest]\n",
         };
         for(String workflow : fixed) {
             assertFalse(WorkflowRunners.namesLatestRunner(workflow), workflow);
@@ -221,6 +229,24 @@ class ReleaseFormatTest {
         String engine = text(".github/workflows/swap-engine.yaml");
         String key = engine.lines().filter(line -> line.trim().startsWith("key: swap-engine-")).findFirst().orElseThrow();
         assertTrue(key.contains("'swap-engine/Cargo.lock.overlay'") && key.contains("'.github/workflows/swap-engine.yaml'"), key);
+    }
+
+    @Test
+    void theEngineCacheHoldsOnlyTheMoneroBuild() throws IOException {
+        String engine = text(".github/workflows/swap-engine.yaml");
+        String step = engine.substring(engine.indexOf("- name: Cache the Monero build"));
+        step = step.substring(0, step.indexOf("restore-keys:"));
+        assertTrue(step.contains("target/debug/monero-depends") && step.contains("release/build/monero-sys-*"), step);
+        assertFalse(step.contains("~/.cargo/registry") || step.matches("(?s).*eigenwallet/target\\s*\\n.*"), "not the whole target folder or the registry: " + step);
+    }
+
+    @Test
+    void engineAndReleaseUploadsTryTwice() throws IOException {
+        for(String file : new String[] {".github/workflows/swap-engine.yaml", ".github/workflows/release.yaml"}) {
+            String workflow = text(file);
+            assertTrue(workflow.contains("continue-on-error: true") && workflow.contains("if: steps.upload.outcome == 'failure'")
+                    && workflow.contains("overwrite: true"), file);
+        }
     }
 
     @Test

@@ -23,9 +23,23 @@ final class WorkflowRunners {
         return runnerValues(workflow).stream().anyMatch(value -> LATEST.matcher(value).find());
     }
 
-    /** Every scalar under a job's runs-on or strategy.matrix */
+    /** Where a value sits: a job's runs-on, one of its matrix keys, or one of its reusable-workflow inputs (with:) */
+    private enum Place { RUNS_ON, MATRIX, WITH }
+
+    private record Value(String job, Place place, String key, String text) {}
+
+    private static final Pattern MATRIX_REFERENCE = Pattern.compile("\\$\\{\\{\\s*matrix\\.([A-Za-z0-9_-]+)\\s*}}");
+
+    /**
+     * Every runner a workflow names: the values of a job's runs-on, the values of its matrix keys that runs-on refers to
+     * (runs-on: ${{ matrix.os }}), and the values of its with: inputs, which a reusable workflow may use as its runner. YAML aliases
+     * (*name) are replaced by what their anchor (&name) holds.
+     */
     static List<String> runnerValues(String workflow) {
-        List<String> found = new ArrayList<>();
+        List<Value> values = new ArrayList<>();
+        java.util.Map<String, List<String>> anchors = new java.util.HashMap<>();
+        //Anchors being filled from a block below their key: name, and the indent of that key
+        List<java.util.Map.Entry<String, Integer>> filling = new ArrayList<>();
         List<Frame> path = new ArrayList<>();
         String[] lines = workflow.replace("\r\n", "\n").split("\n", -1);
         for(int i = 0; i < lines.length; i++) {
@@ -51,11 +65,33 @@ final class WorkflowRunners {
             if(!item) {
                 popTo(path, indent);
             }
+            //An anchored block ends at the first line that is not indented further than its key
+            final int rawIndent = indentOf(lines[i]);
+            filling.removeIf(open -> rawIndent <= open.getValue());
             int colon = keyColon(content);
             String key = colon < 0 ? null : unquote(content.substring(0, colon).trim());
             String value = colon < 0 ? content : content.substring(colon + 1).trim();
             if(key != null) {
                 path.add(new Frame(indent, key));
+            }
+            //An anchor: on its own, it names the block below; before a value, it names that value
+            java.util.regex.Matcher anchor = Pattern.compile("^&([A-Za-z0-9_-]+)\\s*(.*)$").matcher(value);
+            if(anchor.matches()) {
+                value = anchor.group(2).trim();
+                if(value.isEmpty()) {
+                    anchors.put(anchor.group(1), new ArrayList<>());
+                    filling.add(java.util.Map.entry(anchor.group(1), indentOf(lines[i])));
+                } else {
+                    String full = value;
+                    if(full.startsWith("[") && !full.contains("]")) {
+                        StringBuilder flow = new StringBuilder(full);
+                        for(int k = i + 1; k < lines.length && !flow.toString().contains("]"); k++) {
+                            flow.append(' ').append(stripComment(lines[k]).trim());
+                        }
+                        full = flow.toString();
+                    }
+                    anchors.put(anchor.group(1), scalars(full));
+                }
             }
             //A flow list that goes on over the next lines
             if(value.startsWith("[") && !value.contains("]")) {
@@ -75,9 +111,18 @@ final class WorkflowRunners {
                 }
                 continue;
             }
-            if(!value.isEmpty() && inRunnerPlace(path)) {
-                for(String scalar : scalars(value)) {
-                    found.add(scalar);
+            if(!value.isEmpty()) {
+                List<String> texts = value.startsWith("*") ? anchors.getOrDefault(value.substring(1).trim(), List.of()) : scalars(value);
+                for(java.util.Map.Entry<String, Integer> open : filling) {
+                    if(!value.startsWith("*")) {
+                        anchors.get(open.getKey()).addAll(texts);
+                    }
+                }
+                Value place = place(path, "");
+                if(place != null) {
+                    for(String text : texts) {
+                        values.add(new Value(place.job(), place.place(), place.key(), text));
+                    }
                 }
             }
             if(key != null && !value.isEmpty()) {
@@ -85,19 +130,52 @@ final class WorkflowRunners {
                 path.remove(path.size() - 1);
             }
         }
+
+        //The matrix keys each job's runs-on refers to
+        java.util.Map<String, java.util.Set<String>> referenced = new java.util.HashMap<>();
+        for(Value value : values) {
+            if(value.place() == Place.RUNS_ON) {
+                java.util.regex.Matcher reference = MATRIX_REFERENCE.matcher(value.text());
+                while(reference.find()) {
+                    referenced.computeIfAbsent(value.job(), job -> new java.util.HashSet<>()).add(reference.group(1));
+                }
+            }
+        }
+        List<String> found = new ArrayList<>();
+        for(Value value : values) {
+            boolean runner = switch(value.place()) {
+                case RUNS_ON, WITH -> true;
+                case MATRIX -> referenced.getOrDefault(value.job(), java.util.Set.of()).contains(value.key());
+            };
+            if(runner) {
+                found.add(value.text());
+            }
+        }
         return found;
     }
 
-    /** Under jobs.<job>.runs-on, or jobs.<job>.strategy.matrix */
-    private static boolean inRunnerPlace(List<Frame> path) {
+    /** Which job, place and key a value at this path belongs to, or null when it is not where a runner is named */
+    private static Value place(List<Frame> path, String text) {
         if(path.size() < 3 || !path.get(0).key().equals("jobs")) {
-            return false;
+            return null;
         }
+        String job = path.get(1).key();
         String third = path.get(2).key();
         if(third.equals("runs-on")) {
-            return true;
+            return new Value(job, Place.RUNS_ON, null, text);
         }
-        return third.equals("strategy") && path.size() >= 4 && path.get(3).key().equals("matrix");
+        if(third.equals("with") && path.size() >= 4) {
+            return new Value(job, Place.WITH, path.get(3).key(), text);
+        }
+        if(third.equals("strategy") && path.size() >= 5 && path.get(3).key().equals("matrix")) {
+            //matrix.<key>, or matrix.include/exclude entries' <key>
+            String key = path.get(4).key();
+            if((key.equals("include") || key.equals("exclude")) && path.size() >= 6) {
+                key = path.get(5).key();
+            }
+            return new Value(job, Place.MATRIX, key, text);
+        }
+        return null;
     }
 
     private static void popTo(List<Frame> path, int indent) {

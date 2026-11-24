@@ -140,11 +140,33 @@ jobs:
 
       # One package per platform: the .exe installer, a .dmg per macOS architecture and the AppImage.
       # The in-app updater (ReleaseArtifactSelector) expects exactly these.
+      # One more try after a pause before giving up, as for the engine (swap-engine.yaml): a single upload timeout should not block a release.
+      # The retry's own failure fails the job.
       - name: Upload artifacts
+        id: upload
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-${{ matrix.artifact-name }}
           if-no-files-found: error
+          path: |
+            build/jpackage/*.exe
+            build/jpackage/*.dmg
+            build/distributions/*.AppImage
+            engine-assets/*
+
+      - name: Wait before trying the upload again
+        if: steps.upload.outcome == 'failure'
+        shell: bash
+        run: sleep 30
+
+      - name: Upload artifacts (second try)
+        if: steps.upload.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-${{ matrix.artifact-name }}
+          if-no-files-found: error
+          overwrite: true
           path: |
             build/jpackage/*.exe
             build/jpackage/*.dmg

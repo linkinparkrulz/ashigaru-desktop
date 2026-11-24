@@ -197,14 +197,20 @@ jobs:
           echo "RANLIB_x86_64_pc_windows_gnu=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-ranlib" >> "$GITHUB_ENV"
           echo "CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-g++" >> "$GITHUB_ENV"
 
-      - name: Cache cargo and the Monero build
+      # Only the Monero build: its depends libraries and the monero-sys build output and fingerprints, about 0.3-0.5 GB per target. The whole
+      # target folder and the cargo registry were about 2 GB per target, over GitHub's 10 GB for the repository, and evicted the MinGW cache.
+      # The Rust crates are rebuilt each time in a few minutes; Monero is the slow part. Build scripts are built for the host (target/release),
+      # their output for the target (target/<triple>/release).
+      - name: Cache the Monero build
         if: ${{ !inputs.require_lock }}
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            swap-engine/build/eigenwallet/target
+            swap-engine/build/eigenwallet/target/debug/monero-depends
+            swap-engine/build/eigenwallet/target/release/build/monero-sys-*
+            swap-engine/build/eigenwallet/target/release/.fingerprint/monero-sys-*
+            swap-engine/build/eigenwallet/target/${{ matrix.target }}/release/build/monero-sys-*
+            swap-engine/build/eigenwallet/target/${{ matrix.target }}/release/.fingerprint/monero-sys-*
           # The lock overlay and this workflow (its flags change every compiled file) are in the key: when either changes, the key changes, so the
           # new build is saved instead of the old cache being restored from restore-keys and never saved again (Monero rebuilt every run)
           key: swap-engine-${{ matrix.target }}-${{ hashFiles('swap-engine/EIGENWALLET_REV', 'swap-engine/patches/**', 'swap-engine/ashigaru-swap/Cargo.toml', 'swap-engine/Cargo.lock.overlay', '.github/workflows/swap-engine.yaml') }}
@@ -280,12 +286,30 @@ jobs:
           echo "- imports:$summary" >> "$GITHUB_STEP_SUMMARY"
           ls -l out
 
+      # A single ArtifactService timeout used to fail this platform's engine, and with it the packages. One more try after a pause before
+      # giving up: the retry's own failure fails the job.
       - name: Upload library
+        id: upload
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: swap-engine-${{ matrix.target }}
           path: out/*
           if-no-files-found: error
+
+      - name: Wait before trying the upload again
+        if: steps.upload.outcome == 'failure'
+        shell: bash
+        run: sleep 30
+
+      - name: Upload library (second try)
+        if: steps.upload.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: swap-engine-${{ matrix.target }}
+          path: out/*
+          if-no-files-found: error
+          overwrite: true
 
       # Known vulnerabilities in the dependencies this library is built from. Informational for now: it lists what is open, in the run summary, so the
       # versions can be raised (in the overlay) until it is clean, and then it can be made to fail the build.
