@@ -27,7 +27,10 @@ class FirstRunDefaultsTest {
             assertTrue(mainnet.connect());
             assertEquals(PublicElectrumServer.FOUNDATION_DEVICES, mainnet.server());
         }
-        assertEquals(PublicElectrumServer.TEST4_ARANGUREN_CLEARNET, AshigaruTerminal.firstRunDefaults(Network.TESTNET4, null).server());
+        assertEquals(PublicElectrumServer.TESTNET4_MEMPOOL_ONION, AshigaruTerminal.firstRunDefaults(Network.TESTNET4, null).server(), "an onion default (AD-32)");
+        for(Network network : new Network[] {Network.MAINNET, Network.TESTNET4}) {
+            assertTrue(com.sparrowwallet.sparrow.net.Protocol.isOnionAddress(AshigaruTerminal.firstRunDefaults(network, null).server().getServer().getHostAndPort()), network.getName());
+        }
         assertNull(AshigaruTerminal.firstRunDefaults(Network.SIGNET, null), "no defaults for other networks, as before");
     }
 }

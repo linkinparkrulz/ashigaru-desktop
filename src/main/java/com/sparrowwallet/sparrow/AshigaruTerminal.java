@@ -159,7 +159,8 @@ public class AshigaruTerminal {
 
     /** The first run's defaults for this network and the mode already set; null when this network has none */
     static FirstRunDefaults firstRunDefaults(Network network, Mode currentMode) {
-        PublicElectrumServer server = network == Network.TESTNET4 ? PublicElectrumServer.TEST4_ARANGUREN_CLEARNET
+        //Onion defaults on every network: a clearnet first-run default exposed every testnet4 first run (AD-32)
+        PublicElectrumServer server = network == Network.TESTNET4 ? PublicElectrumServer.TESTNET4_MEMPOOL_ONION
                 : network == Network.MAINNET ? PublicElectrumServer.FOUNDATION_DEVICES : null;
         if(server == null) {
             return null;

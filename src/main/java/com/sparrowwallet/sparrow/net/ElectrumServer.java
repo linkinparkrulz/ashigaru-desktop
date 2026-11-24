@@ -72,6 +72,14 @@ public class ElectrumServer {
 
     private static final Pattern RPC_WALLET_LOADING_PATTERN = Pattern.compile(".*\"(Wallet loading failed[:.][^\"]*)\".*");
 
+    /**
+     * Whether a server must be reached through the bundled Tor's proxy: one on the internet that is not an onion, while Ashigaru requires Tor.
+     * Onions already go through Tor (TorTcpTransport), and servers on the user's own network are reached directly.
+     */
+    static boolean needsTor(HostAndPort server, boolean localNetworkAddress, boolean requiresTor) {
+        return requiresTor && !localNetworkAddress && !Protocol.isOnionAddress(server);
+    }
+
     private static synchronized CloseableTransport getTransport() throws ServerException {
         if(transport == null) {
             try {
@@ -123,6 +131,17 @@ public class ElectrumServer {
                         transport = protocol.getTransport(hostAndPort, electrumServerCert, proxy);
                     } else {
                         transport = protocol.getTransport(hostAndPort, proxy);
+                    }
+                } else if(needsTor(hostAndPort, localNetworkAddress, Config.get().requiresTor())) {
+                    //A server on the internet that is not an onion goes through the bundled Tor too, never directly (AD-32): only onions used to
+                    HostAndPort torProxy = AppServices.isTorRunning() ? Tor.getDefault().findProxyHostAndPort() : null;
+                    if(torProxy == null) {
+                        throw new ServerConfigException("Tor is not running, and Ashigaru does not connect to " + hostAndPort.getHost() + " outside Tor");
+                    }
+                    if(electrumServerCert != null) {
+                        transport = protocol.getTransport(hostAndPort, electrumServerCert, torProxy);
+                    } else {
+                        transport = protocol.getTransport(hostAndPort, torProxy);
                     }
                 } else {
                     if(electrumServerCert != null) {
