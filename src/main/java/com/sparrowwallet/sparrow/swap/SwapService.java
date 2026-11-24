@@ -1252,15 +1252,70 @@ public class SwapService implements SwapHost {
 
     @Override
     public void onNotification(String kind, JsonObject payload) {
+        //The engine's log lines are most of what it sends. Quiet ones only go to the log file, written here on the engine's thread; the rest
+        //reach the in-app log in batches, one hop to the JavaFX thread per batch. Everything else changes screens, so it goes there as before.
+        if("log".equals(kind)) {
+            String message = logMessage(payload);
+            if(isQuiet(payload)) {
+                log.info(forLogFile(message));
+            } else {
+                logBatch.add(message);
+            }
+            return;
+        }
         Platform.runLater(() -> notification(kind, payload));
+    }
+
+    private final LineBatch logBatch = new LineBatch(this::appendLogs, Platform::runLater);
+
+    private static String logMessage(JsonObject payload) {
+        String level = payload.has("level") ? payload.get("level").getAsString() : "INFO";
+        return ("INFO".equals(level) ? "" : level + " ") + (payload.has("message") ? payload.get("message").getAsString() : "");
+    }
+
+    private static boolean isQuiet(JsonObject payload) {
+        return payload.has("quiet") && payload.get("quiet").getAsBoolean();
+    }
+
+    /**
+     * Lines that arrive on any thread, handed on in batches: the first line of a batch schedules one drain, and every line added before that
+     * drain runs goes with it. So a burst of engine lines is one hop to the JavaFX thread and one redraw of the log view, not one per line.
+     */
+    static final class LineBatch {
+        private final java.util.concurrent.ConcurrentLinkedQueue<String> lines = new java.util.concurrent.ConcurrentLinkedQueue<>();
+        private final java.util.concurrent.atomic.AtomicBoolean scheduled = new java.util.concurrent.atomic.AtomicBoolean();
+        private final Consumer<List<String>> drain;
+        private final Consumer<Runnable> scheduler;
+
+        LineBatch(Consumer<List<String>> drain, Consumer<Runnable> scheduler) {
+            this.drain = drain;
+            this.scheduler = scheduler;
+        }
+
+        void add(String line) {
+            lines.add(line);
+            if(scheduled.compareAndSet(false, true)) {
+                scheduler.accept(this::drain);
+            }
+        }
+
+        private void drain() {
+            scheduled.set(false);
+            List<String> batch = new ArrayList<>();
+            for(String line = lines.poll(); line != null; line = lines.poll()) {
+                batch.add(line);
+            }
+            if(!batch.isEmpty()) {
+                drain.accept(batch);
+            }
+        }
     }
 
     void notification(String kind, JsonObject payload) {
         if("log".equals(kind)) {
-            String level = payload.has("level") ? payload.get("level").getAsString() : "INFO";
-            String message = ("INFO".equals(level) ? "" : level + " ") + (payload.has("message") ? payload.get("message").getAsString() : "");
+            String message = logMessage(payload);
             //Routine chatter (wallet2, maker connections coming and going) is kept for the log file only
-            if(payload.has("quiet") && payload.get("quiet").getAsBoolean()) {
+            if(isQuiet(payload)) {
                 log.info(forLogFile(message));
             } else {
                 appendLog(message);
@@ -1381,14 +1436,24 @@ public class SwapService implements SwapHost {
     }
 
     private void appendLog(String line) {
-        String stamped = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "  " + line + System.lineSeparator();
+        appendLogs(List.of(line));
+    }
+
+    /** Several lines at once: added to the in-app log together, and the log view is told once */
+    private void appendLogs(List<String> lines) {
+        String time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+        StringBuilder stamped = new StringBuilder();
+        for(String line : lines) {
+            stamped.append(time).append("  ").append(line).append(System.lineSeparator());
+            //The in-app swap log keeps the line as it is; the file, which people send around, gets it redacted
+            log.info(forLogFile(line));
+        }
         logText.append(stamped);
         if(logText.length() > MAX_LOG_CHARS) {
             logText.delete(0, logText.length() - MAX_LOG_CHARS);
         }
-        //The in-app swap log keeps the line as it is; the file, which people send around, gets it redacted
-        log.info(forLogFile(line));
-        logListeners.forEach(listener -> listener.accept(stamped));
+        String text = stamped.toString();
+        logListeners.forEach(listener -> listener.accept(text));
     }
 
     private SwapEngine loadEngine() {

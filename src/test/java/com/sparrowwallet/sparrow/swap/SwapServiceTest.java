@@ -266,6 +266,26 @@ class SwapServiceTest {
     }
 
     @Test
+    void engineLogLinesReachTheScreenInBatchesNotOneHopEach() {
+        java.util.List<Runnable> scheduled = new java.util.ArrayList<>();
+        java.util.List<java.util.List<String>> drained = new java.util.ArrayList<>();
+        SwapService.LineBatch batch = new SwapService.LineBatch(drained::add, scheduled::add);
+        for(int i = 0; i < 100; i++) {
+            batch.add("line " + i);
+        }
+        assertEquals(1, scheduled.size(), "one hop to the JavaFX thread for the burst");
+        scheduled.get(0).run();
+        assertEquals(1, drained.size());
+        assertEquals(100, drained.get(0).size());
+        assertEquals("line 0", drained.get(0).get(0));
+        //After a drain, the next line schedules the next one
+        batch.add("late");
+        assertEquals(2, scheduled.size());
+        scheduled.get(1).run();
+        assertEquals(java.util.List.of("late"), drained.get(1));
+    }
+
+    @Test
     void swapsDoNotStartInOfflineMode() {
         assertTrue(SwapService.blockedOffline(com.sparrowwallet.sparrow.Mode.OFFLINE));
         assertFalse(SwapService.blockedOffline(com.sparrowwallet.sparrow.Mode.ONLINE));
