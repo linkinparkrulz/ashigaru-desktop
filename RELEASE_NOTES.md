@@ -148,6 +148,8 @@ misunderstand, and the interface typeface changes across the whole app.
   shuts down the running engine. Files in the swaps folder written by older versions are made owner-only on the next start, leftover temporary seed files are
   removed, and on Windows the owner-only access list is inherited by files the engine creates and no longer inherits from the parent folder.
   Every workflow job now has a timeout.
+- **Exact build tools.** The build uses exactly Temurin 21.0.13.1+2 instead of the newest Temurin 21, and the current releases of the GitHub
+  checkout, cache and Java setup actions, pinned to their commits.
 - **Nothing goes around Tor.** A clearnet Electrum server is reached through Tor (testnet4 starts on an onion server); Bitcoin Core through a
   proxy, update checks, Auth47 and LNURL logins never look a host name up on this computer; and logins are not sent in offline mode or without Tor.
 - **Online and offline say what is true.** "Go offline" works while connecting or after a failed connection, the pill says "Online · not connected"

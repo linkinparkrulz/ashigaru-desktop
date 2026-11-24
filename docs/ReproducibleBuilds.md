@@ -14,10 +14,10 @@ This guide covers rebuilding a binary from source and comparing its hash.
 
 ## Environment
 
-The release binaries are built with Temurin JDK 21 and must be **21.0.13.1 or newer**: `.github/workflows/release.yaml`
-sets up the newest released Temurin 21 and `.github/scripts/require-java.sh` stops the build for anything older (21.0.13.1 is the
-Temurin release that follows the Java 21 vulnerability of November 2026, CVE-2026-114938). The exact JDK of a release is printed in
-its build log and is the one to use here when you rebuild it. The Gradle wrapper is the one checked into this repository (Gradle 8.5), and the Gradle wrapper checked into this repository (Gradle 8.5).
+The release binaries are built with **Temurin JDK 21.0.13.1+2** exactly: every workflow sets up `java-version: '21.0.13+100000002.0.LTS'`
+(Adoptium's semver for that build) with `check-latest: false`, and `.github/scripts/require-java.sh` still stops the build below 21.0.13.1
+(the Temurin release that follows the Java 21 vulnerability of November 2026, CVE-2026-114938). The JDK of a release is also printed in
+its build log. Use the same one here when you rebuild. The Gradle wrapper is the one checked into this repository (Gradle 8.5).
 Building with a different JDK vendor/version or Gradle version will likely yield different hashes:
 jlink/jpackage embed toolchain paths and class file versions into the output.
 
@@ -79,7 +79,8 @@ A release builds the swap engine itself (`release.yaml` calls `swap-engine.yaml`
 
 What is fixed, and what is not:
 
-- **Actions** in every workflow are pinned to commits, and a test fails if one is not. The engine build uses no cache in a release.
+- **Actions** in every workflow are pinned to commits, and a test fails if one is not: `actions/checkout` v7.0.1, `actions/cache` v5.1.0 (also
+  `cache/restore` and `cache/save`) and `actions/setup-java` v6.3.0, at the commits their tags name. The engine build uses no cache in a release.
 - **Dependencies of the engine** are fixed by `swap-engine/Cargo.lock.overlay`, which is committed: the engine is built and tested `--locked`, and a release refuses
   to build without that file. To change a dependency, run the Swap engine workflow, take its `swap-engine-cargo-lock` artifact, review it and commit it over the overlay.
 - **Rust** is 1.92.0 exactly: installed by `rustup`, and a step fails the build unless the eigenwallet checkout (whose `rust-toolchain.toml` selects it) compiles with it.
@@ -90,5 +91,4 @@ What is fixed, and what is not:
   the build yet: it reports the advisories still open (several come from `sqlx` 0.8.0, which cannot move until upstream does) until they are cleared or accepted.
 - **Not done**: a pinned build container (so builds reproduce byte for byte across machines), pinned apt/brew package versions (their versions are recorded in the run
   summary instead), a MinGW toolchain built from checksummed sources, Gradle dependency verification, and failing the build on `cargo audit` findings. The runner images
-  are version-named (`ubuntu-22.04`, `macos-15`, `macos-15-intel`, `windows-2022`) but still receive their own updates. The JDK is held to 21.0.13.1 or newer by
-  `require-java.sh`, not to one exact build.
+  are version-named (`ubuntu-22.04`, `macos-15`, `macos-15-intel`, `windows-2022`) but still receive their own updates. The JDK is pinned to Temurin 21.0.13.1+2.

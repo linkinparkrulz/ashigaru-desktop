@@ -55,7 +55,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The dependencies are fixed by swap-engine/Cargo.lock.overlay, which fetch.sh puts over eigenwallet's own Cargo.lock; with it the build is
       # --locked, so no dependency can change between a review and a release. Without it the build still works, from eigenwallet's lock plus
@@ -156,7 +156,7 @@ jobs:
       - name: Restore MinGW gcc (Windows cross-build)
         if: ${{ !inputs.require_lock && (contains(matrix.target, 'windows')) }}
         id: mingw
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ~/opt/gcc-mingw-14.3
           key: mingw-gcc-14.3-${{ runner.os }}-${{ hashFiles('swap-engine/EIGENWALLET_REV') }}
@@ -169,7 +169,7 @@ jobs:
       # Saved here rather than at the end of the job, so a later step failing does not lose it
       - name: Keep MinGW gcc (Windows cross-build)
         if: ${{ !inputs.require_lock && (contains(matrix.target, 'windows') && steps.mingw.outputs.cache-hit != 'true') }}
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ~/opt/gcc-mingw-14.3
           key: ${{ steps.mingw.outputs.cache-primary-key }}
@@ -203,7 +203,7 @@ jobs:
       # their output for the target (target/<triple>/release).
       - name: Cache the Monero build
         if: ${{ !inputs.require_lock }}
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
             swap-engine/build/eigenwallet/target/debug/monero-depends

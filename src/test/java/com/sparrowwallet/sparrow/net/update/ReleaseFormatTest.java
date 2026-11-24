@@ -249,6 +249,43 @@ class ReleaseFormatTest {
         }
     }
 
+    /** The commits the release tags name, from git ls-remote (none is an annotated tag) */
+    private static final java.util.Map<String, String> ACTION_PINS = java.util.Map.of(
+            "actions/checkout", "3d3c42e5aac5ba805825da76410c181273ba90b1",       //v7.0.1
+            "actions/cache", "caa296126883cff596d87d8935842f9db880ef25",          //v5.1.0, also cache/restore and cache/save
+            "actions/setup-java", "d1374f8ac74474200d16ef8ecee22c7ae7a51880");    //v6.3.0
+    private static final String TEMURIN = "'21.0.13+100000002.0.LTS'";
+
+    @Test
+    void theActionsAreTheNewReleasesAtTheirTagsCommits() throws IOException {
+        java.util.regex.Pattern uses = java.util.regex.Pattern.compile("uses:\\s*(actions/(?:checkout|cache|setup-java))(?:/[a-z]+)?@([0-9a-f]{40})");
+        int found = 0;
+        for(Path file : workflows()) {
+            java.util.regex.Matcher matcher = uses.matcher(text(file.toString()));
+            while(matcher.find()) {
+                found++;
+                assertEquals(ACTION_PINS.get(matcher.group(1)), matcher.group(2), file + ": " + matcher.group());
+            }
+        }
+        assertTrue(found >= 12, "every checkout, cache and setup-java step was seen: " + found);
+    }
+
+    @Test
+    void everyJdkIsTemurin210131Plus2WithoutCheckLatest() throws IOException {
+        int found = 0;
+        for(Path file : workflows()) {
+            String workflow = text(file.toString());
+            for(String step : workflow.split("\n      - ")) {
+                if(step.contains("actions/setup-java@")) {
+                    found++;
+                    assertTrue(step.contains("java-version: " + TEMURIN), file + ": " + step);
+                    assertTrue(step.contains("check-latest: false") && !step.contains("check-latest: true"), file + ": " + step);
+                }
+            }
+        }
+        assertEquals(4, found, "release, package, swap-package and test");
+    }
+
     @Test
     void theEngineIsBuiltWithExactlyRust1920() throws IOException {
         String engine = text(".github/workflows/swap-engine.yaml");
