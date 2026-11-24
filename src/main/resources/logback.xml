@@ -15,7 +15,10 @@
     <logger name="com.zaxxer.hikari.HikariDataSource" level="WARN" />
     <logger name="com.zaxxer.hikari.pool.HikariPool" level="ERROR" />
     <logger name="org.flywaydb.core.internal.command.DbValidate" level="WARN" />
-    <logger name="org.flywaydb.core.internal.command.DbMigrate" level="WARN" />
+    <!-- Its "schema has a version newer than the latest available migration" warning repeats for every wallet schema; DbPersistence says it once per run -->
+    <logger name="org.flywaydb.core.internal.command.DbMigrate" level="ERROR" />
+    <!-- Its "H2 is newer than this version of Flyway" warning repeats for every wallet schema; DbPersistence says it once per run -->
+    <logger name="org.flywaydb.core.internal.database.base.Database" level="ERROR" />
     <logger name="org.flywaydb.core.internal.command.DbClean" level="ERROR" />
     <logger name="org.flywaydb.core.internal.database.base.BaseDatabaseType" level="WARN" />
     <logger name="org.flywaydb.core.internal.database.base.Schema" level="WARN" />
