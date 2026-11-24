@@ -31,7 +31,7 @@ import java.util.List;
  * <p>An identity whose swaps were all read from its database and are all finished is retired: its seed is moved aside to
  * {@value #RETIRED_SEED} (nothing should need it, but it is never deleted), the data stays, and a {@value #RETIRED} marker tells
  * recovery that the missing seed is intended. An identity whose database could not be read is never retired. Every file here is
- * readable by its owner only.
+ * readable by its owner only (on Windows, also by the account running Ashigaru when the owner is another, e.g. Administrators).
  */
 public final class SwapIdentity {
     private static final Logger log = LoggerFactory.getLogger(SwapIdentity.class);
@@ -78,26 +78,43 @@ public final class SwapIdentity {
         protectExisting(swapsDir);
         File file = new File(swapsDir, CURRENT);
         if(file.exists()) {
-            byte[] seed = readSeed(file);
-            if(seed != null) {
-                SwapIdentity identity = new SwapIdentity(seed, swapsDir, false);
+            SeedRead read = readSeedFile(file);
+            if(read.seed() != null) {
+                SwapIdentity identity = new SwapIdentity(read.seed(), swapsDir, false);
                 refuseOlderIdentity(swapsDir, file, identity.dataDir);
                 identity.keepSeedWithData();
                 writeFolder(swapsDir, identity.dataDir.getName());
                 return identity;
             }
+            if(read.unreadable()) {
+                //Not damaged: there, but this account may not read it. Never replaced: the folders beside it may be unreadable too, so
+                //whether swaps depend on it cannot be told
+                log.warn("Swap identity file cannot be read: " + read.error());
+                throw new IOException(unreadableMessage(swapsDir, file, read.error()));
+            }
             log.warn("Swap identity file is damaged");
         }
 
+        File folderFile = new File(swapsDir, FOLDER);
+        if(folderFile.exists() && !Files.isReadable(folderFile.toPath())) {
+            throw new IOException(unreadableMessage(swapsDir, folderFile, "access denied"));
+        }
         String folder = readFolder(swapsDir);
+        SeedRead copyRead = null;
         if(folder != null) {
             File dir = new File(swapsDir, folder);
-            byte[] seed = readSeed(new File(dir, SEED_COPY));
+            File copy = new File(dir, SEED_COPY);
+            copyRead = readSeedFile(copy);
+            byte[] seed = copyRead.seed();
             if(seed != null && directoryName(seed).equals(folder)) {
                 log.warn("Swap identity recovered from " + folder);
                 SwapIdentity identity = new SwapIdentity(seed, swapsDir, true);
                 writeCurrent(swapsDir, seed);
                 return identity;
+            }
+            if(copyRead.unreadable()) {
+                log.warn("Swap identity seed copy cannot be read: " + copyRead.error());
+                throw new IOException(unreadableMessage(swapsDir, copy, copyRead.error()));
             }
         }
         if(hasSwapData(swapsDir)) {
@@ -106,6 +123,27 @@ public final class SwapIdentity {
                     + "identity over them. Restore the swaps folder from a backup.");
         }
         return renew(swapsDir);
+    }
+
+    /**
+     * What to tell the person when a swap identity file is there but cannot be read: not damage, permissions. On Windows this happens when
+     * Ashigaru once ran as administrator and its files came to belong to the Administrators group.
+     */
+    static String unreadableMessage(File swapsDir, File file, String error) {
+        String start = "Ashigaru can't read its swap identity (" + file.getAbsolutePath() + ": " + error + "). The files are still there and nothing was "
+                + "changed, but this account isn't allowed to read them. ";
+        if(isWindows()) {
+            String domain = System.getenv("USERDOMAIN");
+            String user = (domain != null && !domain.isBlank() ? domain + "\\" : "") + System.getProperty("user.name", "%USERNAME%");
+            return start + "This can happen after Ashigaru was run with \"Run as administrator\". To fix it, start Ashigaru once with \"Run as "
+                    + "administrator\" (it then gives this account access again), or run this in a Command Prompt opened as administrator: icacls \""
+                    + swapsDir.getAbsolutePath() + "\" /grant \"" + user + ":(OI)(CI)F\" /T";
+        }
+        return start + "Check that " + swapsDir.getAbsolutePath() + " and everything in it belong to the account running Ashigaru.";
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows");
     }
 
     /**
@@ -198,13 +236,29 @@ public final class SwapIdentity {
         }
     }
 
-    private static byte[] readSeed(File file) {
+    /** A seed file as read: the seed; or why not, telling a file that cannot be read (permissions) from one that is not a seed */
+    record SeedRead(byte[] seed, boolean unreadable, String error) {}
+
+    static SeedRead readSeedFile(File file) {
+        String text;
         try {
-            byte[] seed = Utils.hexToBytes(Files.readString(file.toPath(), StandardCharsets.UTF_8).trim());
-            return seed.length == 32 ? seed : null;
-        } catch(Exception e) {
-            return null;
+            text = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+        } catch(java.nio.file.NoSuchFileException e) {
+            return new SeedRead(null, false, "missing");
+        } catch(IOException | SecurityException e) {
+            //Never the content: only what kind of failure it was
+            return new SeedRead(null, true, e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage()));
         }
+        try {
+            byte[] seed = Utils.hexToBytes(text.trim());
+            return seed.length == 32 ? new SeedRead(seed, false, null) : new SeedRead(null, false, "not a seed");
+        } catch(RuntimeException e) {
+            return new SeedRead(null, false, "not a seed");
+        }
+    }
+
+    private static byte[] readSeed(File file) {
+        return readSeedFile(file).seed();
     }
 
     private static String readFolder(File swapsDir) {
@@ -294,10 +348,13 @@ public final class SwapIdentity {
     }
 
     /**
-     * Makes a file or folder readable by its owner only: permissions 600 or 700 where the file system has them, and on Windows an access list with
-     * the owner as its only entry. A folder's entry is inherited by what is created in it later (the engine's database and wallet files), and the
-     * folder no longer inherits from its parent, so a change to the parent's permissions does not open it again. A file system with neither is
-     * left to its folder's own protection.
+     * Makes a file or folder readable by its owner only: permissions 600 or 700 where the file system has them. On Windows, an access list with
+     * the account running Ashigaru and the file's owner, if that is someone else, as its only entries: a file created while Ashigaru ran as
+     * administrator belongs to the Administrators group, which a normal start of the same account cannot use, so the owner alone would lock
+     * that account out of its own swaps. A folder's entries are inherited by what is created in it later (the engine's database and wallet
+     * files), and the folder no longer inherits from its parent, so a change to the parent's permissions does not open it again. If the
+     * account running Ashigaru cannot be named, or could not use the path afterwards, the access list is left or put back as it was. A file
+     * system with neither is left to its folder's own protection.
      */
     static void restrictToOwner(java.nio.file.Path path, boolean directory) {
         try {
@@ -313,16 +370,70 @@ public final class SwapIdentity {
             }
             java.nio.file.attribute.AclFileAttributeView acl = Files.getFileAttributeView(path, java.nio.file.attribute.AclFileAttributeView.class);
             if(acl != null) {
-                java.nio.file.attribute.UserPrincipal owner = acl.getOwner();
-                acl.setAcl(List.of(ownerOnlyEntry(owner, directory)));
+                java.nio.file.attribute.UserPrincipal user = currentUser(path);
+                if(user == null) {
+                    log.debug("The account running Ashigaru could not be named; " + path + " keeps its access list");
+                    return;
+                }
+                List<java.nio.file.attribute.AclEntry> before = acl.getAcl();
+                List<java.nio.file.attribute.AclEntry> entries = windowsEntries(acl.getOwner(), user, directory);
+                if(entries.equals(before)) {
+                    return;
+                }
+                acl.setAcl(entries);
+                if(!usable(path, directory)) {
+                    acl.setAcl(before);
+                    log.warn("Left the permissions of " + path + " as they were: this account could not have used it afterwards");
+                    return;
+                }
                 stopInheriting(path);
+                if(!usable(path, directory)) {
+                    acl.setAcl(before);
+                    icacls(path, "/inheritance:e");
+                    log.warn("Put back the permissions of " + path + ": this account could not use it afterwards");
+                }
             }
         } catch(IOException | UnsupportedOperationException | SecurityException e) {
             log.debug("Could not restrict " + path + " to its owner: " + e.getMessage());
         }
     }
 
-    /** The one access list entry: everything for the owner, and for a folder, inherited by the files and folders created in it */
+    /** The account this process runs as, as the file system names it; with its domain first, as Windows knows it. Null when it cannot be found. */
+    private static java.nio.file.attribute.UserPrincipal currentUser(java.nio.file.Path path) {
+        java.nio.file.attribute.UserPrincipalLookupService lookup = path.getFileSystem().getUserPrincipalLookupService();
+        String name = System.getProperty("user.name");
+        if(name == null || name.isBlank()) {
+            return null;
+        }
+        String domain = System.getenv("USERDOMAIN");
+        if(domain != null && !domain.isBlank()) {
+            try {
+                return lookup.lookupPrincipalByName(domain + "\\" + name);
+            } catch(IOException | UnsupportedOperationException e) {
+                //tried by name alone below
+            }
+        }
+        try {
+            return lookup.lookupPrincipalByName(name);
+        } catch(IOException | UnsupportedOperationException e) {
+            return null;
+        }
+    }
+
+    private static boolean usable(java.nio.file.Path path, boolean directory) {
+        return Files.isReadable(path) && (!directory || Files.isWritable(path));
+    }
+
+    /** The access list for a Windows file or folder: the account running Ashigaru, and the owner if that is a different account or group */
+    static List<java.nio.file.attribute.AclEntry> windowsEntries(java.nio.file.attribute.UserPrincipal owner, java.nio.file.attribute.UserPrincipal user,
+                                                                 boolean directory) {
+        if(owner == null || owner.equals(user)) {
+            return List.of(ownerOnlyEntry(user, directory));
+        }
+        return List.of(ownerOnlyEntry(user, directory), ownerOnlyEntry(owner, directory));
+    }
+
+    /** One access list entry: everything for this account, and for a folder, inherited by the files and folders created in it */
     static java.nio.file.attribute.AclEntry ownerOnlyEntry(java.nio.file.attribute.UserPrincipal owner, boolean directory) {
         java.nio.file.attribute.AclEntry.Builder builder = java.nio.file.attribute.AclEntry.newBuilder()
                 .setType(java.nio.file.attribute.AclEntryType.ALLOW)
@@ -336,11 +447,14 @@ public final class SwapIdentity {
 
     /**
      * Java can set an access list but not mark it protected, so a later change to the parent's inheritable entries could be added to it again.
-     * On Windows, icacls marks it protected (inherited entries removed, the owner's own entry kept). Best effort: the list set above stands either way.
+     * On Windows, icacls marks it protected (inherited entries removed, the entries set above kept). Best effort: the list set above stands either way.
      */
     private static void stopInheriting(java.nio.file.Path path) {
-        String os = System.getProperty("os.name", "");
-        if(!os.toLowerCase(java.util.Locale.ROOT).startsWith("windows")) {
+        icacls(path, "/inheritance:r");
+    }
+
+    private static void icacls(java.nio.file.Path path, String change) {
+        if(!isWindows()) {
             return;
         }
         File icacls = icaclsPath(System.getenv("SystemRoot"));
@@ -349,13 +463,13 @@ public final class SwapIdentity {
             return;
         }
         try {
-            Process process = new ProcessBuilder(icacls.getAbsolutePath(), path.toString(), "/inheritance:r", "/Q").redirectErrorStream(true)
+            Process process = new ProcessBuilder(icacls.getAbsolutePath(), path.toString(), change, "/Q").redirectErrorStream(true)
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD).start();
             if(!process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 log.debug("icacls did not finish for " + path);
             } else if(process.exitValue() != 0) {
-                log.debug("icacls could not stop " + path + " inheriting permissions (exit " + process.exitValue() + ")");
+                log.debug("icacls " + change + " failed for " + path + " (exit " + process.exitValue() + ")");
             }
         } catch(IOException e) {
             log.debug("Could not run icacls for " + path + ": " + e.getMessage());

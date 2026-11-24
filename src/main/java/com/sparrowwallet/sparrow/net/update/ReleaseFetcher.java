@@ -29,6 +29,8 @@ import java.util.List;
 public class ReleaseFetcher {
     private static final int CONNECT_TIMEOUT = 30000;
     private static final int READ_TIMEOUT = 60000;
+    /** The most any one response may hold through the proxy: the release packages are a few hundred MB; each caller checks its own size too */
+    private static final long MAX_DOWNLOAD_BYTES = 2L * 1024 * 1024 * 1024;
 
     /** A release as published on GitHub. */
     public record Release(String tag, List<ReleaseAsset> assets) {
@@ -185,7 +187,7 @@ public class ReleaseFetcher {
         if(proxy != null) {
             //Through the proxy with the name unresolved: HttpURLConnection would look github.com up on this computer first (AD-38)
             com.sparrowwallet.sparrow.net.ProxiedHttp.Response response = com.sparrowwallet.sparrow.net.ProxiedHttp.request("GET", new URL(url), headers, null,
-                    proxy, null, CONNECT_TIMEOUT, READ_TIMEOUT);
+                    proxy, null, CONNECT_TIMEOUT, READ_TIMEOUT, MAX_DOWNLOAD_BYTES);
             if(response.status() != HttpURLConnection.HTTP_OK) {
                 response.close();
                 throw new IOException("HTTP " + response.status() + " for " + url);

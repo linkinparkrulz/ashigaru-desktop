@@ -171,4 +171,44 @@ class ProxiedHttpTest {
             assertEquals(List.of(), offenders);
         }
     }
+
+    @Test
+    void aRedirectFromHttpsDownToHttpIsRefused() throws Exception {
+        IOException refused = assertThrows(IOException.class, () -> ProxiedHttp.redirectTarget(new URL("https://github.com/a"), "http://objects.example/b"));
+        assertTrue(refused.getMessage().contains("https to plain http"), refused.getMessage());
+        //Compared as text: URL.equals looks host names up
+        assertEquals("https://objects.example/b", ProxiedHttp.redirectTarget(new URL("https://github.com/a"), "https://objects.example/b").toString());
+        assertEquals("https://objects.example/b", ProxiedHttp.redirectTarget(new URL("http://github.com/a"), "https://objects.example/b").toString());
+        assertEquals("http://" + OTHER + "/b", ProxiedHttp.redirectTarget(new URL("http://" + ONION + "/a"), "http://" + OTHER + "/b").toString());
+    }
+
+    @Test
+    void aSizedBodyOverTheCapIsRefusedBeforeItIsRead() throws Exception {
+        try(FakeProxy proxy = new FakeProxy("HTTP/1.1 200 OK\r\nContent-Length: 20\r\n\r\n01234567890123456789")) {
+            IOException refused = assertThrows(IOException.class, () -> ProxiedHttp.request("GET", new URL("http://" + ONION + "/"), Map.of(), null,
+                    proxy.proxy(), null, 10_000, 10_000, 10));
+            assertTrue(refused.getMessage().contains("too large"), refused.getMessage());
+        }
+    }
+
+    @Test
+    void aChunkedBodyThatRunsPastTheCapFails() throws Exception {
+        try(FakeProxy proxy = new FakeProxy("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n8\r\n01234567\r\n8\r\n89abcdef\r\n0\r\n\r\n")) {
+            try(ProxiedHttp.Response response = ProxiedHttp.request("GET", new URL("http://" + ONION + "/"), Map.of(), null, proxy.proxy(), null,
+                    10_000, 10_000, 10)) {
+                IOException refused = assertThrows(IOException.class, response::bodyText);
+                assertTrue(refused.getMessage().contains("too large"), refused.getMessage());
+            }
+        }
+    }
+
+    @Test
+    void aBodyWithinTheCapIsReadWhole() throws Exception {
+        try(FakeProxy proxy = new FakeProxy("HTTP/1.0 200 OK\r\n\r\n0123456789")) {
+            try(ProxiedHttp.Response response = ProxiedHttp.request("GET", new URL("http://" + ONION + "/"), Map.of(), null, proxy.proxy(), null,
+                    10_000, 10_000, 10)) {
+                assertEquals("0123456789", response.bodyText());
+            }
+        }
+    }
 }

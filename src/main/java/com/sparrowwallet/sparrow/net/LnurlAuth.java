@@ -119,7 +119,7 @@ public class LnurlAuth {
         }
 
         StringBuilder res = new StringBuilder();
-        try(ProxiedHttp.Response response = ProxiedHttp.request("GET", callback, java.util.Map.of("Content-Type", "application/json"), null, proxy, null, 30000, 30000)) {
+        try(ProxiedHttp.Response response = ProxiedHttp.request("GET", callback, java.util.Map.of("Content-Type", "application/json"), null, proxy, null, 30000, 30000, 1024 * 1024)) {
             res.append(response.bodyText().trim());
         }
 

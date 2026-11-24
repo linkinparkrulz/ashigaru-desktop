@@ -80,7 +80,8 @@ A release builds the swap engine itself (`release.yaml` calls `swap-engine.yaml`
 What is fixed, and what is not:
 
 - **Actions** in every workflow are pinned to commits, and a test fails if one is not: `actions/checkout` v7.0.1, `actions/cache` v5.1.0 (also
-  `cache/restore` and `cache/save`) and `actions/setup-java` v6.3.0, at the commits their tags name. The engine build uses no cache in a release.
+  `cache/restore` and `cache/save`), `actions/setup-java` v6.3.0, `actions/upload-artifact` v7.0.2 and `actions/download-artifact` v8.0.2 (all on
+  Node 24; a downloaded artifact whose digest does not match fails the job), at the commits their tags name. The engine build uses no cache in a release.
 - **Dependencies of the engine** are fixed by `swap-engine/Cargo.lock.overlay`, which is committed: the engine is built and tested `--locked`, and a release refuses
   to build without that file. To change a dependency, run the Swap engine workflow, take its `swap-engine-cargo-lock` artifact, review it and commit it over the overlay.
 - **Rust** is 1.92.0 exactly: installed by `rustup`, and a step fails the build unless the eigenwallet checkout (whose `rust-toolchain.toml` selects it) compiles with it.

@@ -586,6 +586,8 @@ public class WalletCreationFlow {
 
         for (int i = 0; i < 5; i++) {
             TextField die = new TextField();
+            //Dice rolls are the wallet's entropy: never copied out (AD-42)
+            TextFieldMenu.markSecret(die);
             die.setPrefWidth(46);
             die.setAlignment(Pos.CENTER);
             die.getStyleClass().add("dice-die-input");

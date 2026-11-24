@@ -84,6 +84,41 @@ class MenuLookTest {
             password.selectAll();
             TextFieldMenu.update(password, items[0], items[1], (SeparatorMenuItem)items[2], items[3], items[4], items[5], items[6], items[8], true);
             assertTrue(items[3].isDisable() && items[4].isDisable());
+
+            //Nor is a text field marked secret: seed words, a passphrase, dice (AD-42)
+            TextField words = new TextField("abandon");
+            TextFieldMenu.markSecret(words);
+            words.selectAll();
+            TextFieldMenu.update(words, items[0], items[1], (SeparatorMenuItem)items[2], items[3], items[4], items[5], items[6], items[8], true);
+            assertTrue(items[3].isDisable() && items[4].isDisable());
+            assertFalse(items[5].isDisable(), "pasting into it is still allowed");
+        });
+    }
+
+    @Test
+    void theCopyAndCutKeysDoNothingInASecretField() throws Exception {
+        assertTrue(TextFieldMenu.isCopyOrCut(javafx.scene.input.KeyCode.C, true, true, false));
+        assertTrue(TextFieldMenu.isCopyOrCut(javafx.scene.input.KeyCode.X, true, false, false));
+        assertTrue(TextFieldMenu.isCopyOrCut(javafx.scene.input.KeyCode.INSERT, false, true, false));
+        assertTrue(TextFieldMenu.isCopyOrCut(javafx.scene.input.KeyCode.DELETE, false, false, true));
+        assertTrue(TextFieldMenu.isCopyOrCut(javafx.scene.input.KeyCode.COPY, false, false, false));
+        assertFalse(TextFieldMenu.isCopyOrCut(javafx.scene.input.KeyCode.V, true, true, false), "paste is allowed");
+        assertFalse(TextFieldMenu.isCopyOrCut(javafx.scene.input.KeyCode.C, false, false, false), "typing c is allowed");
+
+        onFx(() -> {
+            TextField secret = new TextField("abandon");
+            TextFieldMenu.markSecret(secret);
+            TextField plain = new TextField("abandon");
+            java.util.List<TextField> reached = new java.util.ArrayList<>();
+            for(TextField field : new TextField[] {secret, plain}) {
+                field.addEventHandler(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> reached.add(field));
+                javafx.scene.input.KeyEvent copy = new javafx.scene.input.KeyEvent(javafx.scene.input.KeyEvent.KEY_PRESSED, "", "",
+                        javafx.scene.input.KeyCode.C, false, true, false, false);
+                javafx.event.Event.fireEvent(field, copy);
+            }
+            assertEquals(java.util.List.of(plain), reached, "Ctrl+C is stopped before it reaches the secret field");
+            assertTrue(TextFieldMenu.isSecret(secret));
+            assertFalse(TextFieldMenu.isSecret(plain));
         });
     }
 

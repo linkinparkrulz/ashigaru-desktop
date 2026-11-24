@@ -276,4 +276,76 @@ class SwapIdentityTest {
         assertEquals(32, fresh.getSeed().length);
         assertArrayEquals(fresh.getSeed(), SwapIdentity.current(swapsDir).getSeed());
     }
+
+    private static java.nio.file.attribute.UserPrincipal principal(String name) {
+        return new java.nio.file.attribute.UserPrincipal() {
+            @Override public String getName() { return name; }
+            @Override public boolean equals(Object o) { return o instanceof java.nio.file.attribute.UserPrincipal p && p.getName().equals(name); }
+            @Override public int hashCode() { return name.hashCode(); }
+        };
+    }
+
+    @Test
+    void onWindowsTheAccountRunningAshigaruIsGrantedEvenWhenAdministratorsOwnTheFile() {
+        var user = principal("PC\\alice");
+        var admins = principal("BUILTIN\\Administrators");
+        var entries = SwapIdentity.windowsEntries(admins, user, true);
+        assertEquals(2, entries.size());
+        assertEquals(user, entries.get(0).principal(), "the account running Ashigaru comes first");
+        assertEquals(admins, entries.get(1).principal());
+        assertTrue(entries.stream().allMatch(e -> e.flags().contains(java.nio.file.attribute.AclEntryFlag.FILE_INHERIT)));
+
+        var own = SwapIdentity.windowsEntries(principal("PC\\alice"), user, false);
+        assertEquals(1, own.size(), "no duplicate when the account owns the file");
+        assertTrue(own.get(0).flags().isEmpty(), "a file's entry is not inherited");
+    }
+
+    @Test
+    void aFileThatCannotBeReadIsToldApartFromOneThatIsNotASeed() throws Exception {
+        File unreadable = new File(swapsDir, "unreadable");
+        assertTrue(unreadable.mkdirs());
+        SwapIdentity.SeedRead read = SwapIdentity.readSeedFile(unreadable);
+        assertNull(read.seed());
+        assertTrue(read.unreadable(), read.error());
+
+        File garbage = new File(swapsDir, "garbage");
+        Files.writeString(garbage.toPath(), "not hex", StandardCharsets.UTF_8);
+        SwapIdentity.SeedRead damaged = SwapIdentity.readSeedFile(garbage);
+        assertNull(damaged.seed());
+        assertFalse(damaged.unreadable());
+
+        SwapIdentity.SeedRead missing = SwapIdentity.readSeedFile(new File(swapsDir, "missing"));
+        assertFalse(missing.unreadable());
+    }
+
+    @Test
+    void anIdentityFileThatCannotBeReadIsNotCalledDamagedAndNothingIsReplaced() throws Exception {
+        SwapIdentity identity = SwapIdentity.current(swapsDir);
+        database(identity);
+        File file = new File(swapsDir, "identity");
+        String seedHex = Files.readString(file.toPath());
+        //A path that exists but cannot be read as a file; root can read anything chmod would hide
+        assertTrue(file.delete());
+        assertTrue(file.mkdir());
+
+        IOException refused = assertThrows(IOException.class, () -> SwapIdentity.current(swapsDir));
+        assertTrue(refused.getMessage().contains("can't read its swap identity"), refused.getMessage());
+        assertFalse(refused.getMessage().contains("damaged"), refused.getMessage());
+        assertTrue(file.isDirectory(), "nothing was replaced");
+        assertEquals(seedHex, Files.readString(new File(identity.getDataDir(), SwapIdentity.SEED_COPY).toPath()), "the seed copy is untouched");
+    }
+
+    @Test
+    void aSeedCopyThatCannotBeReadIsReportedTheSameWay() throws Exception {
+        SwapIdentity identity = SwapIdentity.current(swapsDir);
+        database(identity);
+        assertTrue(new File(swapsDir, "identity").delete());
+        File copy = new File(identity.getDataDir(), SwapIdentity.SEED_COPY);
+        assertTrue(copy.delete());
+        assertTrue(copy.mkdir());
+
+        IOException refused = assertThrows(IOException.class, () -> SwapIdentity.current(swapsDir));
+        assertTrue(refused.getMessage().contains("can't read its swap identity"), refused.getMessage());
+        assertFalse(new File(swapsDir, "identity").exists(), "no new identity was taken");
+    }
 }

@@ -132,7 +132,7 @@ public class BitcoindTransport implements Transport {
         log.debug("> " + request);
         try(com.sparrowwallet.sparrow.net.ProxiedHttp.Response response = com.sparrowwallet.sparrow.net.ProxiedHttp.request("POST", bitcoindUrl, headers,
                 request.getBytes(StandardCharsets.UTF_8), proxy, bitcoindUrl.getProtocol().equals("https") ? getPinningSocketFactory() : null,
-                PROXIED_CONNECT_TIMEOUT_MILLIS, 0)) {
+                PROXIED_CONNECT_TIMEOUT_MILLIS, 0, PROXIED_MAX_RESPONSE_BYTES)) {
             if(response.status() == 401) {
                 throw new IOException((cookieFile == null ? "User/pass" : "Cookie file") + " authentication failed");
             }
@@ -154,6 +154,8 @@ public class BitcoindTransport implements Transport {
 
     /** How long to set up a connection to a node through Tor. Reads have no limit, as before: a rescan request can run for hours. */
     private static final int PROXIED_CONNECT_TIMEOUT_MILLIS = 120_000;
+    /** The most one RPC response may hold through the proxy: large blocks and wallet listings, but not without end */
+    private static final long PROXIED_MAX_RESPONSE_BYTES = 256L * 1024 * 1024;
 
     private String getBitcoindAuthEncoded() throws IOException {
         if(cookieFile != null) {

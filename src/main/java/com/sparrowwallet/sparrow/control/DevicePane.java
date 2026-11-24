@@ -1120,6 +1120,7 @@ public class DevicePane extends TitledDescriptionPane {
         RadioButton automatic = new RadioButton("Automatic (Recommended)");
         RadioButton advanced = new RadioButton("Advanced");
         TextField entropy = new TextField();
+        com.sparrowwallet.sparrow.gui.TextFieldMenu.markSecret(entropy);
         entropy.setPromptText("Enter input for user entropy");
         entropy.setDisable(true);
 

@@ -21,10 +21,13 @@ import java.util.Map;
  *
  * <p>TLS is layered over that socket: with the caller's socket factory (Bitcoin Core's certificate pinning), or the default one with
  * hostname verification. One request per connection ({@code Connection: close}); bodies may be sized, chunked or read to the close.
- * GET follows up to {@value #MAX_REDIRECTS} redirects (GitHub release downloads redirect to their storage host).
+ * GET follows up to {@value #MAX_REDIRECTS} redirects (GitHub release downloads redirect to their storage host), never from https to http.
+ * Every body is capped: {@value #DEFAULT_MAX_BODY_BYTES} bytes unless the caller sets its own cap.
  */
 public final class ProxiedHttp {
     static final int MAX_REDIRECTS = 5;
+    /** The body cap when the caller does not set one: 16 MiB */
+    public static final long DEFAULT_MAX_BODY_BYTES = 16L * 1024 * 1024;
 
     private ProxiedHttp() {}
 
@@ -58,12 +61,34 @@ public final class ProxiedHttp {
      */
     public static Response request(String method, URL url, Map<String, String> headers, byte[] body, Proxy proxy, SSLSocketFactory ssl,
                                    int connectTimeoutMillis, int readTimeoutMillis) throws IOException {
+        return request(method, url, headers, body, proxy, ssl, connectTimeoutMillis, readTimeoutMillis, DEFAULT_MAX_BODY_BYTES);
+    }
+
+    /**
+     * Sends one request through the proxy, with a cap on the response body: a body declared larger is refused before it is read, and one that
+     * runs past the cap (chunked, or to the close) fails when it does.
+     *
+     * @param ssl the TLS socket factory for https (for certificate pinning), or null for the default with hostname verification
+     * @param maxBodyBytes the most body this caller accepts
+     */
+    public static Response request(String method, URL url, Map<String, String> headers, byte[] body, Proxy proxy, SSLSocketFactory ssl,
+                                   int connectTimeoutMillis, int readTimeoutMillis, long maxBodyBytes) throws IOException {
+        return request(method, url, headers, body, proxy, ssl, connectTimeoutMillis, readTimeoutMillis, maxBodyBytes, null);
+    }
+
+    /**
+     * As above, and hands each connection's socket to {@code opened} as soon as it exists, so a caller that gives up (a timeout in the UI) can
+     * close it and end the request rather than leave it running.
+     */
+    public static Response request(String method, URL url, Map<String, String> headers, byte[] body, Proxy proxy, SSLSocketFactory ssl,
+                                   int connectTimeoutMillis, int readTimeoutMillis, long maxBodyBytes,
+                                   java.util.function.Consumer<Socket> opened) throws IOException {
         if(proxy == null || proxy.type() != Proxy.Type.SOCKS) {
             throw new IOException("Not sent: a request to " + url.getHost() + " only goes through a SOCKS proxy (Tor)");
         }
         URL current = url;
         for(int redirects = 0; ; redirects++) {
-            Response response = once(method, current, headers, body, proxy, ssl, connectTimeoutMillis, readTimeoutMillis);
+            Response response = once(method, current, headers, body, proxy, ssl, connectTimeoutMillis, readTimeoutMillis, maxBodyBytes, opened);
             String location = response.headers().get("location");
             if(!"GET".equals(method) || !isRedirect(response.status()) || location == null || redirects >= MAX_REDIRECTS) {
                 return response;
@@ -77,13 +102,16 @@ public final class ProxiedHttp {
         return status == 301 || status == 302 || status == 303 || status == 307 || status == 308;
     }
 
-    /** Where a redirect goes, relative to the URL that gave it; only http and https */
+    /** Where a redirect goes, relative to the URL that gave it; only http and https, and never from https down to http */
     static URL redirectTarget(URL from, String location) throws IOException {
         try {
             URL target = from.toURI().resolve(location.trim()).toURL();
             String protocol = target.getProtocol().toLowerCase(Locale.ROOT);
             if(!protocol.equals("http") && !protocol.equals("https")) {
                 throw new IOException("Redirect to an unsupported address: " + location);
+            }
+            if(from.getProtocol().equalsIgnoreCase("https") && protocol.equals("http")) {
+                throw new IOException("Not followed: a redirect from https to plain http (" + target.getHost() + ")");
             }
             return target;
         } catch(java.net.URISyntaxException | IllegalArgumentException e) {
@@ -92,12 +120,16 @@ public final class ProxiedHttp {
     }
 
     private static Response once(String method, URL url, Map<String, String> headers, byte[] body, Proxy proxy, SSLSocketFactory ssl,
-                                 int connectTimeoutMillis, int readTimeoutMillis) throws IOException {
+                                 int connectTimeoutMillis, int readTimeoutMillis, long maxBodyBytes,
+                                 java.util.function.Consumer<Socket> opened) throws IOException {
         boolean https = url.getProtocol().equalsIgnoreCase("https");
         String host = url.getHost();
         int port = url.getPort() > 0 ? url.getPort() : url.getDefaultPort();
 
         Socket socket = new Socket(proxy);
+        if(opened != null) {
+            opened.accept(socket);
+        }
         try {
             socket.setSoTimeout(readTimeoutMillis);
             //Unresolved: the proxy resolves the name, this computer never does
@@ -130,7 +162,7 @@ public final class ProxiedHttp {
                     responseHeaders.merge(line.substring(0, colon).trim().toLowerCase(Locale.ROOT), line.substring(colon + 1).trim(), (a, b) -> a + ", " + b);
                 }
             }
-            return new Response(status, responseHeaders, bodyStream(method, status, responseHeaders, in), socket);
+            return new Response(status, responseHeaders, capped(bodyStream(method, status, responseHeaders, in), responseHeaders, maxBodyBytes), socket);
         } catch(IOException | RuntimeException e) {
             socket.close();
             throw e;
@@ -189,6 +221,64 @@ public final class ProxiedHttp {
             }
         }
         return in;
+    }
+
+    /** The body with the caller's cap: refused at once when its declared length is over it, else failing when it runs past it */
+    static InputStream capped(InputStream body, Map<String, String> headers, long maxBodyBytes) throws IOException {
+        String length = headers.get("content-length");
+        if(length != null && !headers.containsKey("transfer-encoding")) {
+            try {
+                if(Long.parseLong(length.trim()) > maxBodyBytes) {
+                    throw new IOException("Response too large: " + length.trim() + " bytes, more than the " + maxBodyBytes + " this request accepts");
+                }
+            } catch(NumberFormatException e) {
+                //bodyStream has already refused a bad length
+            }
+        }
+        return new CappedInputStream(body, maxBodyBytes);
+    }
+
+    /** Fails once more than the cap has been read */
+    static final class CappedInputStream extends FilterInputStream {
+        private final long cap;
+        private long read;
+
+        CappedInputStream(InputStream in, long cap) {
+            super(in);
+            this.cap = cap;
+        }
+
+        private void count(long n) throws IOException {
+            read += n;
+            if(read > cap) {
+                throw new IOException("Response too large: more than the " + cap + " bytes this request accepts");
+            }
+        }
+
+        @Override
+        public int read() throws IOException {
+            int c = super.read();
+            if(c != -1) {
+                count(1);
+            }
+            return c;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            int n = super.read(b, off, len);
+            if(n > 0) {
+                count(n);
+            }
+            return n;
+        }
+
+        @Override
+        public long skip(long n) throws IOException {
+            long skipped = super.skip(n);
+            count(skipped);
+            return skipped;
+        }
     }
 
     /** A line up to CRLF (or LF), without it, in ISO-8859-1 */

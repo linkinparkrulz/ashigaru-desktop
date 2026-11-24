@@ -123,8 +123,8 @@ public class Bip47MessageVerifierController {
         showLookupStatus("Looking up " + nymIdentifier + "...");
 
         //compact: this needs the payment code, not the follower and following lists. A directory that does not answer is given
-        //LOOKUP_TIMEOUT_SECONDS, not the HTTP client's two minutes with the button greyed out
-        PayNymService.getPayNym(nymIdentifier, true)
+        //LOOKUP_TIMEOUT_SECONDS, and the request ends with the wait: its connection has the same timeout, and is closed if the wait ends first
+        PayNymService.lookupPayNym(nymIdentifier, true, (int)java.util.concurrent.TimeUnit.SECONDS.toMillis(LOOKUP_TIMEOUT_SECONDS))
                 .timeout(LOOKUP_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS, io.reactivex.rxjavafx.schedulers.JavaFxScheduler.platform())
                 .subscribe(payNym -> {
             payNymLookupBtn.setDisable(false);

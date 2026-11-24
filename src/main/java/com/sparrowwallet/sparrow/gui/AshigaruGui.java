@@ -57,6 +57,8 @@ public class AshigaruGui extends Application {
     public void init() throws Exception {
         Thread.setDefaultUncaughtExceptionHandler((t, e) ->
                 log.error("Exception in thread \"" + t.getName() + "\"", e));
+        //Late errors from network calls whose caller gave up are expected: DEBUG, not an ERROR stack trace (AD-43)
+        UndeliverableErrors.install();
         AppServices.initialize(this, new AshigaruInteractionServices());
         instance = this;
         AppServices.setExternalLinkHandler(ExposureDialogs::openOutsideTor);

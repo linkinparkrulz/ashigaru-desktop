@@ -136,7 +136,7 @@ public class Auth47 {
         int statusCode;
         String res;
         try(ProxiedHttp.Response response = ProxiedHttp.request("POST", callback, java.util.Map.of("Content-Type", "application/json"),
-                json.getBytes(StandardCharsets.UTF_8), proxy, null, 30000, 30000)) {
+                json.getBytes(StandardCharsets.UTF_8), proxy, null, 30000, 30000, 1024 * 1024)) {
             statusCode = response.status();
             if(statusCode == 404) {
                 throw new Auth47Exception("Could not authenticate. Callback URL of " + callback + " returned a 404 response.");
