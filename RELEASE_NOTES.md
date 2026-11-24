@@ -148,6 +148,12 @@ misunderstand, and the interface typeface changes across the whole app.
   shuts down the running engine. Files in the swaps folder written by older versions are made owner-only on the next start, leftover temporary seed files are
   removed, and on Windows the owner-only access list is inherited by files the engine creates and no longer inherits from the parent folder.
   Every workflow job now has a timeout.
+- **Nothing goes around Tor.** A clearnet Electrum server is reached through Tor (testnet4 starts on an onion server); Bitcoin Core through a
+  proxy, update checks, Auth47 and LNURL logins never look a host name up on this computer; and logins are not sent in offline mode or without Tor.
+- **Online and offline say what is true.** "Go offline" works while connecting or after a failed connection, the pill says "Online · not connected"
+  instead of "Offline" when that is the case, and a swap engine that finishes starting after you went offline is stopped.
+- **Quieter logs.** A wallet last opened in a newer Sparrow is noted once per run instead of on every open, swap engine lines no longer each
+  interrupt the screen, and failed maker connections are logged with the reason. Makers found later are tried at their onion address first.
 - **Onion makers can be reached.** The swap engine gave every connection 10 seconds, including the wait for its turn through Tor, so most onion makers
   could never connect. Each connection now has 60 seconds from its turn, one address per maker is tried at a time (onion addresses first), a maker that keeps
   failing is tried at most every ten minutes, and the log keeps one line per maker every ten minutes instead of one per failed attempt.
