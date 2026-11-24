@@ -553,6 +553,14 @@ public class AshigaruMainController implements Initializable {
         serverLabel.setText(online ? Config.get().getServerDisplayName() : "");
         serverLabel.setVisible(online);
         serverLabel.setManaged(online);
+        //The server and the block height it reports are green while connected, like Tor, the network, the coordinator and swaps beside
+        //them: grey there read as "not connected". Offline, the last height stays, in grey.
+        for(Label pill : new Label[] {serverLabel, blockHeightLabel}) {
+            pill.getStyleClass().remove("connected");
+            if(state == ConnState.CONNECTED) {
+                pill.getStyleClass().add("connected");
+            }
+        }
         switch (state) {
             case CONNECTED -> {
                 connectionLabel.setText("Tor \u00b7 connected");

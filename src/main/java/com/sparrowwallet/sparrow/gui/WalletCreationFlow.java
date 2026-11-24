@@ -30,8 +30,6 @@ import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
 import javafx.concurrent.Task;
 import javafx.event.Event;
 import javafx.geometry.Insets;
@@ -385,19 +383,11 @@ public class WalletCreationFlow {
         helpLabel.setHelpText("All passphrases create valid wallets." +
                 "\nThe master fingerprint identifies the keystore and changes as the passphrase changes." +
                 "\nMake sure you recognise it before proceeding.");
-        Button copyFpBtn = new Button("⎘");
-        copyFpBtn.getStyleClass().add("copy-icon-btn");
-        copyFpBtn.setPrefSize(28, 28);
+        CopyButton copyFpBtn = new CopyButton();
         copyFpBtn.disableProperty().bind(masterFingerprint.isNull());
         copyFpBtn.setOnAction(e -> {
             if (fingerprintHex.getText().isEmpty()) return;
-            ClipboardContent cc = new ClipboardContent();
-            cc.putString(fingerprintHex.getText());
-            Clipboard.getSystemClipboard().setContent(cc);
-            copyFpBtn.setText("✓");
-            PauseTransition pause = new PauseTransition(javafx.util.Duration.seconds(1.5));
-            pause.setOnFinished(ev -> copyFpBtn.setText("⎘"));
-            pause.play();
+            copyFpBtn.copy(fingerprintHex.getText());
         });
         fingerprintBox.getChildren().addAll(fingerprintLabel, fingerprintHex, copyFpBtn, lifeHashIcon, helpLabel);
 

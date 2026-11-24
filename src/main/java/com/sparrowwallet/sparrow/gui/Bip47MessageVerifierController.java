@@ -122,34 +122,54 @@ public class Bip47MessageVerifierController {
         payNymLookupBtn.setDisable(true);
         showLookupStatus("Looking up " + nymIdentifier + "...");
 
-        //compact: this needs the payment code, not the follower and following lists
-        PayNymService.getPayNym(nymIdentifier, true).subscribe(payNym -> {
+        //compact: this needs the payment code, not the follower and following lists. A directory that does not answer is given
+        //LOOKUP_TIMEOUT_SECONDS, not the HTTP client's two minutes with the button greyed out
+        PayNymService.getPayNym(nymIdentifier, true)
+                .timeout(LOOKUP_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS, io.reactivex.rxjavafx.schedulers.JavaFxScheduler.platform())
+                .subscribe(payNym -> {
             payNymLookupBtn.setDisable(false);
             paymentCodeField.setText(payNym.paymentCode().toString());
             showLookupStatus("Filled in the payment code for " + payNym.nymName() + " from the PayNym directory. "
-                    + "A code from a directory is only as trustworthy as the directory.");
+                    + "A code from a directory is only as trustworthy as the directory.", false);
         }, error -> {
             payNymLookupBtn.setDisable(false);
-            showLookupStatus("Could not look up " + nymIdentifier + ": " + lookupFailure(error));
+            showLookupStatus(lookupFailure(nymIdentifier, error), true);
         });
     }
 
-    /** Separates "no such handle" from "could not reach the directory" - different problems. */
-    private String lookupFailure(Throwable error) {
-        String message = error.getMessage();
-        if(message == null || message.isBlank()) {
-            return "no response from the PayNym directory";
+    static final long LOOKUP_TIMEOUT_SECONDS = 30;
+    static final String DIRECTORY_DOWN = "The PayNym directory isn't working right now, so the payment code can't be filled in. "
+            + "Try again later, or paste the payment code yourself.";
+
+    /**
+     * What a failed lookup means for the person, from its error: no such handle, Ashigaru not online through Tor (said as TorOnly says it),
+     * or the directory not working (down, slow, refusing, an error page), which is said plainly with what to do instead.
+     */
+    static String lookupFailure(String handle, Throwable error) {
+        for(Throwable cause = error; cause != null; cause = cause.getCause()) {
+            String message = cause.getMessage();
+            if(message != null && message.startsWith("PayNym directory not contacted: ")) {
+                return "Could not look up " + handle + ": " + message.substring("PayNym directory not contacted: ".length());
+            }
+            if(message != null && (message.contains("status=404") || message.contains(" 404") || message.startsWith("404"))) {
+                return "No PayNym called " + handle + ". Check the handle, or paste the payment code yourself.";
+            }
         }
-        if(message.contains("404")) {
-            return "no PayNym with that handle";
-        }
-        return message;
+        return DIRECTORY_DOWN;
     }
 
-    private void showLookupStatus(String text) {
+    private void showLookupStatus(String text, boolean failed) {
         payNymLookupStatus.setText(text);
         payNymLookupStatus.setVisible(true);
         payNymLookupStatus.setManaged(true);
+        payNymLookupStatus.getStyleClass().remove("lookup-failed");
+        if(failed) {
+            payNymLookupStatus.getStyleClass().add("lookup-failed");
+        }
+    }
+
+    private void showLookupStatus(String text) {
+        showLookupStatus(text, false);
     }
 
     @FXML

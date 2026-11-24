@@ -66,11 +66,11 @@ class SwapOffersTest {
 
     @Test
     void sortingIsExplicitAndChangesTheOrder() {
-        assertEquals(List.of(B, C, A, D), SwapOffers.rows(SHOWN, COIN, MARKET, Sort.LOWEST_DEDUCTION).stream().map(Row::quote).toList(),
+        assertEquals(List.of(B, C, A, D), SwapOffers.rows(SHOWN, COIN, MARKET, Sort.BEST_REFUND).stream().map(Row::quote).toList(),
                 "no deduction first, then by the most XMR");
         assertEquals(List.of(A, B, C, D), SwapOffers.rows(SHOWN, COIN, MARKET, Sort.MAKER).stream().map(Row::quote).toList());
         //Whatever the order, the badges stay with the same offers
-        List<Row> byDeduction = SwapOffers.rows(SHOWN, COIN, MARKET, Sort.LOWEST_DEDUCTION);
+        List<Row> byDeduction = SwapOffers.rows(SHOWN, COIN, MARKET, Sort.BEST_REFUND);
         assertSame(A, byDeduction.stream().filter(Row::mostXmr).findFirst().orElseThrow().quote());
         assertSame(B, byDeduction.stream().filter(Row::bestRefund).findFirst().orElseThrow().quote());
     }

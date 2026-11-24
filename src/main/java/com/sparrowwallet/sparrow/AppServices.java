@@ -959,6 +959,8 @@ public class AppServices {
     }
 
     private static boolean popupStylingInstalled;
+    /** The app's canvas colour, painted behind popups where they cannot be transparent */
+    static final javafx.scene.paint.Color POPUP_FILL = javafx.scene.paint.Color.web("#0E0F12");
     /** The inline style that takes a popup's shadow away */
     static final String NO_SHADOW = "-fx-effect: null;";
 
@@ -1005,6 +1007,11 @@ public class AppServices {
     static void removeShadows(javafx.stage.PopupWindow popup) {
         if(popup instanceof javafx.scene.control.PopupControl control) {
             control.setStyle(withoutShadow(control.getStyle()));
+        }
+        //Whatever is left of the window around the content (a pixel of rounding, the corners of a rounded panel) is the app's own colour,
+        //not white
+        if(popup.getScene() != null) {
+            popup.getScene().setFill(POPUP_FILL);
         }
         if(popup.getScene() != null && popup.getScene().getRoot() != null) {
             //A popover's border and a drop-down's list carry their own shadow

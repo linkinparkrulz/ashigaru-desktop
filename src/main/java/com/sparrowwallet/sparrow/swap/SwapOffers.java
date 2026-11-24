@@ -22,7 +22,7 @@ public final class SwapOffers {
     /** The order the table is in, stated on screen so it is never an unexplained "best first" */
     public enum Sort {
         MOST_XMR("Most XMR"),
-        LOWEST_DEDUCTION("Lowest deduction"),
+        BEST_REFUND("Best refund"),
         MAKER("Maker");
 
         private final String label;
@@ -79,7 +79,7 @@ public final class SwapOffers {
         }
         Comparator<Row> order = switch(sort) {
             case MOST_XMR -> Comparator.comparingLong((Row row) -> row.quote().priceSats()).thenComparingDouble(Row::deductionRatio);
-            case LOWEST_DEDUCTION -> Comparator.comparingDouble(Row::deductionRatio).thenComparingLong(row -> row.quote().priceSats());
+            case BEST_REFUND -> Comparator.comparingDouble(Row::deductionRatio).thenComparingLong(row -> row.quote().priceSats());
             case MAKER -> Comparator.comparing((Row row) -> row.quote().provider(), String.CASE_INSENSITIVE_ORDER);
         };
         rows.sort(order);

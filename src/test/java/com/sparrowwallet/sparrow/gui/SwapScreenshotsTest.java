@@ -655,7 +655,7 @@ class SwapScreenshotsTest {
         assertEquals("10.0.0.1:9939", byXmr, "most XMR first");
         onFx(() -> {
             for(Node node : pane.lookupAll(".offer-seg-btn")) {
-                if(node instanceof javafx.scene.control.ToggleButton b && b.getText().equals("Lowest deduction")) {
+                if(node instanceof javafx.scene.control.ToggleButton b && b.getText().equals("Best refund")) {
                     b.fire();
                 }
             }

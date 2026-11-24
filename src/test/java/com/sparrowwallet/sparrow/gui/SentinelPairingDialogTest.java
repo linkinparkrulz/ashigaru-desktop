@@ -157,9 +157,11 @@ class SentinelPairingDialogTest {
         String text = built.stepsLabel().getText();
         String[] lines = text.split("\n");
         assertEquals(4, lines.length);
-        assertTrue(lines[0].startsWith("1. In Sentinel, pair the app with a Dojo you control or trust"));
-        assertTrue(lines[1].equals("2. Tap 'NEW'."));
-        assertTrue(lines[2].startsWith("3. Scan the QR code on the left") && lines[2].contains("'COPY PAIRING TEXT'"));
+        //The Dojo pairing Sentinel asks for first is its own step, not this QR code, and the QR code makes a new collection
+        assertTrue(lines[0].startsWith("1. In Sentinel, finish its own setup, including pairing it with a Dojo you control or trust"));
+        assertTrue(lines[0].contains("not what this QR code is for"));
+        assertEquals("2. In Sentinel, add a new collection: tap 'NEW'.", lines[1]);
+        assertTrue(lines[2].startsWith("3. Scan the QR code on the left with Sentinel") && lines[2].contains("'COPY PAIRING TEXT'"));
         assertTrue(lines[3].startsWith("4. Type the 3 pairing words") && lines[3].contains("hyphen") && lines[3].contains("'DECRYPT'"));
     }
 

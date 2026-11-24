@@ -130,7 +130,7 @@ Turn swaps on in **Settings → Swaps**. They are off by default, mainnet only, 
 1. **Choose a coin.** On Badbank, tick one coin and press **Swap to XMR**. The whole coin is swapped, with no change.
 2. **Enter your receiving XMR address.** It is checked as you type and shown again before you approve.
 3. **Compare the offers.** Each shows the estimated XMR for your coin, the refund if the swap is cancelled ("98% refund" means the maker may keep 2% as an
-   anti-spam deposit), the maker and its rate, and how far it is from the market price (a reference taken over Tor, not an offer). Sort by most XMR, lowest deduction or maker.
+   anti-spam deposit), the maker and its rate, and how far it is from the market price (a reference taken over Tor, not an offer). Sort by most XMR, best refund (the smallest deduction if a swap is cancelled) or maker.
    Offers that cannot take your coin, run outdated software, or pay more than the market (makers that undercut the market refuse swaps) are left out and counted.
 4. **Review offer.** Ashigaru asks for your wallet password once (the swap protocol makes the taker prove it controls the coin), contacts the maker over Tor, and gets its final terms.
 5. **Check the price.** If the final terms give you more than 2% less XMR than the offer you chose, a window shows both amounts and the difference:

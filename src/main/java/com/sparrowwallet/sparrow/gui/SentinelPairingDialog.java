@@ -71,14 +71,23 @@ final class SentinelPairingDialog {
         dialog.showAndWait();
     }
 
+    /** What to do, all of it in Sentinel. The Dojo pairing Sentinel asks for first is its own setup, not this QR code. */
+    static final String STEPS = "1. In Sentinel, finish its own setup, including pairing it with a Dojo you control or trust. "
+            + "That is done in Sentinel and is not what this QR code is for.\n"
+            + "2. In Sentinel, add a new collection: tap 'NEW'.\n"
+            + "3. Scan the QR code on the left with Sentinel, or press 'COPY PAIRING TEXT' and paste it into Sentinel.\n"
+            + "4. Type the 3 pairing words below (with the hyphen between each word) and tap 'DECRYPT'.";
+
     static Built build(Window owner, SentinelPairing.Slots slots) {
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle("Pair with Sentinel");
         if(owner != null) {
             dlg.initOwner(owner);
         }
-        WalletCreationFlow.styleWizardDialog(dlg, "PAIR WITH SENTINEL", "Scan this in Sentinel",
-                "Sentinel then watches this wallet's accounts without being able to spend from them.");
+        //Said where the scanning happens: a tester tried to scan with Ashigaru while Sentinel was asking to pair with a Dojo
+        WalletCreationFlow.styleWizardDialog(dlg, "PAIR WITH SENTINEL", "Add this wallet in Sentinel as a new collection",
+                "Scan this QR code with Sentinel on your phone; Ashigaru does not scan anything here. Sentinel then watches this wallet's "
+                + "accounts without being able to spend from them.");
 
         State state = new State();
         ImageView qrView = new ImageView();
@@ -105,10 +114,7 @@ final class SentinelPairingDialog {
         HBox wordButtons = new HBox(8, copyWords, newWords);
         wordButtons.setAlignment(Pos.CENTER_LEFT);
 
-        Label steps = new Label("1. In Sentinel, pair the app with a Dojo you control or trust.\n"
-                + "2. Tap 'NEW'.\n"
-                + "3. Scan the QR code on the left, or press 'COPY PAIRING TEXT' and paste it into Sentinel.\n"
-                + "4. Type the 3 pairing words below (with the hyphen between each word) and tap 'DECRYPT'.");
+        Label steps = new Label(STEPS);
         steps.getStyleClass().add("ag-read");
         steps.setWrapText(true);
         steps.setMinHeight(Region.USE_PREF_SIZE);
