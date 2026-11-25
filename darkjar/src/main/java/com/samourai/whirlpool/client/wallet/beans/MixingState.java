@@ -3,8 +3,7 @@ package com.samourai.whirlpool.client.wallet.beans;
 import io.reactivex.Observable;
 import io.reactivex.subjects.BehaviorSubject;
 import io.reactivex.subjects.Subject;
-import java8.util.function.Predicate;
-import java8.util.stream.StreamSupport;
+import java.util.function.Predicate;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,7 +40,7 @@ public class MixingState {
     this.nbMixing = utxosMixing.size();
     this.nbMixingLiquidity =
         (int)
-            StreamSupport.stream(utxosMixing)
+            (utxosMixing).stream()
                 .filter(
                     new Predicate<WhirlpoolUtxo>() {
                       @Override
@@ -57,7 +56,7 @@ public class MixingState {
     this.nbQueued = utxosQueued.size();
     this.nbQueuedLiquidity =
         (int)
-            StreamSupport.stream(utxosQueued)
+            (utxosQueued).stream()
                 .filter(
                     new Predicate<WhirlpoolUtxo>() {
                       @Override

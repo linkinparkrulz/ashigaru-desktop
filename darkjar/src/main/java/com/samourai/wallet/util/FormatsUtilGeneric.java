@@ -1,7 +1,6 @@
 package com.samourai.wallet.util;
 
 import com.samourai.wallet.bip47.rpc.PaymentCode;
-import com.samourai.wallet.cahoots.psbt.PSBT;
 import com.samourai.wallet.segwit.bech32.Bech32;
 import com.samourai.wallet.segwit.bech32.Bech32Segwit;
 import org.apache.commons.lang3.tuple.Pair;
@@ -471,14 +470,14 @@ public class FormatsUtilGeneric {
 	}
 
 	public boolean isPSBT(String s)   {
-
-		if(isHex(s) && s.startsWith(PSBT.PSBT_MAGIC))    {
+		final String psbtMagic = "70736274ff";
+		if(isHex(s) && s.startsWith(psbtMagic))    {
 			return true;
 		}
-		else if(isBase64(s) && Hex.toHexString(Base64.decode(s)).startsWith(PSBT.PSBT_MAGIC))    {
+		else if(isBase64(s) && Hex.toHexString(Base64.decode(s)).startsWith(psbtMagic))    {
 			return true;
 		}
-		else if(Z85.getInstance().isZ85(s) && Hex.toHexString(Z85.getInstance().decode(s)).startsWith(PSBT.PSBT_MAGIC))    {
+		else if(Z85.getInstance().isZ85(s) && Hex.toHexString(Z85.getInstance().decode(s)).startsWith(psbtMagic))    {
 			return true;
 		}
 		else    {

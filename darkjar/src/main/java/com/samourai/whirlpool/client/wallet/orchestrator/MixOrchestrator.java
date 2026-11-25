@@ -10,12 +10,11 @@ import com.samourai.whirlpool.client.wallet.beans.*;
 import com.samourai.whirlpool.client.whirlpool.beans.Pool;
 import com.samourai.whirlpool.client.whirlpool.listener.WhirlpoolClientListener;
 import com.samourai.whirlpool.protocol.beans.Utxo;
-import java8.util.Optional;
-import java8.util.function.Consumer;
-import java8.util.function.Predicate;
-import java8.util.stream.Collectors;
-import java8.util.stream.Stream;
-import java8.util.stream.StreamSupport;
+import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -154,7 +153,7 @@ public abstract class MixOrchestrator extends AbstractOrchestrator {
     final WhirlpoolUtxoPriorityComparator comparator =
         WhirlpoolUtxoPriorityComparator.getInstance();
 
-    return StreamSupport.stream(data.getMixing())
+    return (data.getMixing()).stream()
         .filter(
             new Predicate<Mixing>() {
               @Override

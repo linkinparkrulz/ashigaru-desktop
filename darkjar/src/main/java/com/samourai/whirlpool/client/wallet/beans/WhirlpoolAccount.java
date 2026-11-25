@@ -3,10 +3,9 @@ package com.samourai.whirlpool.client.wallet.beans;
 import java.util.Arrays;
 
 import com.samourai.wallet.hd.AddressType;
-import java8.util.Optional;
-import java8.util.function.Predicate;
-import java8.util.stream.Collectors;
-import java8.util.stream.StreamSupport;
+import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public enum WhirlpoolAccount {
   DEPOSIT(0, true, new AddressType[]{AddressType.LEGACY, AddressType.SEGWIT_COMPAT, AddressType.SEGWIT_NATIVE}),
@@ -46,7 +45,7 @@ public enum WhirlpoolAccount {
   }
 
   public static WhirlpoolAccount[] getListByActive(final boolean active) {
-    return StreamSupport.stream(Arrays.asList(values()))
+    return (Arrays.asList(values())).stream()
         .filter(
             new Predicate<WhirlpoolAccount>() {
               @Override

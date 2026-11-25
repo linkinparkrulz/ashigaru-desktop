@@ -33,10 +33,9 @@ import java.security.spec.X509EncodedKeySpec;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import java8.util.Optional;
-import java8.util.function.Function;
-import java8.util.stream.Collectors;
-import java8.util.stream.StreamSupport;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.bitcoinj.core.*;
 import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.slf4j.Logger;
@@ -478,7 +477,7 @@ public class ClientUtils {
     }
 
     public static Collection<Integer> getOutputIndexs(Collection<TransactionOutput> outputs) {
-        return StreamSupport.stream(outputs)
+        return (outputs).stream()
                 .map(
                         new Function<TransactionOutput, Integer>() {
                             @Override

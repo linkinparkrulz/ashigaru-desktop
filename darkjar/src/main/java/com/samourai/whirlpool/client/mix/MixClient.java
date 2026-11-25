@@ -21,11 +21,10 @@ import com.samourai.whirlpool.protocol.websocket.notifications.SigningMixStatusN
 import io.reactivex.Completable;
 import io.reactivex.Observable;
 import io.reactivex.functions.Action;
-import java8.util.Optional;
+import java.util.Optional;
 import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ResourceLoader;
 
 import java.io.InputStream;
 
@@ -70,7 +69,7 @@ public class MixClient {
 
     private RSAKeyParameters loadBlindSignaturePubKey() {
 
-        try (final InputStream inputStream = ResourceLoader.class.getClassLoader()
+        try (final InputStream inputStream = MixClient.class.getClassLoader()
                 .getResourceAsStream(getBlindSignaturePubKeyPath())) {
 
             if (inputStream != null) {

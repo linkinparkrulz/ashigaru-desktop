@@ -14,7 +14,7 @@ import com.samourai.wallet.send.exceptions.SignTxException;
 import com.samourai.wallet.send.exceptions.SpendException;
 import com.samourai.wallet.util.FeeUtil;
 import com.samourai.whirlpool.client.wallet.beans.WhirlpoolAccount;
-import java8.util.Lists;
+
 import org.apache.commons.lang3.tuple.Triple;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
@@ -53,7 +53,7 @@ public class SpendSelectionSimple extends SpendSelection {
                     log.debug("total value selected:" + u.getValue());
                     log.debug("nb inputs:" + u.getOutpoints().size());
                 }
-                return new SpendSelectionSimple(Lists.of(u));
+                return new SpendSelectionSimple(List.of(u));
             }
         }
         return null;

@@ -11,7 +11,7 @@ import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
-import javafx.embed.swing.SwingFXUtils;
+import com.sparrowwallet.sparrow.io.ImageUtils;
 import javafx.scene.image.Image;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +108,7 @@ final class QrImages {
     }
 
     static Image toFx(BufferedImage image) {
-        return image == null ? null : SwingFXUtils.toFXImage(image, null);
+        return ImageUtils.toFxImage(image);
     }
 
     private static BufferedImage render(String content, int size, ErrorCorrectionLevel level, int margin, int dark, int light) throws Exception {

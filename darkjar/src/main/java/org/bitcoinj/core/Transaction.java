@@ -23,10 +23,7 @@ import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.script.ScriptException;
 import org.bitcoinj.script.ScriptOpCodes;
-import org.bitcoinj.signers.TransactionSigner;
 import org.bitcoinj.utils.ExchangeRate;
-import org.bitcoinj.wallet.Wallet;
-import org.bitcoinj.wallet.WalletTransaction.Pool;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.primitives.Ints;
@@ -292,23 +289,6 @@ public class Transaction extends ChildMessage {
     }
 
     /**
-     * Calculates the sum of the outputs that are sending coins to a key in the wallet.
-     */
-    public Coin getValueSentToMe(TransactionBag transactionBag) {
-        // This is tested in WalletTest.
-        Coin v = Coin.ZERO;
-        for (TransactionOutput o : outputs) {
-            if (!o.isMineOrWatched(transactionBag)) continue;
-            v = v.add(o.getValue());
-        }
-        return v;
-    }
-
-    /**
-     * Returns a map of block [hashes] which contain the transaction mapped to relativity counters, or null if this
-     * transaction doesn't have that data because it's not stored in the wallet or because it has never appeared in a
-     * block.
-     */
     @Nullable
     public Map<Sha256Hash, Integer> getAppearsInHashes() {
         return appearsInHashes != null ? ImmutableMap.copyOf(appearsInHashes) : null;
@@ -322,70 +302,12 @@ public class Transaction extends ChildMessage {
         return getConfidence().getConfidenceType() == TransactionConfidence.ConfidenceType.PENDING;
     }
 
-    /**
-     * <p>Puts the given block in the internal set of blocks in which this transaction appears. This is
-     * used by the wallet to ensure transactions that appear on side chains are recorded properly even though the
-     * block stores do not save the transaction data at all.</p>
-     *
-     * <p>If there is a re-org this will be called once for each block that was previously seen, to update which block
-     * is the best chain. The best chain block is guaranteed to be called last. So this must be idempotent.</p>
-     *
-     * <p>Sets updatedAt to be the earliest valid block time where this tx was seen.</p>
-     *
-     * @param block     The {@link StoredBlock} in which the transaction has appeared.
-     * @param bestChain whether to set the updatedAt timestamp from the block header (only if not already set)
-     * @param relativityOffset A number that disambiguates the order of transactions within a block.
-     */
-    public void setBlockAppearance(StoredBlock block, boolean bestChain, int relativityOffset) {
-        long blockTime = block.getHeader().getTimeSeconds() * 1000;
-        if (bestChain && (updatedAt == null || updatedAt.getTime() == 0 || updatedAt.getTime() > blockTime)) {
-            updatedAt = new Date(blockTime);
-        }
-
-        addBlockAppearance(block.getHeader().getHash(), relativityOffset);
-
-        if (bestChain) {
-            TransactionConfidence transactionConfidence = getConfidence();
-            // This sets type to BUILDING and depth to one.
-            transactionConfidence.setAppearedAtChainHeight(block.getHeight());
-        }
-    }
-
     public void addBlockAppearance(final Sha256Hash blockHash, int relativityOffset) {
         if (appearsInHashes == null) {
             // TODO: This could be a lot more memory efficient as we'll typically only store one element.
             appearsInHashes = new TreeMap<>();
         }
         appearsInHashes.put(blockHash, relativityOffset);
-    }
-
-    /**
-     * Calculates the sum of the inputs that are spending coins with keys in the wallet. This requires the
-     * transactions sending coins to those keys to be in the wallet. This method will not attempt to download the
-     * blocks containing the input transactions if the key is in the wallet but the transactions are not.
-     *
-     * @return sum of the inputs that are spending coins with keys in the wallet
-     */
-    public Coin getValueSentFromMe(TransactionBag wallet) throws ScriptException {
-        // This is tested in WalletTest.
-        Coin v = Coin.ZERO;
-        for (TransactionInput input : inputs) {
-            // This input is taking value from a transaction in our wallet. To discover the value,
-            // we must find the connected transaction.
-            TransactionOutput connected = input.getConnectedOutput(wallet.getTransactionPool(Pool.UNSPENT));
-            if (connected == null)
-                connected = input.getConnectedOutput(wallet.getTransactionPool(Pool.SPENT));
-            if (connected == null)
-                connected = input.getConnectedOutput(wallet.getTransactionPool(Pool.PENDING));
-            if (connected == null)
-                continue;
-            // The connected output may be the change to the sender of a previous input sent to this wallet. In this
-            // case we ignore it.
-            if (!connected.isMineOrWatched(wallet))
-                continue;
-            v = v.add(connected.getValue());
-        }
-        return v;
     }
 
     /**
@@ -443,25 +365,6 @@ public class Transaction extends ChildMessage {
         return false;
     }
 
-    @Nullable private Coin cachedValue;
-    @Nullable private TransactionBag cachedForBag;
-
-    /**
-     * Returns the difference of {@link Transaction#getValueSentToMe(TransactionBag)} and {@link Transaction#getValueSentFromMe(TransactionBag)}.
-     */
-    public Coin getValue(TransactionBag wallet) throws ScriptException {
-        // FIXME: TEMP PERF HACK FOR ANDROID - this crap can go away once we have a real payments API.
-        boolean isAndroid = Utils.isAndroidRuntime();
-        if (isAndroid && cachedValue != null && cachedForBag == wallet)
-            return cachedValue;
-        Coin result = getValueSentToMe(wallet).subtract(getValueSentFromMe(wallet));
-        if (isAndroid) {
-            cachedValue = result;
-            cachedForBag = wallet;
-        }
-        return result;
-    }
-
     /**
      * The transaction fee is the difference of the value of all inputs and the value of all outputs. Currently, the fee
      * can only be determined for transactions created by us.
@@ -490,18 +393,6 @@ public class Transaction extends ChildMessage {
                 return true;
         }
         return false;
-    }
-
-    /**
-     * Returns false if this transaction has at least one output that is owned by the given wallet and unspent, true
-     * otherwise.
-     */
-    public boolean isEveryOwnedOutputSpent(TransactionBag transactionBag) {
-        for (TransactionOutput output : outputs) {
-            if (output.isAvailableForSpending() && output.isMineOrWatched(transactionBag))
-                return false;
-        }
-        return true;
     }
 
     /**
@@ -729,14 +620,6 @@ public class Transaction extends ChildMessage {
 
     @Override
     public String toString() {
-        return toString(null);
-    }
-
-    /**
-     * A human readable version of the transaction useful for debugging. The format is not guaranteed to be stable.
-     * @param chain If provided, will be used to estimate lock times (if set). Can be null.
-     */
-    public String toString(@Nullable AbstractBlockChain chain) {
         StringBuilder s = new StringBuilder();
         s.append("  ").append(getHashAsString()).append('\n');
         if (updatedAt != null)
@@ -747,10 +630,6 @@ public class Transaction extends ChildMessage {
             s.append("  time locked until ");
             if (lockTime < LOCKTIME_THRESHOLD) {
                 s.append("block ").append(lockTime);
-                if (chain != null) {
-                    s.append(" (estimated to be reached at ")
-                            .append(Utils.dateTimeFormat(chain.estimateBlockTime((int) lockTime))).append(')');
-                }
             } else {
                 s.append(Utils.dateTimeFormat(lockTime * 1000));
             }
@@ -1438,19 +1317,6 @@ public class Transaction extends ChildMessage {
      * watched by a wallet, i.e., transaction outputs whose script's address is controlled by the wallet and transaction
      * outputs whose script is watched by the wallet.</p>
      *
-     * @param transactionBag The wallet that controls addresses and watches scripts.
-     * @return linked list of outputs relevant to the wallet in this transaction
-     */
-    public List<TransactionOutput> getWalletOutputs(TransactionBag transactionBag){
-        List<TransactionOutput> walletOutputs = new LinkedList<>();
-        for (TransactionOutput o : outputs) {
-            if (!o.isMineOrWatched(transactionBag)) continue;
-            walletOutputs.add(o);
-        }
-
-        return walletOutputs;
-    }
-
     /** Randomly re-orders the transaction outputs: good for privacy */
     public void shuffleOutputs() {
         Collections.shuffle(outputs);
@@ -1636,17 +1502,6 @@ public class Transaction extends ChildMessage {
     public boolean isFinal(int height, long blockTimeSeconds) {
         long time = getLockTime();
         return time < (time < LOCKTIME_THRESHOLD ? height : blockTimeSeconds) || !isTimeLocked();
-    }
-
-    /**
-     * Returns either the lock time as a date, if it was specified in seconds, or an estimate based on the time in
-     * the current head block if it was specified as a block time.
-     */
-    public Date estimateLockTime(AbstractBlockChain chain) {
-        if (lockTime < LOCKTIME_THRESHOLD)
-            return chain.estimateBlockTime((int)getLockTime());
-        else
-            return new Date(getLockTime()*1000);
     }
 
     /**

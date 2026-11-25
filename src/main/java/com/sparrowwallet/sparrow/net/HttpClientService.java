@@ -5,7 +5,7 @@ import com.samourai.http.client.HttpUsage;
 import com.samourai.http.client.IHttpClient;
 import com.sparrowwallet.nightjar.http.JavaHttpClientService;
 import io.reactivex.Observable;
-import java8.util.Optional;
+import java.util.Optional;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 

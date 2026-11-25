@@ -21,8 +21,7 @@ import com.samourai.whirlpool.protocol.rest.Tx0DataRequestV2;
 import com.samourai.whirlpool.protocol.rest.Tx0DataResponseV2;
 import com.samourai.whirlpool.protocol.util.XorMask;
 import java.util.*;
-import java8.util.function.ToLongFunction;
-import java8.util.stream.StreamSupport;
+import java.util.function.ToLongFunction;
 import org.bitcoinj.core.*;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
@@ -383,7 +382,7 @@ public class Tx0Service {
 
   protected long computeSpendFromBalance(Collection<? extends UnspentOutput> spendFroms) {
     long balance =
-        StreamSupport.stream(spendFroms)
+        (spendFroms).stream()
             .mapToLong(
                 new ToLongFunction<UnspentOutput>() {
                   @Override

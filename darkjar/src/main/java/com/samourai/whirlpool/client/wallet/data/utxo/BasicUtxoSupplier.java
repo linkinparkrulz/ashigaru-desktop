@@ -15,9 +15,8 @@ import com.samourai.whirlpool.client.wallet.data.pool.PoolSupplier;
 import com.samourai.whirlpool.client.wallet.data.supplier.BasicSupplier;
 import com.samourai.whirlpool.client.wallet.data.utxoConfig.UtxoConfigSupplier;
 import com.samourai.whirlpool.client.wallet.data.wallet.WalletSupplier;
-import java8.util.function.Predicate;
-import java8.util.stream.Collectors;
-import java8.util.stream.StreamSupport;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.NetworkParameters;
 import org.slf4j.Logger;
@@ -107,7 +106,7 @@ public abstract class BasicUtxoSupplier extends BasicSupplier<UtxoData>
   @Override
   public Collection<WhirlpoolUtxo> findUtxos(
           final AddressType addressType, final WhirlpoolAccount... whirlpoolAccounts) {
-    return StreamSupport.stream(findUtxos(whirlpoolAccounts))
+    return (findUtxos(whirlpoolAccounts)).stream()
         .filter(
             new Predicate<WhirlpoolUtxo>() {
               @Override

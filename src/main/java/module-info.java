@@ -6,7 +6,6 @@ open module com.sparrowwallet.sparrow {
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.graphics;
-    requires javafx.swing;
     requires org.controlsfx.controls;
     requires tornadofx.controls;
     requires com.sparrowwallet.drongo;
@@ -37,8 +36,6 @@ open module com.sparrowwallet.sparrow {
     requires io.reactivex.rxjava2;
     requires io.reactivex.rxjava2fx;
     requires org.apache.commons.lang3;
-    requires net.sourceforge.streamsupport;
-    requires com.googlecode.lanterna;
     requires com.sparrowwallet.toucan;
     requires com.sun.jna;
 

@@ -1,6 +1,6 @@
 package com.zeroleak.throwingsupplier;
 
-import java8.util.Optional;
+import java.util.Optional;
 
 public class Either<T, U> {
   private Optional<T> value;

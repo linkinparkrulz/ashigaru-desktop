@@ -12,11 +12,10 @@ import com.samourai.whirlpool.client.wallet.WhirlpoolWallet;
 import com.samourai.whirlpool.client.wallet.beans.*;
 import java.util.Collection;
 import java.util.Iterator;
-import java8.util.Comparators;
-import java8.util.function.Function;
-import java8.util.function.Predicate;
-import java8.util.stream.Collectors;
-import java8.util.stream.StreamSupport;
+import java.util.Comparator;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.bitcoinj.core.NetworkParameters;
 import org.slf4j.Logger;
@@ -239,7 +238,7 @@ public class DebugUtils {
     StringBuilder sb = new StringBuilder().append("\n");
     final ThreadGroup tg = Thread.currentThread().getThreadGroup();
     Collection<Thread> threadSet =
-        StreamSupport.stream(Thread.getAllStackTraces().keySet())
+        (Thread.getAllStackTraces().keySet()).stream()
             .filter(
                 new Predicate<Thread>() {
                   @Override
@@ -248,7 +247,7 @@ public class DebugUtils {
                   }
                 })
             .sorted(
-                Comparators.comparing(
+                Comparator.comparing(
                     new Function<Thread, String>() {
                       @Override
                       public String apply(Thread t) {

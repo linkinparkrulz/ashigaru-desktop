@@ -6,7 +6,6 @@ import com.sparrowwallet.toucan.LifeHash;
 import com.sparrowwallet.toucan.LifeHashVersion;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.Group;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
@@ -35,7 +34,7 @@ public class LifeHashIcon extends Group {
                 LifeHash.Image lifeHashImage = LifeHash.makeFromData(data, LifeHashVersion.VERSION2, 1, false);
                 BufferedImage bufferedImage = LifeHash.getBufferedImage(lifeHashImage);
                 BufferedImage resizedImage = ImageUtils.resizeToImage(bufferedImage, SIZE, SIZE);
-                Image image = SwingFXUtils.toFXImage(resizedImage, null);
+                Image image = ImageUtils.toFxImage(resizedImage);
                 setImage(image);
             }
         });

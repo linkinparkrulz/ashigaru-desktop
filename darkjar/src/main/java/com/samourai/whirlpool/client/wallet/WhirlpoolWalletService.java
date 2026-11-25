@@ -1,7 +1,7 @@
 package com.samourai.whirlpool.client.wallet;
 
 import com.samourai.whirlpool.client.utils.ClientUtils;
-import java8.util.Optional;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

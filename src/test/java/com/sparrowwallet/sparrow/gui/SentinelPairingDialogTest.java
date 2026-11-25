@@ -14,7 +14,7 @@ import com.sparrowwallet.drongo.wallet.Keystore;
 import com.sparrowwallet.drongo.wallet.StandardAccount;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.sparrow.testutil.JavaFXTestSupport;
-import javafx.embed.swing.SwingFXUtils;
+import com.sparrowwallet.sparrow.io.ImageUtils;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import org.junit.jupiter.api.BeforeAll;
@@ -81,7 +81,7 @@ class SentinelPairingDialogTest {
     }
 
     private static String decodeQr(SentinelPairingDialog.Built built) throws Exception {
-        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(SwingFXUtils.fromFXImage(built.qrView().getImage(), null))));
+        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(ImageUtils.fromFxImage(built.qrView().getImage()))));
         return new QRCodeReader().decode(bitmap).getText();
     }
 

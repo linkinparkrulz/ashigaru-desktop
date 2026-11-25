@@ -122,8 +122,12 @@ public class AshigaruGui extends Application {
                 if (java.awt.Taskbar.isTaskbarSupported()) {
                     java.awt.Taskbar taskbar = java.awt.Taskbar.getTaskbar();
                     if (taskbar.isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)) {
-                        java.awt.image.BufferedImage awtIcon = javafx.embed.swing.SwingFXUtils.fromFXImage(icon, null);
-                        taskbar.setIconImage(awtIcon);
+                        try (java.io.InputStream iconStream = getClass().getResourceAsStream("/image/Ashigaru_Terminal_Logo_Dock.png")) {
+                            if (iconStream != null) {
+                                java.awt.image.BufferedImage awtIcon = javax.imageio.ImageIO.read(iconStream);
+                                taskbar.setIconImage(awtIcon);
+                            }
+                        }
                     }
                 }
             } catch (Exception e) {

@@ -15,7 +15,6 @@ import org.eclipse.jetty.util.Fields;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.MediaType;
 
 import java.lang.invoke.MethodHandles;
 import java.nio.charset.StandardCharsets;
@@ -84,7 +83,7 @@ public class JavaHttpClient extends JacksonHttpClient {
     protected String requestJsonPost(String urlStr, Map<String, String> headers, String jsonBody) throws Exception {
         log.debug("POST " + urlStr);
         Request req = computeHttpRequest(urlStr, HttpMethod.POST, headers);
-        req.content(new StringContentProvider(MediaType.APPLICATION_JSON_VALUE, jsonBody, StandardCharsets.UTF_8));
+        req.content(new StringContentProvider("application/json", jsonBody, StandardCharsets.UTF_8));
         return makeRequest(req);
     }
 

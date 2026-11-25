@@ -1,10 +1,9 @@
 package com.samourai.whirlpool.client.wallet.data.utxoConfig;
 
 import com.samourai.whirlpool.client.wallet.data.supplier.PersistableData;
-import java8.util.function.Function;
-import java8.util.function.Predicate;
-import java8.util.stream.Collectors;
-import java8.util.stream.StreamSupport;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +43,7 @@ public class UtxoConfigData extends PersistableData {
 
     // remove obsolete utxoConfigs
     Map<String, UtxoConfigPersisted> newUtxoConfigs =
-        StreamSupport.stream(utxoConfigs.entrySet())
+        (utxoConfigs.entrySet()).stream()
             .filter(
                 new Predicate<Map.Entry<String, UtxoConfigPersisted>>() {
                   @Override

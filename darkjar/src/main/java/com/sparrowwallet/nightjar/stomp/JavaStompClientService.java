@@ -5,38 +5,42 @@ import com.samourai.stomp.client.IStompClient;
 import com.samourai.stomp.client.IStompClientService;
 import com.sparrowwallet.nightjar.http.JavaHttpClient;
 import com.sparrowwallet.nightjar.http.JavaHttpClientService;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class JavaStompClientService implements IStompClientService {
+    private static final AtomicInteger THREAD_COUNTER = new AtomicInteger(1);
+
     private final JavaHttpClientService httpClientService;
-    private ThreadPoolTaskScheduler taskScheduler;
+    private ScheduledExecutorService heartbeatScheduler;
 
     public JavaStompClientService(JavaHttpClientService httpClientService) {
         this.httpClientService = httpClientService;
     }
 
-    private synchronized ThreadPoolTaskScheduler getTaskScheduler() {
-        if(taskScheduler == null) {
-            ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-            scheduler.setPoolSize(1);
-            scheduler.setThreadNamePrefix("stomp-heartbeat");
-            scheduler.setDaemon(true);
-            scheduler.initialize();
-            taskScheduler = scheduler;
+    private synchronized ScheduledExecutorService getHeartbeatScheduler() {
+        if (heartbeatScheduler == null || heartbeatScheduler.isShutdown()) {
+            heartbeatScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "stomp-heartbeat-" + THREAD_COUNTER.getAndIncrement());
+                t.setDaemon(true);
+                return t;
+            });
         }
-        return taskScheduler;
+        return heartbeatScheduler;
     }
 
     @Override
     public IStompClient newStompClient() {
         JavaHttpClient httpClient = httpClientService.getHttpClient(HttpUsage.COORDINATOR_WEBSOCKET);
-        return new JavaStompClient(httpClient, getTaskScheduler());
+        return new JavaStompClient(httpClient, getHeartbeatScheduler());
     }
 
     public synchronized void shutdown() {
-        if(taskScheduler != null) {
-            taskScheduler.shutdown();
-            taskScheduler = null;
+        if (heartbeatScheduler != null) {
+            heartbeatScheduler.shutdownNow();
+            heartbeatScheduler = null;
         }
     }
 }

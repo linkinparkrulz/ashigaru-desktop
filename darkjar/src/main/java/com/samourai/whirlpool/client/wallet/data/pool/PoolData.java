@@ -5,9 +5,8 @@ import com.samourai.whirlpool.client.wallet.beans.WhirlpoolPoolByBalanceMinDescC
 import com.samourai.whirlpool.client.whirlpool.beans.Pool;
 import com.samourai.whirlpool.protocol.rest.PoolInfo;
 import com.samourai.whirlpool.protocol.rest.PoolsResponse;
-import java8.util.function.Function;
-import java8.util.stream.Collectors;
-import java8.util.stream.StreamSupport;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +25,7 @@ public class PoolData {
           PoolsResponse poolsResponse, final Tx0ParamService tx0ParamService) {
     // biggest balanceMin first
     List<Pool> poolsOrdered =
-        StreamSupport.stream(Arrays.asList(poolsResponse.pools))
+        (Arrays.asList(poolsResponse.pools)).stream()
             .map(
                 new Function<PoolInfo, Pool>() {
                   @Override

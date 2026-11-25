@@ -1,20 +1,22 @@
 package com.sparrowwallet.nightjar.stomp;
 
 import com.samourai.stomp.client.IStompMessage;
-import org.springframework.messaging.simp.stomp.StompHeaders;
+
+import java.util.Collections;
+import java.util.Map;
 
 public class JavaStompMessage implements IStompMessage {
-    private final StompHeaders headers;
+    private final Map<String, String> headers;
     private final Object payload;
 
-    public JavaStompMessage(StompHeaders headers, Object payload) {
-        this.headers = headers;
+    public JavaStompMessage(Map<String, String> headers, Object payload) {
+        this.headers = headers == null ? Collections.emptyMap() : headers;
         this.payload = payload;
     }
 
     @Override
     public String getStompHeader(String headerName) {
-        return headers.getFirst(headerName);
+        return headers.get(headerName);
     }
 
     @Override

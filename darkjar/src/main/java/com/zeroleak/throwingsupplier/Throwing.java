@@ -1,7 +1,7 @@
 package com.zeroleak.throwingsupplier;
 
-import java8.util.Optional;
-import java8.util.function.Supplier;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 public class Throwing<T, E extends Exception> extends Either<T, E> {
 

@@ -1,6 +1,6 @@
 package com.samourai.wallet.util;
 
-import java8.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.ThreadLocalRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

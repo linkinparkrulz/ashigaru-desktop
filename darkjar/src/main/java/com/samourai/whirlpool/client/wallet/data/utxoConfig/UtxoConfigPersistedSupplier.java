@@ -4,9 +4,8 @@ import com.samourai.wallet.api.backend.beans.UnspentOutput;
 import com.samourai.whirlpool.client.utils.ClientUtils;
 import com.samourai.whirlpool.client.wallet.beans.WhirlpoolUtxo;
 import com.samourai.whirlpool.client.wallet.data.supplier.BasicPersistableSupplier;
-import java8.util.function.Function;
-import java8.util.stream.Collectors;
-import java8.util.stream.StreamSupport;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +44,7 @@ public class UtxoConfigPersistedSupplier extends BasicPersistableSupplier<UtxoCo
   @Override
   public void clean(Collection<WhirlpoolUtxo> existingUtxos) {
     List<String> validKeys =
-        StreamSupport.stream(existingUtxos)
+        (existingUtxos).stream()
             .map(
                 new Function<WhirlpoolUtxo, String>() {
                   @Override

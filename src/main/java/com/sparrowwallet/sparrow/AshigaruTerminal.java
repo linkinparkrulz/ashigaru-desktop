@@ -10,8 +10,6 @@ import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.net.PublicElectrumServer;
 import com.sparrowwallet.sparrow.net.ServerType;
-import com.sparrowwallet.sparrow.terminal.SparrowTerminal;
-import com.sun.javafx.application.PlatformImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -119,20 +117,10 @@ public class AshigaruTerminal {
         SLF4JBridgeHandler.removeHandlersForRootLogger();
         SLF4JBridgeHandler.install();
 
-        if(args.terminal) {
-            Interface.set(Interface.TERMINAL);
-        } else {
-            Interface.set(Interface.DESKTOP);
-        }
+        Interface.set(Interface.DESKTOP);
 
         try {
-            if(Interface.get() == Interface.TERMINAL) {
-                PlatformImpl.setTaskbarApplication(false);
-                Drongo.removeRootLogAppender("STDOUT");
-                com.sun.javafx.application.LauncherImpl.launchApplication(SparrowTerminal.class, SparrowWalletPreloader.class, argv);
-            } else {
-                com.sun.javafx.application.LauncherImpl.launchApplication(com.sparrowwallet.sparrow.gui.AshigaruGui.class, SparrowWalletPreloader.class, argv);
-            }
+            com.sun.javafx.application.LauncherImpl.launchApplication(com.sparrowwallet.sparrow.gui.AshigaruGui.class, SparrowWalletPreloader.class, argv);
         } catch(UnsupportedOperationException e) {
             Drongo.removeRootLogAppender("STDOUT");
             getLogger().error("Unable to launch application", e);

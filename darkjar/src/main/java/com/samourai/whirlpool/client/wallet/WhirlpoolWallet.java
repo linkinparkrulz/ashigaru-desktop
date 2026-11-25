@@ -41,10 +41,9 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java8.util.Optional;
-import java8.util.function.Function;
-import java8.util.stream.Collectors;
-import java8.util.stream.StreamSupport;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.TransactionOutput;
 import org.slf4j.Logger;
@@ -328,7 +327,7 @@ public class WhirlpoolWallet {
   }
 
   private Collection<UnspentOutput> toUnspentOutputs(Collection<WhirlpoolUtxo> whirlpoolUtxos) {
-    return StreamSupport.stream(whirlpoolUtxos)
+    return (whirlpoolUtxos).stream()
             .map(
                     new Function<WhirlpoolUtxo, UnspentOutput>() {
                       @Override

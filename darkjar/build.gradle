@@ -18,24 +18,14 @@ dependencies {
     implementation ('org.bouncycastle:bcprov-jdk18on:1.77') {
         exclude group: 'org.hamcrest', module: 'hamcrest-core'
     }
-    implementation ('org.bouncycastle:bcpkix-jdk18on:1.77')
-    implementation ('com.google.protobuf:protobuf-java:2.6.1')
     implementation ('com.google.guava:guava:33.0.0-jre')
-    implementation ('com.lambdaworks:scrypt:1.4.0')
-    implementation ('org.springframework:spring-websocket:5.2.2.RELEASE')
-    implementation ('org.springframework:spring-messaging:5.2.2.RELEASE')
     implementation ('org.eclipse.jetty.websocket:websocket-client:9.4.19.v20190610')
-    implementation ('net.sourceforge.streamsupport:streamsupport:1.7.0')
-    implementation ('org.apache.commons:commons-text:1.2')
     implementation ('commons-codec:commons-codec:1.12')
-    implementation ('com.squareup.okhttp:okhttp:2.7.5')
-    implementation ('net.jcip:jcip-annotations:1.0')
+    implementation ('org.apache.commons:commons-lang3:3.7')
     implementation ('com.fasterxml.jackson.core:jackson-databind:2.13.2')
     implementation ('org.json:json:20180130')
     implementation ('io.reactivex.rxjava2:rxjava:2.2.15')
     implementation ('org.slf4j:slf4j-api:2.0.12')
-    implementation ('com.auth0:java-jwt:3.8.1')
-    implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.20')
     implementation ('ch.qos.logback:logback-classic:1.4.14') {
         exclude group: 'org.hamcrest', module: 'hamcrest-core'
         exclude group: 'org.slf4j'

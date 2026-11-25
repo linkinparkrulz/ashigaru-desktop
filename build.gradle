@@ -51,7 +51,14 @@ javafx {
     // Pinned: a floating "21" resolves the newest 21.0.x at build time, which
     // breaks reproducibility between builds.
     version = "21.0.11"
-    modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.swing', 'javafx.graphics' ]
+    modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.graphics' ]
+}
+
+configurations.all {
+    // Compile-time-only annotation jars pulled in transitively by Guava; not needed at runtime
+    exclude group: 'org.checkerframework', module: 'checker-qual'
+    exclude group: 'com.google.errorprone', module: 'error_prone_annotations'
+    exclude group: 'com.google.j2objc', module: 'j2objc-annotations'
 }
 
 java {
@@ -110,8 +117,6 @@ dependencies {
     implementation('io.reactivex.rxjava2:rxjava:2.2.15')
     implementation('io.reactivex.rxjava2:rxjavafx:2.2.2')
     implementation('org.apache.commons:commons-lang3:3.7')
-    implementation('net.sourceforge.streamsupport:streamsupport:1.7.0')
-    implementation('com.googlecode.lanterna:lanterna:3.1.1')
     implementation('com.sparrowwallet:toucan:0.9.0')
     implementation('net.java.dev.jna:jna:5.8.0')
     implementation('javax.servlet:javax.servlet-api:4.0.1')
@@ -192,9 +197,9 @@ application {
 
 jlink {
     addExtraDependencies('jackson-core', 'jackson-annotations', 'jackson-databind',
-                         'protobuf-java', 'jcommander',
+                         'jcommander',
                          'javafx-base', 'javafx-graphics', 'javafx-controls',
-                         'javafx-fxml', 'javafx-swing', 'javax.servlet-api',
+                         'javafx-fxml', 'javax.servlet-api',
                          'slf4j-api', 'gson', 'kotlin-stdlib', 'annotations',
                          'kotlinx-coroutines-core')
     //jdk.crypto.ec provides the SunEC security provider. It is a service provider, so jlink does
@@ -423,7 +428,6 @@ extraJavaModuleInfo {
     }
     module('listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar', 'com.google.guava.listenablefuture', '9999.0-empty-to-avoid-conflict-with-guava')
     module('jsr305-3.0.2.jar', 'com.google.code.findbugs.jsr305', '3.0.2')
-    module('j2objc-annotations-2.8.jar', 'com.google.j2objc.j2objc.annotations', '2.8')
     module('jdbi3-core-3.20.0.jar', 'org.jdbi.v3.core', '3.20.0') {
         exports('org.jdbi.v3.core')
         exports('org.jdbi.v3.core.mapper')
@@ -446,10 +450,8 @@ extraJavaModuleInfo {
     }
     module('darkjar-0.2.41.jar', 'com.sparrowwallet.nightjar', '0.2.41') {
         requires('com.google.common')
-        requires('net.sourceforge.streamsupport')
         requires('org.slf4j')
         requires('org.bouncycastle.provider')
-        requires('org.bouncycastle.pkix')
         requires('com.fasterxml.jackson.databind')
         requires('com.fasterxml.jackson.annotation')
         requires('com.fasterxml.jackson.core')
@@ -466,14 +468,6 @@ extraJavaModuleInfo {
         exports('com.samourai.wallet.util')
         exports('com.samourai.wallet.bip47.rpc')
         exports('com.samourai.wallet.bip47.rpc.java')
-        exports('com.samourai.wallet.cahoots')
-        exports('com.samourai.wallet.cahoots.psbt')
-        exports('com.samourai.wallet.cahoots.stonewallx2')
-        exports('com.samourai.soroban.cahoots')
-        exports('com.samourai.soroban.client')
-        exports('com.samourai.soroban.client.cahoots')
-        exports('com.samourai.soroban.client.meeting')
-        exports('com.samourai.soroban.client.rpc')
         exports('com.samourai.wallet.send')
         exports('com.samourai.whirlpool.client.event')
         exports('com.samourai.whirlpool.client.wallet')
@@ -503,36 +497,8 @@ extraJavaModuleInfo {
     module('throwing-supplier-1.0.3.jar', 'zeroleak.throwingsupplier', '1.0.3') {
         exports('com.zeroleak.throwingsupplier')
     }
-    module('okhttp-2.7.5.jar', 'com.squareup.okhttp', '2.7.5') {
-        exports('com.squareup.okhttp')
-    }
-    module('okio-1.6.0.jar', 'com.squareup.okio', '1.6.0') {
-        exports('okio')
-    }
-    module('java-jwt-3.8.1.jar', 'com.auth0.jwt', '3.8.1') {
-        exports('com.auth0.jwt')
-    }
     module('json-20180130.jar', 'org.json', '20180130') {
         exports('org.json')
-    }
-    module('scrypt-1.4.0.jar', 'com.lambdaworks.scrypt', '1.4.0') {
-        exports('com.lambdaworks.codec')
-        exports('com.lambdaworks.crypto')
-    }
-    module('streamsupport-1.7.0.jar', 'net.sourceforge.streamsupport', '1.7.0') {
-        requires('jdk.unsupported')
-        exports('java8.util')
-        exports('java8.util.function')
-        exports('java8.util.stream')
-    }
-    module('protobuf-java-2.6.1.jar', 'com.google.protobuf', '2.6.1') {
-        exports('com.google.protobuf')
-    }
-    module('commons-text-1.2.jar', 'org.apache.commons.text', '1.2') {
-        exports('org.apache.commons.text')
-    }
-    module('jcip-annotations-1.0.jar', 'net.jcip.annotations', '1.0') {
-        exports('net.jcip.annotations')
     }
     module('jnacl-1.0.0.jar', 'eu.neilalexander.jnacl', '1.0.0')
     module('jcommander-1.81.jar', 'com.beust.jcommander', '1.81') {
@@ -549,4 +515,33 @@ extraJavaModuleInfo {
 //The Tor resource jars carry Tor for every platform kmp-tor supports. Keep only the one this build is for.
 kmpTorResourceFilterJar {
     keepTorCompilation("current", "current")
+}
+
+//JNA and Argon2 bundle native libraries for ~20 OS/architectures into the merged module.
+//Keep only the target OS/architecture to cut ~5 MB from the packaged image.
+tasks.named('prepareMergedJarsDir').configure {
+    doLast {
+        def jnaOs = os.macOsX ? 'darwin' : (os.windows ? 'win32' : 'linux')
+        def jnaArch = (osArch == 'aarch64') ? 'aarch64' : 'x86-64'
+        def targetPlatform = "${jnaOs}-${jnaArch}"
+        def mergedDir = file("${buildDir}/jlinkbase/mergedjars")
+
+        // Prune non-target JNA native directories (com/sun/jna/<os>-<arch>)
+        def jnaDir = new File(mergedDir, "com/sun/jna")
+        if (jnaDir.isDirectory()) {
+            jnaDir.listFiles()?.each { f ->
+                if (f.isDirectory() && f.name.contains('-') && f.name != targetPlatform) {
+                    delete(f)
+                }
+            }
+        }
+
+        // Prune non-target Argon2 native directories at the merged root (<os>-<arch>)
+        def argonPrefixes = ['darwin-', 'linux-', 'win32-']
+        mergedDir.listFiles()?.each { f ->
+            if (f.isDirectory() && argonPrefixes.any { f.name.startsWith(it) } && f.name != targetPlatform) {
+                delete(f)
+            }
+        }
+    }
 }

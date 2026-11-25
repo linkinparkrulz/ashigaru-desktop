@@ -2,7 +2,7 @@ package com.sparrowwallet.sparrow.gui;
 
 import com.sparrowwallet.sparrow.swap.SwapReview;
 import javafx.application.Platform;
-import javafx.embed.swing.SwingFXUtils;
+import com.sparrowwallet.sparrow.io.ImageUtils;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -107,7 +107,7 @@ class SwapScreenshotsTest {
         Thread.sleep(300);
         onFx(() -> {
             try {
-                ImageIO.write(SwingFXUtils.fromFXImage(stage.get().getScene().snapshot(null), null), "png", new File(dir.toFile(), name + ".png"));
+                ImageIO.write(ImageUtils.fromFxImage(stage.get().getScene().snapshot(null)), "png", new File(dir.toFile(), name + ".png"));
             } catch(Exception e) {
                 throw new IllegalStateException(e);
             }
@@ -243,7 +243,7 @@ class SwapScreenshotsTest {
         Path dir = Path.of(System.getenv("SWAP_SCREENSHOTS"));
         onFx(() -> {
             try {
-                ImageIO.write(SwingFXUtils.fromFXImage(stage.get().getScene().snapshot(null), null), "png", new File(dir.toFile(), "swaps-page-with-review-925.png"));
+                ImageIO.write(ImageUtils.fromFxImage(stage.get().getScene().snapshot(null)), "png", new File(dir.toFile(), "swaps-page-with-review-925.png"));
             } catch(Exception e) {
                 throw new IllegalStateException(e);
             }
@@ -460,7 +460,7 @@ class SwapScreenshotsTest {
         Path dir = Path.of(System.getenv("SWAP_SCREENSHOTS"));
         onFx(() -> {
             try {
-                ImageIO.write(SwingFXUtils.fromFXImage(stage.get().getScene().snapshot(null), null), "png", new File(dir.toFile(), "swaps-page-dashboard-925.png"));
+                ImageIO.write(ImageUtils.fromFxImage(stage.get().getScene().snapshot(null)), "png", new File(dir.toFile(), "swaps-page-dashboard-925.png"));
             } catch(Exception e) {
                 throw new IllegalStateException(e);
             }
@@ -761,7 +761,7 @@ class SwapScreenshotsTest {
         Path dir = Path.of(System.getenv("SWAP_SCREENSHOTS"));
         onFx(() -> {
             try {
-                ImageIO.write(SwingFXUtils.fromFXImage(stage.get().getScene().snapshot(null), null), "png", new File(dir.toFile(), "review-inside-tools-845.png"));
+                ImageIO.write(ImageUtils.fromFxImage(stage.get().getScene().snapshot(null)), "png", new File(dir.toFile(), "review-inside-tools-845.png"));
             } catch(Exception e) {
                 throw new IllegalStateException(e);
             }

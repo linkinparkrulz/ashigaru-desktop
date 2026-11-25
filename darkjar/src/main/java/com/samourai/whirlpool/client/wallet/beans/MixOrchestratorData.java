@@ -6,11 +6,10 @@ import com.samourai.whirlpool.client.wallet.data.chain.ChainSupplier;
 import com.samourai.whirlpool.client.wallet.data.pool.PoolSupplier;
 import com.samourai.whirlpool.client.wallet.data.utxo.UtxoSupplier;
 import com.samourai.whirlpool.client.whirlpool.beans.Pool;
-import java8.util.function.Function;
-import java8.util.function.Predicate;
-import java8.util.stream.Collectors;
-import java8.util.stream.Stream;
-import java8.util.stream.StreamSupport;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,8 +43,7 @@ public class MixOrchestratorData {
   }
 
   public Stream<WhirlpoolUtxo> getQueue() {
-    return StreamSupport.stream(
-            utxoSupplier.findUtxos(WhirlpoolAccount.PREMIX, WhirlpoolAccount.POSTMIX))
+    return (utxoSupplier.findUtxos(WhirlpoolAccount.PREMIX, WhirlpoolAccount.POSTMIX)).stream()
         .filter(
             new Predicate<WhirlpoolUtxo>() {
               @Override
@@ -92,7 +90,7 @@ public class MixOrchestratorData {
   }
 
   private Collection<WhirlpoolUtxo> computeUtxosMixing() {
-    return StreamSupport.stream(mixing.values())
+    return (mixing.values()).stream()
         .map(
             new Function<Mixing, WhirlpoolUtxo>() {
               @Override
@@ -132,7 +130,7 @@ public class MixOrchestratorData {
   }
 
   public int getNbMixing(final String poolId, final boolean liquidity) {
-    return StreamSupport.stream(mixing.values())
+    return (mixing.values()).stream()
         .filter(
             new Predicate<Mixing>() {
               @Override

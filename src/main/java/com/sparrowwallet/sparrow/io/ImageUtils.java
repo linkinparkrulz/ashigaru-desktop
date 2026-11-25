@@ -1,7 +1,9 @@
 package com.sparrowwallet.sparrow.io;
 
-import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
+import javafx.scene.image.PixelFormat;
+import javafx.scene.image.PixelReader;
+import javafx.scene.image.WritableImage;
 
 import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
@@ -10,8 +12,36 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 
 public class ImageUtils {
+    /** Converts an AWT BufferedImage into a JavaFX Image without requiring javafx.swing. */
+    public static Image toFxImage(BufferedImage image) {
+        if(image == null) {
+            return null;
+        }
+        int width = image.getWidth();
+        int height = image.getHeight();
+        int[] argb = image.getRGB(0, 0, width, height, null, 0, width);
+        WritableImage fxImage = new WritableImage(width, height);
+        fxImage.getPixelWriter().setPixels(0, 0, width, height, PixelFormat.getIntArgbInstance(), argb, 0, width);
+        return fxImage;
+    }
+
+    /** Converts a JavaFX Image into an AWT BufferedImage without requiring javafx.swing. */
+    public static BufferedImage fromFxImage(Image image) {
+        if(image == null) {
+            return null;
+        }
+        int width = (int) Math.ceil(image.getWidth());
+        int height = (int) Math.ceil(image.getHeight());
+        PixelReader reader = image.getPixelReader();
+        int[] argb = new int[width * height];
+        reader.getPixels(0, 0, width, height, PixelFormat.getIntArgbInstance(), argb, 0, width);
+        BufferedImage buffered = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        buffered.setRGB(0, 0, width, height, argb, 0, width);
+        return buffered;
+    }
+
     public static byte[] resize(Image image, int width, int height) {
-        return resize(SwingFXUtils.fromFXImage(image, null), width, height);
+        return resize(fromFxImage(image), width, height);
     }
 
     public static byte[] resize(BufferedImage image, int width, int height) {

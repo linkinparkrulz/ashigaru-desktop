@@ -11,7 +11,7 @@ import com.sparrowwallet.sparrow.AppServices;
 import io.reactivex.Observable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
-import java8.util.Optional;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -320,7 +320,7 @@ public class PayNymService {
 
     /** A request to the directory, through Tor; refused (as an error, not sent directly) offline or without a Tor proxy */
     @SuppressWarnings("rawtypes")
-    private static Observable<java8.util.Optional<Map>> post(String url, Map<String, String> headers, Object body) {
+    private static Observable<java.util.Optional<Map>> post(String url, Map<String, String> headers, Object body) {
         String refusal = com.sparrowwallet.sparrow.net.TorOnly.refusal();
         if(refusal != null) {
             return Observable.error(new java.io.IOException("PayNym directory not contacted: " + refusal + "."));
