@@ -364,6 +364,7 @@ public class Whirlpool {
     public void shutdown() {
         whirlpoolWalletService.closeWallet();
         httpClientService.shutdown();
+        stompClientService.shutdown();
     }
 
     public StartupService createStartupService() {

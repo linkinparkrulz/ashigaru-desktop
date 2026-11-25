@@ -563,12 +563,16 @@ public class AppServices {
 
     private ScheduledService<Void> createPreventSleepService() {
         ScheduledService<Void> preventSleepService = new ScheduledService<Void>() {
+            private Robot robot;
+
             @Override
             protected Task<Void> createTask() {
                 return new Task<>() {
                     protected Void call() {
                         try {
-                            Robot robot = new Robot();
+                            if(robot == null) {
+                                robot = new Robot();
+                            }
                             robot.keyRelease(KeyEvent.VK_F16);
                         } catch(Exception e) {
                             log.debug("Error preventing sleep", e);

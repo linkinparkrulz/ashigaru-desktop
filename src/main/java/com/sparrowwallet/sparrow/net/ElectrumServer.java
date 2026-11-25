@@ -60,7 +60,15 @@ public class ElectrumServer {
 
     private static Map<String, String> retrievedScriptHashes = Collections.synchronizedMap(new HashMap<>());
 
-    private static Map<Sha256Hash, BlockTransaction> retrievedTransactions = Collections.synchronizedMap(new HashMap<>());
+    private static final int MAX_CACHED_TRANSACTIONS = 500;
+
+    private static Map<Sha256Hash, BlockTransaction> retrievedTransactions = Collections.synchronizedMap(
+            new LinkedHashMap<>(64, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<Sha256Hash, BlockTransaction> eldest) {
+                    return size() > MAX_CACHED_TRANSACTIONS;
+                }
+            });
 
     private static Set<String> sameHeightTxioScriptHashes = Collections.synchronizedSet(new HashSet<>());
 

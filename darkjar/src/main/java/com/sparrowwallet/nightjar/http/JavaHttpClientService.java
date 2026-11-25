@@ -84,7 +84,9 @@ public class JavaHttpClientService implements IHttpClientService {
         HttpClient jettyHttpClient = new HttpClient(new SslContextFactory.Client.Client());
         jettyHttpClient.setName(name);
 
-        QueuedThreadPool threadPool = new QueuedThreadPool();
+        // Bound the Jetty thread pool: the default QueuedThreadPool creates min=8/max=200 threads
+        // per HttpUsage per wallet, most of which sit idle over Tor.
+        QueuedThreadPool threadPool = new QueuedThreadPool(6, 1, 30_000);
         threadPool.setName(name);
         threadPool.setDaemon(true);
         jettyHttpClient.setExecutor(threadPool);

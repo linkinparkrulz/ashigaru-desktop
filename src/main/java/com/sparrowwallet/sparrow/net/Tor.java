@@ -77,7 +77,7 @@ public class Tor {
         }
 
         TorRuntime.Environment env = TorRuntime.Environment.Builder(workDir, cacheDir, ResourceLoaderTorExec::getOrCreate);
-        env.debug = true;
+        env.debug = log.isDebugEnabled();
 
         return TorRuntime.Builder(env, b -> {
             for(RuntimeEvent<?> event : RuntimeEvent.entries()) {
@@ -98,8 +98,9 @@ public class Tor {
                     });
                 } else if(event instanceof RuntimeEvent.LOG.DEBUG) {
                     b.observerStatic((RuntimeEvent.LOG.DEBUG)event, OnEvent.Executor.Immediate.INSTANCE, data -> {
-                        log.debug(data.toString());
-                        EventManager.get().post(new TorStatusEvent(data.toString()));
+                        if(log.isDebugEnabled()) {
+                            log.debug(data.toString());
+                        }
                     });
                 }
             }

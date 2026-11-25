@@ -33,10 +33,20 @@ public class WhirlpoolView extends HBox {
     private static final double[] DEGREES_PER_SECOND = {4.2, -3.2, 2.4, -1.8};
     private static final Color INK = Color.web("#ECECEC"), FAINT = Color.web("#8B8D95"), LINE = Color.web("#2E3038"),
             LINE_STRONG = Color.web("#5B5E68"), CANVAS = Color.web("#0E0F12"), RED = Color.web("#CC1111"),
-            RED_INK = Color.web("#FF5A4D"), GREEN = Color.web("#4CAF50"), GREEN_INK = Color.web("#6BCB77"), IDLE = Color.web("#C9CAD0");
+            RED_INK = Color.web("#FF5A4D"), GREEN = Color.web("#4CAF50"), GREEN_INK = Color.web("#6BCB77"), IDLE = Color.web("#C9CAD0"),
+            ORBIT_PREMIX = RED.deriveColor(0, 1, 1, 0.5), ORBIT_PRIVATE = GREEN.deriveColor(0, 1, 1, 0.55),
+            CORE_STROKE = RED.deriveColor(0, 1, 1, 0.7), ACTIVE_STROKE = RED_INK.deriveColor(0, 1, 1, 0.7),
+            ACTIVE_HALO = RED.deriveColor(0, 1, 1, 0.25), PREMIX_FILL = Color.web("#15161B"),
+            PREMIX_STROKE = Color.web("#A6A7AD"), PRIVATE_STROKE = Color.web("#BFE8C4");
+    private static final Font RING_FONT = Font.font("Roboto Mono", 10);
+    private static final double[] ORBIT_DASH = {2, 5};
+    private static final double[] ACTIVE_DASH = {3, 6};
+    // Coins rotate slowly (1.8-4.2 deg/s); 25 fps is visually smooth and cuts CPU/GPU work by >55%
+    private static final long FRAME_INTERVAL_NANOS = 40_000_000L;
 
+    private final Canvas backdropCanvas = new Canvas(420, 420);
     private final Canvas canvas = new Canvas(420, 420);
-    private final Pane canvasHolder = new Pane(canvas);
+    private final Pane canvasHolder = new Pane(backdropCanvas, canvas);
     private final Image logo = new Image(WhirlpoolView.class.getResourceAsStream("/image/Ashigaru_Terminal_Logo_Circle.png"), 176, 176, true, true);
     private final List<List<Coin>> rings = new ArrayList<>();
     private final Label[] counts = new Label[RINGS];
@@ -44,14 +54,22 @@ public class WhirlpoolView extends HBox {
     private final Label summary = new Label();
     private final Label round = new Label();
     private int minMixes = 3;
+    private boolean hasCoins;
     private long startNanos;
+    private long lastFrameNanos;
+    private boolean timerRunning;
+    private final javafx.beans.value.ChangeListener<Boolean> windowShowingListener = (obs, was, is) -> updateAnimationState();
     private final AnimationTimer timer = new AnimationTimer() {
         @Override
         public void handle(long now) {
             if(startNanos == 0) {
                 startNanos = now;
             }
-            draw((now - startNanos) / 1e9);
+            if(lastFrameNanos != 0 && now - lastFrameNanos < FRAME_INTERVAL_NANOS) {
+                return;
+            }
+            lastFrameNanos = now;
+            drawCoins((now - startNanos) / 1e9);
         }
     };
 
@@ -72,9 +90,42 @@ public class WhirlpoolView extends HBox {
         side.setMaxWidth(300);
         getChildren().addAll(canvasHolder, side);
 
-        //Only animate while on screen
-        sceneProperty().addListener((obs, old, scene) -> { if(scene == null) timer.stop(); });
-        visibleProperty().addListener((obs, was, is) -> { if(is) timer.start(); else timer.stop(); });
+        //Only animate while visible in a showing window and there are coins to orbit
+        sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if(oldScene != null && oldScene.getWindow() != null) {
+                oldScene.getWindow().showingProperty().removeListener(windowShowingListener);
+            }
+            if(newScene != null) {
+                newScene.windowProperty().addListener((wObs, oldWin, newWin) -> {
+                    if(oldWin != null) {
+                        oldWin.showingProperty().removeListener(windowShowingListener);
+                    }
+                    if(newWin != null) {
+                        newWin.showingProperty().addListener(windowShowingListener);
+                    }
+                    updateAnimationState();
+                });
+                if(newScene.getWindow() != null) {
+                    newScene.getWindow().showingProperty().addListener(windowShowingListener);
+                }
+            }
+            updateAnimationState();
+        });
+        visibleProperty().addListener((obs, was, is) -> updateAnimationState());
+    }
+
+    private void updateAnimationState() {
+        javafx.scene.Scene scene = getScene();
+        boolean windowShowing = scene != null && (scene.getWindow() == null || scene.getWindow().isShowing());
+        boolean shouldRun = hasCoins && isVisible() && windowShowing;
+        if(shouldRun && !timerRunning) {
+            timerRunning = true;
+            lastFrameNanos = 0;
+            timer.start();
+        } else if(!shouldRun && timerRunning) {
+            timerRunning = false;
+            timer.stop();
+        }
     }
 
     private VBox roundCard() {
@@ -134,6 +185,7 @@ public class WhirlpoolView extends HBox {
      */
     public void show(List<Coin> coins, int minMixes) {
         this.minMixes = Math.max(minMixes, RINGS - 1);
+        this.hasCoins = !coins.isEmpty();
         rings.forEach(List::clear);
         int active = 0;
         for(Coin coin : coins) {
@@ -158,7 +210,9 @@ public class WhirlpoolView extends HBox {
         round.setText(coins.isEmpty() ? "No coins in Premix or Postmix yet. Run a Tx0 from Deposit to start."
                 : active == 0 ? "None of your coins is awaiting a round right now."
                 : active + (active == 1 ? " of your coins is" : " of your coins are") + " awaiting a round right now, shown in red.");
-        draw(0);
+        drawBackdrop();
+        drawCoins(0);
+        updateAnimationState();
     }
 
     private String ringName(int ring) {
@@ -169,16 +223,23 @@ public class WhirlpoolView extends HBox {
 
     private void fit() {
         double size = Math.max(200, Math.min(canvasHolder.getWidth(), canvasHolder.getHeight()));
+        double layoutX = (canvasHolder.getWidth() - size) / 2;
+        double layoutY = (canvasHolder.getHeight() - size) / 2;
+        backdropCanvas.setWidth(size);
+        backdropCanvas.setHeight(size);
+        backdropCanvas.setLayoutX(layoutX);
+        backdropCanvas.setLayoutY(layoutY);
         canvas.setWidth(size);
         canvas.setHeight(size);
-        canvas.setLayoutX((canvasHolder.getWidth() - size) / 2);
-        canvas.setLayoutY((canvasHolder.getHeight() - size) / 2);
-        draw(0);
+        canvas.setLayoutX(layoutX);
+        canvas.setLayoutY(layoutY);
+        drawBackdrop();
+        drawCoins(0);
     }
 
-    private void draw(double seconds) {
-        GraphicsContext g = canvas.getGraphicsContext2D();
-        double size = canvas.getWidth(), c = size / 2, R = size / 2 - 14;
+    private void drawBackdrop() {
+        GraphicsContext g = backdropCanvas.getGraphicsContext2D();
+        double size = backdropCanvas.getWidth(), c = size / 2, R = size / 2 - 14;
         g.clearRect(0, 0, size, size);
 
         //Bezel ticks
@@ -193,14 +254,14 @@ public class WhirlpoolView extends HBox {
         g.setLineWidth(1);
         for(int i = 0; i < RINGS; i++) {
             double r = R * RADIUS[i];
-            g.setStroke(i == 0 ? RED.deriveColor(0, 1, 1, 0.5) : i == RINGS - 1 ? GREEN.deriveColor(0, 1, 1, 0.55) : LINE);
-            g.setLineDashes(i == 0 ? new double[] {2, 5} : null);
+            g.setStroke(i == 0 ? ORBIT_PREMIX : i == RINGS - 1 ? ORBIT_PRIVATE : LINE);
+            g.setLineDashes(i == 0 ? ORBIT_DASH : null);
             g.strokeOval(c - r, c - r, r * 2, r * 2);
         }
         g.setLineDashes(null);
         //Core
         double core = R * 0.2;
-        g.setStroke(RED.deriveColor(0, 1, 1, 0.7));
+        g.setStroke(CORE_STROKE);
         g.setLineWidth(1.5);
         g.setFill(CANVAS);
         g.fillOval(c - core, c - core, core * 2, core * 2);
@@ -208,7 +269,7 @@ public class WhirlpoolView extends HBox {
         double img = core * 1.7;
         g.drawImage(logo, c - img / 2, c - img / 2, img, img);
         //Ring labels, at twelve o'clock
-        g.setFont(Font.font("Roboto Mono", 10));
+        g.setFont(RING_FONT);
         g.setTextAlign(TextAlignment.CENTER);
         g.setTextBaseline(VPos.CENTER);
         for(int i = 0; i < RINGS; i++) {
@@ -219,6 +280,14 @@ public class WhirlpoolView extends HBox {
             g.setFill(i == RINGS - 1 ? GREEN_INK : FAINT);
             g.fillText(text, c, y);
         }
+    }
+
+    private void drawCoins(double seconds) {
+        GraphicsContext g = canvas.getGraphicsContext2D();
+        double size = canvas.getWidth(), c = size / 2, R = size / 2 - 14;
+        double core = R * 0.2;
+        g.clearRect(0, 0, size, size);
+
         //Coins
         for(int i = 0; i < RINGS; i++) {
             List<Coin> coins = rings.get(i);
@@ -229,20 +298,20 @@ public class WhirlpoolView extends HBox {
                 double angle = Math.toRadians(360.0 * k / drawn + i * 37 + 24 + DEGREES_PER_SECOND[i] * seconds);
                 double x = c + Math.cos(angle) * r, y = c + Math.sin(angle) * r;
                 if(coin.active()) {
-                    g.setStroke(RED_INK.deriveColor(0, 1, 1, 0.7));
+                    g.setStroke(ACTIVE_STROKE);
                     g.setLineWidth(1.2);
-                    g.setLineDashes(3, 6);
+                    g.setLineDashes(ACTIVE_DASH);
                     g.strokeLine(x, y, c + Math.cos(angle) * (core + 4), c + Math.sin(angle) * (core + 4));
                     g.setLineDashes(null);
-                    g.setFill(RED.deriveColor(0, 1, 1, 0.25));
+                    g.setFill(ACTIVE_HALO);
                     g.fillOval(x - 12, y - 12, 24, 24);
                     dot(g, x, y, 7, RED_INK, Color.WHITE, 1.5);
                 } else if(i == 0) {
-                    dot(g, x, y, 6, Color.web("#15161B"), Color.web("#A6A7AD"), 1.6);
+                    dot(g, x, y, 6, PREMIX_FILL, PREMIX_STROKE, 1.6);
                 } else if(i == RINGS - 1) {
-                    dot(g, x, y, 6, GREEN, Color.web("#BFE8C4"), 1);
+                    dot(g, x, y, 6, GREEN, PRIVATE_STROKE, 1);
                 } else {
-                    dot(g, x, y, 6, IDLE, Color.web("#15161B"), 1.5);
+                    dot(g, x, y, 6, IDLE, PREMIX_FILL, 1.5);
                 }
             }
         }

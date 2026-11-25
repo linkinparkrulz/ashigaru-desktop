@@ -157,12 +157,17 @@ application {
     mainClass = 'com.sparrowwallet.sparrow.AshigaruTerminal'
 
     applicationDefaultJvmArgs = ["-XX:+HeapDumpOnOutOfMemoryError",
-                                 // Bound the heap: without -Xmx the JVM scales the max to 25% of
-                                 // system RAM (~4 GB here), which reads as heavy memory use in
-                                 // system monitors. 1g is generous headroom over the ~150 MB
-                                 // actually used; packaged launchers get the same cap below.
-                                 "-Xms256m",
-                                 "-Xmx1g",
+                                 // Bound the heap and return unused pages to the OS when idle:
+                                 // -Xms64m avoids eagerly committing 256 MB before it is needed;
+                                 // G1 periodic concurrent GC uncommits idle heap after sync/mix bursts.
+                                 "-Xms64m",
+                                 "-Xmx768m",
+                                 "-XX:MinHeapFreeRatio=15",
+                                 "-XX:MaxHeapFreeRatio=35",
+                                 "-XX:G1PeriodicGCInterval=60000",
+                                 "-XX:+G1PeriodicGCInvokesConcurrent",
+                                 "-XX:ParallelGCThreads=2",
+                                 "-XX:ConcGCThreads=1",
                                  "--add-opens=javafx.graphics/com.sun.javafx.css=org.controlsfx.controls",
                                  "--add-opens=javafx.graphics/javafx.scene=org.controlsfx.controls",
                                  "--add-opens=javafx.controls/com.sun.javafx.scene.control.behavior=org.controlsfx.controls",
@@ -209,7 +214,7 @@ jlink {
     //"Received fatal alert: handshake_failure", in packaged builds only: a development run uses the
     //full JDK and works, which is why this went unnoticed.
     options = ['--strip-debug', '--no-header-files', '--no-man-pages',
-               '--ignore-signing-information', '--compress=1',
+               '--ignore-signing-information', '--compress=zip-6',
                '--add-modules', 'jdk.crypto.ec']
     launcher {
         name = 'Ashigaru'

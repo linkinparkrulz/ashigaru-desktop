@@ -166,17 +166,37 @@ public class AshigaruMainController implements Initializable {
     /** Shows a pill in one of the connection colours, or hides it when there is no text */
     private static void setLight(Label label, String text, String tooltip, String stateClass) {
         boolean show = text != null;
-        label.setVisible(show);
-        label.setManaged(show);
-        label.getStyleClass().removeAll("connected", "connecting", "disconnected", "unreachable");
+        if (label.isVisible() != show) {
+            label.setVisible(show);
+            label.setManaged(show);
+        }
         if (!show) {
+            label.getStyleClass().removeAll("connected", "connecting", "disconnected", "unreachable");
             return;
         }
-        label.setText(text);
-        if (stateClass != null) {
-            label.getStyleClass().add(stateClass);
+        if (!text.equals(label.getText())) {
+            label.setText(text);
         }
-        label.setTooltip(tooltip == null ? null : new Tooltip(tooltip));
+        boolean hasTarget = stateClass != null && label.getStyleClass().contains(stateClass);
+        if (!hasTarget || label.getStyleClass().stream().anyMatch(c ->
+                !c.equals(stateClass) && ("connected".equals(c) || "connecting".equals(c) || "disconnected".equals(c) || "unreachable".equals(c)))) {
+            label.getStyleClass().removeAll("connected", "connecting", "disconnected", "unreachable");
+            if (stateClass != null) {
+                label.getStyleClass().add(stateClass);
+            }
+        }
+        if (tooltip == null) {
+            if (label.getTooltip() != null) {
+                label.setTooltip(null);
+            }
+        } else {
+            Tooltip existing = label.getTooltip();
+            if (existing == null) {
+                label.setTooltip(new Tooltip(tooltip));
+            } else if (!tooltip.equals(existing.getText())) {
+                existing.setText(tooltip);
+            }
+        }
     }
 
     @Subscribe

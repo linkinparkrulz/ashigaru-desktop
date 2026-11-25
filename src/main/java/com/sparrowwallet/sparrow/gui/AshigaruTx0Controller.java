@@ -71,6 +71,7 @@ public class AshigaruTx0Controller implements Initializable {
     @FXML private Label stepSigning;
     @FXML private Label stepBroadcasting;
     @FXML private Label stepComplete;
+    private javafx.animation.RotateTransition broadcastSpin;
 
     // Set by show() before the dialog is displayed
     private String walletId;
@@ -99,7 +100,11 @@ public class AshigaruTx0Controller implements Initializable {
 
         try {
             broadcastGif.setImage(new Image(getClass().getResourceAsStream(
-                    "/image/Ashigaru_Whirlpool_Logo_GIF_White_On_Transparent.gif")));
+                    "/image/Ashigaru_Whirlpool_Logo_White.png"), 96, 96, true, true));
+            broadcastSpin = new javafx.animation.RotateTransition(Duration.seconds(2.5), broadcastGif);
+            broadcastSpin.setByAngle(360);
+            broadcastSpin.setInterpolator(javafx.animation.Interpolator.LINEAR);
+            broadcastSpin.setCycleCount(javafx.animation.Animation.INDEFINITE);
         } catch (Exception e) {
             log.warn("Could not load broadcast animation", e);
         }
@@ -327,6 +332,9 @@ public class AshigaruTx0Controller implements Initializable {
         toBroadcasting.play();
 
         svc.setOnSucceeded(e -> {
+            if (broadcastSpin != null) {
+                broadcastSpin.stop();
+            }
             Sha256Hash txid = svc.getValue();
             markStep(stepBroadcasting, "Broadcasting");
             markStep(stepComplete, "Complete");
@@ -353,6 +361,9 @@ public class AshigaruTx0Controller implements Initializable {
         formBox.setManaged(false);
         broadcastOverlay.setVisible(true);
         broadcastOverlay.setManaged(true);
+        if (broadcastSpin != null) {
+            broadcastSpin.play();
+        }
         setButtonsShown(false);
         resetSteps();
         markStep(stepSigning, "Signing");
@@ -360,6 +371,9 @@ public class AshigaruTx0Controller implements Initializable {
     }
 
     private void hideOverlay() {
+        if (broadcastSpin != null) {
+            broadcastSpin.stop();
+        }
         broadcastOverlay.setVisible(false);
         broadcastOverlay.setManaged(false);
         formBox.setVisible(true);

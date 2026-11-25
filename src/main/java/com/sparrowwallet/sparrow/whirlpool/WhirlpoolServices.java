@@ -325,6 +325,7 @@ public class WhirlpoolServices {
                     });
                     shutdownService.setOnFailed(workerStateEvent -> {
                         log.error("Failed to shutdown whirlpool", workerStateEvent.getSource().getException());
+                        WhirlpoolEventService.getInstance().unregister(whirlpool);
                     });
                     shutdownService.start();
                 } else {
@@ -359,6 +360,7 @@ public class WhirlpoolServices {
                         });
                         shutdownService.setOnFailed(workerStateEvent -> {
                             log.error("Failed to shutdown whirlpool", workerStateEvent.getSource().getException());
+                            WhirlpoolEventService.getInstance().unregister(whirlpool);
                         });
                         shutdownService.start();
                     } else {

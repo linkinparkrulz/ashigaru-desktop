@@ -44,8 +44,10 @@ public class AshigaruTxnCell extends ListCell<AshigaruWalletController.TxnRow> {
     private final Label dateLabel = new Label();
     private final TextField labelField = new TextField();
     private final Label paymentCodeLabel = new Label();
+    private final CopyButton paymentCodeCopyBtn = new CopyButton();
     private final HBox paymentCodeLine = new HBox(6);
     private final Label txidLabel = new Label();
+    private final CopyButton txidCopyBtn = new CopyButton();
     private final HBox txidLine = new HBox(6);
     private final Hyperlink explorerLink = new Hyperlink("explorer ↗");
     private final Hyperlink exposureLink = new Hyperlink("exposure ↗");
@@ -179,8 +181,8 @@ public class AshigaruTxnCell extends ListCell<AshigaruWalletController.TxnRow> {
             }
 
             paymentCodeLabel.setText(paymentCode.toAbbreviatedString());
-            paymentCodeLine.getChildren().setAll(paymentCodeLabel,
-                    AshigaruWalletController.makeCopyButton(code));
+            paymentCodeCopyBtn.setCopyText(code);
+            paymentCodeLine.getChildren().setAll(paymentCodeLabel, paymentCodeCopyBtn);
             appendTxLinks(paymentCodeLine, row.txid());
             center.getChildren().setAll(nymNameLabel, topLine, paymentCodeLine);
         } else {
@@ -197,7 +199,8 @@ public class AshigaruTxnCell extends ListCell<AshigaruWalletController.TxnRow> {
             txidLine.getChildren().setAll(txidLabel);
             txidLabel.setText(row.txid());
             if (row.txid() != null && !row.txid().isEmpty()) {
-                txidLine.getChildren().add(AshigaruWalletController.makeCopyButton(row.txid()));
+                txidCopyBtn.setCopyText(row.txid());
+                txidLine.getChildren().add(txidCopyBtn);
             }
             appendTxLinks(txidLine, row.txid());
             center.getChildren().setAll(topLine, labelField, txidLine);

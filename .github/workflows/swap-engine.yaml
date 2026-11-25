@@ -229,6 +229,11 @@ jobs:
 
       - name: Build ashigaru-swap
         working-directory: swap-engine/build/eigenwallet
+        env:
+          # Strip non-exported/debug symbols and enable thin LTO for a smaller shared library without changing Cargo.lock
+          CARGO_PROFILE_RELEASE_STRIP: symbols
+          CARGO_PROFILE_RELEASE_LTO: thin
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "1"
         run: |
           start=$(date +%s)
           cargo build -p ashigaru-swap --lib --target ${{ matrix.target }} --release ${{ steps.lock.outputs.flag }}

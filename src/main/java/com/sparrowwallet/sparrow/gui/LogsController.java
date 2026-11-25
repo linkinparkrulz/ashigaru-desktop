@@ -64,20 +64,37 @@ public class LogsController implements Initializable {
     @FXML private TextArea logArea;
 
     //The unmodified tail as read from disk, or the swap engine's log. Everything shown is derived from this.
-    private List<String> logLines = List.of();
+    private final Deque<String> logLines = new ArrayDeque<>();
+    private final javafx.animation.PauseTransition renderDebounce = new javafx.animation.PauseTransition(javafx.util.Duration.millis(120));
 
     //Follows the swap engine while its log is shown
     private final Consumer<String> engineListener = line -> Platform.runLater(() -> {
         if(isEngine()) {
-            List<String> lines = new ArrayList<>(logLines);
-            lines.addAll(splitLines(line));
-            logLines = lines;
-            render();
+            for(String part : splitLines(line)) {
+                logLines.addLast(part);
+                if(logLines.size() > MAX_LINES) {
+                    logLines.removeFirst();
+                }
+            }
+            scheduleRender();
         }
     });
 
+    private void scheduleRender() {
+        renderDebounce.playFromStart();
+    }
+
+    private void setLogLines(List<String> lines) {
+        logLines.clear();
+        int start = Math.max(0, lines.size() - MAX_LINES);
+        for(int i = start; i < lines.size(); i++) {
+            logLines.addLast(lines.get(i));
+        }
+    }
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        renderDebounce.setOnFinished(e -> render());
         allToggle.setUserData("ALL");
         warnToggle.setUserData("WARN");
         errorToggle.setUserData("ERROR");
@@ -92,7 +109,7 @@ public class LogsController implements Initializable {
             render();
         });
 
-        searchField.textProperty().addListener((obs, old, text) -> render());
+        searchField.textProperty().addListener((obs, old, text) -> scheduleRender());
         rawCheck.selectedProperty().addListener((obs, old, raw) -> {
             warningLabel.setVisible(raw);
             warningLabel.setManaged(raw);
@@ -116,6 +133,7 @@ public class LogsController implements Initializable {
         swaps.addLogListener(engineListener);
         logArea.sceneProperty().addListener((obs, old, scene) -> {
             if(scene == null) {
+                renderDebounce.stop();
                 swaps.removeLogListener(engineListener);
             }
         });
@@ -188,7 +206,7 @@ public class LogsController implements Initializable {
 
     private void loadLog() {
         if(isEngine()) {
-            logLines = splitLines(SwapService.get().getLog());
+            setLogLines(splitLines(SwapService.get().getLog()));
             render();
             showStatus(logLines.isEmpty() ? "The swap engine has not logged anything since Ashigaru started."
                     : "The swap engine's log since Ashigaru started. Routine connection messages are in the application log only.");
@@ -197,7 +215,7 @@ public class LogsController implements Initializable {
 
         File logFile = getLogFile();
         if(!logFile.exists()) {
-            logLines = List.of();
+            logLines.clear();
             logArea.setText("");
             showStatus("No log file yet at " + logFile.getAbsolutePath());
             return;
@@ -214,7 +232,7 @@ public class LogsController implements Initializable {
         };
 
         task.setOnSucceeded(event -> {
-            logLines = task.getValue();
+            setLogLines(task.getValue());
             refreshBtn.setDisable(false);
             render();
             showStatus("Showing the last " + logLines.size() + " lines of " + logFile.getAbsolutePath());
@@ -279,7 +297,8 @@ public class LogsController implements Initializable {
     }
 
     private void render() {
-        List<String> lines = isEngine() ? filterEngineByLevel(logLines, selectedLevel()) : filterByLevel(logLines, selectedLevel());
+        List<String> snapshot = new ArrayList<>(logLines);
+        List<String> lines = isEngine() ? filterEngineByLevel(snapshot, selectedLevel()) : filterByLevel(snapshot, selectedLevel());
         lines = filterBySearch(lines, searchField.getText());
 
         String text = String.join("\n", lines);

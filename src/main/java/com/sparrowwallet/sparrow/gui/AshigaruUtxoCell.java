@@ -30,15 +30,17 @@ import javafx.scene.layout.VBox;
  * inline label editing (writes through to {@code utxoEntry.labelProperty()}).
  */
 public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow> {
-    private static final Image WHIRLPOOL_GIF =
-            new Image("/image/Ashigaru_Whirlpool_Logo_GIF_White_On_Transparent.gif", 18, 18, true, true);
+    // Static PNG rotated only while actively mixing avoids decoding a 1.1 MB animated GIF into RGBA frames in RAM.
+    private static final Image WHIRLPOOL_ICON =
+            new Image("/image/Ashigaru_Whirlpool_Logo_White.png", 18, 18, true, true);
 
     private final ObservableValue<Boolean> showMixInfo;
 
     private final CheckBox checkBox = new CheckBox();
     private final Label valueLabel = new Label();
     private final Label badgeText = new Label();
-    private final ImageView badgeIcon = new ImageView(WHIRLPOOL_GIF);
+    private final ImageView badgeIcon = new ImageView(WHIRLPOOL_ICON);
+    private final javafx.animation.RotateTransition badgeSpin = new javafx.animation.RotateTransition(Duration.seconds(2.5), badgeIcon);
     private final HBox badgeBox = new HBox(6, badgeIcon, badgeText);
     //The coin's mix count as dots: the number the wallet already tracks, drawn so a list of Postmix
     //coins reads at a glance. The dots turn green once the coin reaches the wallet's own minimum.
@@ -49,15 +51,26 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
     private final Tooltip pipTip = new Tooltip();
     private final TextField labelField = new TextField();
     private final Label addressLabel = new Label();
+    private final CopyButton addressCopyBtn = new CopyButton();
     private final Label metaLabel = new Label();
-    private final HBox addressLine = new HBox(6);
-    private final HBox metaLine = new HBox(6);
+    private final CopyButton outputCopyBtn = new CopyButton();
+    private final HBox addressLine = new HBox(6, addressLabel, addressCopyBtn);
+    private final HBox metaLine = new HBox(6, metaLabel, outputCopyBtn);
     private final HBox root = new HBox(12);
 
     private BooleanProperty boundSelected;
 
     public AshigaruUtxoCell(ObservableValue<Boolean> showMixInfo) {
         this.showMixInfo = showMixInfo;
+
+        badgeSpin.setByAngle(360);
+        badgeSpin.setInterpolator(javafx.animation.Interpolator.LINEAR);
+        badgeSpin.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if(newScene == null) {
+                badgeSpin.stop();
+            }
+        });
 
         valueLabel.getStyleClass().add("card-value");
         badgeText.getStyleClass().add("mix-badge-text");
@@ -126,6 +139,7 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
         }
 
         if (empty || row == null) {
+            badgeSpin.stop();
             setText(null);
             setGraphic(null);
             return;
@@ -142,17 +156,20 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
             labelField.setText(lbl != null ? lbl : "");
         }
 
-        addressLine.getChildren().setAll(addressLabel);
         boolean hasAddress = row.address != null && !row.address.isEmpty();
         addressLabel.setText(hasAddress ? row.address : "(no address)");
+        addressCopyBtn.setVisible(hasAddress);
+        addressCopyBtn.setManaged(hasAddress);
         if (hasAddress) {
-            addressLine.getChildren().add(AshigaruWalletController.makeCopyButton(row.address));
+            addressCopyBtn.setCopyText(row.address);
         }
 
         metaLabel.setText(row.date + "   ·   " + shorten(row.output));
-        metaLine.getChildren().setAll(metaLabel);
-        if (row.output != null && !row.output.isEmpty()) {
-            metaLine.getChildren().add(AshigaruWalletController.makeCopyButton(row.output));
+        boolean hasOutput = row.output != null && !row.output.isEmpty();
+        outputCopyBtn.setVisible(hasOutput);
+        outputCopyBtn.setManaged(hasOutput);
+        if (hasOutput) {
+            outputCopyBtn.setCopyText(row.output);
         }
 
         updateBadge();
@@ -166,6 +183,7 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
         pipBox.setVisible(false);
         pipBox.setManaged(false);
         if (row == null || !show || row.utxoEntry == null) {
+            badgeSpin.stop();
             badgeBox.setVisible(false);
             badgeBox.setManaged(false);
             return;
@@ -178,6 +196,7 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
         Wallet account = row.utxoEntry.getWallet();
         if (account.getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX
                 && !WalletPrivacy.isMixedCoin(account, row.utxoEntry.getNode())) {
+            badgeSpin.stop();
             badgeBox.getStyleClass().removeAll("active", "done");
             badgeBox.getStyleClass().add("change");
             badgeIcon.setVisible(false);
@@ -206,10 +225,14 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
         if (mixing) {
             badgeIcon.setVisible(true);
             badgeIcon.setManaged(true);
+            if(badgeSpin.getStatus() != javafx.animation.Animation.Status.RUNNING) {
+                badgeSpin.play();
+            }
             String stage = AshigaruWalletController.getMixStage(mixStatus);
             badgeText.setText(stage.isEmpty() ? "Mixing" : stage);
             badgeBox.getStyleClass().add("active");
         } else {
+            badgeSpin.stop();
             badgeIcon.setVisible(false);
             badgeIcon.setManaged(false);
             if (mixStatus != null) {

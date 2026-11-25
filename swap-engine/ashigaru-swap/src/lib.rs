@@ -32,6 +32,8 @@ fn runtime() -> &'static tokio::runtime::Runtime {
         // panics. Fails only when the host already installed one, which then serves as well.
         let _ = rustls::crypto::ring::default_provider().install_default();
         tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .max_blocking_threads(8)
             .enable_all()
             .thread_name("ashigaru-swap")
             .build()

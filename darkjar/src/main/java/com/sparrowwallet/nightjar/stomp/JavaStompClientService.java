@@ -9,21 +9,34 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 public class JavaStompClientService implements IStompClientService {
     private final JavaHttpClientService httpClientService;
-    private final ThreadPoolTaskScheduler taskScheduler;
+    private ThreadPoolTaskScheduler taskScheduler;
 
     public JavaStompClientService(JavaHttpClientService httpClientService) {
         this.httpClientService = httpClientService;
+    }
 
-        taskScheduler = new ThreadPoolTaskScheduler();
-        taskScheduler.setPoolSize(1);
-        taskScheduler.setThreadNamePrefix("stomp-heartbeat");
-        taskScheduler.setDaemon(true);
-        taskScheduler.initialize();
+    private synchronized ThreadPoolTaskScheduler getTaskScheduler() {
+        if(taskScheduler == null) {
+            ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+            scheduler.setPoolSize(1);
+            scheduler.setThreadNamePrefix("stomp-heartbeat");
+            scheduler.setDaemon(true);
+            scheduler.initialize();
+            taskScheduler = scheduler;
+        }
+        return taskScheduler;
     }
 
     @Override
     public IStompClient newStompClient() {
         JavaHttpClient httpClient = httpClientService.getHttpClient(HttpUsage.COORDINATOR_WEBSOCKET);
-        return new JavaStompClient(httpClient, taskScheduler);
+        return new JavaStompClient(httpClient, getTaskScheduler());
+    }
+
+    public synchronized void shutdown() {
+        if(taskScheduler != null) {
+            taskScheduler.shutdown();
+            taskScheduler = null;
+        }
     }
 }
