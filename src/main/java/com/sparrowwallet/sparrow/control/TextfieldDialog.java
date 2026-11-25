@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TextfieldDialog extends Dialog<String> {
-    private static final Logger log = LoggerFactory.getLogger(TextAreaDialog.class);
+    private static final Logger log = LoggerFactory.getLogger(TextfieldDialog.class);
 
     private final TextField textField;
     private final String defaultValue;

@@ -16,7 +16,6 @@ import com.sparrowwallet.sparrow.event.CormorantPruneStatusEvent;
 import com.sparrowwallet.sparrow.event.CormorantScanStatusEvent;
 import com.sparrowwallet.sparrow.event.CormorantSyncStatusEvent;
 import com.sparrowwallet.sparrow.io.Config;
-import com.sparrowwallet.sparrow.net.Bwt;
 import com.sparrowwallet.sparrow.net.CoreAuthType;
 import com.sparrowwallet.sparrow.net.cormorant.Cormorant;
 import com.sparrowwallet.drongo.address.Address;
@@ -142,7 +141,7 @@ public class BitcoindClient {
             throw new RuntimeException("Wallet support must be enabled in Bitcoin Core");
         }
         boolean exists = listWalletDirResult.wallets().stream().anyMatch(walletDirResult -> walletDirResult.name().equals(CORE_WALLET_NAME));
-        legacyWalletExists = listWalletDirResult.wallets().stream().anyMatch(walletDirResult -> walletDirResult.name().equals(Bwt.DEFAULT_CORE_WALLET));
+        legacyWalletExists = listWalletDirResult.wallets().stream().anyMatch(walletDirResult -> walletDirResult.name().equals("bwt"));
 
         List<String> loadedWallets = getBitcoindService().listWallets();
         boolean loaded = loadedWallets.contains(CORE_WALLET_NAME);

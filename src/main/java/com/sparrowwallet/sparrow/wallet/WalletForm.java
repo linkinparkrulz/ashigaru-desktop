@@ -7,7 +7,6 @@ import com.sparrowwallet.drongo.wallet.*;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.WalletTabData;
-import com.sparrowwallet.sparrow.control.WalletIcon;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.ImageUtils;
 import com.sparrowwallet.sparrow.io.StorageException;
@@ -711,7 +710,7 @@ public class WalletForm {
         if(wallet.isMasterWallet() && wallet.hasPaymentCode() && event.getPaymentCode().equals(wallet.getPaymentCode())) {
             WalletConfig walletConfig = wallet.getMasterWalletConfig();
             if(!walletConfig.isUserIcon()) {
-                byte[] iconData = ImageUtils.resize(event.getImage(), WalletIcon.SAVE_WIDTH, WalletIcon.SAVE_HEIGHT);
+                byte[] iconData = ImageUtils.resize(event.getImage(), 24, 24);
                 if(walletConfig.getIconData() == null || !Arrays.equals(walletConfig.getIconData(), iconData)) {
                     walletConfig.setIconData(iconData, false);
                     EventManager.get().post(new WalletConfigChangedEvent(wallet));

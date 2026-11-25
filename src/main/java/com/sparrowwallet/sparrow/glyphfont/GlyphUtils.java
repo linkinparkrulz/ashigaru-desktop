@@ -3,7 +3,6 @@ package com.sparrowwallet.sparrow.glyphfont;
 import com.sparrowwallet.drongo.wallet.Payment;
 import com.sparrowwallet.drongo.wallet.WalletTransaction;
 import com.sparrowwallet.sparrow.AppServices;
-import com.sparrowwallet.sparrow.control.TransactionDiagram;
 import org.controlsfx.glyphfont.FontAwesome;
 import org.controlsfx.glyphfont.Glyph;
 
@@ -21,8 +20,6 @@ public class GlyphUtils {
             return getBadbankGlyph();
         } else if(payment.getType().equals(Payment.Type.WHIRLPOOL_FEE)) {
             return getWhirlpoolFeeGlyph();
-        } else if(payment instanceof TransactionDiagram.AdditionalPayment) {
-            return ((TransactionDiagram.AdditionalPayment)payment).getOutputGlyph(walletTx);
         } else if(walletTx.getToWallet(AppServices.get().getOpenWallets().keySet(), payment) != null) {
             return getDepositGlyph();
         } else if(walletTx.isDuplicateAddress(payment)) {

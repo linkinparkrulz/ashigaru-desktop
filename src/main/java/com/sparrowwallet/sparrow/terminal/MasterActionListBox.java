@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.sparrowwallet.sparrow.AppController.JPACKAGE_APP_PATH;
+import java.util.Objects;
 import static com.sparrowwallet.sparrow.AppServices.showErrorDialog;
 import static java.util.Objects.nonNull;
 
@@ -160,7 +160,7 @@ public class MasterActionListBox extends Panel {
     }
 
     private static String getPath() {
-        final String jPackageAppPath = System.getProperty(JPACKAGE_APP_PATH);
+        final String jPackageAppPath = System.getProperty("jpackage.app-path");
         if(nonNull(jPackageAppPath)) {
             return jPackageAppPath;
         } else {

@@ -14,7 +14,6 @@ import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.WalletTabData;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.Storage;
-import com.sparrowwallet.sparrow.soroban.Soroban;
 import javafx.application.Platform;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
@@ -231,9 +230,6 @@ public class WhirlpoolServices {
         whirlpool.setScode(decryptedWallet.getMasterMixConfig().getScode());
         whirlpool.setHDWallet(walletId, decryptedWallet);
         whirlpool.setResyncMixesDone(true);
-
-        Soroban soroban = AppServices.getSorobanServices().getSoroban(walletId);
-        soroban.setHDWallet(decryptedWallet);
 
         List<Wallet> childWallets = new ArrayList<>();
         for (StandardAccount whirlpoolAccount : StandardAccount.WHIRLPOOL_ACCOUNTS) {

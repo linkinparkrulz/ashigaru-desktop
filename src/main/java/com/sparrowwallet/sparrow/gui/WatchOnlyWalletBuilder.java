@@ -12,7 +12,6 @@ import com.sparrowwallet.drongo.wallet.Keystore;
 import com.sparrowwallet.drongo.wallet.KeystoreSource;
 import com.sparrowwallet.drongo.wallet.Wallet;
 import com.sparrowwallet.drongo.wallet.WalletModel;
-import com.sparrowwallet.sparrow.wallet.KeystoreController;
 
 /**
  * Builds a watch-only wallet from what a user pastes into the watch-only import: a bare account extended public key
@@ -21,6 +20,7 @@ import com.sparrowwallet.sparrow.wallet.KeystoreController;
  */
 public final class WatchOnlyWalletBuilder {
     public static final String NATIVE_SEGWIT_ONLY = "Only Native SegWit (zpub / BIP84) accounts are supported.";
+    public static final String DEFAULT_WATCH_ONLY_FINGERPRINT = "00000000";
 
     private static final int ACCOUNT_DEPTH = 3;
 
@@ -92,7 +92,7 @@ public final class WatchOnlyWalletBuilder {
         Keystore keystore = new Keystore();
         keystore.setSource(KeystoreSource.SW_WATCH);
         keystore.setWalletModel(WalletModel.SPARROW);
-        keystore.setKeyDerivation(new KeyDerivation(KeystoreController.DEFAULT_WATCH_ONLY_FINGERPRINT, getAccountDerivationPath(xpub)));
+        keystore.setKeyDerivation(new KeyDerivation(DEFAULT_WATCH_ONLY_FINGERPRINT, getAccountDerivationPath(xpub)));
         keystore.setExtendedPublicKey(xpub);
         wallet.makeLabelsUnique(keystore);
         wallet.getKeystores().add(keystore);
@@ -126,7 +126,7 @@ public final class WatchOnlyWalletBuilder {
             String path = keyDerivation == null ? null : keyDerivation.getDerivationPath();
             if(fingerprint == null || path == null) {
                 keystore.setKeyDerivation(new KeyDerivation(
-                        fingerprint == null ? KeystoreController.DEFAULT_WATCH_ONLY_FINGERPRINT : fingerprint,
+                        fingerprint == null ? DEFAULT_WATCH_ONLY_FINGERPRINT : fingerprint,
                         path == null ? getAccountDerivationPath(keystore.getExtendedPublicKey()) : path));
             }
         }

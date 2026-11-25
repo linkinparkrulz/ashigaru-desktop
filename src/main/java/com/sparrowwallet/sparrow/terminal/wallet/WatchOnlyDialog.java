@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 import static com.sparrowwallet.drongo.wallet.StandardAccount.WHIRLPOOL_POSTMIX;
-import static com.sparrowwallet.sparrow.wallet.KeystoreController.DEFAULT_WATCH_ONLY_FINGERPRINT;
+import static com.sparrowwallet.sparrow.gui.WatchOnlyWalletBuilder.DEFAULT_WATCH_ONLY_FINGERPRINT;
 
 public class WatchOnlyDialog extends NewWalletDialog {
     private static final Logger log = LoggerFactory.getLogger(WatchOnlyDialog.class);

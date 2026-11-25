@@ -80,75 +80,7 @@ public class MnemonicKeystorePane extends TitledDescriptionPane {
             });
             enterMnemonicButton.getItems().add(item);
         }
-        enterMnemonicButton.getItems().add(new SeparatorMenuItem());
-        MenuItem gridItem = new MenuItem("Border Wallets Grid...");
-        gridItem.setOnAction(event -> {
-            showGrid();
-        });
-        enterMnemonicButton.getItems().add(gridItem);
-
-        MenuItem scanItem = new MenuItem("Scan QR...");
-        scanItem.setOnAction(event -> {
-            scanQR();
-        });
-        enterMnemonicButton.getItems().add(scanItem);
         enterMnemonicButton.managedProperty().bind(enterMnemonicButton.visibleProperty());
-    }
-
-    protected void showGrid() {
-        MnemonicGridDialog mnemonicGridDialog = new MnemonicGridDialog();
-        mnemonicGridDialog.initOwner(this.getScene().getWindow());
-        Optional<List<String>> optWords = mnemonicGridDialog.showAndWait();
-        if(optWords.isPresent()) {
-            List<String> words = optWords.get();
-            defaultWordSizeProperty.set(words.size() + 1);
-            setContent(getMnemonicWordsEntry(words.size() + 1, true, true));
-            setExpanded(true);
-
-            for(int i = 0; i < wordsPane.getChildren().size(); i++) {
-                WordEntry wordEntry = (WordEntry)wordsPane.getChildren().get(i);
-                if(i < words.size()) {
-                    wordEntry.getEditor().setText(words.get(i));
-                    wordEntry.getEditor().setEditable(false);
-                } else {
-                    ScheduledService<Void> service = new ScheduledService<>() {
-                        @Override
-                        protected Task<Void> createTask() {
-                            return new Task<>() {
-                                @Override
-                                protected Void call() {
-                                    return null;
-                                }
-                            };
-                        }
-                    };
-                    service.setDelay(Duration.millis(500));
-                    service.setOnSucceeded(event1 -> {
-                        service.cancel();
-                        Platform.runLater(() -> wordEntry.getEditor().requestFocus());
-                    });
-                    service.start();
-                }
-            }
-        }
-    }
-
-    protected void scanQR() {
-        QRScanDialog qrScanDialog = new QRScanDialog();
-        qrScanDialog.initOwner(this.getScene().getWindow());
-        Optional<QRScanDialog.Result> optionalResult = qrScanDialog.showAndWait();
-        if(optionalResult.isPresent()) {
-            QRScanDialog.Result result = optionalResult.get();
-            if(result.seed != null) {
-                showWordList(result.seed);
-                Platform.runLater(() -> validLabel.requestFocus());
-            } else if(result.exception != null) {
-                log.error("Error scanning QR", result.exception);
-                showErrorDialog("Error scanning QR", result.exception.getMessage());
-            } else {
-                AppServices.showErrorDialog("Invalid QR Code", "Cannot parse QR code into a seed.");
-            }
-        }
     }
 
     protected void showWordList(DeterministicSeed seed) {

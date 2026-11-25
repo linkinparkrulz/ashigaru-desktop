@@ -1131,28 +1131,6 @@ public class ServerPreferencesController extends PreferencesDetailController {
     }
 
     @Subscribe
-    public void bwtStatus(BwtStatusEvent event) {
-        if(!(event instanceof BwtSyncStatusEvent)) {
-            testResults.appendText("\n" + event.getStatus());
-        }
-        if(event instanceof BwtReadyStatusEvent) {
-            editConnection.setDisable(false);
-        }
-    }
-
-    @Subscribe
-    public void bwtSyncStatus(BwtSyncStatusEvent event) {
-        editConnection.setDisable(false);
-        if(connectionService != null && connectionService.isRunning() && event.getProgress() < 100) {
-            DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
-            testResults.appendText("\nThe connection to the Bitcoin Core node was successful, but it is still syncing and cannot be used yet.");
-            testResults.appendText("\nCurrently " + event.getProgress() + "% completed to date " + dateFormat.format(event.getTip()));
-            testConnection.setGraphic(getGlyph(FontAwesome5.Glyph.QUESTION_CIRCLE, null));
-            connectionService.cancel();
-        }
-    }
-
-    @Subscribe
     public void torStatus(TorStatusEvent event) {
         Platform.runLater(() -> {
             if((torService != null && torService.isRunning()) || restartingTor) {

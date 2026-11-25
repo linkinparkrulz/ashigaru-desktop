@@ -6,7 +6,6 @@ import com.sparrowwallet.sparrow.UnitFormat;
 import com.sparrowwallet.sparrow.Mode;
 import com.sparrowwallet.sparrow.Theme;
 import com.sparrowwallet.sparrow.control.QRDensity;
-import com.sparrowwallet.sparrow.control.WebcamResolution;
 import com.sparrowwallet.sparrow.net.*;
 import com.sparrowwallet.sparrow.wallet.FeeRatesSelection;
 import com.sparrowwallet.sparrow.wallet.OptimizationStrategy;
@@ -82,7 +81,6 @@ public class Config {
     private int enumerateHwPeriod = ENUMERATE_HW_PERIOD_SECS;
     private QRDensity qrDensity;
     private Boolean hdCapture;
-    private WebcamResolution webcamResolution;
     private boolean mirrorCapture = true;
     private boolean useZbar = true;
     private String webcamDevice;
@@ -538,15 +536,6 @@ public class Config {
 
     public boolean isUseZbar() {
         return useZbar;
-    }
-
-    public WebcamResolution getWebcamResolution() {
-        return webcamResolution;
-    }
-
-    public void setWebcamResolution(WebcamResolution webcamResolution) {
-        this.webcamResolution = webcamResolution;
-        flush();
     }
 
     public boolean isMirrorCapture() {

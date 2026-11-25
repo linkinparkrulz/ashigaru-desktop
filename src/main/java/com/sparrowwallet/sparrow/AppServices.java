@@ -20,13 +20,11 @@ import com.sparrowwallet.drongo.protocol.ScriptType;
 import com.sparrowwallet.drongo.protocol.Transaction;
 import com.sparrowwallet.drongo.psbt.PSBT;
 import com.sparrowwallet.drongo.uri.BitcoinURI;
-import com.sparrowwallet.sparrow.control.TrayManager;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.*;
 import com.sparrowwallet.sparrow.net.*;
 import com.sparrowwallet.sparrow.net.update.UpdateCheckService;
 import com.sparrowwallet.sparrow.net.dojo.DojoNodeDiscovery;
-import com.sparrowwallet.sparrow.soroban.SorobanServices;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
@@ -74,8 +72,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-import static com.sparrowwallet.sparrow.control.DownloadVerifierDialog.*;
-
 public class AppServices {
     private static final Logger log = LoggerFactory.getLogger(AppServices.class);
 
@@ -102,8 +98,6 @@ public class AppServices {
 
     private final WhirlpoolServices whirlpoolServices = new WhirlpoolServices();
 
-    private final SorobanServices sorobanServices = new SorobanServices();
-
     private InteractionServices interactionServices;
 
     private static HttpClientService httpClientService;
@@ -114,8 +108,6 @@ public class AppServices {
 
     private static final Set<File> reopeningWalletFiles = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
-    private TrayManager trayManager;
-
     private static Image windowIcon;
 
     private static final BooleanProperty onlineProperty = new SimpleBooleanProperty(false);
@@ -123,8 +115,6 @@ public class AppServices {
     private ExchangeSource.RatesService ratesService;
 
     private ElectrumServer.ConnectionService connectionService;
-
-    private Hwi.ScheduledEnumerateService deviceEnumerateService;
 
     private UpdateCheckService updateCheckService;
 
@@ -190,7 +180,6 @@ public class AppServices {
         this.interactionServices = interactionServices;
         EventManager.get().register(this);
         EventManager.get().register(whirlpoolServices);
-        EventManager.get().register(sorobanServices);
     }
 
     public void start() {
@@ -520,25 +509,6 @@ public class AppServices {
         }
     }
 
-    private Hwi.ScheduledEnumerateService createDeviceEnumerateService() {
-        Hwi.ScheduledEnumerateService enumerateService = new Hwi.ScheduledEnumerateService(null);
-        enumerateService.setPeriod(Duration.seconds(Config.get().getEnumerateHwPeriod()));
-        enumerateService.setOnSucceeded(workerStateEvent -> {
-            List<Device> devices = enumerateService.getValue();
-
-            //Null devices are returned if the app is currently prompting for a pin. Otherwise, the enumerate clears the pin screen
-            if(devices != null) {
-                //If another instance of HWI is currently accessing the usb interface, HWI returns empty device models. Ignore this run if that happens
-                List<Device> validDevices = devices.stream().filter(device -> device.getModel() != null).collect(Collectors.toList());
-                if(validDevices.size() == devices.size()) {
-                    Platform.runLater(() -> EventManager.get().post(new UsbDeviceEvent(devices)));
-                }
-            }
-        });
-
-        return enumerateService;
-    }
-
     private TorService createTorService() {
         TorService torService = new TorService();
         torService.setPeriod(Duration.hours(1000));
@@ -649,10 +619,6 @@ public class AppServices {
         return get().whirlpoolServices;
     }
 
-    public static SorobanServices getSorobanServices() {
-        return get().sorobanServices;
-    }
-
     public static InteractionServices getInteractionServices() {
         return get().interactionServices;
     }
@@ -686,30 +652,6 @@ public class AppServices {
                 (Config.get().getProxyServer() == null || Config.get().getProxyServer().isEmpty() || !Config.get().isUseProxy() ? null : HostAndPort.fromString(Config.get().getProxyServer()));
     }
 
-    public static AppController newAppWindow(Stage stage) {
-        try {
-            FXMLLoader appLoader = new FXMLLoader(AppServices.class.getResource("app.fxml"));
-            Parent root = appLoader.load();
-            AppController appController = appLoader.getController();
-
-            Scene scene = new Scene(root);
-            scene.getStylesheets().add(AppServices.class.getResource("app.css").toExternalForm());
-
-            stage.setTitle("Sparrow");
-            stage.setMinWidth(650);
-            stage.setMinHeight(708);
-            stage.setScene(scene);
-            stage.getIcons().add(getWindowIcon());
-
-            appController.initializeView();
-            stage.show();
-            return appController;
-        } catch(IOException e) {
-            log.error("Could not load app FXML", e);
-            throw new IllegalStateException(e);
-        }
-    }
-
     private static Image getWindowIcon() {
         if(windowIcon == null) {
             windowIcon = new Image(AshigaruTerminal.class.getResourceAsStream("/image/Ashigaru_Terminal_Logo_Circle.png"));
@@ -733,15 +675,6 @@ public class AppServices {
 
     public Application getApplication() {
         return application;
-    }
-
-    public void minimizeStage(Stage stage) {
-        if(trayManager == null) {
-            trayManager = new TrayManager();
-        }
-
-        trayManager.addStage(stage);
-        stage.hide();
     }
 
     public static void onEscapePressed(Scene scene, Runnable runnable) {
@@ -1241,8 +1174,6 @@ public class AppServices {
             for(File file : openFiles) {
                 if(isWalletFile(file)) {
                     EventManager.get().post(new RequestWalletOpenEvent(openWindow, file));
-                } else if(isVerifyDownloadFile(file)) {
-                    EventManager.get().post(new RequestVerifyDownloadEvent(openWindow, file));
                 } else {
                     EventManager.get().post(new RequestTransactionOpenEvent(openWindow, file));
                 }
@@ -1561,35 +1492,6 @@ public class AppServices {
                 Config.get().setRecentWalletFiles(Config.get().isLoadRecentWallets() ? walletFiles : Collections.emptyList());
             }
         });
-
-        boolean usbWallet = false;
-        for(WalletTabData walletTabData : allWallets) {
-            Wallet wallet = walletTabData.getWallet();
-            Storage storage = walletTabData.getStorage();
-
-            if(Interface.get() == Interface.DESKTOP && (!storage.getWalletFile().exists() || wallet.containsSource(KeystoreSource.HW_USB) || CardApi.isReaderAvailable())) {
-                usbWallet = true;
-
-                if(deviceEnumerateService == null) {
-                    deviceEnumerateService = createDeviceEnumerateService();
-                }
-
-                if(deviceEnumerateService.getState() == Worker.State.CANCELLED) {
-                    deviceEnumerateService.reset();
-                }
-
-                if(!deviceEnumerateService.isRunning()) {
-                    deviceEnumerateService.start();
-                }
-
-                break;
-            }
-        }
-
-        if(!usbWallet && deviceEnumerateService != null && deviceEnumerateService.isRunning()) {
-            deviceEnumerateService.cancel();
-            EventManager.get().post(new UsbDeviceEvent(Collections.emptyList()));
-        }
     }
 
     @Subscribe
@@ -1611,46 +1513,6 @@ public class AppServices {
                 stopTorForOffline();
             }
         });
-    }
-
-    @Subscribe
-    public void walletAddressesChanged(WalletAddressesChangedEvent event) {
-        restartBwt(event.getWallet());
-    }
-
-    @Subscribe
-    public void walletOpening(WalletOpeningEvent event) {
-        if(Config.get().getServerType() == ServerType.BITCOIN_CORE) {
-            Platform.runLater(() -> restartBwt(event.getWallet()));
-        }
-    }
-
-    @Subscribe
-    public void childWalletsAdded(ChildWalletsAddedEvent event) {
-        if(event.getChildWallets().stream().anyMatch(Wallet::isNested)) {
-            restartBwt(event.getWallet());
-        }
-    }
-
-    @Subscribe
-    public void walletHistoryChanged(WalletHistoryChangedEvent event) {
-        if(Config.get().getServerType() == ServerType.BITCOIN_CORE && event.getNestedHistoryChangedNodes().stream().anyMatch(node -> node.getTransactionOutputs().isEmpty())) {
-            Platform.runLater(() -> restartBwt(event.getWallet()));
-        }
-    }
-
-    private void restartBwt(Wallet wallet) {
-        if(Config.get().getServerType() == ServerType.BITCOIN_CORE && connectionService != null && connectionService.isConnectionRunning() && wallet.isValid()) {
-            connectionService.cancel();
-        }
-    }
-
-    @Subscribe
-    public void bwtShutdown(BwtShutdownEvent event) {
-        if(onlineProperty().get() && !connectionService.isRunning()) {
-            connectionService.reset();
-            connectionService.start();
-        }
     }
 
     @Subscribe

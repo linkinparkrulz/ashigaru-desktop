@@ -1119,10 +1119,6 @@ public class ElectrumServer {
         private boolean firstCall = true;
         private Thread reader;
         private long feeRatesRetrievedAt;
-        private final Bwt bwt = new Bwt();
-        private final ReentrantLock bwtStartLock = new ReentrantLock();
-        private final Condition bwtStartCondition = bwtStartLock.newCondition();
-        private Throwable bwtStartException;
         private boolean shutdown;
 
         public ConnectionService() {
@@ -1141,63 +1137,13 @@ public class ElectrumServer {
 
                     if(Config.get().getServerType() == ServerType.BITCOIN_CORE) {
                         try {
-                            if(Config.get().isUseLegacyCoreWallet()) {
-                                throw new CormorantBitcoindException("Legacy wallet configured");
-                            }
                             if(ElectrumServer.cormorant == null) {
                                 ElectrumServer.cormorant = new Cormorant(subscribe);
                                 ElectrumServer.coreElectrumServer = cormorant.start();
                             }
                         } catch(CormorantBitcoindException e) {
                             ElectrumServer.cormorant = null;
-                            log.debug("Cannot start cormorant: " + e.getMessage() + ". Starting BWT...");
-
-                            Bwt.initialize();
-
-                            if(!bwt.isRunning()) {
-                                Bwt.ConnectionService bwtConnectionService = bwt.getConnectionService(subscribe);
-                                bwtStartException = null;
-                                bwtConnectionService.setOnFailed(workerStateEvent -> {
-                                    log.error("Failed to start BWT", workerStateEvent.getSource().getException());
-                                    bwtStartException = workerStateEvent.getSource().getException();
-                                    try {
-                                        bwtStartLock.lock();
-                                        bwtStartCondition.signal();
-                                    } finally {
-                                        bwtStartLock.unlock();
-                                    }
-                                });
-                                Platform.runLater(bwtConnectionService::start);
-
-                                try {
-                                    bwtStartLock.lock();
-                                    bwtStartCondition.await();
-
-                                    if(!bwt.isReady()) {
-                                        if(bwtStartException != null) {
-                                            Matcher walletLoadingMatcher = RPC_WALLET_LOADING_PATTERN.matcher(bwtStartException.getMessage());
-                                            if(bwtStartException.getMessage().contains("Wallet file not specified")) {
-                                                throw new ServerException("Bitcoin Core requires Multi-Wallet to be enabled in the Server Preferences");
-                                            } else if(bwtStartException.getMessage().contains("Upgrade Bitcoin Core to v24 or later for Taproot wallet support")) {
-                                                throw new ServerException(bwtStartException.getMessage());
-                                            } else if(bwtStartException.getMessage().contains("Wallet file verification failed. Refusing to load database.")) {
-                                                throw new ServerException("Bitcoin Core wallet file verification failed. Try restarting Bitcoin Core.");
-                                            } else if(bwtStartException.getMessage().contains("This error could be caused by pruning or data corruption")) {
-                                                throw new ServerException("Scanning failed. Bitcoin Core is pruned to a date after the wallet birthday.");
-                                            } else if(walletLoadingMatcher.matches() && walletLoadingMatcher.group(1) != null) {
-                                                throw new ServerException(walletLoadingMatcher.group(1));
-                                            }
-                                        }
-
-                                        throw new ServerException("Check if Bitcoin Core is running, and the authentication details are correct.");
-                                    }
-                                } catch(InterruptedException ex) {
-                                    Thread.currentThread().interrupt();
-                                    return null;
-                                } finally {
-                                    bwtStartLock.unlock();
-                                }
-                            }
+                            throw new ServerException("Could not connect to Bitcoin Core: " + e.getMessage(), e);
                         }
                     }
 
@@ -1273,15 +1219,15 @@ public class ElectrumServer {
         }
 
         public boolean isConnecting() {
-            return isRunning() && firstCall && !shutdown && (Config.get().getServerType() != ServerType.BITCOIN_CORE || (cormorant != null && !cormorant.isRunning()) || (bwt.isRunning() && !bwt.isReady()));
+            return isRunning() && firstCall && !shutdown && (Config.get().getServerType() != ServerType.BITCOIN_CORE || (cormorant != null && !cormorant.isRunning()));
         }
 
         public boolean isConnectionRunning() {
-            return isRunning() && (Config.get().getServerType() != ServerType.BITCOIN_CORE || bwt.isRunning());
+            return isRunning() && (Config.get().getServerType() != ServerType.BITCOIN_CORE || (cormorant != null && cormorant.isRunning()));
         }
 
         public boolean isConnected() {
-            return isRunning() && !firstCall && (Config.get().getServerType() != ServerType.BITCOIN_CORE || (cormorant != null && cormorant.isRunning()) || (bwt.isRunning() && bwt.isReady()));
+            return isRunning() && !firstCall && (Config.get().getServerType() != ServerType.BITCOIN_CORE || (cormorant != null && cormorant.isRunning()));
         }
 
         public boolean isShutdown() {
@@ -1312,19 +1258,7 @@ public class ElectrumServer {
                 ElectrumServer.coreElectrumServer = null;
             }
 
-            if(Config.get().getServerType() == ServerType.BITCOIN_CORE && bwt.isRunning()) {
-                Bwt.DisconnectionService disconnectionService = bwt.getDisconnectionService();
-                disconnectionService.setOnSucceeded(workerStateEvent -> {
-                    ElectrumServer.coreElectrumServer = null;
-                    if(subscribe) {
-                        EventManager.get().post(new BwtShutdownEvent());
-                    }
-                });
-                disconnectionService.setOnFailed(workerStateEvent -> {
-                    log.error("Failed to stop BWT", workerStateEvent.getSource().getException());
-                });
-                disconnectionService.start();
-            } else if(subscribe) {
+            if(subscribe) {
                 Platform.runLater(() -> EventManager.get().post(new DisconnectionEvent()));
             }
         }
@@ -1339,35 +1273,6 @@ public class ElectrumServer {
         @Override
         public void uncaughtException(Thread t, Throwable e) {
             log.error("Uncaught error in ConnectionService", e);
-        }
-
-        @Subscribe
-        public void bwtElectrumReadyStatus(BwtElectrumReadyStatusEvent event) {
-            if(this.isRunning()) {
-                ElectrumServer.coreElectrumServer = new Server(Protocol.TCP.toUrlString(HostAndPort.fromString(event.getElectrumAddr())));
-            }
-        }
-
-        @Subscribe
-        public void bwtReadyStatus(BwtReadyStatusEvent event) {
-            if(this.isRunning()) {
-                try {
-                    bwtStartLock.lock();
-                    bwtStartCondition.signal();
-                } finally {
-                    bwtStartLock.unlock();
-                }
-            }
-        }
-
-        @Subscribe
-        public void bwtShutdown(BwtShutdownEvent event) {
-            try {
-                bwtStartLock.lock();
-                bwtStartCondition.signal();
-            } finally {
-                bwtStartLock.unlock();
-            }
         }
 
         @Subscribe

@@ -8,7 +8,6 @@ open module com.sparrowwallet.sparrow {
     requires javafx.graphics;
     requires javafx.swing;
     requires org.controlsfx.controls;
-    requires org.fxmisc.richtext;
     requires tornadofx.controls;
     requires com.sparrowwallet.drongo;
     requires com.google.common;
@@ -31,30 +30,16 @@ open module com.sparrowwallet.sparrow {
     requires org.flywaydb.core;
     requires com.zaxxer.hikari;
     requires com.h2database;
-    requires com.sparrowwallet.hummingbird;
-    requires org.fxmisc.flowless;
-    requires openpnp.capture.java;
     requires centerdevice.nsmenufx;
     requires com.beust.jcommander;
     requires jul.to.slf4j;
-    requires net.sourceforge.javacsv;
-    requires org.reactfx.reactfx;
-    requires dev.bwt.jni;
     requires com.sparrowwallet.nightjar;
     requires io.reactivex.rxjava2;
     requires io.reactivex.rxjava2fx;
     requires org.apache.commons.lang3;
-    requires org.apache.commons.compress;
     requires net.sourceforge.streamsupport;
-    requires co.nstant.in.cbor;
-    requires com.github.librepdf.openpdf;
     requires com.googlecode.lanterna;
-    requires net.coobird.thumbnailator;
-    requires com.github.hervegirod;
     requires com.sparrowwallet.toucan;
-    requires com.sparrowwallet.bokmakierie;
-    requires java.smartcardio;
-    requires com.jcraft.jzlib;
     requires com.sun.jna;
 
     //JNA builds the native swap engine binding as a proxy of this interface
