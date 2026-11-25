@@ -17,7 +17,8 @@ digest.
 ## Nikkyou Sans (splash typeface)
 
 - **Files:** `src/main/resources/font/NikkyouSans.ttf`, `src/main/resources/font/NikkyouSans-read.txt`
-- **Used by:** the splash screen title and subtitle (`.splash-title`, `.splash-subtitle`)
+- **Used by:** screen titles and key headings (`.app-title`, `.welcome-title`, `.wizard-title`, `.splash-title`,
+  `.splash-subtitle`, `.verifier-hero-title`, `.tour-step-title`, `.swaps-title`, `.swaps-step-title`)
 - **Copyright:** `Copyright (c) 2017, Dare-Demo Iie, Japan` (read from the font's name table)
 - **Author:** daredemotypo, released 2017
 - **License:** none stated. The archive carries no license file, and the font embeds no License
@@ -34,6 +35,14 @@ flags the font, **not** an explicit grant of redistribution rights. Third-party 
 it as free for commercial use with redistribution permitted, but that wording does not originate
 with the author. Anyone redistributing this project should be aware of that distinction, and it
 would be worth obtaining explicit permission or an OFL release from the author.
+
+## Roboto
+
+- **Files:** `src/main/resources/font/Roboto-Regular.ttf`, `src/main/resources/font/Roboto-Medium.ttf`,
+  `src/main/resources/font/Roboto-Bold.ttf`
+- **Used by:** the interface face for all text that is not a title or data, loaded in `AshigaruGui`
+- **Source:** Google Fonts — <https://fonts.google.com/specimen/Roboto>
+- **License:** Apache License 2.0 — <https://www.apache.org/licenses/LICENSE-2.0>
 
 ## Roboto Mono
 

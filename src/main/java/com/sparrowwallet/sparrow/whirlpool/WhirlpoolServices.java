@@ -124,9 +124,11 @@ public class WhirlpoolServices {
 
             startupService.setPeriod(Duration.minutes(2));
             startupService.setOnSucceeded(workerStateEvent -> {
+                CoordinatorStatus.get().startupSucceeded();
                 startupService.cancel();
             });
             startupService.setOnFailed(workerStateEvent -> {
+                CoordinatorStatus.get().startupFailed();
                 Throwable exception = workerStateEvent.getSource().getException();
                 while (exception.getCause() != null) {
                     exception = exception.getCause();
@@ -143,6 +145,15 @@ public class WhirlpoolServices {
             });
             startupService.start();
         }
+    }
+
+    /** Whether any open wallet has Whirlpool started, for the top bar's coordinator light */
+    public boolean anyStarted() {
+        return whirlpoolMap.values().stream().anyMatch(Whirlpool::isStarted);
+    }
+
+    public boolean anyStarting() {
+        return whirlpoolMap.values().stream().anyMatch(Whirlpool::isStarting);
     }
 
     private void stopAllWhirlpool() {

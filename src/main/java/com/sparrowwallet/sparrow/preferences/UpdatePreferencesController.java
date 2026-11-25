@@ -1,5 +1,7 @@
 package com.sparrowwallet.sparrow.preferences;
 
+import com.sparrowwallet.sparrow.gui.Icons;
+import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.sparrow.AppServices;
 import com.sparrowwallet.sparrow.AshigaruTerminal;
 import com.sparrowwallet.sparrow.EventManager;
@@ -292,7 +294,9 @@ public class UpdatePreferencesController extends PreferencesDetailController {
     }
 
     private void markStep(Label label, ReleaseVerifier.Step step, boolean passed) {
-        label.setText((passed ? "✓  " : "✗  ") + step.getDescription());
+        label.setText(step.getDescription());
+        label.setGraphic(Icons.of(passed ? FontAwesome5.Glyph.CHECK : FontAwesome5.Glyph.TIMES, 12));
+        label.setGraphicTextGap(11);
         label.getStyleClass().removeAll("verifier-step-pass", "verifier-step-fail");
         label.getStyleClass().add(passed ? "verifier-step-pass" : "verifier-step-fail");
     }
@@ -303,7 +307,9 @@ public class UpdatePreferencesController extends PreferencesDetailController {
         for(int i = 0; i < all.length; i++) {
             Label label = steps.get(i);
             label.getStyleClass().removeAll("verifier-step-pass", "verifier-step-fail");
-            label.setText("•  " + all[i].getDescription());
+            label.setText(all[i].getDescription());
+            label.setGraphic(Icons.of(FontAwesome5.Glyph.CIRCLE, 6));
+            label.setGraphicTextGap(14);
         }
 
         setVisible(resultBox, false);

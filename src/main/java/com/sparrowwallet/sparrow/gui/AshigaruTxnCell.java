@@ -110,6 +110,16 @@ public class AshigaruTxnCell extends ListCell<AshigaruWalletController.TxnRow> {
         root.setMaxWidth(Double.MAX_VALUE);
     }
 
+    private final Label outsideTorTag = outsideTorTag();
+
+    static Label outsideTorTag() {
+        Label tag = new Label("OUTSIDE TOR");
+        tag.getStyleClass().add("outside-tor-tag");
+        tag.setMinWidth(Region.USE_PREF_SIZE);
+        tag.setTooltip(new javafx.scene.control.Tooltip("These links open in your browser, which does not use Ashigaru's Tor connection."));
+        return tag;
+    }
+
     private void appendTxLinks(HBox line, String txid) {
         if (txid == null || txid.isEmpty()) {
             return;
@@ -121,6 +131,11 @@ public class AshigaruTxnCell extends ListCell<AshigaruWalletController.TxnRow> {
         if (!Config.get().isAmIExposedDisabled()) {
             exposureLink.setOnAction(e -> AppServices.openAmIExposed(txid));
             line.getChildren().add(exposureLink);
+        }
+        //Both links open the system browser, which does not use the app's Tor connection. Say so on
+        //the row; the click itself stops at ExposureDialogs.openOutsideTor.
+        if (!Config.get().isBlockExplorerDisabled() || !Config.get().isAmIExposedDisabled()) {
+            line.getChildren().add(outsideTorTag);
         }
     }
 

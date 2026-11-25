@@ -1,3 +1,294 @@
+# Unreleased: swaps
+
+The swap screens are reworked so that the important facts are easier to read and harder to
+misunderstand, and the interface typeface changes across the whole app.
+
+## Swaps
+
+- **A maker that refuses a swap is left out of the offers for that coin, and the stopped swap says
+  why.** A maker can list a range that includes your coin and still turn it down: its real buy limit
+  may be higher than it advertises (0.01 BTC for a coin of 0.00035 BTC), the anti-spam deposit on a
+  small coin may come to less than its minimum, or it may fail on its own side ("Seller encountered a
+  problem"). The engine retried each of these for about two minutes and stopped with the engine's
+  wording, and the same maker was on the list again. Ashigaru now reads these refusals, explains them
+  in plain words (nothing was locked; choose another maker), and leaves that maker out of the offers
+  for coins it would refuse again until Ashigaru is closed. A maker with a fault of its own is left
+  out for 15 minutes. If every maker refuses a very small coin, it is too small to swap.
+- **The swap engine is eigenwallet 5.0.4.** Makers are moving to version 5, which changed the swap
+  protocol: both sides must run it, so a version 4 engine could not swap with them. Ashigaru now
+  can, and offers from makers still on version 4 are left out and counted in the "not shown" line.
+  Version 5 makes a taker prove, while the swap is set up, that it controls the coin. Ashigaru
+  therefore asks for your wallet password **once, when you press Review offer**, signs that proof and
+  the lock together, and wipes the keys as soon as the lock is signed (or after 15 minutes if the
+  swap fails first). Nothing is published until you approve the final terms, which is asked
+  separately. Other protocol changes you will notice: the cancel timelock is 30 blocks (about 5
+  hours instead of 4), and the final approval now closes after about 90 seconds instead of 3
+  minutes, shown as a countdown. A swap that was still being set up when Ashigaru closed is
+  abandoned safely, with nothing locked. Finish or refund any swap started on the previous version
+  before updating.
+- **Ashigaru warns you when the maker's final price is worse than the offer you chose, and refuses
+  it when it is much worse.** Between the offer you click and the final approval, the maker answers
+  with its real terms, and they can be worse. As in eigenwallet 5.0.4, if they give you more than 2%
+  less Monero than the offer you chose, a "Price changed" window shows both amounts and the
+  difference, and the swap goes on only if you accept the worse price; **Reject swap** is the default
+  answer, and the window counts down with the approval time and closes as a rejection. If they give
+  more than 5% less Monero, or the maker changed its refund policy (a full refund that became a
+  deposit, or a different deposit share), the swap is refused without asking, with the reason on the
+  dashboard. Nothing is locked in any of these cases, and an accepted worse price is shown again on
+  the final review. The price and refund terms of the chosen offer are also handed to the engine, so
+  its own 5% check runs as a second line of defence. Makers on 5.0.4 no longer quote amounts whose
+  anti-spam deposit is too small, which is the refusal many small coins met before.
+- **The engine does not turn on eigenwallet's new on-chain backup (Apollo).** 5.0.3 added it as an
+  optional feature; once it has run, older versions cannot open the swap database. Ashigaru never
+  enables it. As before, finish or refund running swaps before updating.
+- **A Bitcoin server on your own network works with swaps.** The swap engine used to reach every
+  Electrum server through Tor, and Tor refuses private addresses, so a Dojo or Electrum server at
+  192.168.x.x, on this computer or at a `.local` name could never publish the swap's lock: the swap
+  stopped right after you approved. Such a server is now reached directly (nothing leaves your own
+  network); any other server still goes through Tor only. Starting a swap now also checks that the
+  engine can reach the Bitcoin server, as it already did for the Monero nodes, and says so before
+  anything is asked of you if it cannot.
+- **A swap that stopped while publishing the lock no longer says your BTC is locked.** The engine
+  saves the signed lock before trying to publish it, so after a failure it cannot say whether the lock
+  got out. The dashboard, the notice above the offers and the stop message now say exactly that, point
+  you to Badbank (if the coin is still there, nothing was locked), and do not show a Cancel and refund
+  that cannot open.
+- **Bug reports say what the swap engine is doing.** If the engine cannot be loaded (for example on a Mac
+  older than the build supports), the reason is now written to the swap engine's log, so the Logs
+  screen shows the Swap engine source and the saved report carries it. The report's header also says
+  whether swaps are on, whether the engine loaded and running, and what the Swaps screen reports,
+  with the home folder shortened to `~`.
+- **The final review is a proper screen.** The approval is a panel in the Swaps screen instead of a
+  dialog. It leads with what you send and receive (the XMR to twelve decimals), the destination
+  address, and the maker's anti-spam deposit in its own callout, then the recovery terms, with the
+  fee breakdown and the full address below. Approve and Reject stay in view under the scrolling body,
+  and the real approval deadline shows as a countdown. If the Swaps screen is not showing when the
+  request arrives, or you leave it, the same decision is asked in a dialog, with only the time that is
+  left.
+- **A dashboard replaces the progress card.** It says where your funds are, whether you need to do
+  anything, whether you can close Ashigaru, what happens if the swap stalls and when recovery
+  opens. Five named stages (Review and authorize, Lock BTC, Verify the maker's XMR, Claim XMR,
+  Complete) replace the percentage bar, which read as nearly finished during waits of unknown
+  length. Protocol steps and identifiers are in a collapsed section, and a finished swap shows a
+  receipt.
+- **Recovery says what actually happens.** A running swap is cancelled and refunded by Ashigaru
+  itself once the timelock allows; you only need to keep Ashigaru running. Only a swap that is not
+  running, after its cancel timelock has expired, has a Cancel and refund button, and before that
+  the button is shown disabled with when it opens. The countdown is worked out from the engine's
+  timelock events, and every time is shown as "about". Refunds are stated as estimates ("up to",
+  minus network fees).
+- **Offers are a comparison.** A table led by the estimated XMR for your coin and what the maker may
+  keep if the swap is cancelled, then the maker and rate, with the gaps to the best offer and to
+  the market in one quiet line. Sorting is explicit. The market rate is a reference, apart from
+  the offers. Take is now Review offer, with the reason shown while it is unavailable, and with no
+  coin chosen there is a button to Choose coin from Badbank. The receiving address has a
+  permanent label and a live check.
+- **Unfinished swaps come first.** A swap that holds your BTC and is not running is shown above the
+  offers with a way to its recovery screen. After a restart, a swap is placed from the engine's own
+  record, and the amounts, address and maker are kept with it, so its recovery screen still says what
+  is at stake.
+- **Consistent wording.** The offer card, the approval, the progress text and the quit prompt used
+  to describe refunds in different ways. They now share one account.
+
+## Tools
+
+- **Pair with Sentinel, in the wallet's three-dot menu.** It shows a QR that Sentinel (the Dojo Bay edition) scans to
+  watch this wallet, and three one-time words (from the EFF word list, as Samourai and Ashigaru phones do) that it asks
+  for before it can read the QR. The QR holds the Deposit BIP44, BIP49 and BIP84 keys, Premix, Postmix and Bad Bank, and
+  the wallet fingerprint: public keys only (XPUB, YPUB and ZPUB), never a seed or private key. The BIP44 and BIP49 Deposit keys are worked out
+  from the seed, so an encrypted wallet asks for its password once, and the open copy is wiped straight away; if
+  the seed alone does not give the wallet's own key (a BIP39 passphrase), those two are left out rather than guessed.
+  Keys the wallet does not have (a watch-only wallet, or one with no Whirlpool accounts) are left out and the window
+  says which. New words and a fresh QR are made each time the window opens or you press New words, nothing is saved
+  or logged, and nothing is sent anywhere. Anyone who has both the QR and the words can see the accounts' addresses and
+  balances. The window lists the four steps (pair Sentinel with a Dojo you control or trust, tap NEW, scan the QR code or
+  paste the pairing text, type the 3 pairing words with their hyphens and tap DECRYPT) above the words, and links to
+  Sentinel on GitHub (https://github.com/tetragrammalol/sentinel-android-dojobay) for anyone who does not have it; the link
+  opens through the Leaving Tor window. Also: **Copy pairing text** for Sentinel's paste box.
+
+- **Tools has a Sign tab, the counterpart of the Verifier.** Choose an open wallet, enter a message (a challenge
+  someone gave you, or a statement), and Sign Message gives you the signed block to send. It is signed as that
+  wallet's BIP47 payment code, so the Verifier on the other end, with your payment code, answers "Signature
+  verified". The payment code and its notification address are shown first, so you can see which identity signs.
+  A line naming your payment code is added to the message by default (a box turns it off) and the screen says
+  exactly what will be added. Signing is offline and asks for no password, because an open wallet already holds this
+  key (it is what signs an Auth47 login). Watch-only and hardware wallets have no payment code and are not listed.
+  Before showing the block, Ashigaru reads it back the way the Verifier does and checks the signature against your
+  payment code, so a block that would not verify is never handed out. A message that contains `-----BEGIN` or
+  `-----END` signature markers is refused, as it would break the block.
+
+## Security
+
+- **Bug-hunt fixes in swaps.** Turning swaps off while the engine was still starting left the new engine running, dialling makers over Tor,
+  while Settings said Off; it is now shut down when it finishes starting. A damaged swap identity file no longer replaces the identity under unfinished
+  swaps: each identity's seed is also kept in its own swap folder and recovered from there, and starting is refused if swap data exists and no seed can be
+  recovered (the engine derives every swap's keys from that seed, so losing it can cost the locked BTC). The swap log no longer carries a full XMR address next to the
+  exact BTC amount, and the Logs redaction now covers Monero addresses (95 and 106 characters), so a shared log cannot tie them together. The lock's amount and fee must be
+  the ones agreed when the swap started, the amount swapped is checked against the maker's limits at that moment, a stop event of an old swap no longer clears the swap being set up, the XMR price is only fetched
+  with a Tor client, and a swap record missing a field no longer crashes the list.
+- **Second round of swap hardening.** Identity recovery only takes the identity named beside the identity file (never "the newest"), refuses when swap data is left and none can be recovered, and does not replace the
+  identity in a run that recovered it. Seeds of identities whose swaps are all finished are deleted; the rest are owner-only on every platform (an access list on Windows). Raw engine lines no longer put a full XMR address or lock
+  transaction id in `ashigaru.log`, and the swap-start line leaves out the amount, wallet and maker address. The final approval only accepts the lock Ashigaru built (same amount and same network fee) and shows the fee of that transaction.
+  A Tor restart in the middle of setting up a swap no longer restarts the engine under it. When swaps are off or the engine is down while a swap is unfinished, the Swaps light turns red and says how many. The XMR price is fetched with a client built from
+  the Tor proxy that was checked. A native swap engine library can only be chosen from how Ashigaru is started (`-Dashigaru.swap.engine` or `ASHIGARU_SWAP_ENGINE`), not from the config file. Tools → Sign refuses a message that contains an `auth47://` login challenge.
+  The Rust engine's configuration and swap request no longer print their seed or addresses in Debug output.
+- **Releases build and attest the swap engine.** The release workflow now builds the engine for all four platforms, bundles it into every package and lists the library files as release assets
+  with the checksums and build attestation; it used to ship packages without it. Every action in every workflow is pinned to a commit, the engine build uses no caches in a release, and the macOS DMG check now fails
+  when it finds no DMG instead of passing. A release will not build until `swap-engine/Cargo.lock.overlay` (the reviewed, locked Rust dependencies) is committed; see `docs/ReproducibleBuilds.md`.
+- **Third round: seed cleanup fails safe, Tor moves are followed once a swap is set up, release asset names.** An earlier identity's seed is now only retired when the engine read
+  that identity's own swap database and found every swap in it finished, decided folder by folder: a database that cannot be opened keeps its seed. A retired seed is moved aside
+  (`seed.retired` in the same owner-only folder) instead of deleted. The engine waits for a Tor restart only while a swap is being set up (until its lock is signed or the keys held for
+  it are wiped), not for the whole swap, so a swap whose lock is out reconnects through the new Tor instead of sitting on a dead proxy while its timelocks run. Release asset names are
+  limited to letters, digits, `.`, `_` and `-` before `SHA256SUMS` is written, so the Windows engine's `libstdc++-6.dll` keeps a matching checksum line.
+- **Swap fixes from the third review.** Every line written to `ashigaru.log` and every stack trace is now redacted where it is written (by the log
+  appender), not only the lines the swap service redacted itself, and swap lines also have their amounts redacted; so does the swaps part of the shared diagnostics.
+  The swap light no longer gives a false all-clear: it says the count is unknown when swap data is there but the list of unfinished swaps is not, it turns red
+  for unfinished swaps of an earlier identity (which the running engine does not work on), and a swap whose deposit the maker still holds counts as unfinished.
+  An identity file restored from a backup cannot put an older identity in charge of a newer one's swaps. A failed attempt to take a fresh identity no longer
+  shuts down the running engine. Files in the swaps folder written by older versions are made owner-only on the next start, leftover temporary seed files are
+  removed, and on Windows the owner-only access list is inherited by files the engine creates and no longer inherits from the parent folder.
+  Every workflow job now has a timeout.
+- **Exact build tools.** The build uses exactly Temurin 21.0.13.1+2 instead of the newest Temurin 21, and the current releases of the GitHub
+  checkout, cache and Java setup actions, pinned to their commits.
+- **Nothing goes around Tor.** A clearnet Electrum server is reached through Tor (testnet4 starts on an onion server); Bitcoin Core through a
+  proxy, update checks, Auth47 and LNURL logins never look a host name up on this computer; and logins are not sent in offline mode or without Tor.
+- **Online and offline say what is true.** "Go offline" works while connecting or after a failed connection, the pill says "Online · not connected"
+  instead of "Offline" when that is the case, and a swap engine that finishes starting after you went offline is stopped.
+- **Quieter logs.** A wallet last opened in a newer Sparrow is noted once per run instead of on every open, swap engine lines no longer each
+  interrupt the screen, and failed maker connections are logged with the reason. Makers found later are tried at their onion address first.
+- **Onion makers can be reached.** The swap engine gave every connection 10 seconds, including the wait for its turn through Tor, so most onion makers
+  could never connect. Each connection now has 60 seconds from its turn, one address per maker is tried at a time (onion addresses first), a maker that keeps
+  failing is tried at most every ten minutes, and the log keeps one line per maker every ten minutes instead of one per failed attempt.
+- **Onion names are never looked up outside Tor.** Connections to an onion Electrum server or Dojo, Tools → Stats and PayNym avatars handed the onion name
+  to the computer's own DNS before reaching Tor; every name reached through a proxy now goes to the proxy unresolved.
+- **No clearnet fallbacks; offline means offline.** Tools → Stats, fee rates from mempool.space and the PayNym directory and avatars are only reached at their
+  onion addresses through Tor: without Tor they show nothing rather than connecting directly, and in offline mode they are not fetched at all. Going offline now
+  stops Tor and the swap engine, Tor that stops by itself is not revived in offline mode, and only a Tor restart you ask for turns Ashigaru online again. The Swaps
+  tool fetches no XMR price offline.
+- **A proxy set in Settings must be marked as Tor.** Settings → Server has a "Proxy is Tor" switch: swaps and the XMR price only use a proxy from Settings when it
+  is marked as a Tor SocksPort and also answers through Tor, it is checked again every ten minutes while swaps run, and through it the engine only uses onion (or
+  local) Bitcoin servers and Monero nodes. A failed swap engine restart no longer reports a failure after swaps were turned off.
+- **Dojo listings are tagged.** A Dojo directory listing must start with the line "Dojo node listing v1"; untagged listings are accepted until 30 June 2027.
+  Tools → Sign will not sign text that starts with that line.
+- **Offline mode stays offline.** A first run with Ashigaru already set to offline no longer switches it online, connects to the default server or starts
+  Tor, and swaps do not start in offline mode. A swap engine restart that fails is now shown as not running (it used to say On).
+- **Fourth review.** A proxy set in Settings is only used for swaps and the XMR price once it is shown to be Tor (the Tor Project's check and its onion
+  service, through that proxy; asked again every ten minutes), and the swap status no longer calls it Tor before then. A failed engine restart (Tor moved,
+  the server or nodes changed) keeps the engine that was running. If a backup put an older swap identity back, the identity whose swaps are unfinished is put
+  back in charge, and no fresh identity is taken while earlier ones have unfinished swaps. PayNym login tokens, Tools → Sign messages, Auth47 logins and
+  Dojo listings can no longer be passed off as one another. On Windows, icacls is run from System32 by its full path. The release's own workflow check now
+  runs (it failed every Linux release build), clippy denies warnings, and the engine build uses Rust 1.92.0 exactly with build paths kept out of the library.
+- **Tools → Sign marks what it signs; the XMR price checks its proxy is Tor.** Every message signed with a payment code now starts with the line
+  "Ashigaru BIP47 signed message:", so a signed message can never be the PayNym directory's login token or an Auth47 challenge, which the same key signs.
+  When Ashigaru's own Tor is not running, the XMR price is only fetched through the proxy in Settings once the Tor Project's check confirms the proxy is Tor.
+  Release workflows use fixed macOS runners, a pinned `cargo-audit`, record their build package versions, and check themselves before a release is built.
+- **Pair with Sentinel clears the clipboard.** Words or pairing text copied from the window are removed from the clipboard after a minute, if the clipboard still holds them.
+  **View seed words** wipes its decrypted copy when the window closes.
+
+- **Release files carry a build attestation, and the README says what each check proves.** From the next release, every file also has a
+  GitHub build attestation (`gh attestation verify <file> --repo linkinparkrulz/ashigaru-desktop`) showing which workflow and commit built it, in
+  addition to the release signature. The README now states who publishes these builds and what the signature and the attestation do and do not
+  show. The release file names and the `MESSAGE.txt` fields that other tools verify are fixed in `docs/ReleaseFormat.md` and tested.
+
+- **The packages are built with the patched Java runtime.** Every Ashigaru package bundles the Java runtime it was built with,
+  and builds used Temurin 21.0.7. Oracle's November 2026 Java 21 vulnerability (CVE-2026-114938, a memory-corruption flaw in the
+  Java compiler, rated 8.1 out of 10) is addressed by the out-of-cycle Temurin 21.0.13.1 (released the day the advisory appeared; its own notes say only that it is an official
+  release, so confirm the fix against Adoptium's and Oracle's notes). The build now uses the newest released Temurin 21 and stops
+  unless it is 21.0.13.1 or newer. Ashigaru has no listening server, so an attack would need a hostile or intercepted server to reach it,
+  but builds made before this carry the old runtime, so update when a build with this note is available.
+
+## Tester fixes
+
+- **A wrong wallet password says so in plain words.** Starting a swap, viewing the seed and pairing with Sentinel used to
+  show the cipher's own message ("Could not decrypt bytes") and, for a swap, then repeated it in a second banner. They now
+  say "That is not the password for <wallet>. Nothing was unlocked, locked or sent. Try again." once, and cancelling the
+  password window shows only a quiet "Swap setup cancelled".
+- **One small password window.** View seed, Pair with Sentinel and starting a swap used Sparrow's large fixed-size
+  password dialog; they now use the same compact window as opening a wallet.
+- **The top bar goes back to "Ready".** A message such as "Updating to new block height" or "Requested new Tor circuits" stayed
+  until a wallet happened to finish syncing. Messages now expire after their time (20 seconds), and "Syncing" counts the
+  wallets that are syncing and clears if a sync's end is never reported.
+- **Two lights in the top bar.** **Coordinator** (shown while the open wallet can mix): online, connecting, unreachable, or
+  idle when nothing is mixing; **Swaps** (shown while swaps are on): on, starting, or not running. Hover either for why. They
+  are worked out from what Ashigaru already knows (mixing progress and start-up, and the swap engine's own status), so
+  neither asks the coordinator or a maker anything.
+- **Offers say "worse than market" and show the refund.** "−3.4% vs market" is now "3.4% worse than market" (or "better"),
+  because a bare minus read as a discount to some people. The column that said what the maker may keep now leads with
+  the share that comes back, as eigenwallet's own screen does: "98% refund" (or "100% refund"), with what the maker may keep
+  underneath.
+- **"Could not list offers" is a calm sentence and goes away by itself.** It now reads "Could not load the offer list. Ashigaru
+  will try again in a few seconds." with the technical reason only in the log, and the next good list takes it off the screen
+  (it used to stay until you tried a swap). With no coin chosen the card says "Go to Badbank, tick one coin and press Swap to XMR."
+- **The review's note points the right way.** It said the fee breakdown and address were below; they are above the Approve bar.
+
+- **The wallet's picture is now its PayNym robot.** The picture beside the wallet name was meant to be the
+  wallet's PayNym avatar when PayNyms were on, but nothing in Settings turned them on, so it was always a picture
+  drawn from the fingerprint. It is now the real PayNym robot, fetched from paynym.rs through Tor a few seconds after
+  the server connects (once per wallet per launch; a failed fetch is tried again when the server reconnects), with the
+  fingerprint picture shown until it arrives and kept if it cannot be fetched. **This tells paynym.rs your wallet's payment code**, and so links the wallet to its
+  PayNym. With no Tor and no proxy nothing is asked and the fingerprint picture stays. The fingerprint is still
+  shown under the name, and a watch-only wallet shows a small eye.
+
+- **Style classes on five more screens were never applied.** The same comma mistake as the Verifier was on the
+  Deposit/Mix buttons, the Tx0 total row and the Statistics pool badges. Start Mixing is now the red primary
+  button, Mix To... and Preview Tx0 are the neutral buttons, the Tx0 total is emphasised, and the pool-size
+  badges are pills. These buttons are now a uniform 140px wide, as their stylesheet always intended. A test now
+  fails the build on any space-separated `styleClass`.
+- **Preview Tx0 turns green once a Deposit coin is ticked**, so the next step is easy to find.
+- **The "?" beside a passphrase (and every other help mark) now answers a click.** It used to show its text only
+  after hovering for half a second, so it looked broken. Click it for the help; click again to close it.
+- **The Tx0 caption is no longer cut off,** and says where the change goes (Badbank, kept apart from Postmix).
+- **Every amount in the Tx0 flow has eight decimals,** so the Anti-Sybil fee reads 0.00125000 beside the other
+  amounts, in the ribbon and in the window beside it.
+- **The wallet's "..." button no longer runs over the sidebar's divider** when the wallet has a picture. The wallet
+  selector can now shrink to make room.
+- **Swaps say which Monero nodes they use, and the nodes lock while swaps are on.** With your own node ticked,
+  only your own node is used and any public nodes ticked beside it are ignored: the status now says so
+  ("Using your own Monero node only; the 3 public nodes you ticked are not used"), and so does Settings. As with
+  the Bitcoin server, the Monero node settings are greyed out while swaps are on; "Edit nodes" turns swaps off so
+  they can be changed, unless a swap is running. "Who learns what" names your own node when it is the one used.
+- **The Verifier is simpler and fits the window.** Paste the whole signed message into one box and it is
+  read as you paste: there is no Parse button, and the message and signature boxes (now under "Enter the
+  message and signature separately") fill themselves. Pasting a second block now replaces the first; before,
+  the first message could silently outvote it. The answer is a card beside the inputs, so Verify and the
+  result are on screen at the minimum window size; it goes blank when you change anything, says
+  what went wrong in plain words and puts the cursor in the right box, and shows copyable addresses.
+  Ctrl+Enter verifies, Tab moves between boxes, and there are Paste and Clear buttons. A check was added:
+  if the message names a BIP47 payment code, it must be the one you are verifying.
+- **The Verifier's cards, step labels and the Verify button had no styling at all.** FXML separates style
+  classes with commas, and this screen separated them with spaces, so no stylesheet rule matched them. The
+  Verifier now uses commas and looks like the other Tools tabs.
+- **The diagnostics block says what Tor was actually given.** When Tor's listener comes up, Ashigaru
+  asks the running daemon for its version, its pid and its `CompiledProofOfWorkHash` setting over the
+  control connection. The answer is in the log and in the diagnostics block from Settings → Logs. On a
+  Mac the setting should read `0 (set)`, which shows the daemon took the interpreted proof of work
+  Ashigaru asks for; anything else means the request never reached it. Tor is given its configuration
+  on stdin, so no file on disk can show this.
+- **Ashigaru starts when Sparrow Wallet, or anything else, holds the single-instance lock.** Ashigaru
+  used the same lock name as Sparrow Wallet and kept the lock file in the shared temp folder. If
+  Sparrow (or a process left over from a crash) was holding it, Ashigaru took itself for a second copy
+  and quit about a second after launch, with no window and no message. Linux Mint testers saw
+  exactly this. The lock file now lives in Ashigaru's own folder and needs a per-run token (since
+  the security hardening after 1.5.1), and Ashigaru has its own lock name.
+- **The window's X closes the "Leaving Tor" dialog.** It used to do nothing; the only way out was Copy
+  link. There is now a Cancel button as well.
+- **The dots on a coin explain themselves.** Hover over them for what this coin's count means and a
+  key from no dots to four. They show completed mixes; they do not show a number of bits of entropy,
+  which Ashigaru does not calculate.
+- **A coin waiting for Whirlpool says "awaiting a round"**, not "in a round", on the Whirlpool view.
+- **The amber note on Badbank (and the Whirlpool and syncing notes) no longer gets cut off** when it
+  needs more than one line.
+
+## Window and typography
+
+- **The interface typeface is Roboto**, at 14 pixels for anything you need to understand and 13 for
+  supporting detail. Nikkyou Sans is kept for titles and key headings, and Roboto Mono for
+  amounts, addresses and transaction ids. Labels smaller than 13 pixels were raised, apart from small
+  uppercase headings.
+- **The window opens at 1280 x 800 and cannot be made smaller than that**, both capped at
+  your screen (on a smaller screen the window fits the screen instead). Swaps sits beside two menus, and the offers table needs room to be read. On a
+  smaller screen the table folds the maker and rate under the amount.
+
 # Ashigaru Desktop 1.5.2
 
 *Unreleased*

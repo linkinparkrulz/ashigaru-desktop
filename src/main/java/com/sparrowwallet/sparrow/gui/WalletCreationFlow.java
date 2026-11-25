@@ -1,5 +1,6 @@
 package com.sparrowwallet.sparrow.gui;
 
+import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
 import com.sparrowwallet.drongo.SecureString;
 import com.sparrowwallet.drongo.Utils;
 import com.sparrowwallet.drongo.crypto.ECKey;
@@ -29,14 +30,13 @@ import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
 import javafx.concurrent.Task;
 import javafx.event.Event;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
@@ -383,19 +383,11 @@ public class WalletCreationFlow {
         helpLabel.setHelpText("All passphrases create valid wallets." +
                 "\nThe master fingerprint identifies the keystore and changes as the passphrase changes." +
                 "\nMake sure you recognise it before proceeding.");
-        Button copyFpBtn = new Button("⎘");
-        copyFpBtn.getStyleClass().add("copy-icon-btn");
-        copyFpBtn.setPrefSize(28, 28);
+        CopyButton copyFpBtn = new CopyButton();
         copyFpBtn.disableProperty().bind(masterFingerprint.isNull());
         copyFpBtn.setOnAction(e -> {
             if (fingerprintHex.getText().isEmpty()) return;
-            ClipboardContent cc = new ClipboardContent();
-            cc.putString(fingerprintHex.getText());
-            Clipboard.getSystemClipboard().setContent(cc);
-            copyFpBtn.setText("✓");
-            PauseTransition pause = new PauseTransition(javafx.util.Duration.seconds(1.5));
-            pause.setOnFinished(ev -> copyFpBtn.setText("⎘"));
-            pause.play();
+            copyFpBtn.copy(fingerprintHex.getText());
         });
         fingerprintBox.getChildren().addAll(fingerprintLabel, fingerprintHex, copyFpBtn, lifeHashIcon, helpLabel);
 
@@ -594,6 +586,8 @@ public class WalletCreationFlow {
 
         for (int i = 0; i < 5; i++) {
             TextField die = new TextField();
+            //Dice rolls are the wallet's entropy: never copied out (AD-42)
+            TextFieldMenu.markSecret(die);
             die.setPrefWidth(46);
             die.setAlignment(Pos.CENTER);
             die.getStyleClass().add("dice-die-input");
@@ -637,6 +631,38 @@ public class WalletCreationFlow {
         return dlg.showAndWait().orElse(null);
     }
 
+    /** A word of the passphrase with its number and, where the roll can be recovered, its five dice. */
+    private static VBox diceWordCard(int number, String word) {
+        Label index = new Label("WORD " + number);
+        index.getStyleClass().add("dice-card-index");
+        HBox dice = new HBox(3);
+        String roll = rollFor(word);
+        if(roll != null) {
+            for(char c : roll.toCharArray()) {
+                dice.getChildren().add(new DieFace(c - '0'));
+            }
+        }
+        Label w = new Label(word);
+        w.getStyleClass().add("dice-card-word");
+        VBox card = new VBox(7, index, dice, w);
+        card.getStyleClass().add("dice-card");
+        return card;
+    }
+
+    /** The five dice (as digits 1-6) that select this word in the EFF list, or null if it is not in it. */
+    private static String rollFor(String word) {
+        int idx = DicewareWordList.INSTANCE.getWords().indexOf(word);
+        if(idx < 0) {
+            return null;
+        }
+        StringBuilder roll = new StringBuilder();
+        for(int div = 1296; div >= 1; div /= 6) {
+            roll.append((char) ('1' + (idx / div) % 6));
+        }
+        //The list is in roll order; confirm rather than assume, and show no dice if it ever is not.
+        return DicewareWordList.INSTANCE.wordForRoll(roll.toString()).filter(word::equals).isPresent() ? roll.toString() : null;
+    }
+
     /** Review the rolled phrase + fingerprint. Returns 1 = create wallet, 0 = add a word, -1 = cancel. */
     private int reviewDicewareDialog(String walletName, List<String> seedWords, List<String> passWords) {
         Dialog<Integer> dlg = new Dialog<>();
@@ -649,6 +675,12 @@ public class WalletCreationFlow {
         Label phrase = new Label(dicewarePassphrase(passWords));
         phrase.getStyleClass().add("diceware-passphrase");
         bindWrap(phrase);
+
+        //Each word with the five dice that produced it, so it can be checked against the table.
+        FlowPane words = new FlowPane(8, 8);
+        for(int i = 0; i < passWords.size(); i++) {
+            words.getChildren().add(diceWordCard(i + 1, passWords.get(i)));
+        }
 
         ObjectProperty<byte[]> masterFingerprint = new SimpleObjectProperty<>();
         HBox fingerprintBox = new HBox(10);
@@ -674,14 +706,27 @@ public class WalletCreationFlow {
         Bip39 importer = new Bip39();
         masterFingerprint.set(computeFingerprint(importer, String.join(" ", seedWords), dicewarePassphrase(passWords)));
 
-        Label warning = new Label("Write down your passphrase AND this master fingerprint, exactly — "
-                + "including the dashes between the words, which are part of the passphrase. "
-                + "They are never stored — if you lose them, your funds cannot be recovered. "
-                + "The fingerprint is how you check you have typed the passphrase back correctly.");
-        warning.getStyleClass().add("passphrase-warning");
-        bindWrap(warning);
+        Label warnTitle = new Label("Write both down now, exactly as shown");
+        warnTitle.getStyleClass().add("warning-title");
+        warnTitle.setGraphic(Icons.of(FontAwesome5.Glyph.EXCLAMATION_TRIANGLE, 13));
+        warnTitle.setGraphicTextGap(10);
+        VBox warning = new VBox(6, warnTitle);
+        warning.getStyleClass().add("ag-warning-box");
+        for(String line : List.of(
+                "Include the dashes. They are part of the passphrase.",
+                "Neither is stored anywhere. Lose them and the funds cannot be recovered.",
+                "The fingerprint is how you check you typed the passphrase back correctly.")) {
+            Label l = new Label("\u2022  " + line);
+            l.getStyleClass().addAll("ag-read", "warning-line");
+            bindWrap(l);
+            warning.getChildren().add(l);
+        }
 
-        VBox content = new VBox(14, phrase, fingerprintBox, warning);
+        //Create stays off until the user says they have written both down.
+        CheckBox ack = new CheckBox("I have written down the passphrase and the fingerprint");
+        ack.getStyleClass().add("ack-check");
+
+        VBox content = new VBox(14, words, phrase, fingerprintBox, warning, ack);
         content.setPadding(new Insets(20));
         content.setPrefWidth(WIZARD_DIALOG_WIDTH);
         dlg.getDialogPane().setContent(content);
@@ -692,6 +737,7 @@ public class WalletCreationFlow {
         dlg.getDialogPane().getButtonTypes().addAll(addType, createType, ButtonType.CANCEL);
         AppServices.moveToActiveWindowScreen(dlg);
         styleWizardButtons(dlg.getDialogPane());
+        dlg.getDialogPane().lookupButton(createType).disableProperty().bind(ack.selectedProperty().not());
 
         dlg.setResultConverter(bt -> bt == createType ? 1 : bt == addType ? 0 : -1);
         return dlg.showAndWait().orElse(-1);
@@ -883,7 +929,7 @@ public class WalletCreationFlow {
         pwDlg.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
         styleWizardButtons(pwDlg.getDialogPane());
 
-        PasswordField pwField = new PasswordField();
+        ViewPasswordField pwField = new ViewPasswordField();
         pwField.setPromptText("Leave blank for no password");
         Label pwLabel = new Label("Password (optional):");
         pwLabel.getStyleClass().add("field-label");

@@ -23,6 +23,16 @@ public class HttpClientService {
         return httpClient.getJson(url, responseType, headers);
     }
 
+    /** A GET returning the body as text, through this service's proxy (SOCKS4a: the host name goes to the proxy, it is not looked up here) */
+    public String requestString(String url, Map<String, String> headers) throws Exception {
+        return requestJson(url, String.class, headers);
+    }
+
+    /** A GET returning the body as bytes, through this service's proxy */
+    public byte[] requestBytes(String url, Map<String, String> headers) throws Exception {
+        return httpClientService.getHttpClient(HttpUsage.COORDINATOR_REST).getBytes(url, headers);
+    }
+
     public <T> Observable<Optional<T>> postJson(String url, Class<T> responseType, Map<String, String> headers, Object body) {
         IHttpClient httpClient = httpClientService.getHttpClient(HttpUsage.COORDINATOR_REST);
         return httpClient.postJson(url, responseType, headers, body);

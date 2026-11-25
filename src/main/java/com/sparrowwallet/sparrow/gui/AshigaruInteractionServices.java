@@ -67,7 +67,7 @@ public class AshigaruInteractionServices implements InteractionServices {
             hyperlinkLabel.setPrefWidth(Math.max(360, TextUtils.computeTextWidth(label.getFont(), link, 0.0D) + 50));
             hyperlinkLabel.setOnAction(event -> {
                 alert.close();
-                AppServices.get().getApplication().getHostServices().showDocument(link);
+                AppServices.openExternalLink(link);
             });
             alert.getDialogPane().setContent(hyperlinkLabel);
         }

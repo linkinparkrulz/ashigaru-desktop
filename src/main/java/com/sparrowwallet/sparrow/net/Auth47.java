@@ -2,14 +2,9 @@ package com.sparrowwallet.sparrow.net;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.sparrowwallet.drongo.ExtendedKey;
-import com.sparrowwallet.drongo.KeyPurpose;
-import com.sparrowwallet.drongo.crypto.ChildNumber;
-import com.sparrowwallet.drongo.crypto.ECKey;
-import com.sparrowwallet.drongo.protocol.ScriptType;
 import com.sparrowwallet.drongo.wallet.Wallet;
-import com.sparrowwallet.drongo.wallet.WalletNode;
 import com.sparrowwallet.sparrow.AppServices;
+import com.sparrowwallet.sparrow.paynym.Bip47Signing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,34 +123,25 @@ public class Auth47 {
             log.info("Sending auth47 response to " + callback.getHost());
         }
 
+        //A login never goes out directly, and never in offline mode (AD-33). Through the proxy the callback's name is not looked up here (AD-38).
+        String refusal = TorOnly.refusal();
+        if(refusal != null) {
+            throw new Auth47Exception("The login was not sent: " + refusal + ".");
+        }
         Proxy proxy = AppServices.getProxy();
-        if(proxy == null && callback.getHost().toLowerCase(Locale.ROOT).endsWith(Tor.TOR_ADDRESS_SUFFIX)) {
-            throw new Auth47Exception("A Tor proxy must be configured to authenticate this resource.");
+        if(proxy == null) {
+            throw new Auth47Exception("The login was not sent: there is no Tor proxy to send it through.");
         }
 
-        HttpURLConnection connection = proxy == null ? (HttpURLConnection) callback.openConnection() : (HttpURLConnection) callback.openConnection(proxy);
-        connection.setConnectTimeout(30000);
-        connection.setReadTimeout(30000);
-        connection.setRequestMethod("POST");
-        connection.setRequestProperty("Content-Type", "application/json");
-        connection.setDoOutput(true);
-
-        try(OutputStream os = connection.getOutputStream()) {
-            byte[] jsonBytes = json.getBytes(StandardCharsets.UTF_8);
-            os.write(jsonBytes);
-        }
-
-        int statusCode = connection.getResponseCode();
-        if(statusCode == 404) {
-            throw new Auth47Exception("Could not authenticate. Callback URL of " + callback + " returned a 404 response.");
-        }
-
-        StringBuilder res = new StringBuilder();
-        try(BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-            String responseLine;
-            while((responseLine = br.readLine()) != null) {
-                res.append(responseLine.trim());
+        int statusCode;
+        String res;
+        try(ProxiedHttp.Response response = ProxiedHttp.request("POST", callback, java.util.Map.of("Content-Type", "application/json"),
+                json.getBytes(StandardCharsets.UTF_8), proxy, null, 30000, 30000, 1024 * 1024)) {
+            statusCode = response.status();
+            if(statusCode == 404) {
+                throw new Auth47Exception("Could not authenticate. Callback URL of " + callback + " returned a 404 response.");
             }
+            res = response.bodyText().trim();
         }
 
         if(log.isDebugEnabled()) {
@@ -169,14 +155,7 @@ public class Auth47 {
 
     private String sign(Wallet wallet, String challenge) {
         try {
-            Wallet notificationWallet = wallet.getNotificationWallet();
-            WalletNode notificationNode = notificationWallet.getNode(KeyPurpose.NOTIFICATION);
-            ExtendedKey extendedPrivateKey = notificationWallet.getKeystores().get(0).getBip47ExtendedPrivateKey();
-            List<ChildNumber> derivation = new ArrayList<>();
-            derivation.add(extendedPrivateKey.getKeyChildNumber());
-            derivation.addAll(notificationNode.getDerivation());
-            ECKey privKey = extendedPrivateKey.getKey(derivation);
-            return privKey.signMessage(challenge, ScriptType.P2PKH);
+            return Bip47Signing.signChallenge(wallet, challenge);
         } catch(Exception e) {
             log.error("Error signing auth47 challenge", e);
             throw new IllegalStateException("Error signing auth47 challenge: " + e.getMessage(), e);

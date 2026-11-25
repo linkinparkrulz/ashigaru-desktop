@@ -51,6 +51,14 @@ headless package; build one locally with `./gradlew -Djava.awt.headless=true jpa
 - Reproducible-build flags are set on all archive tasks; don't add tasks that break
   `preserveFileTimestamps=false` / `reproducibleFileOrder=true`.
 
+**Versioning.** The repository keeps a base version (`1.5.x`) in two places that must agree:
+`ashigaruTerminalVersion` in `build.gradle` (the installer) and `AshigaruTerminal.APP_VERSION` (the app); `AppVersionTest`
+fails if they differ. A package built by the **Package** (or **Swap build**) workflow is stamped on the runner by
+`.github/scripts/set-build-version.sh`: the installer is `<major>.<minor>.<run number>` and the app shows
+`<major>.<minor>.<run number>+<commit>` in the window title, About and Settings → Logs, so any build can be told from
+another. Nothing is committed back; a local `./gradlew run` shows the plain base version. Release builds take their
+version from the tag and are not stamped.
+
 ## 2. Tests
 
 | Module | Location | Coverage |
@@ -61,6 +69,39 @@ headless package; build one locally with `./gradlew -Djava.awt.headless=true jpa
 
 There are **no tests over the Whirlpool integration layer** (`sparrow/whirlpool/*` bridges).
 Changes there must be verified by running against testnet (see §4).
+
+### 2.1 Swap screen tests that need a display
+
+`SwapScreenshotsTest` draws the swap screens (final review, dashboard, offers) with the real fonts and
+stylesheets, checks how they behave, and saves a picture of each state. It needs a display, so it is
+skipped unless `SWAP_SCREENSHOTS` names a folder for the pictures:
+
+```bash
+SWAP_SCREENSHOTS=/tmp/shots xvfb-run -a -s "-screen 0 1400x900x24" \
+    env JAVA_TOOL_OPTIONS="-Dprism.order=sw" ./gradlew :test --tests '*SwapScreenshotsTest*'
+```
+
+It is also where a layout is held to the smallest supported window: no screen may need more than the
+width it was designed for (713 pixels; the 1280 pixel minimum window gives Swaps 984), and the offers table must
+fold below 700.
+
+### 2.2 Regenerating the pictures in `docs/images`
+
+The README and [FEATURES.md](FEATURES.md) pictures are taken from the real application, so they can be redone after any UI change.
+`DocScreenshotsTest` starts the real app (`AshigaruTerminal.main`) under a virtual display with a throw-away home folder and a made-up wallet
+(the "abandon" test seed, with Whirlpool accounts and a few coins that were never on any chain, from `testutil/SampleWallets`), opens
+the real windows and dialogs through their own controls, and captures the screen. It is skipped unless `DOC_SCREENSHOTS` names a folder.
+The screen must be exactly 1280x800, the window's default and minimum size:
+
+```bash
+DOC_SCREENSHOTS=docs/images xvfb-run -a -s "-screen 0 1280x800x24" ./gradlew :test --tests '*DocScreenshotsTest*'
+```
+
+What is simulated, and shown as the app would show it, because the sandbox has no servers: a healthy connection (a `ConnectionEvent` for a made-up server,
+the Coordinator light, and the Swaps light on the Swaps screens), and the Swaps screens, whose offers, review and dashboard are filled with made-up data
+(`SwapService` is told the engine is available; nothing is started). Screens that need real data are not drawn: Tx0 and Mix To (they need the
+coordinator's pools), Statistics (whirlpoolstats.xyz), Logs and Settings → Server (they show this machine's real state). Take those by hand on a test wallet at 1280x800.
+Look at every picture before committing it: a screen that changed may need a step in the test changed too.
 
 ## 3. Runtime Layout & Debugging
 
@@ -257,9 +298,10 @@ Observe progress by registering on the client's own bus:
 The historical provenance: Samourai's `whirlpool-client` / `extlibj` / `soroban-client` lived
 on Samourai's own GitLab (offline since the 2024 takedown); Sparrow's `nightjar` bundle lives
 on the Sparrow Gitea (`code.sparrowwallet.com`). Neither is required: **the complete client
-source is vendored in this repo** under `darkjar/src/main/java/` — the Gitea/Maven
-repositories in the build files only serve prebuilt third-party artifacts for the *app*
-module, not any Whirlpool code. Reading darkjar *is* reading the upstream client, pinned at
+source is vendored in this repo** under `darkjar/src/main/java/` — the repositories in the
+build files only serve prebuilt third-party artifacts for the *app* module, not any
+Whirlpool code. The build no longer uses the Sparrow Gitea at all: `bwt-jni`, `bokmakierie`
+and `fxsvgimage` come from Maven Central (`com.sparrowwallet:*`), as in Sparrow itself. Reading darkjar *is* reading the upstream client, pinned at
 the exact revision this app runs. `whirlpool-client-cli` (Samourai's standalone CLI embedder)
 was the canonical example of using this library outside a wallet GUI; if unreachable, the
 Sparrow bridge classes in `sparrow/whirlpool/` serve the same illustrative purpose.

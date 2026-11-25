@@ -1,0 +1,18 @@
+diff --git a/utxo-ownership-proof/src/lib.rs b/utxo-ownership-proof/src/lib.rs
+index 4796e9d..aba92b6 100644
+--- a/utxo-ownership-proof/src/lib.rs
++++ b/utxo-ownership-proof/src/lib.rs
+@@ -12,6 +12,13 @@ const CHALLENGE_TAG: &str = "eigenwallet/utxo-ownership/v1";
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct Challenge([u8; 32]);
+ 
++impl Challenge {
++    /// The digest to sign, for an embedder that holds the keys elsewhere than in this process.
++    pub fn as_bytes(&self) -> &[u8; 32] {
++        &self.0
++    }
++}
++
+ /// A proof for one PSBT input.
+ #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+ pub struct OwnershipProof {

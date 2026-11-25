@@ -139,6 +139,17 @@ public class JavaHttpClient extends JacksonHttpClient {
         return response.getContentAsString();
     }
 
+    /** A GET whose body is returned as bytes (an image), through the same proxy configuration as every other request of this client */
+    public byte[] getBytes(String urlStr, Map<String, String> headers) throws Exception {
+        log.debug("GET " + urlStr);
+        Request req = computeHttpRequest(urlStr, HttpMethod.GET, headers);
+        ContentResponse response = req.send();
+        if(response.getStatus() != HttpStatus.OK_200) {
+            throw new JavaHttpException(new Exception("Http query failed: status=" + response.getStatus()), null, response.getStatus());
+        }
+        return response.getContent();
+    }
+
     public HttpClient getJettyHttpClient() throws Exception {
         connect();
         return httpClient;

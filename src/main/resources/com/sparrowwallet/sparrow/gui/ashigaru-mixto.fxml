@@ -3,11 +3,12 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import com.sparrowwallet.sparrow.gui.PipelineStrip?>
 
 <DialogPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.sparrowwallet.sparrow.gui.AshigaruMixToController"
-            prefWidth="440" prefHeight="280"
+            prefWidth="460" prefHeight="320"
             stylesheets="@ashigaru.css, @../darktheme.css"
             styleClass="mixto-pane">
 
@@ -17,8 +18,9 @@
         <VBox spacing="16">
             <padding><Insets top="16" right="20" bottom="8" left="20"/></padding>
 
-            <Label text="MIX TO CONFIGURATION" styleClass="section-title"/>
-            <Separator/>
+            <Label text="MIX TO" styleClass="section-title"/>
+            <!-- The exit from this wallet: a coin leaves once it reaches the minimum -->
+            <PipelineStrip fx:id="mixToStrip"/>
 
             <GridPane hgap="14" vgap="12">
                 <columnConstraints>

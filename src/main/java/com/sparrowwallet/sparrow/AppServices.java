@@ -220,6 +220,11 @@ public class AppServices {
 
     private static final AtomicBoolean dojoDiscoveryStarted = new AtomicBoolean(false);
 
+    //When Tor's daemon last stopped by itself and was restarted, to stop restarting one that keeps dying
+    private static final int MAX_TOR_REVIVALS = 3;
+    private static final long TOR_REVIVAL_WINDOW_MILLIS = 10 * 60 * 1000;
+    private final Deque<Long> torRevivals = new ArrayDeque<>();
+
     private static void maybeStartDojoDiscovery() {
         if(dojoDiscoveryStarted.compareAndSet(false, true)) {
             DojoNodeDiscovery.discoverInBackground();
@@ -282,6 +287,15 @@ public class AppServices {
      * @return false when Tor is external or not in use, so there is nothing here to restart
      */
     public boolean restartTor() {
+        //Every caller of this is a person asking for it (Settings, the splash screen, the Tor menu): that is a request to be online
+        return restartTor(true);
+    }
+
+    /**
+     * @param userAsked true when a person asked for the restart, which also takes Ashigaru online; false for the automatic revival after Tor died,
+     *                  which never changes the mode the user chose
+     */
+    boolean restartTor(boolean userAsked) {
         if(!Config.get().requiresInternalTor()) {
             return false;
         }
@@ -298,14 +312,14 @@ public class AppServices {
         Tor tor = Tor.getDefault() != null ? Tor.getDefault() : torService.takeBootingTor();
         Tor.setDefault(null);
         if(tor == null) {
-            startFreshTor();
+            startFreshTor(userAsked);
             return true;
         }
 
         AtomicBoolean started = new AtomicBoolean(false);
         Runnable startOnce = () -> {
             if(started.compareAndSet(false, true)) {
-                startFreshTor();
+                startFreshTor(userAsked);
             }
         };
         tor.stop(() -> Platform.runLater(startOnce));
@@ -316,10 +330,37 @@ public class AppServices {
         return true;
     }
 
-    private void startFreshTor() {
-        //Restarting Tor is a request to get back online, so reconnect once it is up
-        Config.get().setMode(Mode.ONLINE);
+    private void startFreshTor(boolean userAsked) {
+        //A restart the user asked for is a request to get back online, so reconnect once it is up. An automatic one never overrides offline mode.
+        if(userAsked) {
+            Config.get().setMode(Mode.ONLINE);
+        } else if(Config.get().getMode() == Mode.OFFLINE) {
+            return;
+        }
         restartService(torService);
+    }
+
+    /** Whether Tor stopping by itself may be answered by starting it again: never in offline mode, which the user chose */
+    static boolean mayReviveTor(Mode mode, boolean internalTor, boolean torWasRunning) {
+        return mode != Mode.OFFLINE && internalTor && torWasRunning;
+    }
+
+    /** Going offline stops the bundled Tor too: offline means nothing reaches the network, and Tor itself does */
+    private void stopTorForOffline() {
+        if(!Config.get().requiresInternalTor()) {
+            return;
+        }
+        if(torService.isRunning()) {
+            torService.cancel();
+        }
+        Tor tor = Tor.getDefault() != null ? Tor.getDefault() : torService.takeBootingTor();
+        Tor.setDefault(null);
+        //Ready to start again when the user goes back online
+        torService.reset();
+        if(tor != null) {
+            log.info("Offline mode: stopping Tor");
+            tor.stop(() -> {});
+        }
     }
 
     private ElectrumServer.ConnectionService createConnectionService() {
@@ -626,6 +667,15 @@ public class AppServices {
         return httpClientService;
     }
 
+    /**
+     * Like {@link #getTorProxy()}, but null when the built-in Tor is running with no socks listener,
+     * as while it starts or after its daemon died. Only for code that waits for Tor: anything that
+     * would fall back to a direct connection on null must keep using getTorProxy, which throws then.
+     */
+    public static HostAndPort getTorProxyIfUp() {
+        return AppServices.isTorRunning() ? Tor.getDefault().findProxyHostAndPort() : getTorProxy();
+    }
+
     public static HostAndPort getTorProxy() {
         return AppServices.isTorRunning() ?
                 Tor.getDefault().getProxyHostAndPort() :
@@ -879,6 +929,9 @@ public class AppServices {
         // surfaces, red accent); ashigaru.css adds the brand font + refined control
         // skins. (The legacy Theme.DARK gate is intentionally dropped — the config
         // theme defaults to LIGHT, which used to leave dialogs un-themed.)
+        //Text fields' right-click menus in the look of the app's other menus, in this window too
+        com.sparrowwallet.sparrow.gui.TextFieldMenu.install(stage.getScene());
+        stage.sceneProperty().addListener((observable, oldScene, newScene) -> com.sparrowwallet.sparrow.gui.TextFieldMenu.install(newScene));
         if(stage.getScene() != null) {
             addAshigaruStylesheets(stage.getScene().getStylesheets());
             // Also add at the scene-root (DialogPane) level. Dialogs add general.css
@@ -902,6 +955,82 @@ public class AppServices {
         if(!stylesheets.contains(ashigaruCss)) {
             stylesheets.add(ashigaruCss);
         }
+        installPopupStyling();
+    }
+
+    private static boolean popupStylingInstalled;
+    /** The app's canvas colour, painted behind popups where they cannot be transparent */
+    static final javafx.scene.paint.Color POPUP_FILL = javafx.scene.paint.Color.web("#0E0F12");
+    /** The inline style that takes a popup's shadow away */
+    static final String NO_SHADOW = "-fx-effect: null;";
+
+    /**
+     * Popups need a transparent margin for their shadow. Where the desktop cannot give them one, that margin shows as a white frame around
+     * every menu, drop-down and tooltip. There, each popup's shadow is taken away as it opens, by an inline style on its content (the menu
+     * panel, the drop-down list, the tooltip, the popover's border). Inline, because no stylesheet can do it everywhere: Tools, Settings and
+     * other pages list ashigaru.css on their own root pane, and a pane's stylesheets win over the scene's, so a separate sheet added to the
+     * scene (the earlier opaque-popups.css) lost there and the frame came back; and a popup's content is styled as if it sat under its
+     * owner, so a selector cannot reach it through the popup window's root. Call on the JavaFX thread; installs once.
+     */
+    public static void installPopupStyling() {
+        if(popupStylingInstalled) {
+            return;
+        }
+        popupStylingInstalled = true;
+        if(javafx.application.Platform.isSupported(javafx.application.ConditionalFeature.TRANSPARENT_WINDOW)) {
+            return;
+        }
+        javafx.collections.ObservableList<Window> windows = Window.getWindows();
+        windows.forEach(AppServices::markIfPopup);
+        windows.addListener((javafx.collections.ListChangeListener<Window>)change -> {
+            while(change.next()) {
+                change.getAddedSubList().forEach(AppServices::markIfPopup);
+            }
+        });
+    }
+
+    private static void markIfPopup(Window window) {
+        if(!(window instanceof javafx.stage.PopupWindow popup) || popup.getProperties().containsKey(NO_SHADOW)) {
+            return;
+        }
+        popup.getProperties().put(NO_SHADOW, Boolean.TRUE);
+        //The content is created or replaced when the popup is shown, so it is looked at each time
+        popup.addEventHandler(javafx.stage.WindowEvent.WINDOW_SHOWING, event -> removeShadows(popup));
+        popup.addEventHandler(javafx.stage.WindowEvent.WINDOW_SHOWN, event -> removeShadows(popup));
+        removeShadows(popup);
+    }
+
+    /**
+     * Takes the shadow off a popup's content. A menu, drop-down or tooltip passes its own style down to its content node (whose style is
+     * bound to it), so it is set there; nodes inside that carry a shadow of their own (a popover's border, a drop-down's list) get it directly.
+     */
+    static void removeShadows(javafx.stage.PopupWindow popup) {
+        if(popup instanceof javafx.scene.control.PopupControl control) {
+            control.setStyle(withoutShadow(control.getStyle()));
+        }
+        //Whatever is left of the window around the content (a pixel of rounding, the corners of a rounded panel) is the app's own colour,
+        //not white
+        if(popup.getScene() != null) {
+            popup.getScene().setFill(POPUP_FILL);
+        }
+        if(popup.getScene() != null && popup.getScene().getRoot() != null) {
+            //A popover's border and a drop-down's list carry their own shadow
+            java.util.Set<javafx.scene.Node> nodes = new java.util.LinkedHashSet<>(popup.getScene().getRoot().lookupAll(".border"));
+            nodes.addAll(popup.getScene().getRoot().lookupAll(".list-view"));
+            for(javafx.scene.Node node : nodes) {
+                if(!node.styleProperty().isBound()) {
+                    node.setStyle(withoutShadow(node.getStyle()));
+                }
+            }
+        }
+    }
+
+    public static String withoutShadow(String style) {
+        String current = style == null ? "" : style;
+        if(current.contains(NO_SHADOW)) {
+            return current;
+        }
+        return current + (current.isEmpty() || current.trim().endsWith(";") ? "" : ";") + NO_SHADOW;
     }
 
     public static Window getActiveWindow() {
@@ -996,6 +1125,25 @@ public class AppServices {
         }
     }
 
+    private static java.util.function.Consumer<String> externalLinkHandler;
+
+    /**
+     * Lets a front end decide what happens before a link leaves the app. The system browser does not
+     * use the app's Tor connection, so the GUI installs a handler that says so and offers to copy
+     * the link instead. Without a handler the link opens directly, as before.
+     */
+    public static void setExternalLinkHandler(java.util.function.Consumer<String> handler) {
+        externalLinkHandler = handler;
+    }
+
+    public static void openExternalLink(String url) {
+        if(externalLinkHandler != null) {
+            externalLinkHandler.accept(url);
+        } else {
+            AppServices.get().getApplication().getHostServices().showDocument(url);
+        }
+    }
+
     public static void openBlockExplorer(String txid) {
         if(Config.get().isBlockExplorerDisabled()) {
             return;
@@ -1011,7 +1159,7 @@ public class AppServices {
             }
             url += "/tx/" + txid;
         }
-        AppServices.get().getApplication().getHostServices().showDocument(url);
+        openExternalLink(url);
     }
 
     public static void openAmIExposed(String txid) {
@@ -1026,7 +1174,7 @@ public class AppServices {
         } else {
             url += "/#tx=" + txid;
         }
-        AppServices.get().getApplication().getHostServices().showDocument(url);
+        openExternalLink(url);
     }
 
     static void parseFileUriArguments(List<String> fileUriArguments) {
@@ -1273,6 +1421,28 @@ public class AppServices {
         Config.get().addRecentServer();
     }
 
+    /**
+     * The bundled Tor stopped without being asked to. Nothing else brings it back, and without it
+     * Ashigaru cannot connect at all, so it is started again, a few times at most.
+     */
+    @Subscribe
+    public void torDied(TorDiedEvent event) {
+        Platform.runLater(() -> {
+            if(!mayReviveTor(Config.get().getMode(), Config.get().requiresInternalTor(), Tor.getDefault() != null)) {
+                return;
+            }
+            long now = System.currentTimeMillis();
+            torRevivals.removeIf(revival -> now - revival > TOR_REVIVAL_WINDOW_MILLIS);
+            if(torRevivals.size() >= MAX_TOR_REVIVALS) {
+                log.warn("Tor stopped by itself again. Not restarting it: that is " + (MAX_TOR_REVIVALS + 1) + " times in ten minutes. Restart Tor from Settings → Server.");
+                return;
+            }
+            torRevivals.add(now);
+            log.warn("Tor stopped by itself; restarting it");
+            restartTor(false);
+        });
+    }
+
     @Subscribe
     public void usbDevicesFound(UsbDeviceEvent event) {
         devices = Collections.unmodifiableList(event.getDevices());
@@ -1299,6 +1469,10 @@ public class AppServices {
 
     @Subscribe
     public void feeRateSourceChanged(FeeRatesSourceChangedEvent event) {
+        //Offline, nothing is fetched: the rates come back with the next connection
+        if(Config.get().getMode() == Mode.OFFLINE) {
+            return;
+        }
         ElectrumServer.FeeRatesService feeRatesService = new ElectrumServer.FeeRatesService();
         feeRatesService.setOnSucceeded(workerStateEvent -> {
             EventManager.get().post(feeRatesService.getValue());
@@ -1429,6 +1603,9 @@ public class AppServices {
             connectionService.cancel();
             ratesService.cancel();
             updateCheckService.cancel();
+            if(Config.get().getMode() == Mode.OFFLINE) {
+                stopTorForOffline();
+            }
         });
     }
 

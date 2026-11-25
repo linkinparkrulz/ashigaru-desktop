@@ -8,8 +8,12 @@
     -ag-border-strong: #3A3D47;
     -ag-text:          #ECECEC;
     -ag-text-dim:      #A6A7AD;
-    -ag-text-faint:    #6E7077;
+    -ag-text-faint:    #8B8D95;
     -ag-accent:        #cc1111;
+    -ag-accent-ink:    #FF5A4D;   /* small red type: 6.2:1 on the canvas, where #cc1111 is 3.3:1 */
+    -ag-green-ink:     #6BCB77;   /* live, private, verified */
+    -ag-warn-ink:      #F2B53A;   /* attention, offline, errors */
+    -ag-on-accent:     #ffffff;   /* text on a filled red button */
     -ag-accent-hover:  #e11414;
     -ag-accent-dark:   #991010;
     -ag-accent-tint:   derive(#cc1111, -62%);

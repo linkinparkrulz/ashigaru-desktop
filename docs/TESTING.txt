@@ -459,8 +459,8 @@ HOW TO USE
 --------------------------------------------------------------------
  24. BIP47 VERIFIER: CODE FIELD + PAYNYM LOOKUP           (new in 1.4.5)
 --------------------------------------------------------------------
-  [ ] The payment code field is a single line, and the step 1 card is
-      shorter for it. Paste a full 116-character code: it is accepted
+  [ ] The payment code field is a single line, and the payment code card
+      is shorter for it. Paste a full 116-character code: it is accepted
       and scrolls rather than wrapping, and Verify still works.
   [ ] Look up "+linkinparkrulz". STRONG CHECK: the filled-in code
       must be character-for-character the release signing code. Press

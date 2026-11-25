@@ -108,23 +108,19 @@ public class LnurlAuth {
             log.info("Sending LNURL-auth response to " + callback.getHost());
         }
 
+        //A login never goes out directly, and never in offline mode (AD-33). Through the proxy the callback's name is not looked up here (AD-38).
+        String refusal = TorOnly.refusal();
+        if(refusal != null) {
+            throw new LnurlAuthException("The login was not sent: " + refusal + ".");
+        }
         Proxy proxy = AppServices.getProxy();
-        if(proxy == null && callback.getHost().toLowerCase(Locale.ROOT).endsWith(Tor.TOR_ADDRESS_SUFFIX)) {
-            throw new LnurlAuthException("A Tor proxy must be configured to authenticate this resource.");
+        if(proxy == null) {
+            throw new LnurlAuthException("The login was not sent: there is no Tor proxy to send it through.");
         }
 
-        HttpURLConnection connection = proxy == null ? (HttpURLConnection) callback.openConnection() : (HttpURLConnection) callback.openConnection(proxy);
-        connection.setConnectTimeout(30000);
-        connection.setReadTimeout(30000);
-        connection.setRequestMethod("GET");
-        connection.setRequestProperty("Content-Type", "application/json");
-
         StringBuilder res = new StringBuilder();
-        try(BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-            String responseLine;
-            while((responseLine = br.readLine()) != null) {
-                res.append(responseLine.trim());
-            }
+        try(ProxiedHttp.Response response = ProxiedHttp.request("GET", callback, java.util.Map.of("Content-Type", "application/json"), null, proxy, null, 30000, 30000, 1024 * 1024)) {
+            res.append(response.bodyText().trim());
         }
 
         if(log.isDebugEnabled()) {

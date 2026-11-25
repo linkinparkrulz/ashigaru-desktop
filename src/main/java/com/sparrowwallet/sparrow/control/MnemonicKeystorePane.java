@@ -322,6 +322,8 @@ public class MnemonicKeystorePane extends TitledDescriptionPane {
                 }
             };
             wordField.setMaxWidth(100);
+            //Seed words: never copied out to the clipboard (AD-42)
+            com.sparrowwallet.sparrow.gui.TextFieldMenu.markSecret(wordField);
             TextFormatter<?> formatter = new TextFormatter<>((TextFormatter.Change change) -> {
                 String text = change.getText();
                 // if text was added, fix the text to fit the requirements
@@ -465,6 +467,7 @@ public class MnemonicKeystorePane extends TitledDescriptionPane {
             Label passphraseLabel = new Label("Passphrase:");
             passphraseLabel.managedProperty().bind(passphraseLabel.visibleProperty());
             passphraseField = new TextField();
+            com.sparrowwallet.sparrow.gui.TextFieldMenu.markSecret(passphraseField);
             passphraseField.setPromptText(passphraseProperty.isEmpty().get() ? "Leave blank for none" : "");
             passphraseField.setText(passphraseProperty.get());
             passphraseField.setDisable(!editable);

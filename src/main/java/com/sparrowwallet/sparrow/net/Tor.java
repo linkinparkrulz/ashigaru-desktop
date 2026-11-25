@@ -2,6 +2,7 @@ package com.sparrowwallet.sparrow.net;
 
 import com.google.common.net.HostAndPort;
 import com.sparrowwallet.sparrow.EventManager;
+import com.sparrowwallet.sparrow.event.TorDiedEvent;
 import com.sparrowwallet.sparrow.event.TorStatusEvent;
 import com.sparrowwallet.sparrow.io.IOUtils;
 import com.sparrowwallet.sparrow.io.Storage;
@@ -11,6 +12,7 @@ import io.matthewnelson.kmp.tor.runtime.RuntimeEvent;
 import io.matthewnelson.kmp.tor.runtime.TorRuntime;
 import io.matthewnelson.kmp.tor.runtime.core.OnEvent;
 import io.matthewnelson.kmp.tor.runtime.core.TorEvent;
+import io.matthewnelson.kmp.tor.runtime.core.config.TorOption;
 import io.matthewnelson.kmp.tor.runtime.core.ctrl.TorCmd;
 import io.matthewnelson.kmp.tor.runtime.core.net.IPSocketAddress;
 import org.slf4j.Logger;
@@ -22,6 +24,11 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ServerSocket;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class Tor {
     private static final Logger log = LoggerFactory.getLogger(Tor.class);
@@ -40,6 +47,11 @@ public class Tor {
     //and stopping and starting Tor stops and starts its daemon.
     private static TorRuntime runtime;
     private static volatile IPSocketAddress socksAddress;
+    //Set while the daemon is being stopped on purpose, so its listener going away is not taken for a death
+    private static volatile boolean stopRequested;
+    //What the running daemon said when asked, for the diagnostics block and the log. Never read from a file:
+    //kmp-tor hands Tor its configuration on stdin (--torrc-file -), so nothing on disk shows what it was given.
+    private static volatile String daemonFacts = "Tor:      not asked yet\nTor PoW:  not asked yet\n";
 
     private final TorRuntime instance;
 
@@ -107,12 +119,133 @@ public class Tor {
             });
 
             b.observerStatic(RuntimeEvent.LISTENERS.INSTANCE, OnEvent.Executor.Immediate.INSTANCE, listeners -> {
+                boolean wasListening = socksAddress != null;
                 socksAddress = listeners.socks.isEmpty() ? null : listeners.socks.iterator().next();
+                log.info("Tor socks listener: " + (socksAddress == null ? "gone" : socksAddress));
+                if(socksAddress == null) {
+                    daemonFacts = "Tor:      no daemon running\nTor PoW:  not known while Tor is down\n";
+                } else {
+                    askDaemon();
+                }
+                //A daemon that dies takes its listener with it and says nothing else. Nothing noticed, so
+                //Ashigaru stayed offline ("Tor socks proxy is not yet instantiated") until Tor was restarted by hand.
+                if(wasListening && socksAddress == null && !stopRequested) {
+                    log.warn("Tor stopped by itself");
+                    EventManager.get().post(new TorDiedEvent());
+                }
+            });
+
+            //On a Mac, Tor stopped dead seconds after the swap engine began dialling makers' onion services.
+            //Those can ask for a proof of work, which Tor solves with code it compiles while running, something
+            //macOS restricts. Unconfirmed as the cause, so this is a precaution: there, solve it interpreted,
+            //which is slower and compiles nothing.
+            if(isMac()) {
+                b.config((config, environment) -> config.put(TorOption.CompiledProofOfWorkHash.asSetting(setting -> setting.disable())));
+            }
+
+            //A Tor that dies without a word leaves only this to say when and how
+            b.observerStatic(RuntimeEvent.STATE.INSTANCE, OnEvent.Executor.Immediate.INSTANCE, state -> {
+                log.info("Tor state: " + state);
             });
 
             b.required(TorEvent.ERR.INSTANCE);
             b.required(TorEvent.WARN.INSTANCE);
         });
+    }
+
+    /** Where Tor keeps its state, and the lock a second Tor cannot take while another holds it */
+    static File getDataDir() {
+        return new File(new File(new File(Storage.getSparrowHome(), TOR_DIR), WORK_DIR), "data");
+    }
+
+    /**
+     * Stops any Tor still running on our data directory. kmp-tor can lose a daemon that hangs (one
+     * spun at several cores and stopped answering its control port): it then treats it as stopped,
+     * and the next daemon exits at once because it cannot lock the data directory. Call before
+     * starting a daemon, off the JavaFX thread; it waits up to ten seconds per stray.
+     */
+    public static void killStrayDaemons() {
+        File dataDir = getDataDir();
+        long self = ProcessHandle.current().pid();
+        ProcessHandle.allProcesses()
+                .filter(process -> process.pid() != self)
+                .filter(process -> process.info().arguments().map(args -> holdsDataDir(Arrays.asList(args), dataDir)).orElse(false))
+                .forEach(process -> {
+                    log.warn("Stopping a Tor process (pid " + process.pid() + ") still running on " + dataDir + ", so a new one can start");
+                    process.destroy();
+                    try {
+                        process.onExit().get(5, TimeUnit.SECONDS);
+                    } catch(Exception e) {
+                        //A hung Tor can ignore SIGTERM
+                        log.warn("Tor process " + process.pid() + " did not stop, killing it");
+                        process.destroyForcibly();
+                        try {
+                            process.onExit().get(5, TimeUnit.SECONDS);
+                        } catch(Exception ex) {
+                            log.error("Could not stop Tor process " + process.pid(), ex);
+                        }
+                    }
+                });
+    }
+
+    /** True when these command line arguments start a Tor on this data directory */
+    static boolean holdsDataDir(List<String> args, File dataDir) {
+        int index = args.indexOf("--DataDirectory");
+        if(index < 0 || index + 1 >= args.size()) {
+            return false;
+        }
+        String path = args.get(index + 1);
+        return new File(path).getAbsoluteFile().equals(dataDir.getAbsoluteFile());
+    }
+
+    /**
+     * Asks the running daemon for its version, its pid and the proof-of-work setting it actually has, over the
+     * control connection, and keeps the answer for {@link #diagnostics()} and the log. On macOS Ashigaru asks for
+     * interpreted proof of work (CompiledProofOfWorkHash 0); a Java callback saying so does not show that the daemon
+     * took it, and this does. Called when the daemon's listener comes up, before anything is dialled through it.
+     */
+    private static void askDaemon() {
+        TorRuntime asked = runtime;
+        if(asked == null) {
+            return;
+        }
+
+        asked.enqueue(new TorCmd.Info.Get("version", "process/pid"), throwable -> {
+            log.warn("Could not ask Tor for its version and pid", throwable);
+        }, info -> {
+            String pid = info.get("process/pid");
+            String executable = pid == null ? null : executableOf(pid);
+            String text = "Tor:      version " + info.get("version") + ", pid " + pid + (executable == null ? "" : ", " + executable) + "\n";
+            daemonFacts = text + daemonFacts.substring(daemonFacts.indexOf("Tor PoW:"));
+            log.info("Tor daemon: " + text.trim());
+        });
+
+        asked.enqueue(new TorCmd.Config.Get(TorOption.CompiledProofOfWorkHash.INSTANCE), throwable -> {
+            log.warn("Could not ask Tor for CompiledProofOfWorkHash", throwable);
+        }, entries -> {
+            String setting = describeProofOfWork(entries.stream().map(entry -> entry.setting + (entry.isDefault ? " (default)" : " (set)")).toList(), isMac());
+            daemonFacts = daemonFacts.substring(0, daemonFacts.indexOf("Tor PoW:")) + "Tor PoW:  " + setting + "\n";
+            log.info("Tor daemon: " + setting);
+        });
+    }
+
+    /** Words for the answer to GETCONF CompiledProofOfWorkHash, with what Ashigaru asked for on this system */
+    static String describeProofOfWork(List<String> answers, boolean mac) {
+        String got = answers.isEmpty() ? "no answer" : String.join(", ", answers);
+        return "CompiledProofOfWorkHash=" + got + "; Ashigaru asks for " + (mac ? "0 (interpreted) on this system" : "Tor's default on this system");
+    }
+
+    private static String executableOf(String pid) {
+        try {
+            return ProcessHandle.of(Long.parseLong(pid.trim())).flatMap(process -> process.info().command()).map(command -> new File(command).getName()).orElse(null);
+        } catch(NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** What the running Tor said when last asked, for the diagnostics block */
+    public static String diagnostics() {
+        return daemonFacts;
     }
 
     public static Tor getDefault() {
@@ -131,6 +264,7 @@ public class Tor {
      * Stops the daemon, calling onStopped once it has stopped or failed to.
      */
     public void stop(Runnable onStopped) {
+        stopRequested = true;
         instance.enqueue(Action.StopDaemon, throwable -> {
             log.warn("Error stopping Tor daemon", throwable);
             onStopped.run();
@@ -161,6 +295,21 @@ public class Tor {
         }
 
         return HostAndPort.fromParts(address.address.value, address.port.value);
+    }
+
+    /** Called when a daemon is about to be started: from here on, its listener going away is a death */
+    static void expectRunning() {
+        stopRequested = false;
+    }
+
+    private static boolean isMac() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("mac");
+    }
+
+    /** Where Tor's socks proxy listens, or null while the daemon is starting or has stopped */
+    public HostAndPort findProxyHostAndPort() {
+        IPSocketAddress address = socksAddress;
+        return address == null ? null : HostAndPort.fromParts(address.address.value, address.port.value);
     }
 
     public static boolean isRunningExternally() {

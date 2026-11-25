@@ -1,0 +1,349 @@
+name: Swap engine
+
+# Builds the embedded eigenwallet swap engine (swap-engine/) as a native library for every platform
+# Ashigaru ships on. The build environment mirrors eigenwallet's own release workflow
+# (.github/actions/setup-build-environment at the pinned revision), minus its GUI tooling.
+
+# Called by the Swap build workflow, which packages Ashigaru with the library inside
+on:
+  workflow_call:
+    inputs:
+      require_lock:
+        description: Fail unless swap-engine/Cargo.lock.overlay is committed, so every dependency is fixed (the release sets this)
+        type: boolean
+        default: false
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CARGO_HTTP_MULTIPLEXING: false
+  DEPS_BUILD_LINUX: autoconf nsis mingw-w64 build-essential pkg-config libtool ccache make cmake gcc g++ git curl lbzip2 gperf g++-mingw-w64-x86-64
+  DEPS_BUILD_MACOS: autoconf automake pkg-config libtool ccache make cmake gcc git curl gperf
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.host }}
+    # Monero, and on a cold run the MinGW gcc, are built from source; a hung step must not hold a runner for six hours
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            host: ubuntu-22.04
+            lib: libashigaru_swap.so
+            test: true
+          - target: aarch64-apple-darwin
+            host: macos-15
+            lib: libashigaru_swap.dylib
+            test: true
+          - target: x86_64-apple-darwin
+            host: macos-15-intel
+            lib: libashigaru_swap.dylib
+            test: true
+          - target: x86_64-pc-windows-gnu
+            host: ubuntu-22.04
+            lib: ashigaru_swap.dll
+            test: false
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The dependencies are fixed by swap-engine/Cargo.lock.overlay, which fetch.sh puts over eigenwallet's own Cargo.lock; with it the build is
+      # --locked, so no dependency can change between a review and a release. Without it the build still works, from eigenwallet's lock plus
+      # whatever ashigaru-swap adds, and says so; a release does not accept that.
+      - name: Require the dependency lock (releases)
+        if: ${{ inputs.require_lock }}
+        run: |
+          if [ ! -f swap-engine/Cargo.lock.overlay ]; then
+            echo "::error::swap-engine/Cargo.lock.overlay is not committed. A release must build with locked dependencies. Run the Swap engine workflow, download its swap-engine-cargo-lock artifact, review it, and commit it as swap-engine/Cargo.lock.overlay."
+            exit 1
+          fi
+
+      - name: Fetch eigenwallet and apply patches
+        run: swap-engine/fetch.sh
+
+      - name: Decide whether the build is locked
+        id: lock
+        run: |
+          if [ -f swap-engine/Cargo.lock.overlay ]; then
+            echo "flag=--locked" >> "$GITHUB_OUTPUT"
+          else
+            echo "flag=" >> "$GITHUB_OUTPUT"
+            echo "::warning::swap-engine/Cargo.lock.overlay is not committed: this build resolves ashigaru-swap's dependencies afresh. Commit the swap-engine-cargo-lock artifact as that file."
+          fi
+
+      # The exact release, not the newest 1.92.x. dtolnay/rust-toolchain's version branches take no toolchain input (it was ignored), so
+      # rustup, which the runner images carry, installs it. eigenwallet's rust-toolchain.toml selects it for the build; the next step checks that.
+      - name: Install Rust 1.92.0
+        shell: bash
+        run: |
+          rustup toolchain install 1.92.0 --profile minimal --component clippy --target ${{ matrix.target }} --no-self-update
+          rustup default 1.92.0
+
+      - name: Check the build uses Rust 1.92.0
+        shell: bash
+        working-directory: swap-engine/build/eigenwallet
+        run: |
+          rustc --version
+          cargo clippy --version
+          rustc --version | grep -q '^rustc 1\.92\.0 ' || { echo "::error::The engine would not build with Rust 1.92.0 (eigenwallet's rust-toolchain.toml changed?)"; exit 1; }
+
+      # Toward a reproducible engine: no build machine paths in the library (the home folder, which holds the cargo registry, and the checkout),
+      # and the commit's time for tools that read SOURCE_DATE_EPOCH. Set per target (CARGO_TARGET_<TRIPLE>_RUSTFLAGS), which cargo joins with
+      # eigenwallet's own target flags; RUSTFLAGS would replace them and lose the Windows link settings.
+      # The C and C++ the same way: CFLAGS_<target> and CXXFLAGS_<target> are added by the cc and cmake crates to their own flags, so Monero
+      # (built through cmake) and the Rust-C++ bridge (cxx) get -ffile-prefix-map. The two maps do not overlap, so their order does not matter.
+      # Monero's depends libraries (built by its own make, which reads plain CFLAGS) are left as they are.
+      - name: Remove build paths and fix the build time
+        shell: bash
+        run: |
+          triple=$(echo "${{ matrix.target }}" | tr 'a-z-' 'A-Z_')
+          echo "CARGO_TARGET_${triple}_RUSTFLAGS=--remap-path-prefix=$HOME=/home/build --remap-path-prefix=$GITHUB_WORKSPACE=/build" >> "$GITHUB_ENV"
+          echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+          target=$(echo "${{ matrix.target }}" | tr '-' '_')
+          cmaps="-ffile-prefix-map=$GITHUB_WORKSPACE=/build -ffile-prefix-map=$HOME/.cargo=/cargo"
+          echo "CFLAGS_${target}=$cmaps" >> "$GITHUB_ENV"
+          echo "CXXFLAGS_${target}=$cmaps" >> "$GITHUB_ENV"
+
+      - name: Install build dependencies (Ubuntu)
+        if: startsWith(matrix.host, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y $DEPS_BUILD_LINUX
+          # Ubuntu's archive drops superseded versions, so exact pins would break the build at the next security update;
+          # the versions used are recorded with the run instead
+          {
+            echo "### Build packages (${{ matrix.target }})"
+            echo '```'
+            dpkg-query -W -f='${Package} ${Version}\n' $DEPS_BUILD_LINUX 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install build dependencies (macOS)
+        if: startsWith(matrix.host, 'macos')
+        env:
+          # The formulae of the runner image, not whatever Homebrew has published since
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_UPGRADE: 1
+        run: |
+          brew uninstall --force --ignore-dependencies $DEPS_BUILD_MACOS
+          brew install --force $DEPS_BUILD_MACOS
+          {
+            echo "### Build packages (${{ matrix.target }})"
+            echo '```'
+            brew list --versions $DEPS_BUILD_MACOS || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Prefer MinGW POSIX threading (Windows cross-build)
+        if: contains(matrix.target, 'windows')
+        run: |
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+
+      # The toolchain is built from sources downloaded from gnu.org and sourceforge, with their signing
+      # keys fetched from keyservers. Any of those failing to answer failed the whole build, so the
+      # built toolchain is kept and only rebuilt when the eigenwallet revision (and its script) changes.
+      - name: Restore MinGW gcc (Windows cross-build)
+        if: ${{ !inputs.require_lock && (contains(matrix.target, 'windows')) }}
+        id: mingw
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/opt/gcc-mingw-14.3
+          key: mingw-gcc-14.3-${{ runner.os }}-${{ hashFiles('swap-engine/EIGENWALLET_REV') }}
+
+      - name: Build MinGW gcc (Windows cross-build)
+        if: contains(matrix.target, 'windows') && steps.mingw.outputs.cache-hit != 'true'
+        working-directory: swap-engine/build/eigenwallet/dev-scripts
+        run: ./ubuntu_build_x86_86-w64-mingw32-gcc.sh
+
+      # Saved here rather than at the end of the job, so a later step failing does not lose it
+      - name: Keep MinGW gcc (Windows cross-build)
+        if: ${{ !inputs.require_lock && (contains(matrix.target, 'windows') && steps.mingw.outputs.cache-hit != 'true') }}
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/opt/gcc-mingw-14.3
+          key: ${{ steps.mingw.outputs.cache-primary-key }}
+
+      # The build script sets this itself; a restored toolchain needs it set here
+      - name: Point at the restored MinGW gcc (Windows cross-build)
+        if: contains(matrix.target, 'windows') && steps.mingw.outputs.cache-hit == 'true'
+        run: |
+          test -x "$HOME/opt/gcc-mingw-14.3/bin/x86_64-w64-mingw32-g++"
+          echo "MINGW_TOOLCHAIN_DIR=$HOME/opt/gcc-mingw-14.3/bin" >> "$GITHUB_ENV"
+
+      # The build script exports MINGW_TOOLCHAIN_DIR through GITHUB_ENV, so it is only visible from
+      # the next step on
+      - name: Use the MinGW gcc (Windows cross-build)
+        if: contains(matrix.target, 'windows')
+        run: |
+          if [ -z "${MINGW_TOOLCHAIN_DIR:-}" ]; then
+            echo "MINGW_TOOLCHAIN_DIR was not set by the build script" >&2
+            exit 1
+          fi
+          echo "$MINGW_TOOLCHAIN_DIR" >> "$GITHUB_PATH"
+          echo "CC_x86_64_pc_windows_gnu=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-gcc" >> "$GITHUB_ENV"
+          echo "CXX_x86_64_pc_windows_gnu=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-g++" >> "$GITHUB_ENV"
+          echo "AR_x86_64_pc_windows_gnu=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-ar" >> "$GITHUB_ENV"
+          echo "RANLIB_x86_64_pc_windows_gnu=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-ranlib" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=$MINGW_TOOLCHAIN_DIR/x86_64-w64-mingw32-g++" >> "$GITHUB_ENV"
+
+      # Only the Monero build: its depends libraries and the monero-sys build output and fingerprints, about 0.3-0.5 GB per target. The whole
+      # target folder and the cargo registry were about 2 GB per target, over GitHub's 10 GB for the repository, and evicted the MinGW cache.
+      # The Rust crates are rebuilt each time in a few minutes; Monero is the slow part. Build scripts are built for the host (target/release),
+      # their output for the target (target/<triple>/release).
+      - name: Cache the Monero build
+        if: ${{ !inputs.require_lock }}
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: |
+            swap-engine/build/eigenwallet/target/debug/monero-depends
+            swap-engine/build/eigenwallet/target/release/build/monero-sys-*
+            swap-engine/build/eigenwallet/target/release/.fingerprint/monero-sys-*
+            swap-engine/build/eigenwallet/target/${{ matrix.target }}/release/build/monero-sys-*
+            swap-engine/build/eigenwallet/target/${{ matrix.target }}/release/.fingerprint/monero-sys-*
+          # The lock overlay and this workflow (its flags change every compiled file) are in the key: when either changes, the key changes, so the
+          # new build is saved instead of the old cache being restored from restore-keys and never saved again (Monero rebuilt every run)
+          key: swap-engine-${{ matrix.target }}-${{ hashFiles('swap-engine/EIGENWALLET_REV', 'swap-engine/patches/**', 'swap-engine/ashigaru-swap/Cargo.toml', 'swap-engine/Cargo.lock.overlay', '.github/workflows/swap-engine.yaml') }}
+          restore-keys: swap-engine-${{ matrix.target }}-
+
+      - name: Test ashigaru-swap
+        if: matrix.test
+        working-directory: swap-engine/build/eigenwallet
+        run: cargo test -p ashigaru-swap --target ${{ matrix.target }} --release ${{ steps.lock.outputs.flag }}
+
+      # Ashigaru's own crate only (--no-deps): eigenwallet's crates are linted upstream. Warnings fail the job too.
+      - name: Clippy ashigaru-swap
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        working-directory: swap-engine/build/eigenwallet
+        run: cargo clippy -p ashigaru-swap --no-deps --all-targets --target ${{ matrix.target }} --release ${{ steps.lock.outputs.flag }} -- -D warnings
+
+      - name: Build ashigaru-swap
+        working-directory: swap-engine/build/eigenwallet
+        run: |
+          start=$(date +%s)
+          cargo build -p ashigaru-swap --lib --target ${{ matrix.target }} --release ${{ steps.lock.outputs.flag }}
+          lib="target/${{ matrix.target }}/release/${{ matrix.lib }}"
+          size=$(wc -c < "$lib")
+          echo "### ${{ matrix.target }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`${{ matrix.lib }}\`: $((size / 1024 / 1024)) MiB, build step $(( $(date +%s) - start ))s" >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cp "$lib" "$GITHUB_WORKSPACE/out/"
+
+      # A library built on a new macOS runner can require that macOS or later, and then fails to load on an older Mac
+      - name: Record the macOS version the library needs
+        if: contains(matrix.target, 'apple')
+        run: |
+          lib="out/${{ matrix.lib }}"
+          build=$(otool -l "$lib" | grep -A4 -E 'LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX')
+          echo "$build"
+          minos=$(echo "$build" | awk '$1 == "minos" || $1 == "version" {print $2; exit}')
+          echo "- needs macOS ${minos:-unknown} or later" >> "$GITHUB_STEP_SUMMARY"
+          echo "Imports of $(basename "$lib"):"
+          otool -L "$lib"
+
+      # Windows does not have MinGW's runtime DLLs, so ship the ones the library imports beside it,
+      # as eigenwallet's own Windows app does; Ashigaru loads them before the engine
+      - name: Ship MinGW runtime DLLs (Windows cross-build)
+        if: contains(matrix.target, 'windows')
+        run: |
+          # The engine imports libstdc++-6.dll, which in turn imports the other MinGW runtime DLLs,
+          # so ship the whole chain: every MinGW DLL that anything shipped imports
+          prefix="$(dirname "$MINGW_TOOLCHAIN_DIR")"
+          runtime="libwinpthread-1.dll libgcc_s_seh-1.dll libstdc++-6.dll"
+          queue="out/${{ matrix.lib }}"
+          summary=""
+          while [ -n "$queue" ]; do
+            file="${queue%% *}"
+            if [ "$queue" = "$file" ]; then queue=""; else queue="${queue#* }"; fi
+            imports=$(x86_64-w64-mingw32-objdump -p "$file" | grep 'DLL Name' | awk '{print $3}' | sort -u)
+            echo "Imports of $(basename "$file"):"
+            echo "$imports" | sed 's/^/  /'
+            summary="$summary $(basename "$file") -> [$(echo "$imports" | tr '\n' ' ')]"
+            for dll in $runtime; do
+              if echo "$imports" | grep -qix "$dll" && [ ! -f "out/$dll" ]; then
+                found=$(find "$prefix" -name "$dll" -path '*x86_64-w64-mingw32*' | head -1)
+                if [ -z "$found" ]; then
+                  echo "$dll is imported by $(basename "$file") but was not found under $prefix" >&2
+                  exit 1
+                fi
+                cp "$found" out/
+                echo "Shipping $found"
+                queue="$queue out/$dll"
+                queue="${queue# }"
+              fi
+            done
+          done
+          echo "- imports:$summary" >> "$GITHUB_STEP_SUMMARY"
+          ls -l out
+
+      # A single ArtifactService timeout used to fail this platform's engine, and with it the packages. One more try after a pause before
+      # giving up: the retry's own failure fails the job.
+      - name: Upload library
+        id: upload
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: swap-engine-${{ matrix.target }}
+          path: out/*
+          if-no-files-found: error
+
+      - name: Wait before trying the upload again
+        if: steps.upload.outcome == 'failure'
+        shell: bash
+        run: sleep 30
+
+      - name: Upload library (second try)
+        if: steps.upload.outcome == 'failure'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: swap-engine-${{ matrix.target }}
+          path: out/*
+          if-no-files-found: error
+          overwrite: true
+
+      # Known vulnerabilities in the dependencies this library is built from. Informational for now: it lists what is open, in the run summary, so the
+      # versions can be raised (in the overlay) until it is clean, and then it can be made to fail the build.
+      - name: Audit the dependencies
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
+        continue-on-error: true
+        working-directory: swap-engine/build/eigenwallet
+        run: |
+          # Everything goes to the summary, the install too: a step that ends in seconds should say whether cargo-audit ran at all.
+          # It exits non-zero while advisories are open, which continue-on-error lets through until they are cleared.
+          {
+            echo "### cargo audit"
+            if ! cargo install cargo-audit --version 0.23.0 --locked > "$RUNNER_TEMP/cargo-audit-install.log" 2>&1; then
+              echo "cargo-audit could not be installed:"
+              echo '```'
+              tail -n 30 "$RUNNER_TEMP/cargo-audit-install.log"
+              echo '```'
+              exit 1
+            fi
+            echo "Version: \`$(cargo audit --version)\`"
+            echo '```'
+            status=0
+            cargo audit > "$RUNNER_TEMP/cargo-audit.log" 2>&1 || status=$?
+            tail -n 60 "$RUNNER_TEMP/cargo-audit.log"
+            echo '```'
+            echo "cargo audit exit status: $status"
+            exit "$status"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # What the build resolved, to be reviewed and committed as swap-engine/Cargo.lock.overlay
+      - name: Upload the resolved dependency lock
+        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: swap-engine-cargo-lock
+          path: swap-engine/build/eigenwallet/Cargo.lock
+          if-no-files-found: error

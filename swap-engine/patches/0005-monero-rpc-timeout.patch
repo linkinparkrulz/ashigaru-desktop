@@ -1,0 +1,41 @@
+diff --git a/monero-wallet/src/lib.rs b/monero-wallet/src/lib.rs
+index 36c3b01..ee6e654 100644
+--- a/monero-wallet/src/lib.rs
++++ b/monero-wallet/src/lib.rs
+@@ -4,5 +4,10 @@ pub mod listener;
+ pub mod wallets;
+ pub mod witness;
+ 
++/// How long one request to a Monero daemon may take. monero-oxide allows 30 seconds, which a node
++/// reached through Tor cannot meet for the larger responses: the output distribution fetched for
++/// decoy selection when sweeping the swap's XMR runs to megabytes.
++pub const RPC_REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10 * 60);
++
+ pub use listener::*;
+ pub use wallets::*;
+diff --git a/monero-wallet/src/wallets.rs b/monero-wallet/src/wallets.rs
+index 5453015..280bad0 100644
+--- a/monero-wallet/src/wallets.rs
++++ b/monero-wallet/src/wallets.rs
+@@ -301,7 +301,7 @@ impl Wallets {
+             return Ok(rpc_client.clone());
+         }
+ 
+-        let rpc_client = SimpleRequestTransport::new(guard.0.to_url_string())
++        let rpc_client = SimpleRequestTransport::with_custom_timeout(guard.0.to_url_string(), crate::RPC_REQUEST_TIMEOUT)
+             .await
+             .context("Failed to connect to Monero daemon")?;
+         guard.1 = Some(rpc_client.clone());
+diff --git a/monero-wallet/src/witness.rs b/monero-wallet/src/witness.rs
+index 1d77d0a..20bc639 100644
+--- a/monero-wallet/src/witness.rs
++++ b/monero-wallet/src/witness.rs
+@@ -37,7 +37,7 @@ impl DaemonWitness {
+     async fn rpc_client(&self) -> Result<MoneroDaemon<SimpleRequestTransport>> {
+         self.client
+             .get_or_try_init(|| async {
+-                SimpleRequestTransport::new(self.url.clone())
++                SimpleRequestTransport::with_custom_timeout(self.url.clone(), crate::RPC_REQUEST_TIMEOUT)
+                     .await
+                     .context("Failed to connect to witness Monero daemon")
+             })

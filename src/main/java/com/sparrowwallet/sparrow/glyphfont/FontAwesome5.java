@@ -32,6 +32,13 @@ public class FontAwesome5 extends GlyphFont {
         CIRCLE('\uf111'),
         COINS('\uf51e'),
         COPY('\uf0c5'),
+        CUT('\uf0c4'),
+        FOLDER_OPEN('\uf07c'),
+        OBJECT_GROUP('\uf247'),
+        PASTE('\uf0ea'),
+        PLUG('\uf1e6'),
+        POWER_OFF('\uf011'),
+        REDO('\uf01e'),
         EXCHANGE_ALT('\uf362'),
         EXCLAMATION_CIRCLE('\uf06a'),
         EXCLAMATION_TRIANGLE('\uf071'),
@@ -91,7 +98,22 @@ public class FontAwesome5 extends GlyphFont {
         USER_SLASH('\uf506'),
         WALLET('\uf555'),
         WEIGHT('\uf496'),
-        WIFI('\uf1eb');
+        WIFI('\uf1eb'),
+        //Ashigaru GUI icon set. One font draws every icon, so no platform substitutes its own glyph.
+        BOOK('\uf02d'),
+        CHECK('\uf00c'),
+        COG('\uf013'),
+        DICE('\uf522'),
+        DOWNLOAD('\uf019'),
+        FILE_EXPORT('\uf56e'),
+        GLOBE('\uf0ac'),
+        SERVER('\uf233'),
+        SHIELD_ALT('\uf3ed'),
+        SLIDERS_H('\uf1de'),
+        SYNC_ALT('\uf2f1'),
+        TH_LARGE('\uf009'),
+        TIMES('\uf00d'),
+        TRASH_ALT('\uf2ed');
 
         private final char ch;
 

@@ -1,0 +1,665 @@
+====================================================================
+ ASHIGARU DESKTOP - UI REVAMP TESTING CHECKLIST
+ Branch: claude/funny-cannon-itky0u
+====================================================================
+
+HOW TO USE
+  - Get the branch and run it (JDK 21):
+        git fetch origin claude/funny-cannon-itky0u
+        git checkout claude/funny-cannon-itky0u
+        ./gradlew run
+  - Sections 1-6 need no funds. A throwaway wallet is enough.
+  - Sections 7-10 need a funded wallet and a live coordinator. Use
+    testnet with a throwaway data directory where you can:
+        ./gradlew run --args="--network testnet --dir /tmp/ashigaru-test"
+  - Mark each item [x] pass / [!] fail (add a note and a screenshot).
+  - Items marked (UNSEEN) were built without ever being run against
+    real data. Look hardest at those.
+  - Every section ends with "anything odd?". Clipped text, a control
+    that does nothing, a wrong colour: write it down even if it is not
+    on the list.
+
+WHAT THE REVAMP IS FOR
+  Each screen should answer one of four questions better than before:
+    Privacy   How private is my bitcoin?
+    Path      Where does it go next?
+    Exposure  Who can see what I do?
+    Proof     Can I check it myself?
+  If a screen leaves you unable to answer its question, that is a
+  finding, even when nothing is broken.
+
+
+--------------------------------------------------------------------
+ 0. BUILD & LAUNCH
+--------------------------------------------------------------------
+  [ ] ./gradlew run builds cleanly.
+  [ ] Splash shows three steps (Tor, server, wallets) that change as
+      startup progresses.
+  [ ] Main window opens. No header band across the top, no status bar
+      across the bottom.
+  [ ] Wallets that were open last time reopen.
+  [ ] (UNSEEN) Make Tor fail to start (for example, block it with a
+      firewall). The splash shows "Retry Tor" and "Open without
+      waiting". Retry restarts Tor; Open without waiting opens the
+      main window straight away.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 1. TYPE, COLOUR, ICONS  (look for these everywhere)
+--------------------------------------------------------------------
+  [ ] Titles, labels and buttons are in the poster face. Sentences
+      (warnings, help text, wizard copy) are in a plain reading face.
+      Note any sentence still set in all-caps poster type.
+  [ ] Small grey captions are readable on both the dark canvas and on
+      cards.
+  [ ] Red appears only on the brand, the selected item and the one
+      button that moves you forward. Offline, errors and warnings are
+      amber. Private, verified and connected are green. Note any red
+      that means "something is wrong".
+  [ ] Icons are drawn icons, not text symbols or empty boxes. Check
+      buttons, both menus (wallet menu, connection menu) and tabs.
+  [ ] Open any dialog: the main window behind it dims. Close it: the
+      window is lit again. Try several dialogs in a row.
+  [ ] Menus and tooltips do NOT dim the window.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 2. SIDEBAR  (Path)
+--------------------------------------------------------------------
+  No wallet open:
+  [ ] Sidebar shows the wallet dropdown, "Open Wallet" and
+      "New / Restore". No accounts list.
+
+  Wallet open:
+  [ ] "Open Wallet" and "New / Restore" buttons are gone. A "..."
+      button sits beside the wallet dropdown.
+  [ ] The "..." menu holds: View seed words, Export labels, Import
+      labels, Lock wallet (only for wallets with a password or
+      passphrase), Open another wallet, New / restore, Delete wallet.
+      Each one works.
+  [ ] Accounts are drawn as a line: Deposit, TX0, Premix, MIX,
+      Postmix, then Badbank hanging off under "TX0 CHANGE".
+  [ ] Each account shows its balance and UTXO count ("Empty" when it
+      has none). Numbers match the account's own screen.
+  [ ] Clicking an account opens it; the selected one has a red node
+      and a red bar on the left.
+  [ ] Balances update after a receive, a Tx0 and a mix, without
+      switching accounts.
+  [ ] (UNSEEN) While mixing, Premix reads "N UTXOs · mixing" in red.
+  [ ] Narrow and shorten the window: the sidebar scrolls, nothing is
+      cut off.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 3. STATUS STRIP AND CONNECTION  (Exposure)
+--------------------------------------------------------------------
+  [ ] Top left shows where you are: "WALLET / ACCOUNT", "TOOLS" or
+      "SETTINGS".
+  [ ] Status messages (Ready, Syncing...) appear beside it.
+  [ ] Top right shows pills: connection, server name (only when
+      connected), block height, network.
+  [ ] Connection pill reads "Connecting...", then "Tor · connected"
+      (green outline). Offline reads "Offline" in amber, never red.
+  [ ] Click the pill in EVERY state (offline, connecting, connected).
+      A menu opens each time with: New Tor identity, Restart Tor,
+      Connect or Disconnect, Who learns what.
+  [ ] Connect / Disconnect works and the pill follows.
+  [ ] New Tor identity and Restart Tor work, and are greyed out when
+      they cannot apply.
+  [ ] "Who learns what" opens a sheet with five rows: internet
+      provider, server, Whirlpool coordinator, GitHub, explorer links.
+  [ ] The server row shows YOUR server's name. With a private Electrum
+      server it reads "Your own server".
+  [ ] The GitHub row changes when you turn the update check on or off
+      in Settings, Update.
+  [ ] READ THE SHEET CRITICALLY. Is every "Sees" and "Not" line true?
+      This wording has not been reviewed by a protocol expert.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 4. WALLET SCREEN, EMPTY  (Privacy, Path)
+--------------------------------------------------------------------
+  [ ] Header shows the account name large, with one sentence saying
+      what the account is for. The sentence differs for Deposit,
+      Premix, Postmix and Badbank.
+  [ ] The balance is the largest thing on the screen, with UTXO count
+      and pending amount under it.
+  [ ] "Wallet privacy" panel on the right: a ring, a percentage, and
+      four rows (Private, Mixing, Unmixed, Badbank). All zero on an
+      empty wallet.
+  [ ] Empty Deposit shows "Your first mix, in three steps" with three
+      cards. "Receive funds" opens Receive. "Take the guided tour"
+      starts the tour.
+  [ ] Empty Premix, Postmix and Badbank show "No coins in ... yet",
+      not the three cards.
+  [ ] Tabs: UTXOs and Transactions. A third tab, Whirlpool, appears
+      only for wallets that have a Postmix account (hot wallets, not
+      watch-only).
+  [ ] Shrink the window width: the header and tab row scroll sideways
+      rather than clipping button labels.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 5. CREATING, LOCKING AND DELETING A WALLET  (Proof)
+--------------------------------------------------------------------
+  Dice passphrase:
+  [ ] New / Restore, Hot wallet, generate a seed, "Yes, I have dice".
+      Roll and enter six words.
+  [ ] Review screen shows one card per word with five dice faces. The
+      dice match what you entered, in order. A one is a red disc.
+  [ ] The passphrase line and master fingerprint are shown as before.
+  [ ] The warning is an amber box with three short sentences, not one
+      all-caps paragraph.
+  [ ] "Create Wallet" is disabled until you tick "I have written down
+      the passphrase and the fingerprint". Untick: disabled again.
+  [ ] "Add another" adds a seventh word and its dice card.
+  [ ] Reopen the wallet with the passphrase you wrote down. The
+      fingerprint matches.
+
+  Other paths (should be unchanged apart from type and colour):
+  [ ] "No, I don't have dice" and the typed-passphrase screen.
+  [ ] Restore from an existing seed, with and without a passphrase.
+  [ ] Watch-only import from a zpub.
+
+  Seed words:
+  [ ] "..." menu, View seed words. Words open BLURRED with a "Hold to
+      reveal" button.
+  [ ] Press and hold with the mouse: words are readable. Release:
+      blurred again.
+  [ ] Tab to the button and hold Space: same behaviour.
+  [ ] On a passphrase wallet, the passphrase prompt still comes first.
+
+  Lock:
+  [ ] "..." menu, Lock wallet. A confirmation says the wallet closes
+      and that mixing stops while it is locked.
+  [ ] Cancel leaves the wallet open. Lock wallet closes it; it
+      reappears in the dropdown and asks for its password or
+      passphrase.
+
+  Delete (use a throwaway wallet):
+  [ ] "..." menu, Delete wallet. First dialog asks you to type the
+      wallet name. Continue is disabled until the name matches
+      exactly.
+  [ ] The existing password or passphrase step follows, as before.
+  [ ] Neither Continue nor Delete is a filled red button.
+  [ ] Wrong password or passphrase: wallet is NOT deleted.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 6. TOOLS AND SETTINGS  (Exposure, Proof)
+--------------------------------------------------------------------
+  Layout:
+  [ ] Tools and Settings show their sections as tabs across the top.
+      There is no second sidebar.
+  [ ] Each tab opens its page. Back returns to the wallet you had
+      open.
+
+  Settings, General:
+  [ ] Every option shows its explanation as a line under the row.
+      There are no "?" hover icons left on this page.
+  [ ] Fee rates source, Block explorer and Am I Exposed each say which
+      outside service they reach. The last two say the links open in
+      your browser, outside Tor.
+  [ ] Every control still saves its value.
+
+  Settings, Server:
+  [ ] The page opens with four hops: You, Tor, server, Bitcoin.
+  [ ] Each hop shows a state. Connected hops have a green ring.
+  [ ] Disconnect, reconnect, restart Tor: the hops follow without
+      reopening the page.
+  [ ] The server hop reads "Public server" or "Your server" to match
+      the type selected.
+  [ ] The Bitcoin hop shows the current block height once connected.
+  [ ] The public-server warning is readable sentences, not all-caps.
+  [ ] Test Connection, Edit, Restart Tor and the form below still
+      behave as before.
+
+  Settings, Update:
+  [ ] (UNSEEN) Check now, then Download and verify. The four
+      verification lines each get a green tick as they pass.
+  [ ] (UNSEEN) If you can produce a failing download, the failed line
+      turns amber with a cross and later lines stay grey.
+
+  Tools, Verifier (reworked: one paste, result beside the inputs):
+  [ ] "Use release signing code", paste a real release signature block
+      into "Signed message". It says "Signed message recognised" at
+      once and there is no Parse button. Verify Message (or Ctrl+Enter):
+      the card on the right turns green, "Signature verified", with the
+      notification address and the recovered signer address, each with
+      a copy button, and "The message names this payment code".
+  [ ] At the minimum window size (1280 x 800) the Verify button and the
+      result card are both on screen without scrolling.
+  [ ] Change one character of the message in the block and verify
+      again. The card turns amber, "Signature does not match this
+      payment code", and "The two addresses differ" is amber.
+  [ ] Paste a DIFFERENT block after the first: the new one is what is
+      verified (the old message must not linger).
+  [ ] Open "Enter the message and signature separately", edit the
+      message: the block box empties and the status says the typed
+      input is used. Verify still works from the typed boxes.
+  [ ] Change the payment code after a result: the card goes back to
+      "The result appears here".
+  [ ] Tab and Shift+Tab move between boxes (no tab characters typed).
+  [ ] A bad payment code, a bad signature and an empty field each give
+      a plain-words message and put the cursor in the right box.
+  [ ] Paste / Clear buttons work. A half-pasted block says what is
+      missing (for example the END BITCOIN SIGNATURE line).
+  [ ] The buttons look like the other Tools tabs: Verify Message is
+      the red primary button, the cards have a visible background.
+
+  Tester round (comma style classes, help, formatting, Monero nodes):
+  [ ] Deposit, tick one coin: Preview Tx0's text and outline turn
+      green. Untick: it returns to normal. On Postmix the same button
+      ("Remix selected") never turns green. Start Mixing is red.
+  [ ] Tools > Statistics: the two pool-size badges are pills.
+  [ ] Tx0 preview: "Total fees" is bold and red. The caption under the
+      ribbon wraps in full (no "..."). Every amount has eight decimals,
+      including Anti-Sybil fee (0.00125000), in the ribbon AND the grid.
+  [ ] Click the "?" on the unlock passphrase dialog, the restore
+      passphrase step and the keystore passphrase dialog: each shows
+      its help; a second click closes it.
+  [ ] Wallet with a PayNym picture: the "..." button sits inside the
+      sidebar and the divider line is unbroken, at the default and the
+      minimum sidebar width.
+  [ ] Settings > Swaps, own node ticked with public nodes ticked: the
+      note says the public ones are ignored. Turn swaps on: the status
+      says "Using your own Monero node only; the N public nodes you
+      ticked are not used", and every node box, the add-node field, Add
+      and Remove are greyed out, with an Edit nodes button.
+  [ ] Edit nodes: swaps turn off, the section unlocks. While a swap is
+      running it refuses with a message. Turn swaps back on: it locks.
+  [ ] Settings > Swaps with only one public node ticked and swaps on:
+      stays editable, and says to tick at least two.
+  [ ] Who learns what (swaps on, own node ticked): the row reads
+      "Your own Monero node".
+
+  Tools, Statistics:
+  [ ] Chart lines and legend are red and light grey (no orange or
+      yellow). Pool pills in "Recent Tx0 transactions" use the same
+      two colours.
+  [ ] With no Postmix coins, the first tile is "Total BTC in pools".
+  [ ] (UNSEEN) With Postmix coins, a "YOUR POOL" tile appears first,
+      showing coins unspent in that pool and how many are yours.
+      Check the count against your Postmix UTXO list.
+
+  Tools, Logs and Guided tour:
+  [ ] Logs page works as before.
+  [ ] Start the guided tour with a wallet open and click Next through
+      every step. Each popover points at a real, visible control. Note
+      the step number of any that points at nothing.
+  [ ] Run it again with NO wallet open. It should cover Open Wallet
+      and New / Restore, then continue once a wallet is opened.
+  [ ] Anything odd?
+
+
+====================================================================
+ SECTIONS 7-10 NEED A FUNDED WALLET
+====================================================================
+
+--------------------------------------------------------------------
+ 7. RECEIVE AND TRANSACTIONS  (Path, Exposure)
+--------------------------------------------------------------------
+  [ ] Receive shows a strip (Deposit, Premix, Postmix) with Deposit
+      lit, and a sentence saying coins arrive unmixed. The sentence is
+      not clipped.
+  [ ] Address, derivation path, status, QR and Next address work as
+      before.
+  [ ] After a receive: the sidebar balance, the big balance and the
+      privacy ring all update. The ring shows the amount as Unmixed
+      (grey).
+  [ ] Select coins on Deposit. "N selected · amount BTC" appears
+      beside "Preview Tx0". The amount is the sum of what you ticked.
+      "Select all" becomes "Clear selection".
+  [ ] Transactions tab: each row with explorer / exposure links shows
+      an amber "OUTSIDE TOR" tag.
+  [ ] (UNSEEN) Click "explorer". A "Leaving Tor" dialog names the site
+      and shows the link. "Copy link" is the red default and puts the
+      link on the clipboard. "Open anyway" opens the browser. Closing
+      the dialog does neither.
+  [ ] (UNSEEN) Same for "exposure", and for the links in Tools,
+      Statistics.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 8. TX0  (Path)
+--------------------------------------------------------------------
+  [ ] (UNSEEN) Select Deposit coins, Preview Tx0. The dialog is wide:
+      figures on the left, "Where the coins go" on the right.
+  [ ] (UNSEEN) The picture shows the input on the left and up to four
+      ribbons on the right: To Premix (red), Change to Badbank
+      (amber), Anti-Sybil fee, Miner fee (grey).
+  [ ] (UNSEEN) Every number in the picture matches the figure beside
+      it in the grid. Premix count times pool size equals "Amount to
+      Whirlpool".
+  [ ] (UNSEEN) Change the pool: the picture redraws. While it is
+      working it reads "Calculating...".
+  [ ] (UNSEEN) Labels do not overlap, including when the change is
+      tiny or zero.
+  [ ] Broadcast still works and shows the signing / broadcasting /
+      complete steps.
+  [ ] After the Tx0: Deposit drops, Premix and Badbank rise in the
+      sidebar, and the ring gains a red (Mixing) and amber (Badbank)
+      segment.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 9. MIXING  (Privacy)
+--------------------------------------------------------------------
+  Coin rows:
+  [ ] (UNSEEN) Premix and Postmix rows show four dots beside the mix
+      badge. Filled dots equal the coin's mix count (up to four).
+  [ ] (UNSEEN) Dots turn green once a coin reaches the wallet's Mix To
+      minimum (3 by default). Change the minimum in Mix To and check
+      the colour follows.
+  [ ] Deposit and Badbank rows show no dots.
+
+  Whirlpool tab:
+  [ ] (UNSEEN) Every Premix and Postmix coin appears as a dot on a
+      ring. Count the dots: it matches "N coins" in the side panel and
+      your UTXO lists.
+  [ ] (UNSEEN) Premix coins sit on the outer dashed ring (0). Coins at
+      or past the minimum sit on the green inner ring.
+  [ ] (UNSEEN) Coins in a round are red with a dashed line to the
+      centre, and "Live round" says how many.
+  [ ] (UNSEEN) "Mixes completed" bars match the ring counts.
+  [ ] (UNSEEN) After a mix completes, the coin moves inward one ring.
+  [ ] The rings turn slowly and smoothly. Leave the tab open for ten
+      minutes and watch CPU use; it should stay low. Switch to another
+      tab and it should drop further.
+  [ ] Resize the window: the rings stay round and centred.
+  [ ] Start Mixing / Stop Mixing and Mix To still work from the bottom
+      bar.
+
+  Privacy ring:
+  [ ] (UNSEEN) The percentage equals Postmix divided by the whole
+      wallet. The four legend amounts match the four sidebar balances.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 10. BADBANK AND MIX TO  (Privacy, Path)
+--------------------------------------------------------------------
+  [ ] Badbank shows an amber bar explaining that the coins are Tx0
+      change tied to your deposit, and what to do with them. Is the
+      advice right?
+  [ ] (UNSEEN) Mix To shows a strip: Postmix, "3 MIXES", destination.
+      With no destination it reads "NO DESTINATION" in grey.
+  [ ] (UNSEEN) Pick a destination wallet: its name appears in green
+      and the lines turn red. Change the minimum: the middle label
+      follows.
+  [ ] Apply and Cancel behave as before.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ 11. SWAPS: BADBANK TO XMR  (Path, Exposure)
+--------------------------------------------------------------------
+  The swap tooling from the xmr-swap branch is merged in. It needs a
+  build that includes the native swap engine: a plain "./gradlew run"
+  has none, so Swaps stays hidden. Use a packaged Swap build, then
+  turn swaps on in Settings, Swaps.
+
+  Where it shows up:
+  [ ] Settings has a fourth tab, Swaps. Its help text sits under the
+      row, like General.
+  [ ] With swaps OFF: no Swaps tab in Tools, no "Swap to XMR" on
+      Badbank, no "SWAP TO XMR" under Badbank in the sidebar.
+  [ ] With swaps ON: all three appear. Tools shows Swaps as a tab
+      (there is no collapse-to-icons button any more).
+  [ ] Badbank's amber bar now ends "Tick one coin and choose Swap to
+      XMR...".
+  [ ] "Swap to XMR" is disabled until exactly one coin is ticked, and
+      opens Tools, Swaps on the offers.
+  [ ] "Who learns what" gains three rows: Swap makers, Monero nodes,
+      Price source. Read them critically, as in section 3.
+
+  Looks (the swap screens were tested on xmr-swap with a different
+  typeface, so compare against that build):
+  [ ] Sentences and figures on the swap screens are in Roboto and
+      easy to read. Buttons and titles are in the poster face.
+  [ ] Nothing on the offers, review or progress screens is clipped,
+      wrapped badly or overlapping at the minimum window size.
+  [ ] The pinned Approve bar still stays in view while the review
+      scrolls.
+
+  Behaviour (should be exactly as on xmr-swap):
+  [ ] Offers load, sort and refresh.
+  [ ] Review offer shows the terms, deposit and recovery details.
+  [ ] A swap runs to completion and the XMR arrives.
+  [ ] A stalled or cancelled swap recovers the BTC.
+  [ ] Changing the Bitcoin server, restarting Tor and requesting a new
+      identity mid-swap behave as they did.
+  [ ] Tools, Logs still shows the swap engine log.
+  [ ] Anything odd?
+
+
+====================================================================
+ ROUND 2: RETEST AFTER THE FIRST PASS OF FEEDBACK
+====================================================================
+  Each item below answers a finding from round 1. Pull the branch
+  again before testing.
+
+  Menus and popups:
+  [ ] No white border around the "..." wallet menu, the connection
+      menu or the guided tour popovers.
+  [ ] Menu items are in the plain reading face, sentence case, with
+      drawn icons (no empty boxes).
+
+  Wallet selector:
+  [ ] A small picture sits left of the wallet dropdown and the master
+      fingerprint is shown under it. A watch-only wallet imported from
+      a bare key reads "Watch-only".
+  [ ] The picture is the wallet's PayNym robot. It is fetched from
+      paynym.rs through Tor a few seconds after the server connects
+      (once per wallet per launch), and the fingerprint picture shows
+      until then, and for good if the fetch fails. With Tor and any
+      proxy off, the fingerprint picture stays and nothing is asked.
+      Hover it: "This wallet's PayNym, from paynym.rs".
+  [ ] A watch-only wallet shows a small eye, not a picture.
+
+  Wallet screen:
+  [ ] Refresh is a labelled button with an icon, not an icon and
+      three dots. It reads "Syncing..." while a sync runs.
+  [ ] Coin checkboxes are clearly visible, and red when ticked.
+  [ ] On Deposit, Receive is red until you tick a coin. With coins
+      ticked, Preview Tx0 is the red button and Receive is outlined.
+  [ ] The Whirlpool tab appears on Premix and Postmix only.
+
+  Postmix change (needs a Postmix account holding spend change):
+  [ ] (UNSEEN) A change coin's badge reads "Change · not mixed" in
+      amber. It has no mix dots and no "1 mix".
+  [ ] (UNSEEN) Change is not counted as Private: the ring and the
+      Private figure cover mixed coins only, and change is added to
+      Unmixed.
+  [ ] (UNSEEN) The sidebar reads "N mixed · M change" under Postmix.
+  [ ] (UNSEEN) Change coins do not appear on the Whirlpool rings, and
+      the coin count there excludes them.
+
+  Postmix actions:
+  [ ] (UNSEEN) Postmix has two buttons: "Remix selected" and
+      "New Tx0".
+  [ ] (UNSEEN) Remix selected is enabled only when every ticked coin
+      is a mixed coin. Its tooltip explains why when it is not.
+  [ ] (UNSEEN) New Tx0 opens the Tx0 dialog for the ticked coins,
+      mixed or change, and the Tx0 broadcasts.
+  [ ] (UNSEEN) Remix selected still queues coins for remix as before.
+
+  Seed words:
+  [ ] The reveal button has keyboard focus when the dialog opens.
+      Holding Space shows the words; releasing hides them.
+  [ ] Tab does not move through the hidden word fields.
+
+  Tools:
+  [ ] Each Tools page opens with a large title and one sentence. No
+      red banner, no icon in a red ring.
+  [ ] Statistics shows one row of cards, with "Updated ... Blocks ..."
+      on a single small line above them. Error and loading messages
+      are amber sentences, not all-caps.
+  [ ] Chart axis labels and legend are in the reading face.
+  [ ] Logs: the "Showing the last N lines" line is small mono text.
+
+  Settings, Swaps:
+  [ ] An amber "Experimental" box sits under the page title.
+  [ ] The Enable swaps explanation is four short lines.
+  [ ] Monero node names are in the reading face and their addresses
+      in mono, lower case. The paragraph above them is sentences.
+  [ ] Anything odd?
+
+
+====================================================================
+ ROUND 3: SWAP ENGINE BUILDS, SWAP SCREENS, PASSPHRASE EYE
+====================================================================
+  Getting a build with swaps:
+    Actions tab > Package > Run workflow > choose this branch > tick
+    "Include the swap engine" > Run. It takes about an hour. The
+    installers are named "Ashigaru Build - <platform> (with swaps)".
+    Then turn swaps on in Settings, Swaps.
+
+  Eye on password and passphrase fields (no funds needed):
+  [ ] Every field below shows an eye at its right edge BEFORE you
+      type anything:
+        - BIP39 passphrase prompt when opening a wallet
+        - wallet password prompt when opening a wallet
+        - typed passphrase and its confirmation in New / Restore
+        - optional wallet password at the end of New / Restore
+        - passphrase step when deleting a wallet
+  [ ] Clicking the eye shows the text; the eye becomes a struck-out
+      eye in red. Clicking again hides the text.
+  [ ] The fingerprint beside the BIP39 passphrase still updates as
+      you type, shown or hidden.
+  [ ] Tooltip reads "Show what you type" / "Hide what you type".
+
+  Window:
+  [ ] The window opens at 1280 x 800 and cannot be dragged smaller
+      than that on a screen big enough to hold it (on a smaller
+      screen it fits the screen). Nothing is clipped on the wallet
+      screen, Tools or Settings at that size.
+
+  Swap screens (needs the build with swaps):
+  [ ] Tools, Swaps opens with a "Swaps" title, one sentence, and the
+      engine's state on a small line. No "Send BTC -> Receive XMR"
+      heading on the page; the final review is titled "Send BTC,
+      receive XMR".
+  [ ] At 1280 x 800 the offers table still shows every column and the
+      Approve bar stays pinned on the review.
+  [ ] Icons are drawn, not characters: the warning and done marks in
+      banners, the numbered steps (a tick when done, a dot on the
+      current one), the protocol step list, the green tick beside
+      "No deduction", the arrow on the review, the little disclosure
+      button on each offer row, and Back to offers.
+  [ ] Amber means attention, green means done. Red appears only on
+      Approve / Cancel and refund and when hovering Review offer.
+  [ ] "Your swaps" is a dark table with thin row lines, like the coin
+      lists.
+  [ ] Everything under section 11 "Behaviour" still holds.
+  [ ] Anything odd?
+
+
+--------------------------------------------------------------------
+ SWAP PRICE WARNING  (engine 5.0.4)
+--------------------------------------------------------------------
+  Needs a maker whose final terms are worse than its offer, or a test
+  build that fakes the terms. Nothing is locked in any of these.
+  [ ] Final terms 2% or less short: no warning, the normal review.
+  [ ] Between 2% and 5% short: a "Price changed" window with both
+      XMR amounts and the difference. "Reject swap" is the red,
+      default button; Enter and the window's X both reject.
+  [ ] The window counts down and closes as a rejection when the
+      approval time runs out.
+  [ ] "Accept the worse price" goes to the normal review, which shows
+      "You accepted a price X% below the offer".
+  [ ] More than 5% short, or a changed refund policy: no window, the
+      swap stops, and the dashboard says why.
+
+
+--------------------------------------------------------------------
+ TESTER ROUND: PASSWORDS, TOP BAR, OFFERS
+--------------------------------------------------------------------
+  [ ] Start a swap and type a wrong wallet password: ONE window,
+      "That is not the password for <wallet>...", no second red
+      banner above the offers. Cancel the password window: only
+      "Swap setup cancelled. Nothing was locked or sent."
+  [ ] View seed and Pair with Sentinel ask for the password in the
+      same small window as opening a wallet, and say wrong
+      passwords in the same words.
+  [ ] A top-bar message ("Updating to new block height", "Requested
+      new Tor circuits") is back to "Ready" after about 20 seconds
+      without switching account. "Syncing" goes to "Ready" when
+      the sync ends.
+  [ ] With a mixing wallet open the top bar shows a Coordinator
+      light: idle until Whirlpool starts, online once it has;
+      amber while connecting; red if the coordinator cannot be
+      reached (a coin connecting for over 90 seconds, or start-up
+      failing). Hover it for the reason.
+  [ ] With swaps on, a Swaps light: on, starting (amber, also while
+      waiting for Tor), or red when it could not start.
+  [ ] Offers say "x.x% worse/better than market" (no minus sign),
+      "0.0123 XMR less than the most", and a "98% refund" /
+      "100% refund" line under REFUND IF CANCELLED.
+  [ ] "Could not load the offer list. Ashigaru will try again..."
+      disappears by itself when the list loads again.
+  [ ] The review's note says to check the fee breakdown and full
+      address ABOVE.
+
+--------------------------------------------------------------------
+ PAIR WITH SENTINEL  (wallet "..." menu)
+--------------------------------------------------------------------
+  [ ] The "..." menu beside the wallet name has "Pair with Sentinel...".
+  [ ] A wallet with no password opens the window at once; an encrypted
+      wallet asks for its password first, and a wrong password says so.
+  [ ] The window shows a QR, three words (like word-word-word), and
+      which keys are in the pairing. A mixing wallet lists all six:
+      Deposit BIP44, BIP49, BIP84, Premix, Postmix, Bad Bank.
+  [ ] The four steps are listed ABOVE the words: 1 pair Sentinel with
+      a Dojo you control or trust, 2 tap NEW, 3 scan the QR code (or
+      COPY PAIRING TEXT and paste), 4 type the 3 pairing words with
+      their hyphens and tap DECRYPT. They match what Sentinel shows.
+  [ ] A "Don't have Sentinel?" link goes through the Leaving Tor
+      window to github.com/tetragrammalol/sentinel-android-dojobay.
+  [ ] In Sentinel (Dojo Bay edition), follow those steps: the wallet is
+      added with its accounts, and nothing is "skipped" for a mixing
+      wallet.
+  [ ] "New words" changes the words and the QR; the old words no
+      longer open the new QR. "Copy pairing text" and "Copy words" copy.
+  [ ] A watch-only wallet imported from a zpub still opens it, with
+      only Deposit BIP84, and says the others are not in it.
+  [ ] Closing the window and opening it again gives different words.
+
+--------------------------------------------------------------------
+ TOOLS > SIGN  (BIP47 message signing)
+--------------------------------------------------------------------
+  [ ] A "Sign" tab sits beside "Verifier". With a seed wallet open it
+      is chosen already and shows the payment code and notification
+      address; with none open it says why and Sign is disabled.
+  [ ] Enter a message and press Sign Message (or Ctrl+Enter): a signed
+      block appears at the right. Copy signed message copies all of it.
+  [ ] Paste that block into Tools > Verifier with the same payment
+      code: "Signature verified", and "The message names this
+      payment code".
+  [ ] The note under the message says what is added to it; untick
+      "Add my payment code" and the message is signed as typed.
+  [ ] Editing the message, the wallet or the box clears the answer.
+  [ ] A message containing -----BEGIN BITCOIN SIGNATURE----- is
+      refused with a reason.
+  [ ] Optional: check the block in a different BIP47 wallet's
+      verifier, and report which one.
+
+
+--------------------------------------------------------------------
+ KNOWN GAPS  (not bugs, do not report)
+--------------------------------------------------------------------
+  - The selection summary shows count and total only. It does not yet
+    say which pool the selection fits.
+  - On Linux without a compositor, menus may show a pale halo.
+  - Statistics decides "your pool" from Postmix coin value (0.025 or
+    0.25 BTC).
+  - The interface is Nikkyou Sans on labels, buttons and tabs, with
+    Roboto for sentences. xmr-swap alone used Roboto everywhere.

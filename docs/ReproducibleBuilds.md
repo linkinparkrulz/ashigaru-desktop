@@ -4,14 +4,20 @@ The purpose of this guide is to aid you in confirming that the official Ashigaru
 binaries can be independently reproduced — that the Ashigaru Open Source Project released binaries
 built **only** from the source code in this repository.
 
+Release builds are published by the GitHub account `linkinparkrulz` from this repository. Besides the release signature, each file carries a GitHub
+build attestation (`gh attestation verify <file> --repo linkinparkrulz/ashigaru-desktop`) that records which workflow and commit built it; a rebuild as
+described here is the stronger, independent check that the binary matches the source.
+
 Every release publishes `SHA256SUMS`, `MESSAGE.txt`, and `RELEASE-BIP47-SIGNATURE.txt` alongside
 the binaries (see **Verifying a release** in the [README](../README.md) for the signature side).
 This guide covers rebuilding a binary from source and comparing its hash.
 
 ## Environment
 
-The release binaries are built with Temurin JDK **21.0.7** (see `java-version` in
-`.github/workflows/release.yaml`) and the Gradle wrapper checked into this repository (Gradle 8.5).
+The release binaries are built with **Temurin JDK 21.0.13.1+2** exactly: every workflow sets up `java-version: '21.0.13+100000002.0.LTS'`
+(Adoptium's semver for that build) with `check-latest: false`, and `.github/scripts/require-java.sh` still stops the build below 21.0.13.1
+(the Temurin release that follows the Java 21 vulnerability of November 2026, CVE-2026-114938). The JDK of a release is also printed in
+its build log. Use the same one here when you rebuild. The Gradle wrapper is the one checked into this repository (Gradle 8.5).
 Building with a different JDK vendor/version or Gradle version will likely yield different hashes:
 jlink/jpackage embed toolchain paths and class file versions into the output.
 
@@ -22,8 +28,10 @@ timestamps and file order (`reproducibleFileOrder` in `build.gradle`).
 ## Build inside a clean container
 
 ```bash
-sudo docker pull eclipse-temurin:21.0.7_6-jdk
-sudo docker run -it --name ashigaru-desktop eclipse-temurin:21.0.7_6-jdk bash
+# Use the JDK named in the release's build log; for 21.0.13.1 build 2 the image tag should read like this
+# (check the exact tag on https://hub.docker.com/_/eclipse-temurin before you pull it)
+sudo docker pull eclipse-temurin:21.0.13.1_2-jdk
+sudo docker run -it --name ashigaru-desktop eclipse-temurin:21.0.13.1_2-jdk bash
 ```
 
 Inside the container (or copy a checked-out source tree in with `docker cp`):
@@ -63,3 +71,25 @@ diff -r squashfs-root/usr build/jpackage/Ashigaru && echo "Reproduced"
   `-PappImageToolSha256=...` (recorded per release) so the tool itself is verified.
 - If a build does not reproduce, double-check the JDK build number first — it is the most common
   source of drift.
+
+## The swap engine in a release
+
+A release builds the swap engine itself (`release.yaml` calls `swap-engine.yaml`), bundles it into every package, and publishes the four platforms' library files as release assets named
+`swap-engine-<target>-<file>`, so they carry the checksum manifest and the build attestation like the packages do.
+
+What is fixed, and what is not:
+
+- **Actions** in every workflow are pinned to commits, and a test fails if one is not: `actions/checkout` v7.0.1, `actions/cache` v5.1.0 (also
+  `cache/restore` and `cache/save`), `actions/setup-java` v6.3.0, `actions/upload-artifact` v7.0.2 and `actions/download-artifact` v8.0.2 (all on
+  Node 24; a downloaded artifact whose digest does not match fails the job), at the commits their tags name. The engine build uses no cache in a release.
+- **Dependencies of the engine** are fixed by `swap-engine/Cargo.lock.overlay`, which is committed: the engine is built and tested `--locked`, and a release refuses
+  to build without that file. To change a dependency, run the Swap engine workflow, take its `swap-engine-cargo-lock` artifact, review it and commit it over the overlay.
+- **Rust** is 1.92.0 exactly: installed by `rustup`, and a step fails the build unless the eigenwallet checkout (whose `rust-toolchain.toml` selects it) compiles with it.
+  `clippy` runs on Ashigaru's crate with warnings as errors.
+- **Build paths** are kept out of the library: `--remap-path-prefix` for the Rust code and `-ffile-prefix-map` for Monero's C++ and the Rust-C++ bridge, set per target so
+  eigenwallet's own flags are kept. `SOURCE_DATE_EPOCH` is the commit's time. Monero's bundled dependency libraries (built by its own `make`) are not remapped.
+- **`cargo audit`** (0.23.0, pinned) runs on every Linux engine build and writes its version, its findings and its exit status to the run summary. It does not fail
+  the build yet: it reports the advisories still open (several come from `sqlx` 0.8.0, which cannot move until upstream does) until they are cleared or accepted.
+- **Not done**: a pinned build container (so builds reproduce byte for byte across machines), pinned apt/brew package versions (their versions are recorded in the run
+  summary instead), a MinGW toolchain built from checksummed sources, Gradle dependency verification, and failing the build on `cargo audit` findings. The runner images
+  are version-named (`ubuntu-22.04`, `macos-15`, `macos-15-intel`, `windows-2022`) but still receive their own updates. The JDK is pinned to Temurin 21.0.13.1+2.

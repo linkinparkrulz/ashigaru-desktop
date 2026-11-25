@@ -380,6 +380,7 @@ public class DbPersistence implements Persistence {
         try {
             Flyway flyway = getFlyway(storage, schema, getFilePassword(encryptionKey), migrationDir);
             flyway.migrate();
+            noteSchemaOnce(flyway);
         } catch(FlywayValidateException e) {
             log.error("Failed to open wallet file. Validation error during schema migration.", e);
             throw new StorageException("Failed to open wallet file. Validation error during schema migration.", e);
@@ -618,6 +619,46 @@ public class DbPersistence implements Persistence {
         jdbi.installPlugin(new SqlObjectPlugin());
 
         return jdbi;
+    }
+
+    private static final java.util.concurrent.atomic.AtomicBoolean newerSchemaNoted = new java.util.concurrent.atomic.AtomicBoolean();
+    private static final java.util.concurrent.atomic.AtomicBoolean databaseVersionNoted = new java.util.concurrent.atomic.AtomicBoolean();
+
+    /**
+     * Said once per run, where Flyway said it for every wallet schema (its two loggers are set to ERROR in logback.xml): a schema written by a
+     * newer Sparrow (version 9 and up, while Ashigaru's migrations stop at 8) and the H2 version Flyway was not tested with. Such a wallet still
+     * opens: Flyway ignores the migrations it does not have (ignoreMissingMigrations), and Ashigaru only reads the tables and columns its own
+     * migrations define.
+     */
+    private static void noteSchemaOnce(Flyway flyway) {
+        try {
+            org.flywaydb.core.api.MigrationInfoService info = flyway.info();
+            org.flywaydb.core.api.MigrationInfo current = info.current();
+            String latest = null;
+            for(org.flywaydb.core.api.MigrationInfo migration : info.all()) {
+                if(migration.getVersion() != null && migration.getState() != null && !migration.getState().name().startsWith("FUTURE")) {
+                    latest = migration.getVersion().getVersion();
+                }
+            }
+            if(current != null && current.getState() != null && current.getState().name().startsWith("FUTURE") && newerSchemaNoted.compareAndSet(false, true)) {
+                log.warn(newerSchemaNote(current.getVersion() == null ? "?" : current.getVersion().getVersion(), current.getDescription(), latest));
+            }
+            if(databaseVersionNoted.compareAndSet(false, true)) {
+                try(java.sql.Connection connection = flyway.getConfiguration().getDataSource().getConnection()) {
+                    log.info("Wallet database: " + connection.getMetaData().getDatabaseProductName() + " " + connection.getMetaData().getDatabaseProductVersion()
+                            + " with Flyway " + org.flywaydb.core.api.MigrationVersion.class.getPackage().getImplementationVersion()
+                            + " (Flyway may not have been tested with this database version; migrations up to " + latest + " are Ashigaru's own)");
+                }
+            }
+        } catch(Exception e) {
+            log.debug("Could not read the wallet schema version", e);
+        }
+    }
+
+    static String newerSchemaNote(String version, String description, String latest) {
+        return "A wallet schema is at version " + version + (description == null || description.isBlank() ? "" : " (" + description + ")")
+                + ", written by a newer Sparrow; Ashigaru's migrations go up to " + latest + ". The wallet opens, and what version " + version
+                + " added is not used. Said once per run.";
     }
 
     private Flyway getFlyway(Storage storage, String schema, String password, File resourcesDir) throws StorageException {

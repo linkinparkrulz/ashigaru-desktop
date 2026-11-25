@@ -268,7 +268,7 @@ public class TcpTransport implements CloseableTransport, TimeoutCounter {
 
     protected void createSocket() throws IOException {
         socket = socketFactory.createSocket();
-        socket.connect(new InetSocketAddress(server.getHost(), server.getPortOrDefault(getDefaultPort())));
+        socket.connect(SocketTargets.target(server.getHost(), server.getPortOrDefault(getDefaultPort()), socketFactory instanceof ProxySocketFactory));
     }
 
     protected int getDefaultPort() {

@@ -1,5 +1,7 @@
 package com.sparrowwallet.sparrow.gui;
 
+import com.sparrowwallet.sparrow.AppServices;
+import javafx.scene.layout.HBox;
 import com.google.common.eventbus.Subscribe;
 import com.sparrowwallet.sparrow.EventManager;
 import com.sparrowwallet.sparrow.event.*;
@@ -53,6 +55,38 @@ public class AshigaruSplashController implements Initializable {
     @FXML private Label walletsStep;
     @FXML private Label statusLabel;
     @FXML private ProgressBar progressBar;
+    @FXML private HBox failureActions;
+
+    private Runnable onOpenNow;
+
+    /** What "Open without waiting" does: the caller reveals the main window straight away. */
+    public void setOnOpenNow(Runnable onOpenNow) {
+        this.onOpenNow = onOpenNow;
+    }
+
+    private void showFailureActions(boolean show) {
+        failureActions.setVisible(show);
+        failureActions.setManaged(show);
+    }
+
+    @FXML
+    private void onOpenNow() {
+        if(onOpenNow != null) {
+            onOpenNow.run();
+        }
+    }
+
+    @FXML
+    private void onRetryTor() {
+        if(AppServices.get().restartTor()) {
+            showFailureActions(false);
+            setStep(torStep, "Restarting Tor", State.ACTIVE);
+            statusLabel.setText("Restarting Tor\u2026");
+            progressBar.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
+        } else {
+            statusLabel.setText("Tor could not be restarted from here. Open the app and check Settings, Server.");
+        }
+    }
 
     private volatile boolean stopped;
 
@@ -91,6 +125,7 @@ public class AshigaruSplashController implements Initializable {
                 setStep(torStep, "Tor failed to start", State.FAILED);
                 statusLabel.setText(event.getStatus());
                 progressBar.setProgress(0);
+                showFailureActions(true);
             });
             return;
         }

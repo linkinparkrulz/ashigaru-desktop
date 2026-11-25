@@ -51,12 +51,9 @@ public class ProxySocketFactory extends SocketFactory {
         return createSocket(new InetSocketAddress(address, port), new InetSocketAddress(localAddress, localPort));
     }
 
+    /** Every name through the proxy is left for the proxy to resolve, not only onion names: none is looked up here */
     private InetSocketAddress createAddress(String address, int port) {
-        if(Protocol.isOnionHost(address)) {
-            return InetSocketAddress.createUnresolved(address, port);
-        } else {
-            return new InetSocketAddress(address, port);
-        }
+        return InetSocketAddress.createUnresolved(address, port);
     }
 
     private Socket createSocket(InetSocketAddress address, InetSocketAddress bindAddress) throws IOException {

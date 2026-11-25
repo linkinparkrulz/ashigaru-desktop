@@ -66,10 +66,10 @@
         <VBox spacing="8" styleClass="ag-card">
             <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
             <Label text="Verification" styleClass="step-title" />
-            <Label fx:id="signatureStep" wrapText="true" styleClass="card-secondary" text="Signed by the Ashigaru release key" />
-            <Label fx:id="commitmentStep" wrapText="true" styleClass="card-secondary" text="Checksums match the signed message" />
-            <Label fx:id="versionStep" wrapText="true" styleClass="card-secondary" text="Release is the one offered, and is newer" />
-            <Label fx:id="artifactStep" wrapText="true" styleClass="card-secondary" text="Download matches its published checksum" />
+            <Label fx:id="signatureStep" wrapText="true" styleClass="verify-step" text="Signed by the Ashigaru release key" />
+            <Label fx:id="commitmentStep" wrapText="true" styleClass="verify-step" text="Checksums match the signed message" />
+            <Label fx:id="versionStep" wrapText="true" styleClass="verify-step" text="Release is the one offered, and is newer" />
+            <Label fx:id="artifactStep" wrapText="true" styleClass="verify-step" text="Download matches its published checksum" />
 
             <VBox fx:id="resultBox" spacing="4" visible="false" managed="false">
                 <padding><Insets top="10" right="12" bottom="10" left="12"/></padding>

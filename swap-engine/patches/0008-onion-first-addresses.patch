@@ -1,0 +1,100 @@
+diff --git a/swap-p2p/src/libp2p_ext.rs b/swap-p2p/src/libp2p_ext.rs
+index 94a8518..5d31caf 100644
+--- a/swap-p2p/src/libp2p_ext.rs
++++ b/swap-p2p/src/libp2p_ext.rs
+@@ -2,6 +2,14 @@ use libp2p::multiaddr::Protocol;
+ use libp2p::{Multiaddr, PeerId};
+ use std::collections::HashMap;
+ 
++/// Ashigaru: a peer's addresses with its onion addresses first, otherwise in the order given. With one
++/// dial at a time per peer, a clearnet address tried first could hold a Tor slot until it times out
++/// before the onion address that works is reached.
++pub fn onion_first(mut addresses: Vec<Multiaddr>) -> Vec<Multiaddr> {
++    addresses.sort_by_key(|address| !address.iter().any(|p| matches!(p, Protocol::Onion3(_))));
++    addresses
++}
++
+ pub trait MultiAddrExt {
+     fn extract_peer_id(&self) -> Option<PeerId>;
+     fn split_peer_id(&self) -> Option<(PeerId, Multiaddr)>;
+diff --git a/swap-p2p/src/protocols/quotes.rs b/swap-p2p/src/protocols/quotes.rs
+index 150a6a5..4004232 100644
+--- a/swap-p2p/src/protocols/quotes.rs
++++ b/swap-p2p/src/protocols/quotes.rs
+@@ -331,12 +331,15 @@ impl libp2p::swarm::NetworkBehaviour for Behaviour {
+         self.connection_tracker
+             .handle_pending_outbound_connection(connection_id, maybe_peer);
+ 
+-        self.inner.handle_pending_outbound_connection(
+-            connection_id,
+-            maybe_peer,
+-            addresses,
+-            effective_role,
+-        )
++        // Ashigaru: onion addresses first, whichever inner behaviour offered them
++        self.inner
++            .handle_pending_outbound_connection(
++                connection_id,
++                maybe_peer,
++                addresses,
++                effective_role,
++            )
++            .map(crate::libp2p_ext::onion_first)
+     }
+ 
+     fn handle_established_inbound_connection(
+diff --git a/swap-p2p/src/protocols/redial.rs b/swap-p2p/src/protocols/redial.rs
+index 6e4503d..9aedf38 100644
+--- a/swap-p2p/src/protocols/redial.rs
++++ b/swap-p2p/src/protocols/redial.rs
+@@ -355,15 +355,15 @@ impl NetworkBehaviour for Behaviour {
+             tracing::trace!(peer = %peer_id, "Cancelled a pending dial for a peer because something else already scheduled a dial");
+         }
+ 
+-        // Check if we have any addresses cached for the peer
++        // Check if we have any addresses cached for the peer, onion addresses first (Ashigaru: the set's order is random)
+         // TODO: Sort these by how often we were able to connect to them
+-        let addresses = self
++        let addresses: Vec<Multiaddr> = self
+             .addresses
+             .get(&peer_id)
+             .map(|addrs| addrs.iter().cloned().collect())
+             .unwrap_or_default();
+ 
+-        Ok(addresses)
++        Ok(crate::libp2p_ext::onion_first(addresses))
+     }
+ }
+ 
+@@ -387,6 +387,31 @@ mod tests {
+     use libp2p::identity;
+     use libp2p::swarm::{ConnectionId, DialFailure, ToSwarm};
+ 
++    #[test]
++    fn a_peers_addresses_are_offered_onion_first() {
++        let mut behaviour =
++            Behaviour::new("test", Duration::from_millis(10), Duration::from_secs(1));
++        let peer = identity::Keypair::generate_ed25519().public().to_peer_id();
++        behaviour.add_peer(peer);
++        let clearnet: Multiaddr = "/dns4/maker.example/tcp/9939".parse().unwrap();
++        let ip: Multiaddr = "/ip4/203.0.113.7/tcp/9939".parse().unwrap();
++        let onion: Multiaddr = "/onion3/3xl2zfur4tpebogsrgn3l7l2illzkhwi3755jplmycmn4q77nxsrl6qd:9939".parse().unwrap();
++        behaviour.insert_address(&peer, clearnet.clone());
++        behaviour.insert_address(&peer, ip.clone());
++        behaviour.insert_address(&peer, onion.clone());
++
++        let addresses = behaviour
++            .handle_pending_outbound_connection(
++                ConnectionId::new_unchecked(1),
++                Some(peer),
++                &[],
++                libp2p::core::Endpoint::Dialer,
++            )
++            .unwrap();
++        assert_eq!(addresses.len(), 3);
++        assert_eq!(addresses[0], onion, "the onion address is dialled first");
++    }
++
+     #[tokio::test]
+     async fn add_peer_schedules_immediate_redial_event_and_another_dial_after_failure() {
+         let mut behaviour =

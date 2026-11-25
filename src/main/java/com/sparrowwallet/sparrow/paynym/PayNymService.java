@@ -49,7 +49,7 @@ public class PayNymService {
             log.info("Creating PayNym using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -71,7 +71,7 @@ public class PayNymService {
             log.info("Updating PayNym token using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -120,7 +120,7 @@ public class PayNymService {
             log.info("Claiming PayNym using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -149,7 +149,7 @@ public class PayNymService {
             log.info("Adding payment code to PayNym using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -173,7 +173,7 @@ public class PayNymService {
             log.info("Following payment code using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -191,7 +191,7 @@ public class PayNymService {
             log.info("Fetching PayNym using " + url);
         }
 
-        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body)
+        return post(url, headers, body)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(Optional::get);
@@ -202,26 +202,85 @@ public class PayNymService {
     }
 
     public static Observable<PayNym> getPayNym(String nymIdentifier, boolean compact) {
-        return fetchPayNym(nymIdentifier, compact).map(nymMap -> {
-            List<Map<String, Object>> codes = (List<Map<String, Object>>)nymMap.get("codes");
-            PaymentCode code = new PaymentCode((String)codes.stream().filter(codeMap -> codeMap.get("segwit") == Boolean.FALSE).map(codeMap -> codeMap.get("code")).findFirst().orElse(codes.get(0).get("code")));
+        return fetchPayNym(nymIdentifier, compact).map(nymMap -> toPayNym(nymMap, compact));
+    }
 
-            if(compact) {
-                return new PayNym(code, (String)nymMap.get("nymID"), (String)nymMap.get("nymName"), (Boolean)nymMap.get("segwit"), Collections.emptyList(), Collections.emptyList());
+    /** How long a lookup may take, end to end, before its connection is closed */
+    public static final int LOOKUP_TIMEOUT_MILLIS = 30_000;
+    /** The most a lookup's answer may hold: a full listing of followers and following is well under this */
+    static final long LOOKUP_MAX_BYTES = 8L * 1024 * 1024;
+
+    /**
+     * Looks a PayNym up with a timeout that ends the request itself, not only the wait for it: through Tor with Ashigaru's own client
+     * ({@link com.sparrowwallet.sparrow.net.ProxiedHttp}), whose connection is closed when the timeout passes or the caller stops waiting.
+     * The shared client would keep the request running for up to two minutes after the screen had given up on it.
+     */
+    public static Observable<PayNym> lookupPayNym(String nymIdentifier, boolean compact, int timeoutMillis) {
+        String refusal = com.sparrowwallet.sparrow.net.TorOnly.refusal();
+        com.google.common.net.HostAndPort tor = refusal == null ? AppServices.getHttpClientService().getTorProxy() : null;
+        if(tor == null) {
+            return Observable.error(new java.io.IOException("PayNym directory not contacted: " + (refusal != null ? refusal : "Tor is not running") + "."));
+        }
+        Map<String, Object> body = new HashMap<>();
+        body.put("nym", nymIdentifier);
+        String url = getHostUrl() + "/api/v1/nym" + (compact ? "?compact=true" : "");
+        if(log.isInfoEnabled()) {
+            log.info("Fetching PayNym using " + url);
+        }
+        return postDirect(com.sparrowwallet.sparrow.net.ProxiedHttp.socks(tor), url, new com.google.gson.Gson().toJson(body), timeoutMillis)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .map(nymMap -> toPayNym(nymMap, compact));
+    }
+
+    /** One JSON POST through the proxy; disposing it closes the connection, so nothing keeps running after the caller gives up */
+    static Observable<Map<String, Object>> postDirect(java.net.Proxy proxy, String url, String json, int timeoutMillis) {
+        return Observable.create(emitter -> {
+            java.util.concurrent.atomic.AtomicReference<java.net.Socket> socket = new java.util.concurrent.atomic.AtomicReference<>();
+            emitter.setCancellable(() -> {
+                java.net.Socket open = socket.get();
+                if(open != null) {
+                    open.close();
+                }
+            });
+            try(com.sparrowwallet.sparrow.net.ProxiedHttp.Response response = com.sparrowwallet.sparrow.net.ProxiedHttp.request("POST", new java.net.URL(url),
+                    Map.of("Content-Type", "application/json"), json.getBytes(java.nio.charset.StandardCharsets.UTF_8), proxy, null, timeoutMillis,
+                    timeoutMillis, LOOKUP_MAX_BYTES, socket::set)) {
+                if(response.status() < 200 || response.status() >= 300) {
+                    throw new java.io.IOException("PayNym directory answered HTTP " + response.status());
+                }
+                Map<String, Object> map = new com.google.gson.Gson().fromJson(response.bodyText(), Map.class);
+                if(map == null) {
+                    throw new java.io.IOException("PayNym directory sent an empty answer");
+                }
+                emitter.onNext(map);
+                emitter.onComplete();
+            } catch(Exception e) {
+                //After a dispose the closed socket fails the read: nobody is waiting, so it is not an error to report
+                emitter.tryOnError(e);
             }
-
-            List<Map<String, Object>> followingMaps = (List<Map<String, Object>>)nymMap.get("following");
-            List<PayNym> following = followingMaps.stream().map(followingMap -> {
-                return PayNym.fromString((String)followingMap.get("code"), (String)followingMap.get("nymId"), (String)followingMap.get("nymName"), (Boolean)followingMap.get("segwit"), Collections.emptyList(), Collections.emptyList());
-            }).collect(Collectors.toList());
-
-            List<Map<String, Object>> followersMaps = (List<Map<String, Object>>)nymMap.get("followers");
-            List<PayNym> followers = followersMaps.stream().map(followerMap -> {
-                return PayNym.fromString((String)followerMap.get("code"), (String)followerMap.get("nymId"), (String)followerMap.get("nymName"), (Boolean)followerMap.get("segwit"), Collections.emptyList(), Collections.emptyList());
-            }).collect(Collectors.toList());
-
-            return new PayNym(code, (String)nymMap.get("nymID"), (String)nymMap.get("nymName"), (Boolean)nymMap.get("segwit"), following, followers);
         });
+    }
+
+    private static PayNym toPayNym(Map<String, Object> nymMap, boolean compact) throws InvalidPaymentCodeException {
+        List<Map<String, Object>> codes = (List<Map<String, Object>>)nymMap.get("codes");
+        PaymentCode code = new PaymentCode((String)codes.stream().filter(codeMap -> codeMap.get("segwit") == Boolean.FALSE).map(codeMap -> codeMap.get("code")).findFirst().orElse(codes.get(0).get("code")));
+
+        if(compact) {
+            return new PayNym(code, (String)nymMap.get("nymID"), (String)nymMap.get("nymName"), (Boolean)nymMap.get("segwit"), Collections.emptyList(), Collections.emptyList());
+    }
+
+        List<Map<String, Object>> followingMaps = (List<Map<String, Object>>)nymMap.get("following");
+        List<PayNym> following = followingMaps.stream().map(followingMap -> {
+            return PayNym.fromString((String)followingMap.get("code"), (String)followingMap.get("nymId"), (String)followingMap.get("nymName"), (Boolean)followingMap.get("segwit"), Collections.emptyList(), Collections.emptyList());
+        }).collect(Collectors.toList());
+
+        List<Map<String, Object>> followersMaps = (List<Map<String, Object>>)nymMap.get("followers");
+        List<PayNym> followers = followersMaps.stream().map(followerMap -> {
+            return PayNym.fromString((String)followerMap.get("code"), (String)followerMap.get("nymId"), (String)followerMap.get("nymName"), (Boolean)followerMap.get("segwit"), Collections.emptyList(), Collections.emptyList());
+        }).collect(Collectors.toList());
+
+        return new PayNym(code, (String)nymMap.get("nymID"), (String)nymMap.get("nymName"), (Boolean)nymMap.get("segwit"), following, followers);
     }
 
     public static Observable<String> getAuthToken(Wallet wallet, Map<String, Object> map) {
@@ -237,6 +296,8 @@ public class PayNymService {
     }
 
     public static String getSignature(Wallet wallet, String authToken) {
+        //The directory chooses the token: it is only signed if it cannot be a login challenge, a signed message or a Dojo listing
+        Bip47Signing.checkPayNymToken(authToken);
         Wallet masterWallet = wallet.isMasterWallet() ? wallet : wallet.getMasterWallet();
         Keystore keystore = masterWallet.getKeystores().get(0);
         List<ChildNumber> derivation = keystore.getKeyDerivation().getDerivation();
@@ -250,11 +311,20 @@ public class PayNymService {
         return masterWallet.getPaymentCode();
     }
 
+    /** The PayNym directory, only at its onion address: it is never reached directly (TorOnly) */
+    public static final String HOST_URL = "http://paynym25chftmsywv4v2r67agbrr62lcxagsf4tymbzpeeucucy2ivad.onion";
+
     private static String getHostUrl() {
-        return getHostUrl(AppServices.getHttpClientService().getTorProxy() != null);
+        return HOST_URL;
     }
 
-    public static String getHostUrl(boolean tor) {
-        return tor ? "http://paynym25chftmsywv4v2r67agbrr62lcxagsf4tymbzpeeucucy2ivad.onion" : "https://paynym.rs";
+    /** A request to the directory, through Tor; refused (as an error, not sent directly) offline or without a Tor proxy */
+    @SuppressWarnings("rawtypes")
+    private static Observable<java8.util.Optional<Map>> post(String url, Map<String, String> headers, Object body) {
+        String refusal = com.sparrowwallet.sparrow.net.TorOnly.refusal();
+        if(refusal != null) {
+            return Observable.error(new java.io.IOException("PayNym directory not contacted: " + refusal + "."));
+        }
+        return AppServices.getHttpClientService().postJson(url, Map.class, headers, body);
     }
 }

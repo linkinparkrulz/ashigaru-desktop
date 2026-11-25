@@ -7,5 +7,25 @@ out
 *.log
 build-*.sh
 .DS_Store
-META-INF/
+# A jar unpacked at the top of the checkout; a META-INF folder anywhere else (src/main/resources/META-INF) is real and must not be hidden
+/META-INF/
 ashigaru-terminal/
+
+# The swap engine library, placed here by the Swap build workflow only
+src/main/resources/linux-x86-64/
+src/main/resources/win32-x86-64/
+src/main/resources/darwin-aarch64/
+src/main/resources/darwin-x86-64/
+
+# Stray files from tools and crashes
+*.whl
+hs_err_pid*
+appDir_IS_UNDEFINED/
+
+# Secrets and caches that must not be committed
+.env
+.env.*
+*.keystore
+*.jks
+*.p12
+__pycache__/

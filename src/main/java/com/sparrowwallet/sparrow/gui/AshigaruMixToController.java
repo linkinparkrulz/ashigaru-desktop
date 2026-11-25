@@ -36,6 +36,14 @@ public class AshigaruMixToController implements Initializable {
 
     @FXML private ComboBox<DisplayWallet> mixToWalletCombo;
     @FXML private Spinner<Integer> minMixesSpinner;
+    @FXML private PipelineStrip mixToStrip;
+
+    private void updateStrip() {
+        DisplayWallet sel = mixToWalletCombo.getSelectionModel().getSelectedItem();
+        Integer mixes = minMixesSpinner.getValue();
+        boolean none = sel == null || sel == DisplayWallet.NONE;
+        mixToStrip.showMixTo(mixes == null ? Whirlpool.DEFAULT_MIXTO_MIN_MIXES : mixes, none ? null : sel.toString());
+    }
     @FXML private Label indexRangeLabel;
     @FXML private Button applyBtn;
     @FXML private Button cancelBtn;
@@ -127,6 +135,9 @@ public class AshigaruMixToController implements Initializable {
         minMixesSpinner.getValueFactory().setValue(initMixes);
 
         // Listeners
+        updateStrip();
+        mixToWalletCombo.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> updateStrip());
+        minMixesSpinner.valueProperty().addListener((obs, old, nw) -> updateStrip());
         mixToWalletCombo.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
             if (sel == null) return;
             if (sel == DisplayWallet.NONE) {

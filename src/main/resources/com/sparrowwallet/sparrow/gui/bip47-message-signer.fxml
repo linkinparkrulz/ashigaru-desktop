@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!-- styleClass lists are comma separated in FXML: "a b" adds ONE class named "a b", which no selector matches -->
+<!-- Like the Verifier, the root is not a ScrollPane: ToolsController already scrolls every tool -->
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:id="root"
+      fx:controller="com.sparrowwallet.sparrow.gui.Bip47MessageSignerController"
+      stylesheets="@ashigaru.css, @../darktheme.css"
+      spacing="16" styleClass="verifier-panel, verifier-tool">
+    <padding><Insets top="22" right="22" bottom="22" left="22"/></padding>
+
+    <HBox spacing="16" alignment="CENTER_LEFT" styleClass="verifier-hero">
+        <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
+        <VBox spacing="3" HBox.hgrow="ALWAYS">
+            <Label text="Sign BIP47 Message" styleClass="verifier-hero-title"/>
+            <Label minHeight="-Infinity" text="Prove you control a BIP47 payment code, or sign a statement with it. Anyone can check the result in Tools, Verifier."
+                   wrapText="true" styleClass="verifier-hero-sub"/>
+        </VBox>
+    </HBox>
+
+    <HBox spacing="16" VBox.vgrow="ALWAYS" alignment="TOP_LEFT">
+        <!-- What to sign, and with which payment code -->
+        <VBox spacing="16" HBox.hgrow="ALWAYS" minWidth="420">
+            <VBox spacing="10" styleClass="ag-card, verifier-step">
+                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                <Label text="Sign with" styleClass="step-title"/>
+                <ComboBox fx:id="walletCombo" maxWidth="Infinity" promptText="Choose a wallet"/>
+                <Label fx:id="noWalletLabel" minHeight="-Infinity" wrapText="true" styleClass="field-label, verifier-status-warn"
+                       visible="false" managed="false"/>
+                <VBox fx:id="identityBox" spacing="6">
+                    <Label text="Payment code" styleClass="field-label"/>
+                    <HBox alignment="CENTER_LEFT" spacing="8">
+                        <TextField fx:id="paymentCodeField" editable="false" HBox.hgrow="ALWAYS" styleClass="address-field"/>
+                        <Button fx:id="copyCodeBtn" minWidth="-Infinity" text="Copy" onAction="#onCopyCode" styleClass="secondary-btn"/>
+                    </HBox>
+                    <Label text="Notification address (what a verifier recovers from the signature)" styleClass="field-label" wrapText="true" minHeight="-Infinity"/>
+                    <TextField fx:id="addressField" editable="false" styleClass="address-field"/>
+                </VBox>
+            </VBox>
+
+            <VBox spacing="10" styleClass="ag-card, verifier-step" VBox.vgrow="ALWAYS">
+                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label text="Message" styleClass="step-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button minWidth="-Infinity" fx:id="pasteBtn" text="Paste" onAction="#onPaste" styleClass="secondary-btn"/>
+                    <Button minWidth="-Infinity" fx:id="clearBtn" text="Clear" onAction="#onClear" styleClass="secondary-btn"/>
+                </HBox>
+                <TextArea fx:id="messageArea" prefRowCount="8" minHeight="150" wrapText="true" VBox.vgrow="ALWAYS"
+                          promptText="Paste the challenge you were given, or write a statement." styleClass="mono-area"/>
+                <CheckBox fx:id="addCodeCheck" text="Add my payment code to the message" selected="true"/>
+                <Label minHeight="-Infinity" fx:id="messageNote" wrapText="true" styleClass="field-label"/>
+            </VBox>
+
+            <Label minHeight="-Infinity" wrapText="true" styleClass="field-label"
+                   text="Signing happens on this computer and nothing is sent anywhere. A signature shows that the message came from whoever controls this payment code, so it links the message to that code: only give it to someone who should know the code is yours."/>
+
+            <Button minWidth="-Infinity" fx:id="signBtn" text="Sign Message" onAction="#onSign"
+                    styleClass="primary-btn, verify-btn" maxWidth="Infinity"/>
+        </VBox>
+
+        <!-- The answer stays in view beside the inputs -->
+        <VBox fx:id="resultBox" spacing="10" minWidth="320" prefWidth="360" maxWidth="360"
+              styleClass="ag-card, verifier-result-box, verifier-result-idle">
+            <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label fx:id="resultIcon" styleClass="verifier-result-icon" minWidth="-Infinity"/>
+                <Label fx:id="resultTitleLabel" wrapText="true" minHeight="-Infinity" styleClass="verifier-result-title"
+                       HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            </HBox>
+            <Label fx:id="resultDetailLabel" wrapText="true" minHeight="-Infinity" styleClass="field-label"/>
+            <VBox fx:id="checksBox"/>
+            <VBox fx:id="blockBox" spacing="8" visible="false" managed="false">
+                <Label text="Send this" styleClass="field-label"/>
+                <TextArea fx:id="blockArea" editable="false" prefRowCount="9" minHeight="150" wrapText="false" styleClass="mono-area"/>
+                <Button minWidth="-Infinity" fx:id="copyBlockBtn" text="Copy signed message" onAction="#onCopyBlock"
+                        styleClass="primary-btn" maxWidth="Infinity"/>
+                <Button minWidth="-Infinity" fx:id="copySignatureBtn" text="Copy signature only" onAction="#onCopySignature"
+                        styleClass="secondary-btn" maxWidth="Infinity"/>
+            </VBox>
+        </VBox>
+    </HBox>
+</VBox>

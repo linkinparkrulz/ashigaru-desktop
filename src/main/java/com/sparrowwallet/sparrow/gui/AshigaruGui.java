@@ -6,6 +6,7 @@ import com.sparrowwallet.sparrow.*;
 import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Storage;
+import com.sparrowwallet.sparrow.swap.SwapService;
 import com.sparrowwallet.sparrow.wallet.WalletForm;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
@@ -17,6 +18,9 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.Region;
+import javafx.collections.ListChangeListener;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -33,7 +37,7 @@ import java.util.stream.Collectors;
 public class AshigaruGui extends Application {
     private static final Logger log = LoggerFactory.getLogger(AshigaruGui.class);
     /** -ag-bg in ashigaru.css. */
-    private static final Color APP_BACKGROUND = Color.web("#0E0F12");
+    static final Color APP_BACKGROUND = Color.web("#0E0F12");
     private static AshigaruGui instance;
 
     private Stage mainStage;
@@ -53,8 +57,11 @@ public class AshigaruGui extends Application {
     public void init() throws Exception {
         Thread.setDefaultUncaughtExceptionHandler((t, e) ->
                 log.error("Exception in thread \"" + t.getName() + "\"", e));
+        //Late errors from network calls whose caller gave up are expected: DEBUG, not an ERROR stack trace (AD-43)
+        UndeliverableErrors.install();
         AppServices.initialize(this, new AshigaruInteractionServices());
         instance = this;
+        AppServices.setExternalLinkHandler(ExposureDialogs::openOutsideTor);
         EventManager.get().register(this);
         // Start each session with no discovered Dojo listings (covers an unclean prior shutdown);
         // discovery re-populates them once connected.
@@ -66,29 +73,43 @@ public class AshigaruGui extends Application {
         this.mainStage = stage;
 
         Font.loadFont(AppServices.class.getResourceAsStream("/font/RobotoMono-Regular.ttf"), 13);
-        //Registers the family name "Nikkyou Sans" for the splash title. Loaded here rather than
+        //Roboto is the reading face: every sentence in the UI, and the swap screens. Regular and Bold
+        //register as "Roboto", Medium as "Roboto Medium". Nikkyou Sans stays on titles, labels and buttons.
+        Font.loadFont(AppServices.class.getResourceAsStream("/font/Roboto-Regular.ttf"), 14);
+        Font.loadFont(AppServices.class.getResourceAsStream("/font/Roboto-Medium.ttf"), 14);
+        Font.loadFont(AppServices.class.getResourceAsStream("/font/Roboto-Bold.ttf"), 14);
+        //Registers the family name "Nikkyou Sans" for titles and key headings. Loaded here rather than
         //lazily because the splash is built further down this same method and would otherwise
         //fall back to the default face without any error.
         Font.loadFont(AppServices.class.getResourceAsStream("/font/NikkyouSans.ttf"), 13);
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource("ashigaru-main.fxml"));
-        Parent root = loader.load();
+        Parent content = loader.load();
         mainController = loader.getController();
+        //The scrim sits over the whole window and is shown while a dialog owned by it is open.
+        Region scrim = new Region();
+        scrim.getStyleClass().add("dialog-scrim");
+        scrim.setVisible(false);
+        scrim.setMouseTransparent(true);
+        StackPane root = new StackPane(content, scrim);
+        installDialogScrim(stage, scrim);
 
         //Size to the usable screen area (excluding panels/docks). Window managers pass the minimum size
         //on as a hint, and one larger than the usable area greys out maximize, refuses tiling and lets
         //the panel cover the bottom of the window, so neither the minimum nor the initial size may
         //exceed it. The sidebar scrolls instead of setting the minimum height.
         Rectangle2D visualBounds = Screen.getPrimary().getVisualBounds();
-        Scene scene = new Scene(root, Math.min(1100, visualBounds.getWidth()), Math.min(800, visualBounds.getHeight()));
+        Scene scene = new Scene(root, WindowSizing.width(visualBounds.getWidth()), WindowSizing.height(visualBounds.getHeight()));
         AppServices.addAshigaruStylesheets(scene.getStylesheets());
+        //Every text field's right-click menu in the look of the app's other menus
+        TextFieldMenu.install(scene);
         //The scene fill also becomes the native window background, which is what shows in the area a
         //resize exposes before the next layout pass. Left at the default white it flashes on every drag.
         scene.setFill(APP_BACKGROUND);
 
-        stage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION);
-        stage.setMinWidth(Math.min(720, visualBounds.getWidth()));
-        stage.setMinHeight(Math.min(520, visualBounds.getHeight()));
+        stage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION + AshigaruTerminal.APP_VERSION_SUFFIX);
+        stage.setMinWidth(WindowSizing.minWidth(visualBounds.getWidth()));
+        stage.setMinHeight(WindowSizing.minHeight(visualBounds.getHeight()));
         stage.setScene(scene);
 
         // Set app icon (window + macOS Dock). Use the padded variant: the full-bleed circle logo
@@ -122,6 +143,10 @@ public class AshigaruGui extends Application {
             }
         };
 
+        if (splashStage != null && splashStage.getUserData() instanceof AshigaruSplashController splashCtrl) {
+            splashCtrl.setOnOpenNow(revealMain);
+        }
+
         AppServices.get().start();
 
         if (Config.get().getMode() != Mode.ONLINE) {
@@ -150,6 +175,17 @@ public class AshigaruGui extends Application {
         }
     }
 
+    /**
+     * Dims the main window whenever a dialog (or any other stage) owned by it is showing. Watching the
+     * window list covers every dialog in one place, including the ones built by inherited Sparrow code.
+     * Popups (menus, tooltips, the tour popover) are not stages and leave the window lit.
+     */
+    private static void installDialogScrim(Stage owner, Region scrim) {
+        Runnable update = () -> scrim.setVisible(Window.getWindows().stream()
+                .anyMatch(w -> w instanceof Stage child && child != owner && child.isShowing() && child.getOwner() == owner));
+        Window.getWindows().addListener((ListChangeListener<Window>) change -> update.run());
+    }
+
     private Stage showSplash() {
         try {
             FXMLLoader splashLoader = new FXMLLoader(getClass().getResource("ashigaru-splash.fxml"));
@@ -158,7 +194,7 @@ public class AshigaruGui extends Application {
 
             Stage splashStage = new Stage();
             splashStage.initStyle(StageStyle.UNDECORATED);
-            splashStage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION);
+            splashStage.setTitle("Ashigaru Desktop " + AshigaruTerminal.APP_VERSION + AshigaruTerminal.APP_VERSION_SUFFIX);
             Scene splashScene = new Scene(splashRoot, 600, 400);
             AppServices.addAshigaruStylesheets(splashScene.getStylesheets());
             splashScene.setFill(APP_BACKGROUND);
@@ -196,7 +232,14 @@ public class AshigaruGui extends Application {
             splashStage.close();
         }
 
+        mainStage.setOnCloseRequest(event -> {
+            if(SwapService.get().isSwapActive() && !SwapsToolController.confirmQuitDuringSwap(mainStage)) {
+                event.consume();
+            }
+        });
         mainStage.show();
+        //Swaps run whenever they are turned on, whichever wallets are open
+        SwapService.get().startIfEnabled();
         //Must follow show(): JavaFX only centres the stage, and only knows its decorated size, once
         //it is on screen. Before that getX/getY/getHeight have nothing useful to clamp.
         AppServices.clampToScreen(mainStage);
@@ -317,6 +360,7 @@ public class AshigaruGui extends Application {
     public static void removeWallet(String walletId) {
         WalletForm form = instance.walletForms.remove(walletId);
         if (form != null) {
+            SwapService.get().walletUnloaded(form.getWallet());
             EventManager.get().unregister(form);
             for (WalletForm nested : form.getNestedWalletForms()) {
                 EventManager.get().unregister(nested);

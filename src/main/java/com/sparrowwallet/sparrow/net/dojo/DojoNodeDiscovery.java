@@ -186,6 +186,13 @@ public class DojoNodeDiscovery {
         int unverified = 0;
         Set<String> seenHosts = new HashSet<>();
         for(Candidate candidate : candidates) {
+            //Only a message made as a listing is one: it starts with the listing tag (untagged ones only until the transition ends), and a block made
+            //with Tools -> Sign or an Auth47 login, signed by the same kind of key, never is, whatever it contains
+            if(!isListing(signedMessage(candidate.signedBlock()), java.time.LocalDate.now(java.time.ZoneOffset.UTC))) {
+                unverified++;
+                log.info("Skipping a dojo directory entry that is not signed as a listing: " + candidate.name());
+                continue;
+            }
             if(!SignedMessageVerifier.verify(candidate.signedBlock(), candidate.pairingUrl(), candidate.paymentCode())) {
                 unverified++;
                 log.info("Skipping unverified dojo directory entry: " + candidate.name());
@@ -207,6 +214,32 @@ public class DojoNodeDiscovery {
         }
 
         return new DiscoveryResult(discovered, candidates.size(), unverified);
+    }
+
+    /**
+     * The last day an untagged listing is accepted. Listings made before the tag existed carry none; operators have until then to sign theirs again
+     * with the tag as their first line. After it, only tagged listings are read.
+     */
+    static final java.time.LocalDate UNTAGGED_LISTINGS_UNTIL = java.time.LocalDate.of(2027, 6, 30);
+
+    /**
+     * Whether a signed message is a Dojo directory listing. A tagged one: the first line is exactly the tag, there is more after it, and the tag
+     * appears nowhere else. An untagged one only until {@link #UNTAGGED_LISTINGS_UNTIL}, and never one that is a Tools -> Sign message or an
+     * Auth47 login challenge.
+     */
+    static boolean isListing(String message, java.time.LocalDate today) {
+        if(message == null) {
+            return false;
+        }
+        String tag = com.sparrowwallet.sparrow.paynym.Bip47Signing.DOJO_LISTING_TAG;
+        if(message.startsWith(tag)) {
+            String rest = message.substring(tag.length());
+            return rest.startsWith("\n") && !rest.isBlank() && !rest.contains(tag);
+        }
+        if(message.contains(tag) || com.sparrowwallet.sparrow.paynym.Bip47Signing.isSignMessageOrLogin(message)) {
+            return false;
+        }
+        return !today.isAfter(UNTAGGED_LISTINGS_UNTIL);
     }
 
     private static String signedMessage(String signedBlock) {

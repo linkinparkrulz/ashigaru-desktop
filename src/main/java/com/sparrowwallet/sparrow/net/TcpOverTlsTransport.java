@@ -95,7 +95,7 @@ public class TcpOverTlsTransport extends TcpTransport {
 
     protected void createSocket() throws IOException {
         socket = sslSocketFactory.createSocket();
-        socket.connect(new InetSocketAddress(server.getHost(), server.getPortOrDefault(Protocol.SSL.getDefaultPort())));
+        socket.connect(SocketTargets.target(server.getHost(), server.getPortOrDefault(Protocol.SSL.getDefaultPort()), false));
         startHandshake((SSLSocket)socket);
     }
 

@@ -64,7 +64,11 @@ public class BitcoindTransport implements Transport {
         Proxy proxy = AppServices.getProxy();
         //Route remote nodes through the proxy as well as onion ones, so RPC credentials and the node's address do not go out over clearnet
         boolean useProxy = proxy != null && (Protocol.isOnionAddress(bitcoindServer) || !IpAddressMatcher.isLocalNetworkAddress(bitcoindServer.getHost()));
-        HttpURLConnection connection = useProxy ? (HttpURLConnection)bitcoindUrl.openConnection(proxy) : (HttpURLConnection)bitcoindUrl.openConnection();
+        if(useProxy) {
+            return passThroughProxy(request, proxy);
+        }
+        //On the user's own network: reached directly, as before
+        HttpURLConnection connection = (HttpURLConnection)bitcoindUrl.openConnection();
 
         if(connection instanceof HttpsURLConnection httpsURLConnection) {
             SSLSocketFactory sslSocketFactory = getPinningSocketFactory();
@@ -113,6 +117,45 @@ public class BitcoindTransport implements Transport {
 
         return response;
     }
+
+    /**
+     * The same request through the proxy with the node's name unresolved (AD-38): HttpURLConnection looks the host up on this computer
+     * first, which sends an onion node's name to the system's DNS. The certificate pinning stays.
+     */
+    private String passThroughProxy(String request, Proxy proxy) throws IOException {
+        java.util.Map<String, String> headers = new java.util.LinkedHashMap<>();
+        headers.put("Content-Type", "application/json");
+        String auth = getBitcoindAuthEncoded();
+        if(auth != null) {
+            headers.put("Authorization", "Basic " + auth);
+        }
+        log.debug("> " + request);
+        try(com.sparrowwallet.sparrow.net.ProxiedHttp.Response response = com.sparrowwallet.sparrow.net.ProxiedHttp.request("POST", bitcoindUrl, headers,
+                request.getBytes(StandardCharsets.UTF_8), proxy, bitcoindUrl.getProtocol().equals("https") ? getPinningSocketFactory() : null,
+                PROXIED_CONNECT_TIMEOUT_MILLIS, 0, PROXIED_MAX_RESPONSE_BYTES)) {
+            if(response.status() == 401) {
+                throw new IOException((cookieFile == null ? "User/pass" : "Cookie file") + " authentication failed");
+            }
+            StringBuilder res = new StringBuilder();
+            try(BufferedReader br = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
+                String responseLine;
+                while((responseLine = br.readLine()) != null) {
+                    if(response.status() == 500) {
+                        responseLine = responseLine.replace("\"result\":null,", "");
+                    }
+                    res.append(responseLine.trim());
+                }
+            }
+            String text = res.toString();
+            log.debug("< " + text);
+            return text;
+        }
+    }
+
+    /** How long to set up a connection to a node through Tor. Reads have no limit, as before: a rescan request can run for hours. */
+    private static final int PROXIED_CONNECT_TIMEOUT_MILLIS = 120_000;
+    /** The most one RPC response may hold through the proxy: large blocks and wallet listings, but not without end */
+    private static final long PROXIED_MAX_RESPONSE_BYTES = 256L * 1024 * 1024;
 
     private String getBitcoindAuthEncoded() throws IOException {
         if(cookieFile != null) {

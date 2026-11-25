@@ -1,5 +1,10 @@
 package com.sparrowwallet.sparrow.gui;
 
+import com.sparrowwallet.drongo.wallet.StandardAccount;
+import com.sparrowwallet.drongo.wallet.MixConfig;
+import com.sparrowwallet.drongo.wallet.Wallet;
+import com.sparrowwallet.sparrow.whirlpool.Whirlpool;
+import javafx.css.PseudoClass;
 import com.sparrowwallet.sparrow.wallet.UtxoEntry;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.value.ObservableValue;
@@ -8,6 +13,8 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
+import javafx.util.Duration;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
@@ -33,6 +40,13 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
     private final Label badgeText = new Label();
     private final ImageView badgeIcon = new ImageView(WHIRLPOOL_GIF);
     private final HBox badgeBox = new HBox(6, badgeIcon, badgeText);
+    //The coin's mix count as dots: the number the wallet already tracks, drawn so a list of Postmix
+    //coins reads at a glance. The dots turn green once the coin reaches the wallet's own minimum.
+    private static final int PIPS = 4;
+    private static final PseudoClass FILLED = PseudoClass.getPseudoClass("filled");
+    private static final PseudoClass PRIVATE = PseudoClass.getPseudoClass("private");
+    private final HBox pipBox = new HBox(4);
+    private final Tooltip pipTip = new Tooltip();
     private final TextField labelField = new TextField();
     private final Label addressLabel = new Label();
     private final Label metaLabel = new Label();
@@ -49,6 +63,18 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
         badgeText.getStyleClass().add("mix-badge-text");
         badgeBox.getStyleClass().add("mix-badge");
         badgeBox.setAlignment(Pos.CENTER_RIGHT);
+        pipBox.getStyleClass().add("mix-pips");
+        pipBox.setAlignment(Pos.CENTER);
+        pipTip.setShowDelay(Duration.millis(150));
+        pipTip.setShowDuration(Duration.INDEFINITE);
+        pipTip.setWrapText(true);
+        pipTip.setMaxWidth(320);
+        Tooltip.install(pipBox, pipTip);
+        for(int i = 0; i < PIPS; i++) {
+            Region pip = new Region();
+            pip.getStyleClass().add("mix-pip");
+            pipBox.getChildren().add(pip);
+        }
 
         labelField.getStyleClass().add("card-label-field");
         labelField.setPromptText("Add label…");
@@ -65,7 +91,7 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox topLine = new HBox(8, valueLabel, spacer, badgeBox);
+        HBox topLine = new HBox(10, valueLabel, spacer, pipBox, badgeBox);
         topLine.setAlignment(Pos.CENTER_LEFT);
 
         VBox center = new VBox(4, topLine, labelField, addressLine, metaLine);
@@ -137,6 +163,8 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
     private void updateBadge() {
         AshigaruWalletController.UtxoRow row = getItem();
         boolean show = Boolean.TRUE.equals(showMixInfo.getValue());
+        pipBox.setVisible(false);
+        pipBox.setManaged(false);
         if (row == null || !show || row.utxoEntry == null) {
             badgeBox.setVisible(false);
             badgeBox.setManaged(false);
@@ -145,11 +173,36 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
         badgeBox.setVisible(true);
         badgeBox.setManaged(true);
 
+        //Change left in Postmix after a spend is not a mixed coin. The wallet's default reports
+        //"1 mix" for anything in Postmix, which is wrong for it: show what it is instead.
+        Wallet account = row.utxoEntry.getWallet();
+        if (account.getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX
+                && !WalletPrivacy.isMixedCoin(account, row.utxoEntry.getNode())) {
+            badgeBox.getStyleClass().removeAll("active", "done");
+            badgeBox.getStyleClass().add("change");
+            badgeIcon.setVisible(false);
+            badgeIcon.setManaged(false);
+            badgeText.setText("Change \u00b7 not mixed");
+            return;
+        }
+        badgeBox.getStyleClass().remove("change");
+
         UtxoEntry.MixStatus mixStatus = row.utxoEntry.getMixStatus();
         boolean mixing = mixStatus != null
                 && (mixStatus.getMixProgress() != null || mixStatus.getNextMixUtxo() != null);
 
         badgeBox.getStyleClass().removeAll("active", "done");
+        if (mixStatus != null) {
+            int done = mixStatus.getMixesDone();
+            boolean isPrivate = done >= minMixes(row);
+            for(int i = 0; i < PIPS; i++) {
+                pipBox.getChildren().get(i).pseudoClassStateChanged(FILLED, i < done);
+            }
+            pipBox.pseudoClassStateChanged(PRIVATE, isPrivate);
+            pipTip.setText(pipExplainer(done, minMixes(row)));
+            pipBox.setVisible(true);
+            pipBox.setManaged(true);
+        }
         if (mixing) {
             badgeIcon.setVisible(true);
             badgeIcon.setManaged(true);
@@ -161,12 +214,46 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
             badgeIcon.setManaged(false);
             if (mixStatus != null) {
                 int mixes = mixStatus.getMixesDone();
-                badgeText.setText("✓ " + mixes + (mixes == 1 ? " mix" : " mixes"));
+                badgeText.setText(mixes + (mixes == 1 ? " mix" : " mixes"));
                 badgeBox.getStyleClass().add("done");
             } else {
                 badgeText.setText("Unmixed");
             }
         }
+    }
+
+    /**
+     * What the dots mean, on hover. Each dot is one completed mix; the coin's own count is said first, then
+     * the whole scale, so a reader who has never seen the Whirlpool tab can still read the row.
+     */
+    static String pipExplainer(int done, int minMixes) {
+        String own = done == 0 ? "This coin has not been mixed yet."
+                : "This coin has completed " + done + (done == 1 ? " mix." : " mixes.");
+        String reached = done >= minMixes ? " It has reached your minimum of " + minMixes + ", so its dots are green."
+                : " Your minimum is " + minMixes + "; the dots turn green when a coin gets there.";
+        return own + reached + "\n\n"
+                + "Each dot is one completed mix:\n"
+                + "\u25CB\u25CB\u25CB\u25CB  none yet, waiting in Premix\n"
+                + "\u25CF\u25CB\u25CB\u25CB  1 mix\n"
+                + "\u25CF\u25CF\u25CB\u25CB  2 mixes\n"
+                + "\u25CF\u25CF\u25CF\u25CB  3 mixes\n"
+                + "\u25CF\u25CF\u25CF\u25CF  4 or more\n\n"
+                + "More mixes means more coins it could be mistaken for. Remixing is free while a coin stays in Postmix.";
+    }
+
+    /** The wallet's own "private enough" threshold: the Mix To minimum, or Whirlpool's default. */
+    private static int minMixes(AshigaruWalletController.UtxoRow row) {
+        try {
+            Wallet wallet = row.utxoEntry.getWallet();
+            Wallet master = wallet.isMasterWallet() ? wallet : wallet.getMasterWallet();
+            MixConfig mixConfig = master.getMixConfig();
+            if(mixConfig != null && mixConfig.getMinMixes() != null) {
+                return mixConfig.getMinMixes();
+            }
+        } catch(Exception e) {
+            //fall through to the default
+        }
+        return Whirlpool.DEFAULT_MIXTO_MIN_MIXES;
     }
 
     private static String shorten(String outpoint) {
