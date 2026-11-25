@@ -10,7 +10,7 @@ import javafx.scene.image.ImageView;
 
 public class AshigaruMixesCell extends TableCell<AshigaruWalletController.UtxoRow, UtxoEntry.MixStatus> {
     private static final Image WHIRLPOOL_GIF =
-            new Image("/image/Ashigaru_Whirlpool_Logo_GIF_White_On_Transparent.gif", 24, 24, true, true);
+            new Image("/image/Ashigaru_Whirlpool_Logo_White.png", 24, 24, true, true);
 
     private final ImageView imageView = new ImageView(WHIRLPOOL_GIF);
 

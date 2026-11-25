@@ -44,11 +44,17 @@ public class TitledDescriptionPane extends TitledPane {
         imageBox.setMinHeight(50);
         listItem.getChildren().add(imageBox);
 
-        Image image = new Image(imageUrl, 50, 50, true, true);
-        if (!image.isError()) {
-            ImageView imageView = new ImageView();
-            imageView.setImage(image);
-            imageBox.getChildren().add(imageView);
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            try {
+                Image image = new Image(imageUrl, 50, 50, true, true);
+                if (!image.isError()) {
+                    ImageView imageView = new ImageView();
+                    imageView.setImage(image);
+                    imageBox.getChildren().add(imageView);
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Missing optional icon should never block constructing a dialog
+            }
         }
 
         VBox labelsBox = new VBox();
