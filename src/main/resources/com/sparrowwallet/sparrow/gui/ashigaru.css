@@ -599,6 +599,15 @@
 .text-field:focused, .combo-box:focused, .spinner:focused {
     -fx-border-color: -ag-accent;
 }
+/* A busy wheel (ProgressIndicator) draws its turning segments in a child that is also called "spinner"; the input look above is for
+   the number Spinner control only, and on the wheel it painted a dark, bordered box behind the segments */
+.progress-indicator > .spinner,
+.progress-indicator > .spinner:focused {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-padding: 0;
+}
 .combo-box .list-cell {
     -fx-font-family: 'Roboto Mono', "Monospaced", monospace;  /* server URLs */ -fx-text-fill: -ag-text; -fx-background-color: -ag-bg; }
 /* A drop-down list is a menu of values: the same panel, face, spacing and hover as the menus (Context menus, below) */
@@ -621,6 +630,33 @@
 }
 .combo-box-popup > .list-view .list-cell:hover,
 .combo-box-popup > .list-view .list-cell:selected { -fx-background-color: derive(-ag-accent, -65%); -fx-text-fill: -ag-accent-ink; }
+/* The seed-word suggestions (ControlsFX auto-complete) are a drop-down too: the same panel, face and hover. ControlsFX puts its own
+   sheet on the popup; MnemonicKeystorePane adds this one after it, so these rules use the same selector paths to win over its light
+   selection bar */
+.auto-complete-popup > .list-view,
+.auto-complete-popup > .list-view:focused {
+    -fx-background-color: -ag-bg-raised;
+    -fx-background-insets: 0;
+    -fx-border-color: -ag-border;
+    -fx-border-radius: -ag-radius;
+    -fx-background-radius: -ag-radius;
+    -fx-padding: 4 0 4 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 8, 0, 0, 2);
+}
+.auto-complete-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell {
+    -fx-font-family: "Roboto", sans-serif;
+    -fx-font-size: 13px;
+    -fx-padding: 7 18 7 14;
+    -fx-text-fill: -ag-text;
+    -fx-background-color: transparent;
+}
+.auto-complete-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:selected,
+.auto-complete-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:hover,
+.auto-complete-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:selected:hover {
+    /* important: without it ControlsFX's light-grey selection bar still wins on the highlighted word */
+    -fx-background-color: derive(-ag-accent, -65%) !important;
+    -fx-text-fill: -ag-accent-ink;
+}
 
 /* Monospace text area (seed / descriptor entry) */
 .mono-area {

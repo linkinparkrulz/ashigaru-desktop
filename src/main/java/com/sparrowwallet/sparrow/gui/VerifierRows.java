@@ -28,6 +28,7 @@ final class VerifierRows {
             address.setMinHeight(Region.USE_PREF_SIZE);
             HBox.setHgrow(address, Priority.ALWAYS);
             CopyButton copy = new CopyButton();
+            copy.setTooltipText("Copy address");
             copy.setOnAction(event -> copy.copy(value));
             HBox valueRow = new HBox(8, address, copy);
             valueRow.setAlignment(Pos.CENTER_LEFT);

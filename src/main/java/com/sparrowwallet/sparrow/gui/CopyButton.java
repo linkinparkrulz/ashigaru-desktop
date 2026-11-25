@@ -20,12 +20,13 @@ public class CopyButton extends Button {
     private final javafx.scene.Node copyGraphic = Icons.of(FontAwesome5.Glyph.COPY, ICON_SIZE);
     private final javafx.scene.Node checkGraphic = Icons.of(FontAwesome5.Glyph.CHECK, ICON_SIZE);
     private final PauseTransition resetPause = new PauseTransition(Duration.seconds(1.5));
+    private final Tooltip tooltip = new Tooltip("Copy");
     private String copyText;
 
     public CopyButton() {
         setGraphic(copyGraphic);
         setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-        setTooltip(new Tooltip("Copy"));
+        setTooltip(tooltip);
         getStyleClass().add("copy-icon-btn");
         setMinSize(28, 28);
         setPrefSize(28, 28);
@@ -34,6 +35,21 @@ public class CopyButton extends Button {
             setGraphic(copyGraphic);
             getStyleClass().remove(SUCCESS_STYLE_CLASS);
         });
+    }
+
+    /** Says on hover what the button copies, e.g. "Copy TxID" */
+    public final void setTooltipText(String text) {
+        tooltip.setText(text);
+    }
+
+    public final String getTooltipText() {
+        return tooltip.getText();
+    }
+
+    /** Binds this button to copy the given text on click, and says on hover what that text is */
+    public final void setCopyText(String text, String tooltipText) {
+        setTooltipText(tooltipText);
+        setCopyText(text);
     }
 
     /** Binds this button to copy the given text on click, allowing a single button to be reused across cell updates. */

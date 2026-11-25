@@ -1071,8 +1071,9 @@ public class AshigaruWalletController implements Initializable {
     // Helpers
     // -------------------------------------------------------------------------
 
-    static CopyButton makeCopyButton(String textToCopy) {
+    static CopyButton makeCopyButton(String textToCopy, String tooltipText) {
         CopyButton btn = new CopyButton();
+        btn.setTooltipText(tooltipText);
         btn.setOnAction(e -> btn.copy(textToCopy));
         return btn;
     }

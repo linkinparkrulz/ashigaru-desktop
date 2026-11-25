@@ -273,6 +273,11 @@ public class MnemonicKeystorePane extends TitledDescriptionPane {
             wordList = Bip39MnemonicCode.INSTANCE.getWordList();
             AutoCompletionBinding<String> autoCompletionBinding = TextFields.bindAutoCompletion(wordField, new WordlistSuggestionProvider(wordList, wordNumber, wordEntryList));
             autoCompletionBinding.setDelay(50);
+            //The suggestions list carries ControlsFX's light stylesheet, which outranks the window's: the app's theme goes on after it,
+            //on the list itself, whether its skin is already made or is made when the popup first shows
+            javafx.scene.control.PopupControl suggestionsPopup = autoCompletionBinding.getAutoCompletionPopup();
+            themeSuggestions(suggestionsPopup.getSkin());
+            suggestionsPopup.skinProperty().addListener((observable, oldSkin, skin) -> themeSuggestions(skin));
             autoCompletionBinding.setOnAutoCompleted(event -> {
                 if(nextField != null) {
                     nextField.requestFocus();
@@ -312,6 +317,12 @@ public class MnemonicKeystorePane extends TitledDescriptionPane {
 
         public void setNextField(TextField field) {
             this.nextField = field;
+        }
+
+        private static void themeSuggestions(javafx.scene.control.Skin<?> skin) {
+            if(skin != null && skin.getNode() instanceof javafx.scene.Parent list) {
+                AppServices.addAshigaruStylesheets(list.getStylesheets());
+            }
         }
 
         public static boolean isValid(String word) {

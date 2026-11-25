@@ -384,6 +384,7 @@ public class WalletCreationFlow {
                 "\nThe master fingerprint identifies the keystore and changes as the passphrase changes." +
                 "\nMake sure you recognise it before proceeding.");
         CopyButton copyFpBtn = new CopyButton();
+        copyFpBtn.setTooltipText("Copy master fingerprint");
         copyFpBtn.disableProperty().bind(masterFingerprint.isNull());
         copyFpBtn.setOnAction(e -> {
             if (fingerprintHex.getText().isEmpty()) return;
@@ -696,6 +697,7 @@ public class WalletCreationFlow {
         LifeHashIcon lifeHashIcon = new LifeHashIcon();
         lifeHashIcon.dataProperty().bind(masterFingerprint);
         CopyButton copyFpBtn = new CopyButton();
+        copyFpBtn.setTooltipText("Copy master fingerprint");
         copyFpBtn.disableProperty().bind(masterFingerprint.isNull());
         copyFpBtn.setOnAction(e -> {
             if (fingerprintHex.getText().isEmpty()) return;

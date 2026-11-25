@@ -37,7 +37,7 @@
                 <HBox spacing="8" alignment="CENTER_LEFT"
                       GridPane.rowIndex="0" GridPane.columnIndex="1">
                     <TextField fx:id="addressField" editable="false" styleClass="address-field" HBox.hgrow="ALWAYS"/>
-                    <CopyButton fx:id="copyBtn" onAction="#onCopy"/>
+                    <CopyButton fx:id="copyBtn" onAction="#onCopy" tooltipText="Copy address"/>
                 </HBox>
 
                 <Label text="Derivation path"

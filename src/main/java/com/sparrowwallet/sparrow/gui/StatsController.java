@@ -501,7 +501,7 @@ public class StatsController implements Initializable {
             txidLabel.setText(shortTxid);
             Region midSpacer = new Region();
             HBox.setHgrow(midSpacer, Priority.ALWAYS);
-            midLine.getChildren().setAll(txidLabel, AshigaruWalletController.makeCopyButton(row.txid()), midSpacer);
+            midLine.getChildren().setAll(txidLabel, AshigaruWalletController.makeCopyButton(row.txid(), "Copy TxID"), midSpacer);
             if(!Config.get().isBlockExplorerDisabled()) {
                 explorerLink.setOnAction(e -> AppServices.openBlockExplorer(row.txid()));
                 midLine.getChildren().add(explorerLink);

@@ -181,7 +181,7 @@ public class AshigaruTxnCell extends ListCell<AshigaruWalletController.TxnRow> {
             }
 
             paymentCodeLabel.setText(paymentCode.toAbbreviatedString());
-            paymentCodeCopyBtn.setCopyText(code);
+            paymentCodeCopyBtn.setCopyText(code, "Copy payment code");
             paymentCodeLine.getChildren().setAll(paymentCodeLabel, paymentCodeCopyBtn);
             appendTxLinks(paymentCodeLine, row.txid());
             center.getChildren().setAll(nymNameLabel, topLine, paymentCodeLine);
@@ -199,7 +199,7 @@ public class AshigaruTxnCell extends ListCell<AshigaruWalletController.TxnRow> {
             txidLine.getChildren().setAll(txidLabel);
             txidLabel.setText(row.txid());
             if (row.txid() != null && !row.txid().isEmpty()) {
-                txidCopyBtn.setCopyText(row.txid());
+                txidCopyBtn.setCopyText(row.txid(), "Copy TxID");
                 txidLine.getChildren().add(txidCopyBtn);
             }
             appendTxLinks(txidLine, row.txid());

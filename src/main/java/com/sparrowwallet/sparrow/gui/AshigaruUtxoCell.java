@@ -161,7 +161,7 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
         addressCopyBtn.setVisible(hasAddress);
         addressCopyBtn.setManaged(hasAddress);
         if (hasAddress) {
-            addressCopyBtn.setCopyText(row.address);
+            addressCopyBtn.setCopyText(row.address, "Copy address");
         }
 
         metaLabel.setText(row.date + "   ·   " + shorten(row.output));
@@ -169,7 +169,7 @@ public class AshigaruUtxoCell extends ListCell<AshigaruWalletController.UtxoRow>
         outputCopyBtn.setVisible(hasOutput);
         outputCopyBtn.setManaged(hasOutput);
         if (hasOutput) {
-            outputCopyBtn.setCopyText(row.output);
+            outputCopyBtn.setCopyText(row.output, "Copy output (TxID:index)");
         }
 
         updateBadge();

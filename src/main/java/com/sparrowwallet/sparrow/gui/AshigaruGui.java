@@ -115,14 +115,17 @@ public class AshigaruGui extends Application {
         // Set app icon (window + macOS Dock). Use the padded variant: the full-bleed circle logo
         // touches the canvas edges, so the OS renders it larger than neighbouring dock icons (which
         // follow the ~80% content / transparent-margin convention). Dock_ has that safe-area margin.
+        // macOS icons are rounded squares, so there the square logo in that shape is used, as in the app bundle.
+        String iconResource = System.getProperty("os.name", "").startsWith("Mac")
+                ? "/image/Ashigaru_Terminal_Logo_Mac.png" : "/image/Ashigaru_Terminal_Logo_Dock.png";
         try {
-            Image icon = new Image(getClass().getResourceAsStream("/image/Ashigaru_Terminal_Logo_Dock.png"));
+            Image icon = new Image(getClass().getResourceAsStream(iconResource));
             stage.getIcons().add(icon);
             try {
                 if (java.awt.Taskbar.isTaskbarSupported()) {
                     java.awt.Taskbar taskbar = java.awt.Taskbar.getTaskbar();
                     if (taskbar.isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)) {
-                        try (java.io.InputStream iconStream = getClass().getResourceAsStream("/image/Ashigaru_Terminal_Logo_Dock.png")) {
+                        try (java.io.InputStream iconStream = getClass().getResourceAsStream(iconResource)) {
                             if (iconStream != null) {
                                 java.awt.image.BufferedImage awtIcon = javax.imageio.ImageIO.read(iconStream);
                                 taskbar.setIconImage(awtIcon);

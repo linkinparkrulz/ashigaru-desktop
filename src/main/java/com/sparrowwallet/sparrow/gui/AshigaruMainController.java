@@ -1303,7 +1303,7 @@ public class AshigaruMainController implements Initializable {
 
     @FXML
     private void onPreferences() {
-        walletSelector.getSelectionModel().clearSelection();
+        //The sidebar stays as it is (the open wallet and its accounts), as it does for Tools
         try {
             FXMLLoader loader = new FXMLLoader(AppServices.class.getResource("preferences/preferences.fxml"));
             Node prefsPanel = loader.load();
@@ -1353,7 +1353,9 @@ public class AshigaruMainController implements Initializable {
                             item -> walletSelector.getSelectionModel().select(item),
                             this::showWelcome);
         } else {
+            //The selection was left alone on the way in, so choosing it again would not repaint
             walletSelector.getSelectionModel().select(PLACEHOLDER);
+            showWelcome();
         }
     }
 
