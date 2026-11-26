@@ -77,15 +77,15 @@
                         <Label text="Warning!" styleClass="warning-title" />
                     </HBox>
                     <Label fx:id="warningBodyShort" text="Using a public server means it can see your transactions." wrapText="true" styleClass="warning-body" />
-                    <Label fx:id="warningBodyLong" text="These public servers are the Electrum servers of Dojos listed at dojobay.pw. A verified server means the Dojo operator signed the pairing, but any public server can still see your addresses — pick one you trust." wrapText="true" styleClass="warning-body" />
+                    <Label fx:id="warningBodyLong" text="Public servers include community Dojos you choose from Dojo Bay. Any public server can still see the addresses your wallets look up — pick one you trust, or run your own." wrapText="true" styleClass="warning-body" />
                 </VBox>
             </Field>
             <Field text="URL:">
                 <ComboBox fx:id="publicElectrumServer" />
             </Field>
-            <Field text="Discover:">
-                <Hyperlink fx:id="discoverNodesLink" text="Discover Dojo Electrum servers" onAction="#discoverNodes" />
-                <HelpLabel helpText="Fetches the Dojo directory (dojobay.pw) over Tor and adds the Electrum (Fulcrum) server of each cryptographically verified Dojo to the list above, labelled by operator paynym. A Dojo is verified when its signed listing matches its advertised BIP47 payment code. Runs automatically in the background at startup." />
+            <Field text="Dojo Bay:">
+                <Button fx:id="browseDojoBayBtn" text="Browse Dojo Bay…" onAction="#browseDojoBay" styleClass="secondary-btn" minWidth="-Infinity" />
+                <HelpLabel helpText="Lists the community Dojos on Dojo Bay, fetched over Tor. The list is used only when it is signed by Dojo Bay's known operator, and a Dojo can only be chosen when its own operator signed its listing. You confirm the Dojo before Ashigaru connects to it." />
             </Field>
             <Field text="">
                 <Label fx:id="discoverNodesStatus" wrapText="true" />

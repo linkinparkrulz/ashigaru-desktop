@@ -2126,6 +2126,24 @@
 .swaps-node-card.locked .check-box:selected > .box { -fx-background-color: -ag-text-faint; -fx-border-color: -ag-text-faint; }
 .swaps-node-card.locked .check-box:selected > .box > .mark { -fx-background-color: -ag-bg-light; }
 
+/* Dojo Bay: the community Dojos, as a list to choose from, then the one chosen to confirm */
+.dojobay-list { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border; -fx-border-radius: -ag-radius; -fx-background-radius: -ag-radius; }
+.dojobay-list .list-cell { -fx-padding: 10 14 10 14; -fx-background-color: transparent; -fx-border-color: transparent transparent -ag-border transparent; }
+.dojobay-list .list-cell:filled:hover { -fx-background-color: -ag-bg-raised; }
+.dojobay-list .list-cell:filled:selected { -fx-background-color: derive(-ag-accent, -65%); }
+.dojobay-list .list-cell.unverified { -fx-opacity: 0.5; }
+.dojobay-name { -fx-font-family: "Roboto Medium", "Roboto", sans-serif; -fx-font-size: 13.5px; -fx-text-fill: -ag-text; }
+.dojobay-chip { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 10.5px; -fx-text-fill: -ag-text-dim;
+    -fx-border-color: -ag-border-strong; -fx-border-radius: 3; -fx-padding: 0 4 0 4; }
+.dojobay-sub { -fx-font-family: "Roboto", sans-serif; -fx-font-size: 12px; -fx-text-fill: -ag-text-faint; }
+.dojobay-sub.online { -fx-text-fill: -ag-green-ink; }
+.dojobay-signer { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 11px; -fx-text-fill: -ag-text-faint; }
+.dojobay-why { -fx-text-fill: -ag-warn-ink; }
+.dojobay-key { -fx-font-family: "Roboto", sans-serif; -fx-font-size: 12.5px; -fx-text-fill: -ag-text-faint; }
+.dojobay-value { -fx-font-family: "Roboto", sans-serif; -fx-font-size: 13px; -fx-text-fill: -ag-text; }
+.dojobay-note { -fx-text-fill: -ag-warn-ink; }
+.dojobay-note .ag-icon { -fx-text-fill: -ag-warn-ink; }
+
 /* ── Swap screens, restyled with the rest ────────────────────────────────────
    Their colours now come from the tokens above (amber for attention, green for done, red for the
    selected offer and the approve button). Icons are drawn, and take the colour of the shape they

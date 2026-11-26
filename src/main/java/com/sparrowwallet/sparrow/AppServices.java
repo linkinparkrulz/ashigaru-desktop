@@ -24,7 +24,6 @@ import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.io.*;
 import com.sparrowwallet.sparrow.net.*;
 import com.sparrowwallet.sparrow.net.update.UpdateCheckService;
-import com.sparrowwallet.sparrow.net.dojo.DojoNodeDiscovery;
 import com.sparrowwallet.sparrow.whirlpool.WhirlpoolServices;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
@@ -207,18 +206,12 @@ public class AppServices {
         addURIHandlers();
     }
 
-    private static final AtomicBoolean dojoDiscoveryStarted = new AtomicBoolean(false);
 
     //When Tor's daemon last stopped by itself and was restarted, to stop restarting one that keeps dying
     private static final int MAX_TOR_REVIVALS = 3;
     private static final long TOR_REVIVAL_WINDOW_MILLIS = 10 * 60 * 1000;
     private final Deque<Long> torRevivals = new ArrayDeque<>();
 
-    private static void maybeStartDojoDiscovery() {
-        if(dojoDiscoveryStarted.compareAndSet(false, true)) {
-            DojoNodeDiscovery.discoverInBackground();
-        }
-    }
 
     private void restartServices() {
         Config config = Config.get();
@@ -378,9 +371,6 @@ public class AppServices {
                 EventManager.get().post(connectionService.getValue());
             }
 
-            //Now that the user's server is connected, discover Dojo servers in the background.
-            //Deferring until after connect avoids saturating Tor circuits during the initial connection.
-            maybeStartDojoDiscovery();
         });
         connectionService.setOnFailed(failEvent -> {
             //Close connection here to create a new transport next time we try

@@ -106,20 +106,29 @@ HOW TO USE
 
 
 --------------------------------------------------------------------
- 7. DOJO / PUBLIC-SERVER DISCOVERY
+ 7. DOJO BAY (PUBLIC DOJOS)
 --------------------------------------------------------------------
-  [ ] Settings -> Server -> Public Server: discovery runs
-      automatically in the background at startup (no manual action).
-  [ ] Discovered Dojo Electrum servers appear in the URL dropdown;
-      verified ones are marked/surfaced.
-  [ ] Status line reads like: "Added N Dojo Electrum server(s);
-      X unverified, Y unreachable. Directory courtesy of dojobay.pw".
-  [ ] The manual "Discover Dojo Electrum servers" link re-runs
-      discovery over Tor.
-  [ ] The block-explorer dropdown is populated from the same call.
-  [ ] Select a discovered server, Test Connection succeeds, and a
-      wallet can actually sync against it.
-  [ ] The dojobay.pw credit/notice is present.
+  [ ] Nothing is added to the Public Server list at startup: Dojo Bay
+      is only read when you choose Settings -> Server -> Browse Dojo Bay.
+  [ ] Browse first shows "Before you browse" (the list comes over Tor;
+      nothing goes to a Dojo before Connect). Cancel ends it there.
+  [ ] Continue shows the list: name, country, version, jurisdiction,
+      online/offline, "Signed by PM8T...". It fills in after a fetch
+      over Tor (up to a minute); a second open shows the last list at
+      once while it refreshes. Refresh list fetches it again.
+  [ ] Unverified Dojos are dimmed; choosing one says why; Review stays
+      off for them.
+  [ ] Review shows the Dojo's details and the full signer code. When
+      the Electrum address is not in the signed listing, it says once:
+      "This Electrum address is listed by Dojo Bay, not signed by the
+      operator."
+  [ ] Don't connect returns to the list. Connect selects the Dojo as the
+      public server (named after the Dojo, nothing appended) and runs
+      Test Connection; a wallet syncs against it.
+  [ ] The Dojo's signed block explorer is offered under General ->
+      Block explorer.
+  [ ] If Dojo Bay's operator file does not verify against its known
+      operator, no Dojos are shown and the list says why.
 
 
 --------------------------------------------------------------------
@@ -127,7 +136,7 @@ HOW TO USE
 --------------------------------------------------------------------
   [ ] The full "Warning!" text (both lines, ending "...pick one you
       trust.") is visible and WRAPS - no "...".
-  [ ] The discovery status wraps onto multiple lines (no truncation).
+  [ ] The Dojo Bay status line wraps onto multiple lines (no truncation).
   [ ] Narrow the window -> warning/status text re-wraps and stays
       fully readable.
   [ ] Shorten the window -> the settings body SCROLLS; the bottom

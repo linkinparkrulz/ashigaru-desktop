@@ -34,7 +34,7 @@ public final class Bip47Signing {
      */
     public static final String MESSAGE_PREFIX = "Ashigaru BIP47 signed message:\n";
 
-    /** The first line every Dojo directory listing must start with (DojoNodeDiscovery): Tools -> Sign never signs text that starts with it */
+    /** The first line every Dojo directory listing must start with (DojoBayDirectory): Tools -> Sign never signs text that starts with it */
     public static final String DOJO_LISTING_TAG = "Dojo node listing v1";
 
     /** What an Auth47 login challenge starts with */

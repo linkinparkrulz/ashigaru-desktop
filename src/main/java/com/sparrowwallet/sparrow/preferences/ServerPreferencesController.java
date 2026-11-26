@@ -17,7 +17,7 @@ import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.io.Server;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.net.*;
-import com.sparrowwallet.sparrow.net.dojo.DojoNodeDiscovery;
+import com.sparrowwallet.sparrow.net.dojo.DojoBayDirectory;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
@@ -146,7 +146,7 @@ public class ServerPreferencesController extends PreferencesDetailController {
     private ComboBox<Server> recentElectrumServers;
 
     @FXML
-    private Hyperlink discoverNodesLink;
+    private Button browseDojoBayBtn;
 
     @FXML
     private Label discoverNodesStatus;
@@ -687,6 +687,7 @@ public class ServerPreferencesController extends PreferencesDetailController {
         serverTypeToggleGroup.getToggles().forEach(toggle -> ((ToggleButton)toggle).setDisable(!editable));
 
         publicElectrumServer.setDisable(!editable);
+        browseDojoBayBtn.setDisable(!editable);
         publicUseProxy.setDisable(!editable);
         publicProxyHost.setDisable(!editable);
         publicProxyPort.setDisable(!editable);
@@ -1050,55 +1051,44 @@ public class ServerPreferencesController extends PreferencesDetailController {
                 servers.add(discovered);
             }
         }
+        //A Dojo chosen from Dojo Bay in an earlier session stays in the list while it is the one in use
+        Server current = Config.get().getPublicElectrumServer();
+        if(current != null && !servers.contains(current)) {
+            servers.add(current);
+        }
         return FXCollections.observableList(servers);
     }
 
+    /**
+     * Dojo Bay, the Sentinel way: a privacy note, the list of community Dojos (checked against Dojo Bay's operator and each Dojo's
+     * own), and a confirmation. Nothing is added to the server list until the user confirms a Dojo; that Dojo is then selected and
+     * its connection tested.
+     */
     @FXML
-    private void discoverNodes(ActionEvent event) {
-        discoverNodesLink.setDisable(true);
-        discoverNodesStatus.setText("Discovering Dojo Electrum servers over Tor…");
-
-        Task<DojoNodeDiscovery.DiscoveryResult> task = new Task<>() {
-            @Override
-            protected DojoNodeDiscovery.DiscoveryResult call() throws Exception {
-                return DojoNodeDiscovery.discover(AppServices.getHttpClientService());
-            }
-        };
-
-        task.setOnSucceeded(e -> {
-            DojoNodeDiscovery.DiscoveryResult result = task.getValue();
-            int verified = 0;
-            int unverified = result.getUnverified();
-            for(DojoNodeDiscovery.DiscoveredNode node : result.getNodes()) {
-                if(node.isVerified()) {
-                    Config.get().addDiscoveredServer(node.getIndexerServer());
-                    if(node.getExplorerServer() != null) {
-                        Config.get().addDiscoveredExplorer(node.getExplorerServer());
+    private void browseDojoBay(ActionEvent event) {
+        java.util.Optional<DojoBayDirectory.Listing> chosen = com.sparrowwallet.sparrow.gui.DojoBayDialog.show(browseDojoBayBtn.getScene().getWindow(),
+                () -> new Task<>() {
+                    @Override
+                    protected DojoBayDirectory.Result call() throws Exception {
+                        return DojoBayDirectory.fetch(AppServices.getHttpClientService());
                     }
-                    verified++;
-                }
-            }
-
-            refreshPublicServerList();
-
-            if(verified == 0 && unverified == 0) {
-                discoverNodesStatus.setText("No Dojos found for this network.");
-            } else {
-                discoverNodesStatus.setText("Added " + verified + " Dojo Electrum server" + (verified == 1 ? "" : "s")
-                        + "; " + unverified + " unverified. Directory courtesy of dojobay.pw");
-            }
-            discoverNodesLink.setDisable(false);
-        });
-
-        task.setOnFailed(e -> {
-            Throwable ex = task.getException();
-            discoverNodesStatus.setText("Discovery failed: " + (ex != null ? ex.getMessage() : "unknown error"));
-            discoverNodesLink.setDisable(false);
-        });
-
-        Thread thread = new Thread(task, "dojo-node-discovery");
-        thread.setDaemon(true);
-        thread.start();
+                });
+        if(chosen.isEmpty()) {
+            return;
+        }
+        DojoBayDirectory.Listing listing = chosen.get();
+        Server server = listing.server();
+        Config.get().addDiscoveredServer(server);
+        if(listing.explorer() != null) {
+            //Offered under Settings -> General -> Block explorer, as the Dojo's own
+            Config.get().addDiscoveredExplorer(listing.explorer());
+        }
+        refreshPublicServerList();
+        publicElectrumServer.setValue(server);
+        discoverNodesStatus.setText("Using " + listing.displayName() + " from Dojo Bay.");
+        if(testConnection.isVisible() && !testConnection.isDisabled()) {
+            testConnection.fire();
+        }
     }
 
     private void refreshPublicServerList() {
