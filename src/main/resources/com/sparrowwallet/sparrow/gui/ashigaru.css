@@ -572,6 +572,9 @@
 .tx0-step.done {
     -fx-text-fill: -ag-green;
 }
+.tx0-result { -fx-padding: 14 0 0 0; }
+.tx0-result-key { -fx-font-family: "Roboto", sans-serif; -fx-font-size: 12px; -fx-text-fill: -ag-text-faint; }
+.tx0-txid { -fx-font-family: 'Roboto Mono', "Monospaced", monospace; -fx-font-size: 12px; -fx-pref-column-count: 66; }
 .field-label  { -fx-text-fill: -ag-text-dim; }
 .field-value  { -fx-text-fill: -ag-text;     -fx-font-family: monospace; }
 .total-label  { -fx-text-fill: -ag-text;}

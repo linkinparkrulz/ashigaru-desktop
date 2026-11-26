@@ -5,6 +5,7 @@
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
 <?import com.sparrowwallet.sparrow.gui.Tx0Flow?>
+<?import com.sparrowwallet.sparrow.gui.CopyButton?>
 
 <!--
   Tx0 dialog — loaded as a DialogPane.
@@ -121,6 +122,16 @@
                 <Label fx:id="stepSigning" text="• Signing" styleClass="tx0-step"/>
                 <Label fx:id="stepBroadcasting" text="• Broadcasting" styleClass="tx0-step"/>
                 <Label fx:id="stepComplete" text="• Complete" styleClass="tx0-step"/>
+            </VBox>
+            <!-- Shown once the Tx0 is published: its id, to copy, until Done -->
+            <VBox fx:id="resultBox" spacing="8" alignment="CENTER" maxWidth="600" visible="false" managed="false" styleClass="tx0-result">
+                <Label text="Transaction ID" styleClass="tx0-result-key"/>
+                <HBox spacing="8" alignment="CENTER">
+                    <TextField fx:id="txidField" editable="false" styleClass="address-field, tx0-txid" HBox.hgrow="ALWAYS"/>
+                    <CopyButton fx:id="txidCopyBtn"/>
+                </HBox>
+                <Label text="The new coins appear in Premix once the transaction is seen on the network."
+                       styleClass="ag-read, faint" wrapText="true" minHeight="-Infinity"/>
             </VBox>
         </VBox>
         </StackPane>
