@@ -14,8 +14,10 @@ public class SeedDisplayDialog extends Dialog<Void> {
         AppServices.addAshigaruStylesheets(dialogPane.getStylesheets());
         AppServices.setStageIcon(dialogPane.getScene().getWindow());
 
+        //Each row of words takes 41px, and the last row needs room below it for its field's border: the earlier 40px rows and
+        //74px allowance cut off the bottom of the last row (words 4, 8 and 12 of a 12-word seed)
         int lines = decryptedKeystore.getSeed().getMnemonicCode().size() / 3;
-        int height = lines * 40;
+        int height = lines * 41;
 
         StackPane stackPane = new StackPane();
         dialogPane.setContent(stackPane);
@@ -23,7 +25,7 @@ public class SeedDisplayDialog extends Dialog<Void> {
         AnchorPane anchorPane = new AnchorPane();
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.getStyleClass().add("edge-to-edge");
-        scrollPane.setPrefHeight(74 + height);
+        scrollPane.setPrefHeight(100 + height);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         anchorPane.getChildren().add(scrollPane);
@@ -61,7 +63,7 @@ public class SeedDisplayDialog extends Dialog<Void> {
         dialogPane.getButtonTypes().addAll(cancelButtonType);
 
         dialogPane.setPrefWidth(500);
-        dialogPane.setPrefHeight(150 + height);
+        dialogPane.setPrefHeight(176 + height);
         AppServices.moveToActiveWindowScreen(this);
 
         Platform.runLater(() -> keystoreAccordion.setExpandedPane(keystorePane));
