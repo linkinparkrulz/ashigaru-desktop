@@ -1079,16 +1079,37 @@ public class ServerPreferencesController extends PreferencesDetailController {
         DojoBayDirectory.Listing listing = chosen.get();
         Server server = listing.server();
         Config.get().addDiscoveredServer(server);
+        boolean explorerSet = false;
         if(listing.explorer() != null) {
-            //Offered under Settings -> General -> Block explorer, as the Dojo's own
-            Config.get().addDiscoveredExplorer(listing.explorer());
+            //The Dojo's own explorer is listed under Settings -> General -> Block explorer, and used, unless explorer links are off
+            Server explorer = withoutTrailingSlash(listing.explorer());
+            Config.get().addDiscoveredExplorer(explorer);
+            Server use = explorerToUse(Config.get().getBlockExplorer(), explorer);
+            explorerSet = use.equals(explorer);
+            Config.get().setBlockExplorer(use);
         }
         refreshPublicServerList();
         publicElectrumServer.setValue(server);
-        discoverNodesStatus.setText("Using " + listing.displayName() + " from Dojo Bay.");
+        discoverNodesStatus.setText("Using " + listing.displayName() + " from Dojo Bay" + (explorerSet ? ", and its block explorer." : "."));
         if(testConnection.isVisible() && !testConnection.isDisabled()) {
             testConnection.fire();
         }
+    }
+
+    /** The block explorer to use once a Dojo with its own is chosen: the Dojo's, unless explorer links were turned off (None) */
+    static Server explorerToUse(Server current, Server dojoExplorer) {
+        if(current != null && com.sparrowwallet.sparrow.net.BlockExplorer.NONE.getServer().equals(current)) {
+            return current;
+        }
+        return dojoExplorer;
+    }
+
+    private static Server withoutTrailingSlash(Server server) {
+        String url = server.getUrl().trim();
+        while(url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        return new Server(url, server.getAlias());
     }
 
     private void refreshPublicServerList() {

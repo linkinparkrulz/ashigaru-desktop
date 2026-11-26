@@ -125,8 +125,9 @@ HOW TO USE
   [ ] Don't connect returns to the list. Connect selects the Dojo as the
       public server (named after the Dojo, nothing appended) and runs
       Test Connection; a wallet syncs against it.
-  [ ] The Dojo's signed block explorer is offered under General ->
-      Block explorer.
+  [ ] Connect also selects the Dojo's signed block explorer under
+      General -> Block explorer (the status line says so), unless the
+      explorer is set to None, which stays None.
   [ ] If Dojo Bay's operator file does not verify against its known
       operator, no Dojos are shown and the list says why.
 
