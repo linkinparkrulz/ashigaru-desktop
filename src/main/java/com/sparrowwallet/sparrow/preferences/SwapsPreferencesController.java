@@ -1,6 +1,8 @@
 package com.sparrowwallet.sparrow.preferences;
 
 import com.sparrowwallet.sparrow.control.UnlabeledToggleSwitch;
+import com.sparrowwallet.sparrow.glyphfont.FontAwesome5;
+import com.sparrowwallet.sparrow.gui.Icons;
 import com.sparrowwallet.sparrow.io.Config;
 import com.sparrowwallet.sparrow.swap.MoneroNodes;
 import com.sparrowwallet.sparrow.swap.SwapService;
@@ -35,6 +37,11 @@ public class SwapsPreferencesController extends PreferencesDetailController {
     @FXML private Button addNodeBtn;
     @FXML private Button editNodesBtn;
     @FXML private Label nodeLockNote;
+    @FXML private Label nodeLockDetail;
+    @FXML private Label nodeLockIcon;
+    @FXML private Region statusDot;
+    @FXML private VBox nodeCard;
+    @FXML private HBox addNodeRow;
 
     private final List<CheckBox> nodeBoxes = new ArrayList<>();
     private final List<Button> removeButtons = new ArrayList<>();
@@ -56,6 +63,8 @@ public class SwapsPreferencesController extends PreferencesDetailController {
             updateNodeLock();
         });
         engineStatus.textProperty().bind(service.statusProperty());
+        showRunning(service.runningProperty().get());
+        service.runningProperty().addListener((observable, wasRunning, running) -> showRunning(running));
         if(!service.isAvailable()) {
             service.startIfEnabled();
         }
@@ -106,6 +115,7 @@ public class SwapsPreferencesController extends PreferencesDetailController {
         nodeResults.put(address, result);
         HBox row = new HBox(10, box, addressLabel, result);
         row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("swaps-node-row");
 
         if(custom) {
             Region spacer = new Region();
@@ -159,14 +169,37 @@ public class SwapsPreferencesController extends PreferencesDetailController {
      */
     private void updateNodeLock() {
         boolean locked = swapsEnabled.isSelected() && MoneroNodes.problem(MoneroNodes.getSelected()) == null;
+        //Locked, the list is a record of what swaps use: the ticks stay put, and what would change it is not offered
         nodeBoxes.forEach(box -> box.setDisable(locked));
-        removeButtons.forEach(button -> button.setDisable(locked));
-        customNode.setDisable(locked);
-        addNodeBtn.setDisable(locked);
+        removeButtons.forEach(button -> {
+            button.setVisible(!locked);
+            button.setManaged(!locked);
+        });
+        addNodeRow.setVisible(!locked);
+        addNodeRow.setManaged(!locked);
         editNodesBtn.setVisible(locked);
         editNodesBtn.setManaged(locked);
-        nodeLockNote.setVisible(locked);
-        nodeLockNote.setManaged(locked);
+        if(locked) {
+            nodeLockIcon.setGraphic(Icons.of(FontAwesome5.Glyph.LOCK, 12));
+            nodeLockNote.setText("Locked while swaps are on");
+            nodeLockDetail.setText("Edit nodes turns swaps off while you change them. Turn them back on when you are done.");
+            if(!nodeCard.getStyleClass().contains("locked")) {
+                nodeCard.getStyleClass().add("locked");
+            }
+        } else {
+            nodeLockIcon.setGraphic(Icons.of(FontAwesome5.Glyph.LOCK_OPEN, 12));
+            nodeLockNote.setText("Choose the nodes swaps use");
+            nodeLockDetail.setText("Tick at least two public nodes, or add your own below.");
+            nodeCard.getStyleClass().remove("locked");
+        }
+    }
+
+    /** The dot beside the status: green while the swap engine runs */
+    private void showRunning(boolean running) {
+        statusDot.getStyleClass().remove("on");
+        if(running) {
+            statusDot.getStyleClass().add("on");
+        }
     }
 
     /** Like "Edit Existing Connection" for the server: unlocks the nodes by turning swaps off, unless a swap is relying on them */

@@ -1305,9 +1305,10 @@
     -fx-font-family: "Roboto", "Segoe UI", "Helvetica Neue", "Arial", sans-serif;
     /* A quarter larger than before (about 11 px): the hints explain things ("outside Tor") and were hard to read */
     -fx-font-size: 14px;
-    -fx-max-width: 420;
     -fx-wrap-text: true;
 }
+/* No width cap here: a sentence takes the width its pane gives it (an FXML maxWidth, or the container). A max width on this whole
+   group overrode those, so every hint and setting stopped at 420 px however wide the page was. */
 .ag-read { -fx-font-size: 13px; -fx-text-fill: -ag-text-dim; }
 .ag-read.faint { -fx-font-size: 12px; -fx-text-fill: -ag-text-faint; }
 
@@ -2108,6 +2109,22 @@
 .preferences-detail .check-box > .box { -fx-background-color: -ag-bg; -fx-border-color: -ag-text-faint; -fx-border-width: 1.5; -fx-border-radius: 3; -fx-background-radius: 3; }
 .preferences-detail .check-box:selected > .box { -fx-background-color: -ag-accent; -fx-border-color: -ag-accent; }
 .preferences-detail .check-box:selected > .box > .mark { -fx-background-color: -ag-on-accent; }
+/* A field whose input runs to several lines: its label sits level with the first line, not halfway down */
+.form .field.top-label .label-container { -fx-alignment: top-left; -fx-padding: 0; }
+/* Whether the swap engine is running, beside what it says */
+.status-dot { -fx-min-width: 8; -fx-min-height: 8; -fx-pref-width: 8; -fx-pref-height: 8; -fx-max-width: 8; -fx-max-height: 8; -fx-background-radius: 4; -fx-background-color: -ag-text-faint; }
+.status-dot.on { -fx-background-color: -ag-green; }
+/* The Monero nodes as one list: a header saying whether they can be changed, the nodes, then adding your own */
+.swaps-node-card { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border; -fx-border-radius: -ag-radius; -fx-background-radius: -ag-radius; }
+.swaps-node-card-header { -fx-padding: 10 14 10 14; }
+.swaps-node-row { -fx-padding: 9 14 9 14; -fx-border-color: -ag-border transparent transparent transparent; }
+.swaps-node-add { -fx-padding: 10 14 10 14; -fx-border-color: -ag-border transparent transparent transparent; }
+.swaps-lock-note { -fx-font-family: "Roboto Medium", "Roboto", sans-serif; -fx-text-fill: -ag-text; }
+.swaps-lock-icon .ag-icon { -fx-text-fill: -ag-text-faint; }
+/* Locked, the nodes read as a record of what swaps use, not as greyed-out controls: full strength, with a quiet tick */
+.swaps-node-card.locked .check-box:disabled { -fx-opacity: 1; }
+.swaps-node-card.locked .check-box:selected > .box { -fx-background-color: -ag-text-faint; -fx-border-color: -ag-text-faint; }
+.swaps-node-card.locked .check-box:selected > .box > .mark { -fx-background-color: -ag-bg-light; }
 
 /* ── Swap screens, restyled with the rest ────────────────────────────────────
    Their colours now come from the tokens above (amber for attention, green for done, red for the
