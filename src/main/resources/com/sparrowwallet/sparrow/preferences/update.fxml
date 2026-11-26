@@ -33,8 +33,10 @@
                 <Label fx:id="currentVersionLabel" text="—" styleClass="field-value" />
             </Field>
             <Field text="Latest release:">
-                <Label fx:id="latestVersionLabel" text="Not checked yet" styleClass="field-value" />
-                <Button minWidth="-Infinity" fx:id="checkNowBtn" text="Check now" onAction="#onCheckNow" styleClass="secondary-btn" />
+                <HBox spacing="16" alignment="CENTER_LEFT">
+                    <Label fx:id="latestVersionLabel" text="Not checked yet" styleClass="field-value" />
+                    <Button minWidth="-Infinity" fx:id="checkNowBtn" text="Check now" onAction="#onCheckNow" styleClass="secondary-btn" />
+                </HBox>
             </Field>
         </Fieldset>
     </Form>

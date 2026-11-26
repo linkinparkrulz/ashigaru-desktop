@@ -6,6 +6,9 @@ import com.sparrowwallet.sparrow.net.Protocol;
 import java.util.Arrays;
 
 public class Server {
+    /** A suffix earlier versions put in the names of Dojo Bay servers. It is no longer used, and is taken off names saved with it. */
+    static final String RETIRED_ALIAS_SUFFIX = " (unverified endpoint)";
+
     private final String url;
     private final String alias;
 
@@ -35,7 +38,7 @@ public class Server {
         }
 
         this.url = url;
-        this.alias = alias;
+        this.alias = withoutRetiredSuffix(alias);
     }
 
     public String getUrl() {
@@ -64,6 +67,38 @@ public class Server {
 
     public String getDisplayName() {
         return alias == null ? url : alias;
+    }
+
+    /**
+     * A name short enough for the top bar: the alias when there is one; otherwise the host, without protocol or port, with an onion
+     * address shortened to its first 8 and last 6 characters. The full url is for a tooltip.
+     */
+    public String getShortDisplayName() {
+        if(alias != null) {
+            return alias;
+        }
+        return shortHost(getHost());
+    }
+
+    static String shortHost(String host) {
+        if(host == null) {
+            return "";
+        }
+        String suffix = ".onion";
+        if(host.toLowerCase(java.util.Locale.ROOT).endsWith(suffix)) {
+            String name = host.substring(0, host.length() - suffix.length());
+            if(name.length() > 16) {
+                return name.substring(0, 8) + "\u2026" + name.substring(name.length() - 6) + suffix;
+            }
+        }
+        return host;
+    }
+
+    private static String withoutRetiredSuffix(String alias) {
+        if(alias != null && alias.endsWith(RETIRED_ALIAS_SUFFIX) && alias.length() > RETIRED_ALIAS_SUFFIX.length()) {
+            return alias.substring(0, alias.length() - RETIRED_ALIAS_SUFFIX.length());
+        }
+        return alias;
     }
 
     public String toString() {

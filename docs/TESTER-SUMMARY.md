@@ -77,7 +77,7 @@ Needs Sentinel, the Dojo Bay edition, on an Android phone.
       QR code or paste the pairing text; type the 3 pairing words with their hyphens and tap DECRYPT). Follow them: the wallet
       comes across with its accounts. Tell us exactly what Sentinel says if anything is "skipped", and whether the steps match
       what you see in Sentinel.
-- [ ] A link under the steps (github.com/tetragrammalol/sentinel-android-dojobay) takes you to Sentinel on GitHub, through the Leaving Tor window.
+- [ ] A link under the steps (github.com/Sentinel-Watch-OSP/sentinel-android/releases) takes you to Sentinel on GitHub, through the Leaving Tor window.
 - [ ] **New words** gives different words and a different QR; the old words no longer work.
 - [ ] A watch-only wallet shows only the keys it has and says which are not in the pairing.
 - Note: whoever has both the QR and the words can see the wallet's addresses and balances. No seed or private key is in it.

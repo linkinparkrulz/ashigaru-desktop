@@ -26,7 +26,7 @@ The full list, with a picture of each screen, is in [docs/FEATURES.md](docs/FEAT
 **Wallets**
 - **Receive only.** Spending happens on mobile, which keeps the desktop's attack surface small.
 - **Dice-rolled passphrases.** Creating a wallet walks you through rolling a diceware BIP39 passphrase with physical dice. Restoring a wallet accepts the passphrase it already has, or none.
-- **Pair with Sentinel.** Wallet menu → a QR code plus three one-time words that [Sentinel](https://github.com/tetragrammalol/sentinel-android-dojobay) (Android, Dojo Bay edition) scans to watch the wallet (XPUB/YPUB/ZPUB public keys only).
+- **Pair with Sentinel.** Wallet menu → a QR code plus three one-time words that [Sentinel](https://github.com/Sentinel-Watch-OSP/sentinel-android/releases) (Android) scans to watch the wallet (XPUB/YPUB/ZPUB public keys only).
 - **Import / export labels.** Move your labels to and from any BIP-329 wallet.
 - **PayNym robot.** The open wallet's PayNym robot sits beside its name, and BIP47 transactions show the counterparty's PepeHash avatar. Both are fetched from paynym.rs through Tor.
 - **UTXO analysis.** Check your own UTXOs with AmIExposed or BitHypha.

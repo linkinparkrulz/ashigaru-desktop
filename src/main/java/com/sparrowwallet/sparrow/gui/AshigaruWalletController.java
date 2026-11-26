@@ -90,7 +90,10 @@ public class AshigaruWalletController implements Initializable {
 
     private WalletForm currentWalletForm;   // master wallet form
     private WalletForm activeAccountForm;   // currently shown account form
-    private boolean activeAccountSyncing;   // true while the active account's history is refreshing
+    private boolean activeAccountSyncing;
+    //A Refresh empties the wallet's history before fetching it again. Until the fetch ends, the view keeps what it showed rather than
+    //drawing the empty wallet: zero balances and the first-run cards for a few seconds read as coins gone.
+    private boolean refreshPending;   // true while the active account's history is refreshing
 
     private final ObservableList<UtxoRow> utxoRows = FXCollections.observableArrayList();
     private final ObservableList<TxnRow> txnRows   = FXCollections.observableArrayList();
@@ -510,7 +513,7 @@ public class AshigaruWalletController implements Initializable {
 
             boolean isMixing = isMixing(wallet);
             startMixBtn.setText(isMixing ? "Stop Mixing" : "Start Mixing");
-            startMixBtn.setDisable(!AppServices.onlineProperty().get());
+            updateStartMixButton(wallet, isMixing);
 
             // Postmix also shows Mix To and Mix Selected
             if (wallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX) {
@@ -533,6 +536,37 @@ public class AshigaruWalletController implements Initializable {
             mixSelectedBtn.setDisable(true);
         }
         updateActionButtons();
+    }
+
+    /**
+     * Start Mixing needs coins in this account to mix: any coin in Premix, a mixed coin in Postmix. No selection is needed, as the
+     * engine mixes the whole account. Stop Mixing stays available while mixing.
+     */
+    private void updateStartMixButton(Wallet wallet, boolean isMixing) {
+        boolean postmix = wallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX;
+        boolean hasCoins = postmix
+                ? utxoRows.stream().anyMatch(r -> WalletPrivacy.isMixedCoin(wallet, r.utxoEntry.getNode()))
+                : !utxoRows.isEmpty();
+        startMixBtn.setDisable(startMixDisabled(AppServices.onlineProperty().get(), activeAccountSyncing, isMixing, hasCoins));
+        String why = startMixDisabledReason(AppServices.onlineProperty().get(), activeAccountSyncing, isMixing, hasCoins, postmix);
+        startMixBtn.setTooltip(why == null ? null : new javafx.scene.control.Tooltip(why));
+    }
+
+    static boolean startMixDisabled(boolean online, boolean syncing, boolean mixing, boolean hasCoins) {
+        return startMixDisabledReason(online, syncing, mixing, hasCoins, false) != null;
+    }
+
+    static String startMixDisabledReason(boolean online, boolean syncing, boolean mixing, boolean hasCoins, boolean postmix) {
+        if(!online) {
+            return "Connect to start mixing.";
+        }
+        if(syncing) {
+            return "Wait for the wallet to finish syncing.";
+        }
+        if(!mixing && !hasCoins) {
+            return postmix ? "No mixed coins in Postmix yet." : "No coins in Premix to mix yet.";
+        }
+        return null;
     }
 
     private boolean isMixing(Wallet wallet) {
@@ -770,6 +804,9 @@ public class AshigaruWalletController implements Initializable {
             Whirlpool wp = AppServices.getWhirlpoolServices().getWhirlpool(wallet);
             if (wp != null && !wp.isStarted() && AppServices.isConnected()) {
                 AppServices.getWhirlpoolServices().startWhirlpool(wallet, wp, true);
+            } else if (activeAccountForm != null) {
+                //Nothing was started, so no engine state will change to put the button right: do it here, not leave it on "Starting..."
+                configureMixButtons(activeAccountForm.getWallet());
             }
         });
     }
@@ -897,6 +934,10 @@ public class AshigaruWalletController implements Initializable {
 
     @FXML
     private void onRefresh() {
+        //Offline, history would be wiped and never fetched again
+        if (!AppServices.isConnected()) return;
+        //Set before the history is cleared: the cleared event is delivered as it is posted
+        refreshPending = activeAccountForm != null;
         refreshForm(currentWalletForm);
         if (activeAccountForm != null && activeAccountForm != currentWalletForm) {
             refreshForm(activeAccountForm);
@@ -918,6 +959,7 @@ public class AshigaruWalletController implements Initializable {
 
     @Subscribe
     public void walletNodesChanged(WalletNodesChangedEvent event) {
+        if (refreshPending) return;
         if (activeAccountForm != null && event.getWallet().equals(activeAccountForm.getWallet())) {
             Platform.runLater(this::refreshAccountView);
         }
@@ -925,6 +967,7 @@ public class AshigaruWalletController implements Initializable {
 
     @Subscribe
     public void walletHistoryChanged(WalletHistoryChangedEvent event) {
+        if (refreshPending) return;
         if (activeAccountForm != null && event.getWallet().equals(activeAccountForm.getWallet())) {
             Platform.runLater(() -> {
                 activeAccountForm.getWalletUtxosEntry().updateUtxos();
@@ -953,11 +996,12 @@ public class AshigaruWalletController implements Initializable {
     public void walletHistoryFinished(WalletHistoryFinishedEvent event) {
         if (activeAccountForm != null && event.getWallet().equals(activeAccountForm.getWallet())) {
             activeAccountSyncing = false;
+            //The fetch has filled the wallet again (or failed): from here the view follows it as usual
+            refreshPending = false;
             Platform.runLater(() -> {
                 refreshBtn.setDisable(false);
                 refreshBtn.setText("Refresh");
                 setSyncingBarVisible(false);
-                startMixBtn.setDisable(false);
                 // Re-enable Mix Selected based on the current selection.
                 mixSelectedBtn.setDisable(utxoRows.stream().noneMatch(r -> r.selected.get()));
                 // Always refresh the view when a sync finishes — ensures UTXOs are shown

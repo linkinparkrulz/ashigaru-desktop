@@ -283,4 +283,16 @@ class SwapDashboardTest {
         assertTrue(opensFirst(stopped(Step.LOCK_PUBLISH), before(20), false), "a timelock reading proves the lock is on chain");
         assertTrue(opensFirst(at(Step.REFUND_WAIT, null), before(5), false), "BTC is locked and waiting for the refund");
     }
+
+    @Test
+    void theLockTransactionCanBeCopiedInFull() {
+        String txid = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+        SwapProgress.Status confirming = new SwapProgress.Status(Step.LOCK_CONFIRM, "0 confirmations · 00112233…ccddeeff", T0, false, null, txid);
+        SwapDashboard d = of(confirming, null, true, TERMS);
+        assertEquals("Transaction", d.now().facts().get(1).label());
+        assertEquals("00112233…ccddeeff", d.now().facts().get(1).value());
+        assertEquals(txid, d.now().facts().get(1).copy());
+        //Facts that are not a transaction have nothing to copy
+        assertNull(d.now().facts().get(0).copy());
+    }
 }

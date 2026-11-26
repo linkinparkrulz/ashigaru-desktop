@@ -182,7 +182,7 @@ public class SwapsPreferencesController extends PreferencesDetailController {
         if(locked) {
             nodeLockIcon.setGraphic(Icons.of(FontAwesome5.Glyph.LOCK, 12));
             nodeLockNote.setText("Locked while swaps are on");
-            nodeLockDetail.setText("Edit nodes turns swaps off while you change them. Turn them back on when you are done.");
+            nodeLockDetail.setText("To change them, choose \"Edit nodes\" on the right. That turns swaps off until you turn them back on.");
             if(!nodeCard.getStyleClass().contains("locked")) {
                 nodeCard.getStyleClass().add("locked");
             }

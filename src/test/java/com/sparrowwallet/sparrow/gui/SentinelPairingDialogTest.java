@@ -170,8 +170,8 @@ class SentinelPairingDialogTest {
         AtomicReference<SentinelPairingDialog.Built> holder = new AtomicReference<>();
         onFx(() -> holder.set(SentinelPairingDialog.build(null, slots(true, true))));
         SentinelPairingDialog.Built built = holder.get();
-        assertEquals("https://github.com/tetragrammalol/sentinel-android-dojobay", SentinelPairingDialog.SENTINEL_URL);
-        assertTrue(built.sentinelLink().getText().contains("tetragrammalol/sentinel-android-dojobay"));
+        assertEquals("https://github.com/Sentinel-Watch-OSP/sentinel-android/releases", SentinelPairingDialog.SENTINEL_URL);
+        assertTrue(built.sentinelLink().getText().contains("Sentinel-Watch-OSP/sentinel-android/releases"));
         assertTrue(built.column().getChildren().stream().anyMatch(node -> node instanceof javafx.scene.layout.VBox box && box.getChildren().contains(built.sentinelLink())));
     }
 

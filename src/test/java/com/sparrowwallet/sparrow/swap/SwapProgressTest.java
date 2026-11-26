@@ -82,6 +82,19 @@ class SwapProgressTest {
     }
 
     @Test
+    void theFullLockTxidIsKeptForCopyingAndTheDetailStaysShort() {
+        String txid = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+        SwapProgress.Status lock = SwapProgress.read(event("BtcLockTxInMempool", "{\"btc_lock_txid\":\"" + txid + "\",\"btc_lock_confirmations\":0}"), null, T0);
+        assertEquals(txid, lock.lockTxid());
+        assertFalse(lock.detail().contains(txid));
+
+        //Later steps keep it, as the lock is still the transaction your BTC is in
+        SwapProgress.Status seen = SwapProgress.read(event("VerifyingXmrLockTx", "{\"xmr_lock_txid\":\"ab\"}"), lock, T0.plusSeconds(600));
+        assertEquals(txid, seen.lockTxid());
+        assertEquals(txid, seen.withDetail("other").lockTxid());
+    }
+
+    @Test
     void endsAreFinished() {
         SwapProgress.Status done = SwapProgress.read(event("XmrRedeemed", "{\"xmr_redeem_txids\":[\"cafe\"],\"xmr_receive_pool\":[]}"), null, T0);
         assertEquals(SwapProgress.Step.DONE, done.step());

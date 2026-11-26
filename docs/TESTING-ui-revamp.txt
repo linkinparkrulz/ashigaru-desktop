@@ -101,7 +101,7 @@ WHAT THE REVAMP IS FOR
   [ ] Status messages (Ready, Syncing...) appear beside it.
   [ ] Top right shows pills: connection, server name (only when
       connected), block height, network.
-  [ ] Connection pill reads "Connecting...", then "Tor · connected"
+  [ ] Connection pill reads "Connecting...", then "Tor"
       (green outline). Offline reads "Offline" in amber, never red.
   [ ] Click the pill in EVERY state (offline, connecting, connected).
       A menu opens each time with: New Tor identity, Restart Tor,
@@ -623,7 +623,7 @@ WHAT THE REVAMP IS FOR
       COPY PAIRING TEXT and paste), 4 type the 3 pairing words with
       their hyphens and tap DECRYPT. They match what Sentinel shows.
   [ ] A "Don't have Sentinel?" link goes through the Leaving Tor
-      window to github.com/tetragrammalol/sentinel-android-dojobay.
+      window to github.com/Sentinel-Watch-OSP/sentinel-android/releases.
   [ ] In Sentinel (Dojo Bay edition), follow those steps: the wallet is
       added with its accounts, and nothing is "skipped" for a mixing
       wallet.

@@ -20,6 +20,6 @@ class ConnectionToggleTest {
         assertEquals("Online · not connected", AshigaruMainController.pillText(Mode.ONLINE, ConnState.DISCONNECTED));
         assertEquals("Offline", AshigaruMainController.pillText(Mode.OFFLINE, ConnState.DISCONNECTED));
         assertEquals("Connecting…", AshigaruMainController.pillText(Mode.ONLINE, ConnState.CONNECTING));
-        assertEquals("Tor · connected", AshigaruMainController.pillText(Mode.ONLINE, ConnState.CONNECTED));
+        assertEquals("Tor", AshigaruMainController.pillText(Mode.ONLINE, ConnState.CONNECTED));
     }
 }

@@ -28,6 +28,7 @@ import com.sparrowwallet.sparrow.event.*;
 import com.sparrowwallet.sparrow.preferences.PreferencesController;
 import com.sparrowwallet.sparrow.preferences.PreferenceGroup;
 import com.sparrowwallet.sparrow.io.Config;
+import com.sparrowwallet.sparrow.io.Server;
 import com.sparrowwallet.sparrow.io.Storage;
 import com.sparrowwallet.sparrow.io.StorageException;
 import com.sparrowwallet.sparrow.io.WalletAndKey;
@@ -116,7 +117,7 @@ public class AshigaruMainController implements Initializable {
             status.whirlpool(whirlpoolServices.anyStarted(), whirlpoolServices.anyStarting());
             CoordinatorStatus.State state = status.state();
             String text = switch (state) {
-                case OK -> "Coordinator \u00b7 online";
+                case OK -> "Coordinator";
                 case CONNECTING -> "Coordinator \u00b7 connecting\u2026";
                 case UNREACHABLE -> "Coordinator \u00b7 unreachable";
                 case UNKNOWN -> "Coordinator \u00b7 idle";
@@ -135,7 +136,7 @@ public class AshigaruMainController implements Initializable {
         SwapLight.State swapState = SwapLight.state(swapService.isEnabled(), swapService.runningProperty().get(), swapService.statusProperty().get(),
                 swapService.unfinishedCount(), swapService.olderIdentityUnfinishedCount());
         switch (swapState) {
-            case OK -> setLight(swapLightLabel, "Swaps \u00b7 on", swapService.statusProperty().get(), "connected");
+            case OK -> setLight(swapLightLabel, "Swaps", swapService.statusProperty().get(), "connected");
             case STARTING -> setLight(swapLightLabel, "Swaps \u00b7 starting\u2026", swapService.statusProperty().get(), "connecting");
             case FAILED -> setLight(swapLightLabel, "Swaps \u00b7 not running", swapService.statusProperty().get(), "unreachable");
             case UNFINISHED_DOWN -> {
@@ -570,7 +571,10 @@ public class AshigaruMainController implements Initializable {
         connState = state;
         connectionLabel.getStyleClass().removeAll("connected", "disconnected", "connecting");
         boolean online = state == ConnState.CONNECTED && Config.get().hasServer();
-        serverLabel.setText(online ? Config.get().getServerDisplayName() : "");
+        //The pill keeps to a short name (a personal onion server without a nickname would fill the bar); the tooltip has the full address
+        Server server = online ? Config.get().getServer() : null;
+        serverLabel.setText(server == null ? "" : server.getShortDisplayName());
+        serverLabel.setTooltip(server == null ? null : new Tooltip(server.getAlias() == null ? server.getUrl() : server.getAlias() + "\n" + server.getUrl()));
         serverLabel.setVisible(online);
         serverLabel.setManaged(online);
         //The server and the block height it reports are green while connected, like Tor, the network, the coordinator and swaps beside
@@ -583,7 +587,7 @@ public class AshigaruMainController implements Initializable {
         }
         switch (state) {
             case CONNECTED -> {
-                connectionLabel.setText("Tor \u00b7 connected");
+                connectionLabel.setText(pillText(Config.get().getMode(), state));
                 connectionLabel.getStyleClass().add("connected");
                 connectionLabel.setTooltip(new Tooltip("Connection and Tor options"));
             }
@@ -678,7 +682,7 @@ public class AshigaruMainController implements Initializable {
     /** The connection pill: connected, connecting, online but not connected, or offline because the user chose it */
     static String pillText(Mode mode, ConnState state) {
         return switch(state) {
-            case CONNECTED -> "Tor \u00b7 connected";
+            case CONNECTED -> "Tor";
             case CONNECTING -> "Connecting\u2026";
             case DISCONNECTED -> wantsOnline(mode) ? "Online \u00b7 not connected" : "Offline";
         };

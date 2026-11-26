@@ -37,7 +37,12 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
     /** What is happening now. The wait is only set while waiting on a network, never while waiting for the user. */
     public record Now(String title, String doing, List<Fact> facts, String waitingOn, Duration waited, Duration usual, String next, String slow) {}
 
-    public record Fact(String label, String value) {}
+    /** A labelled value. {@code copy}, when set, is the full text a copy button next to it copies (the value may be shortened). */
+    public record Fact(String label, String value, String copy) {
+        public Fact(String label, String value) {
+            this(label, value, null);
+        }
+    }
 
     /** The right-hand panel: figures, then the answers about funds, closing and recovery */
     public record Summary(String btcCommitted, String xmrLabel, String xmr, String address, String funds, Closing closing,
@@ -254,7 +259,7 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
                     ? "This is taking longer than usual: a Monero node may be unreachable through Tor. Tools → Logs → Swap engine says which; if one keeps failing, untick it in Settings → Swaps. Nothing is locked yet."
                     : "This is taking longer than usual (normally under " + step.getUsual().toMinutes() + " minutes). Tools → Logs → Swap engine shows what it is waiting for.";
         }
-        return new Now(step.getTitle(), step.getDoing(), facts(step, in.status().detail()), network ? waitingOn(step) : null, waited,
+        return new Now(step.getTitle(), step.getDoing(), facts(step, in.status().detail(), in.status().lockTxid()), network ? waitingOn(step) : null, waited,
                 step.getUsual(), step.getNext().isEmpty() ? null : step.getNext(), slow);
     }
 
@@ -392,19 +397,19 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
         return new Summary(btc, complete ? "XMR sent" : "XMR expected", xmr, address, funds, closing, recoveryTitle, recovery, position, cancelMark, ids);
     }
 
-    private static List<Fact> facts(SwapProgress.Step step, String detail) {
+    private static List<Fact> facts(SwapProgress.Step step, String detail, String lockTxid) {
         if(detail == null || detail.isBlank()) {
             return List.of();
         }
         String[] parts = detail.split(" · ", 2);
         return switch(step) {
             case LOCK_CONFIRM -> parts.length == 2
-                    ? List.of(new Fact("Bitcoin lock transaction", parts[0]), new Fact("Transaction", parts[1]))
+                    ? List.of(new Fact("Bitcoin lock transaction", parts[0]), new Fact("Transaction", parts[1], lockTxid))
                     : List.of(new Fact("Bitcoin lock transaction", parts[0]));
             case MAKER_LOCK -> detail.startsWith(SwapProgress.MAKER_LOCK_DETAIL)
                     ? List.of(new Fact("Maker’s XMR lock", detail))
                     : parts.length == 2
-                            ? List.of(new Fact("Your BTC lock", parts[0]), new Fact("Transaction", parts[1]))
+                            ? List.of(new Fact("Your BTC lock", parts[0]), new Fact("Transaction", parts[1], lockTxid))
                             : List.of(new Fact("Your BTC lock", parts[0]));
             case MAKER_CONFIRM -> List.of(new Fact("Maker’s XMR lock (their transaction)", detail));
             case CLAIM -> List.of(new Fact("XMR transaction", detail));

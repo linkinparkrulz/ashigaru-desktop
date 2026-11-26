@@ -44,7 +44,7 @@
                         </FXCollections>
                     </items>
                 </ComboBox>
-                <Label text="Where recommended fee rates come from. Server asks only the server you already use; mempool.space is a third party." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                <Label text="Where recommended fee rates come from. Server uses the Electrum server you are already connected to; mempool.space is a third party." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
                 </VBox>
             </Field>
             <Field text="Block explorer:">
@@ -70,7 +70,7 @@
             <Field text="Validate derivations:">
                 <VBox spacing="6">
                 <UnlabeledToggleSwitch fx:id="validateDerivationPaths" />
-                <Label text="Disallow keystores to have derivation paths that match the defaults for other script types and networks." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                <Label text="Disallow keystores to use derivation paths that match the defaults for other script types and networks." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
                 </VBox>
             </Field>
         </Fieldset>
@@ -92,7 +92,7 @@
             <Field text="New transactions:">
                 <VBox spacing="6">
                 <UnlabeledToggleSwitch fx:id="notifyNewTransactions" />
-                <Label text="Show system notifications on new wallet transactions?" styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
+                <Label text="Show system notifications on new wallet transactions." styleClass="ag-read, faint" wrapText="true" maxWidth="540" minHeight="-Infinity"/>
                 </VBox>
             </Field>
         </Fieldset>

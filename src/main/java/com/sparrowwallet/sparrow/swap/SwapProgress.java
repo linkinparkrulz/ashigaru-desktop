@@ -78,15 +78,21 @@ public final class SwapProgress {
 
     /**
      * A swap's latest step, what is known about it, and since when. For a swap that stopped,
-     * {@code stoppedAfter} is the step it had reached, so the screens can say where it stopped.
+     * {@code stoppedAfter} is the step it had reached, so the screens can say where it stopped. {@code lockTxid} is the
+     * full txid of your BTC lock once the engine has reported it, so it can be copied: {@code detail} carries it shortened,
+     * and is what goes in the swap log.
      */
-    public record Status(Step step, String detail, Instant since, boolean finished, Step stoppedAfter) {
+    public record Status(Step step, String detail, Instant since, boolean finished, Step stoppedAfter, String lockTxid) {
         public Status(Step step, String detail, Instant since, boolean finished) {
-            this(step, detail, since, finished, null);
+            this(step, detail, since, finished, null, null);
+        }
+
+        public Status(Step step, String detail, Instant since, boolean finished, Step stoppedAfter) {
+            this(step, detail, since, finished, stoppedAfter, null);
         }
 
         public Status withDetail(String newDetail) {
-            return new Status(step, newDetail, since, finished, stoppedAfter);
+            return new Status(step, newDetail, since, finished, stoppedAfter, lockTxid);
         }
 
         /** True when the step has gone on well past its usual length */
@@ -116,6 +122,7 @@ public final class SwapProgress {
         Step step;
         String detail = null;
         boolean finished = false;
+        String lockTxid = null;
         switch(type) {
             case "Resuming", "CheckingMoneroNodeConnectivity" -> step = Step.NODES;
             case "ReceivedQuote", "SwapSetupInflight", "RetrievingMoneroBlockheight" -> step = Step.TERMS;
@@ -125,6 +132,7 @@ public final class SwapProgress {
                 //confirmed the wait is on the maker, however many confirmations it has by then
                 step = lockConfirmed(content) ? Step.MAKER_LOCK : Step.LOCK_CONFIRM;
                 detail = confirmations(content, "btc_lock_confirmations", null) + " · " + txid(content, "btc_lock_txid");
+                lockTxid = fullTxid(content, "btc_lock_txid");
             }
             case "VerifyingXmrLockTx" -> {
                 step = Step.MAKER_LOCK;
@@ -162,7 +170,11 @@ public final class SwapProgress {
         }
 
         Instant since = previous != null && previous.step() == step ? previous.since() : now;
-        return new Status(step, detail, since, finished);
+        //The lock txid stays known once reported, through the steps that follow it
+        if(lockTxid == null && previous != null) {
+            lockTxid = previous.lockTxid();
+        }
+        return new Status(step, detail, since, finished, null, lockTxid);
     }
 
     /**
@@ -303,6 +315,15 @@ public final class SwapProgress {
             return current + " of " + content.get(targetField).getAsString() + " confirmations";
         }
         return current + " confirmation" + ("1".equals(current) ? "" : "s");
+    }
+
+    private static String fullTxid(JsonObject content, String field) {
+        JsonElement value = content.get(field);
+        if(value == null || value.isJsonNull() || !value.isJsonPrimitive()) {
+            return null;
+        }
+        String txid = value.getAsString();
+        return txid.isBlank() ? null : txid;
     }
 
     private static String txid(JsonObject content, String field) {

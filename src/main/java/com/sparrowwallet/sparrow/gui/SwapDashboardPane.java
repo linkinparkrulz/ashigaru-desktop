@@ -203,7 +203,7 @@ public class SwapDashboardPane extends VBox {
             VBox facts = new VBox(6);
             facts.getStyleClass().add("dash-facts");
             for(Fact fact : now.facts()) {
-                facts.getChildren().add(factRow(fact.label(), fact.value()));
+                facts.getChildren().add(factRow(fact.label(), fact.value(), fact.copy()));
             }
             card.getChildren().add(facts);
         }
@@ -342,7 +342,8 @@ public class SwapDashboardPane extends VBox {
         return button;
     }
 
-    private static HBox factRow(String label, String value) {
+    /** A fact's label and value; with {@code copy} set, a copy button after the value copies that full text (a txid shown shortened) */
+    private static HBox factRow(String label, String value, String copy) {
         Label k = wrapped(label, "dash-fact-key");
         Label v = wrapped(value, "dash-fact-value");
         v.setAlignment(Pos.TOP_RIGHT);
@@ -351,6 +352,11 @@ public class SwapDashboardPane extends VBox {
         HBox.setHgrow(k, Priority.SOMETIMES);
         HBox.setHgrow(v, Priority.ALWAYS);
         row.setAlignment(Pos.TOP_LEFT);
+        if(copy != null) {
+            CopyButton copyBtn = AshigaruWalletController.makeCopyButton(copy, "Copy TxID");
+            row.getChildren().add(copyBtn);
+            row.setAlignment(Pos.CENTER_LEFT);
+        }
         return row;
     }
 

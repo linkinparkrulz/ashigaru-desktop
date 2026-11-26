@@ -106,7 +106,7 @@ Mixing talks to the Whirlpool coordinator and the Dojo/Electrum server you use, 
 
 ![The Pair with Sentinel window: QR code, four steps and three pairing words](images/pair-sentinel.png)
 
-Wallet menu → **Pair with Sentinel…** lets [Sentinel](https://github.com/tetragrammalol/sentinel-android-dojobay) (Android, Dojo Bay edition) watch this wallet.
+Wallet menu → **Pair with Sentinel…** lets [Sentinel](https://github.com/Sentinel-Watch-OSP/sentinel-android/releases) (Android) watch this wallet.
 
 1. In Sentinel, pair the app with a Dojo you control or trust.
 2. Tap **NEW**.

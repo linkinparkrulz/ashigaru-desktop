@@ -37,7 +37,7 @@ final class SentinelPairingDialog {
                  VBox column) {}
 
     /** Where Sentinel (the Dojo Bay edition, for Android) comes from */
-    static final String SENTINEL_URL = "https://github.com/tetragrammalol/sentinel-android-dojobay";
+    static final String SENTINEL_URL = "https://github.com/Sentinel-Watch-OSP/sentinel-android/releases";
 
     /** New words, what they make, and its QR code */
     record Pairing(String words, String envelope, java.awt.image.BufferedImage qr) {}
@@ -120,7 +120,7 @@ final class SentinelPairingDialog {
         steps.setMinHeight(Region.USE_PREF_SIZE);
 
         //Opens through the Leaving Tor window: the browser does not use Ashigaru's Tor connection
-        Hyperlink sentinelLink = new Hyperlink("github.com/tetragrammalol/sentinel-android-dojobay");
+        Hyperlink sentinelLink = new Hyperlink("github.com/Sentinel-Watch-OSP/sentinel-android/releases");
         sentinelLink.setWrapText(true);
         sentinelLink.setOnAction(event -> ExposureDialogs.openOutsideTor(SENTINEL_URL));
         Label getSentinel = new Label("Don't have Sentinel? It is an Android app:");
