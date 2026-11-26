@@ -914,11 +914,9 @@ public class AshigaruWalletController implements Initializable {
             // ensures the Premix account first; on success it returns the Tx0 txid.
             Sha256Hash txid = AshigaruTx0Controller.show(
                     activeAccountForm.getMasterWalletId(), activeAccountForm, selectedEntries);
-            if (txid != null && accountTabs != null) {
-                accountTabs.getTabs().stream()
-                        .filter(t -> "Premix".equals(t.getText()))
-                        .findFirst()
-                        .ifPresent(t -> accountTabs.getSelectionModel().select(t));
+            if (txid != null) {
+                //The Tx0's coins are in Premix: go there, as the sidebar does
+                AshigaruGui.get().getMainController().openPremix();
             }
         } catch (Exception e) {
             log.error("Error in Mix Selected", e);

@@ -71,11 +71,6 @@ public class AshigaruTx0Controller implements Initializable {
     @FXML private Label stepSigning;
     @FXML private Label stepBroadcasting;
     @FXML private Label stepComplete;
-    @FXML private VBox resultBox;
-    @FXML private TextField txidField;
-    @FXML private CopyButton txidCopyBtn;
-    //The published Tx0, once there is one: the dialog's result however it is closed from then on
-    private Sha256Hash broadcastTxid;
     private javafx.animation.RotateTransition broadcastSpin;
 
     // Set by show() before the dialog is displayed
@@ -146,8 +141,8 @@ public class AshigaruTx0Controller implements Initializable {
         dialog.initOwner(AshigaruGui.get().getMainStage());
         ctrl.dialogStage = (Stage) dialog.getDialogPane().getScene().getWindow();
 
-        // Cancel closes with no result; once the Tx0 is published, Done (or the window's close) returns its txid
-        dialog.setResultConverter(btn -> ctrl.broadcastTxid);
+        // Cancel closes with no result; success is set explicitly via dialog.setResult(txid)
+        dialog.setResultConverter(btn -> null);
 
         // Fetch pools after the dialog is shown
         Platform.runLater(() -> ctrl.fetchPools(false));
@@ -344,7 +339,12 @@ public class AshigaruTx0Controller implements Initializable {
             markStep(stepBroadcasting, "Broadcasting");
             markStep(stepComplete, "Complete");
             broadcastStatus.setText("✓ Broadcast complete");
-            showResult(txid);
+            PauseTransition done = new PauseTransition(Duration.seconds(1.1));
+            done.setOnFinished(ev -> {
+                dialog.setResult(txid);
+                dialog.close();
+            });
+            done.play();
         });
         svc.setOnFailed(e -> {
             Throwable ex = e.getSource().getException();
@@ -354,22 +354,6 @@ public class AshigaruTx0Controller implements Initializable {
             AppServices.showErrorDialog("Error broadcasting Transaction Zero", msg);
         });
         svc.start();
-    }
-
-    /**
-     * Stays on the published Tx0 until the user is done with it: its transaction id, with a copy button, and a single Done in place
-     * of Broadcast and Cancel (a published Tx0 cannot be cancelled).
-     */
-    void showResult(Sha256Hash txid) {
-        broadcastTxid = txid;
-        txidField.setText(txid.toString());
-        txidCopyBtn.setCopyText(txid.toString(), "Copy TxID");
-        resultBox.setVisible(true);
-        resultBox.setManaged(true);
-        DialogPane pane = dialog.getDialogPane();
-        ButtonType done = new ButtonType("Done", ButtonBar.ButtonData.OK_DONE);
-        pane.getButtonTypes().setAll(done);
-        ((Button)pane.lookupButton(done)).setDefaultButton(true);
     }
 
     private void showOverlay() {

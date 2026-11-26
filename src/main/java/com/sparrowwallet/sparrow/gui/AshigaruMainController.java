@@ -1295,6 +1295,13 @@ public class AshigaruMainController implements Initializable {
         }
     }
 
+    /** Shows the open wallet's Premix account, as its sidebar button does: where a Tx0's new coins arrive */
+    public void openPremix() {
+        if(premixBtn.isVisible() && premixBtn.isManaged() && !premixBtn.isSelected()) {
+            premixBtn.fire();
+        }
+    }
+
     private void closeTool() {
         contentPane.setUserData(null);
         WalletListItem selected = walletSelector.getSelectionModel().getSelectedItem();
