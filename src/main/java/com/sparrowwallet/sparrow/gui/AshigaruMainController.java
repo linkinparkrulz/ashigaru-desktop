@@ -300,6 +300,13 @@ public class AshigaruMainController implements Initializable {
             setConnState(ConnState.DISCONNECTED);
         }
         connectionLabel.setContextMenu(createTorMenu());
+        //The server pill opens a small menu: rename the server, manage the saved ones, or go to Server settings, without disconnecting
+        serverLabel.setCursor(javafx.scene.Cursor.HAND);
+        serverLabel.setOnMouseClicked(event -> {
+            if(event.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                showServerMenu();
+            }
+        });
 
         Icons.set(toolsBtn, FontAwesome5.Glyph.TH_LARGE);
         Icons.set(settingsBtn, FontAwesome5.Glyph.SLIDERS_H);
@@ -677,6 +684,63 @@ public class AshigaruMainController implements Initializable {
     /** The connection menu's item: the opposite of the mode the user chose */
     static String toggleLabel(Mode mode) {
         return wantsOnline(mode) ? "Go offline" : "Go online";
+    }
+
+    private void showServerMenu() {
+        Server server = Config.get().getServer();
+        ContextMenu menu = new ContextMenu();
+        //Only a private Electrum server is one of the user's saved servers, with a name they choose
+        if(server != null && Config.get().getServerType() == com.sparrowwallet.sparrow.net.ServerType.ELECTRUM_SERVER) {
+            MenuItem rename = new MenuItem("Rename this server\u2026");
+            rename.setOnAction(event -> renameServer(server));
+            MenuItem manage = new MenuItem("Manage saved servers\u2026");
+            manage.setOnAction(event -> {
+                com.sparrowwallet.sparrow.preferences.ServerAliasDialog dialog =
+                        new com.sparrowwallet.sparrow.preferences.ServerAliasDialog(com.sparrowwallet.sparrow.net.ServerType.ELECTRUM_SERVER, false);
+                dialog.initOwner(serverLabel.getScene().getWindow());
+                dialog.showAndWait();
+                setConnState(connState);
+            });
+            menu.getItems().addAll(rename, manage, new SeparatorMenuItem());
+        }
+        MenuItem settings = new MenuItem("Server settings\u2026");
+        settings.setOnAction(event -> openPreferences(PreferenceGroup.SERVER));
+        menu.getItems().add(settings);
+        menu.show(serverLabel, javafx.geometry.Side.BOTTOM, 0, 4);
+    }
+
+    /** Names the server in use, in the saved servers and on the connection itself, without reconnecting */
+    private void renameServer(Server server) {
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.initOwner(serverLabel.getScene().getWindow());
+        WalletCreationFlow.styleWizardDialog(dlg, "SERVER", "Rename this server", server.getUrl());
+        TextField name = new TextField(server.getAlias() == null ? "" : server.getAlias());
+        name.setPromptText("A name for this server");
+        Label hint = new Label("Leave it empty to show the address instead.");
+        hint.getStyleClass().addAll("ag-read", "faint");
+        VBox content = new VBox(8, name, hint);
+        content.setPadding(new Insets(20));
+        ButtonType save = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dlg.getDialogPane().setContent(content);
+        dlg.getDialogPane().getButtonTypes().addAll(save, new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE));
+        WalletCreationFlow.styleWizardButtons(dlg.getDialogPane());
+        dlg.getDialogPane().setPrefWidth(480);
+        javafx.application.Platform.runLater(name::requestFocus);
+        if(dlg.showAndWait().filter(answer -> answer == save).isEmpty()) {
+            return;
+        }
+        Server renamed = renamedServer(server, name.getText());
+        if(!Config.get().getRecentElectrumServers().contains(renamed)) {
+            Config.get().addRecentElectrumServer(renamed);
+        }
+        Config.get().setElectrumServerAlias(renamed);
+        setConnState(connState);
+    }
+
+    /** The same server under a new name; a blank name means none, so the address is shown */
+    static Server renamedServer(Server server, String name) {
+        String alias = name == null || name.isBlank() ? null : name.strip();
+        return new Server(server.getUrl(), alias);
     }
 
     /** The connection pill: connected, connecting, online but not connected, or offline because the user chose it */
@@ -1314,6 +1378,11 @@ public class AshigaruMainController implements Initializable {
 
     @FXML
     private void onPreferences() {
+        openPreferences(PreferenceGroup.GENERAL);
+    }
+
+    /** Opens Settings on the given tab */
+    public void openPreferences(PreferenceGroup group) {
         //The sidebar stays as it is (the open wallet and its accounts), as it does for Tools
         try {
             FXMLLoader loader = new FXMLLoader(AppServices.class.getResource("preferences/preferences.fxml"));
@@ -1322,7 +1391,7 @@ public class AshigaruMainController implements Initializable {
             PreferencesController prefsController = loader.getController();
             prefsController.initializeView(Config.get());
             prefsController.reconnectOnClosingProperty().set(AppServices.isConnecting() || AppServices.isConnected());
-            prefsController.selectGroup(PreferenceGroup.GENERAL);
+            prefsController.selectGroup(group);
 
             Button backBtn = new Button("Back");
             backBtn.setOnAction(e -> closePreferences());

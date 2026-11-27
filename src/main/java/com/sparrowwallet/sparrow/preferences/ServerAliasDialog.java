@@ -29,6 +29,14 @@ public class ServerAliasDialog extends Dialog<Server> {
     private final Button closeButton;
 
     public ServerAliasDialog(ServerType serverType) {
+        this(serverType, true);
+    }
+
+    /**
+     * {@code canSelect} false is for managing the saved servers while connected (from the top bar): names can be changed and
+     * entries deleted, but none is chosen, and the server in use cannot be deleted from under the connection.
+     */
+    public ServerAliasDialog(ServerType serverType, boolean canSelect) {
         this.serverType = serverType;
 
         final DialogPane dialogPane = new ServerAliasDialogPane();
@@ -50,7 +58,7 @@ public class ServerAliasDialog extends Dialog<Server> {
         serverTable.setPlaceholder(new Label("No servers added yet"));
 
         TableColumn<ServerEntry, String> urlColumn = new TableColumn<>("URL");
-        urlColumn.setMinWidth(300);
+        urlColumn.setMinWidth(260);
         urlColumn.setCellValueFactory((TableColumn.CellDataFeatures<ServerEntry, String> param) -> {
             return new ReadOnlyObjectWrapper<>(param.getValue().getUrl());
         });
@@ -61,6 +69,8 @@ public class ServerAliasDialog extends Dialog<Server> {
         });
         aliasColumn.setCellFactory(value -> new AliasCell());
         aliasColumn.setGraphic(getTagGlyph());
+        //Room for a name to be read whole, rather than "FART9 FULC..."
+        aliasColumn.setMinWidth(200);
 
         serverTable.getColumns().add(urlColumn);
         serverTable.getColumns().add(aliasColumn);
@@ -71,23 +81,42 @@ public class ServerAliasDialog extends Dialog<Server> {
         List<ServerEntry> serverEntries = servers.stream().map(server -> new ServerEntry(serverType, server)).collect(Collectors.toList());
         serverTable.setItems(FXCollections.observableArrayList(serverEntries));
 
+        //Why the in-use server cannot be deleted here (a disabled button shows no tooltip)
+        Label inUseNote = new Label("The server in use cannot be deleted here: switch server in Settings \u203a Server first.");
+        inUseNote.getStyleClass().addAll("ag-read", "faint");
+        inUseNote.setWrapText(true);
+        inUseNote.setVisible(false);
+        inUseNote.setManaged(false);
+        javafx.scene.layout.VBox content = new javafx.scene.layout.VBox(8, serverTable, inUseNote);
+        javafx.scene.layout.VBox.setVgrow(serverTable, javafx.scene.layout.Priority.ALWAYS);
         StackPane stackPane = new StackPane();
-        stackPane.getChildren().add(serverTable);
+        stackPane.getChildren().add(content);
         dialogPane.setContent(stackPane);
 
         ButtonType selectButtonType = new ButtonType("Select", ButtonBar.ButtonData.APPLY);
         ButtonType deleteButtonType = new ButtonType("Delete", ButtonBar.ButtonData.LEFT);
-        dialogPane.getButtonTypes().addAll(deleteButtonType, ButtonType.CLOSE, selectButtonType);
+        dialogPane.getButtonTypes().addAll(deleteButtonType, ButtonType.CLOSE);
+        if(canSelect) {
+            dialogPane.getButtonTypes().add(selectButtonType);
+        }
 
-        Button selectButton = (Button)dialogPane.lookupButton(selectButtonType);
+        Button selectButton = canSelect ? (Button)dialogPane.lookupButton(selectButtonType) : null;
         Button deleteButton = (Button)dialogPane.lookupButton(deleteButtonType);
         closeButton = (Button)dialogPane.lookupButton(ButtonType.CLOSE);
-        selectButton.setDefaultButton(true);
-        selectButton.setDisable(true);
+        if(selectButton != null) {
+            selectButton.setDefaultButton(true);
+            selectButton.setDisable(true);
+        }
         deleteButton.setDisable(true);
         serverTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-            selectButton.setDisable(newValue == null);
-            deleteButton.setDisable(newValue == null);
+            if(selectButton != null) {
+                selectButton.setDisable(newValue == null);
+            }
+            //Managing while connected: the server in use stays, so the connection is not left without one
+            boolean current = !canSelect && newValue != null && newValue.getServer().equals(currentServer(serverType));
+            deleteButton.setDisable(newValue == null || current);
+            inUseNote.setVisible(current);
+            inUseNote.setManaged(current);
         });
 
         setResultConverter(buttonType -> buttonType == selectButtonType ? serverTable.getSelectionModel().getSelectedItem().getServer() : null);
@@ -97,6 +126,10 @@ public class ServerAliasDialog extends Dialog<Server> {
         dialogPane.setMinHeight(dialogPane.getPrefHeight());
         AppServices.setStageIcon(dialogPane.getScene().getWindow());
         AppServices.moveToActiveWindowScreen(this);
+    }
+
+    private static Server currentServer(ServerType serverType) {
+        return serverType == ServerType.BITCOIN_CORE ? Config.get().getCoreServer() : Config.get().getElectrumServer();
     }
 
     private static Glyph getTagGlyph() {

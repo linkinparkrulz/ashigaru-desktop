@@ -467,9 +467,13 @@ public class ServerPreferencesController extends PreferencesDetailController {
         }
 
         testConnection.managedProperty().bind(testConnection.visibleProperty());
+        testConnection.visibleProperty().addListener((observable, wasVisible, visible) -> updateTestConnectionCue());
         testConnection.setVisible(!isConnected);
+        updateTestConnectionCue();
         setTestResultsFont();
         testConnection.setOnAction(event -> {
+            connectionTesting = true;
+            updateTestConnectionCue();
             testConnection.setGraphic(getGlyph(FontAwesome5.Glyph.ELLIPSIS_H, null));
             testResults.setText("Connecting " + (config.hasServer() ? "to " + config.getServer().getUrl() : "") + "...");
 
@@ -683,6 +687,24 @@ public class ServerPreferencesController extends PreferencesDetailController {
         connectionService.start();
     }
 
+    //True from pressing Test Connection until it has succeeded or failed
+    private boolean connectionTesting;
+    private static final javafx.scene.control.Tooltip TEST_CONNECTION_CUE = new javafx.scene.control.Tooltip("Not connected. Press to connect with these settings.");
+
+    /**
+     * While Ashigaru is not connected, Test Connection is what connects it again (Edit Existing Connection disconnects so the
+     * settings can change, and browsing or switching between Public and Private does not reconnect). It is lit green then, so it
+     * reads as the step to take before leaving, and plain while a test runs.
+     */
+    private void updateTestConnectionCue() {
+        boolean ready = testConnection.isVisible() && !connectionTesting;
+        testConnection.getStyleClass().remove("test-connection-ready");
+        if(ready) {
+            testConnection.getStyleClass().add("test-connection-ready");
+        }
+        testConnection.setTooltip(ready ? TEST_CONNECTION_CUE : null);
+    }
+
     private void setFieldsEditable(boolean editable) {
         serverTypeToggleGroup.getToggles().forEach(toggle -> ((ToggleButton)toggle).setDisable(!editable));
 
@@ -715,6 +737,8 @@ public class ServerPreferencesController extends PreferencesDetailController {
 
     private void showConnectionSuccess(List<String> serverVersion, String serverBanner) {
         testConnection.setGraphic(getGlyph(FontAwesome5.Glyph.CHECK_CIRCLE, "success"));
+        connectionTesting = false;
+        updateTestConnectionCue();
         if(serverVersion != null) {
             testResults.setText("Connected to " + serverVersion.get(0) + " on protocol version " + serverVersion.get(1));
             if(ElectrumServer.supportsBatching(serverVersion)) {
@@ -770,6 +794,8 @@ public class ServerPreferencesController extends PreferencesDetailController {
 
         testResults.setText("Could not connect:\n\n" + reason);
         testConnection.setGraphic(getGlyph(FontAwesome5.Glyph.EXCLAMATION_CIRCLE, "failure"));
+        connectionTesting = false;
+        updateTestConnectionCue();
     }
 
     private void setupValidation() {

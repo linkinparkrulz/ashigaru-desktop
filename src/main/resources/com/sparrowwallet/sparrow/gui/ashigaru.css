@@ -2126,6 +2126,11 @@
 .swaps-node-card.locked .check-box:selected > .box { -fx-background-color: -ag-text-faint; -fx-border-color: -ag-text-faint; }
 .swaps-node-card.locked .check-box:selected > .box > .mark { -fx-background-color: -ag-bg-light; }
 
+/* Settings, Server: not connected, Test Connection is the step that connects, so it is lit */
+.button.test-connection-ready { -fx-background-color: -ag-green; -fx-border-color: -ag-green; -fx-text-fill: #0E0F12; }
+.button.test-connection-ready:hover { -fx-background-color: derive(-ag-green, 12%); }
+.button.test-connection-ready .ag-icon, .button.test-connection-ready .glyph-font { -fx-text-fill: #0E0F12; }
+
 /* Dojo Bay: the community Dojos, as a list to choose from, then the one chosen to confirm */
 .dojobay-list { -fx-background-color: -ag-bg-light; -fx-border-color: -ag-border; -fx-border-radius: -ag-radius; -fx-background-radius: -ag-radius; }
 .dojobay-list .list-cell { -fx-padding: 10 14 10 14; -fx-background-color: transparent; -fx-border-color: transparent transparent -ag-border transparent; }

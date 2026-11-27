@@ -792,10 +792,22 @@ public class Config {
         }
     }
 
+    /**
+     * Renames a saved Electrum server (servers are matched by url). The server in use takes the new name too when it is the same
+     * one, so the name shown for the connection changes at once, without reconnecting.
+     */
     public void setElectrumServerAlias(Server server) {
+        boolean changed = false;
         int index = getRecentElectrumServers().indexOf(server);
         if(index >= 0) {
             recentElectrumServers.set(index, server);
+            changed = true;
+        }
+        if(electrumServer != null && electrumServer.equals(server)) {
+            electrumServer = server;
+            changed = true;
+        }
+        if(changed) {
             flush();
         }
     }
