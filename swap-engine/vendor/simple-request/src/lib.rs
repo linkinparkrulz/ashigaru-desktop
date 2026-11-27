@@ -253,6 +253,12 @@ mod tests {
     (url, connections)
   }
 
+  /// The client under test, with rustls's ring provider installed first, as the swap engine does at startup
+  fn client(url: &str) -> Client {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    Client::without_connection_pool(url).unwrap()
+  }
+
   fn post(url: &str) -> Request {
     hyper::Request::post(format!("{url}/json_rpc")).body(Full::new(Bytes::from_static(b"{}"))).unwrap().into()
   }
@@ -266,7 +272,7 @@ mod tests {
   #[tokio::test]
   async fn a_connection_the_node_closed_is_replaced_instead_of_failing_the_next_request() {
     let (url, connections) = node(true).await;
-    let client = Client::without_connection_pool(&url).unwrap();
+    let client = client(&url);
 
     assert_eq!(body(&client, &url).await.unwrap(), b"ok");
     // Let the client see the node close the kept-alive connection
@@ -282,7 +288,7 @@ mod tests {
   #[tokio::test]
   async fn a_request_that_was_sent_is_not_sent_again() {
     let (url, connections) = node(false).await;
-    let client = Client::without_connection_pool(&url).unwrap();
+    let client = client(&url);
 
     assert!(body(&client, &url).await.is_err());
     tokio::time::sleep(core::time::Duration::from_millis(200)).await;

@@ -31,6 +31,8 @@ base64ct = { version = "1", features = ["alloc"], optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", default-features = false, features = ["rt", "macros", "net", "io-util", "time"] }
+# The tests pick rustls's provider as the swap engine does: in its workspace rustls has both ring and aws-lc-rs, and then cannot pick one itself
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
 
 [features]
 tls = ["hyper-rustls"]
