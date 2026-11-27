@@ -27,7 +27,9 @@ import javafx.stage.Window;
 final class SentinelPairingDialog {
     /** The QR is drawn about this wide, in whole pixels per module; the box holds a little more so that the layout does not move */
     private static final int QR_SIZE = 440;
-    private static final int QR_BOX = 480;
+    private static final int QR_BOX = 456;
+    /** Wide enough that the steps and notes beside the QR read as lines, not a narrow column */
+    private static final int DIALOG_WIDTH = 1000;
 
     private SentinelPairingDialog() {}
 
@@ -88,6 +90,10 @@ final class SentinelPairingDialog {
         WalletCreationFlow.styleWizardDialog(dlg, "PAIR WITH SENTINEL", "Add this wallet in Sentinel as a new collection",
                 "Scan this QR code with Sentinel on your phone; Ashigaru does not scan anything here. Sentinel then watches this wallet's "
                 + "accounts without being able to spend from them.");
+        //The wizard subtitle is sized for the narrow wizard dialogs; this one is wider, so its subtitle may be too
+        if(dlg.getDialogPane().getHeader() != null) {
+            dlg.getDialogPane().getHeader().lookupAll(".wizard-subtitle").forEach(node -> ((Label)node).setMaxWidth(DIALOG_WIDTH - 80));
+        }
 
         State state = new State();
         ImageView qrView = new ImageView();
@@ -150,7 +156,7 @@ final class SentinelPairingDialog {
         //The steps lead to the words, so they come first
         VBox right = new VBox(12, steps, getBox, wordsHeading, wordsLabel, wordButtons, copyPairing, included, missing, privacy);
         right.setMinWidth(300);
-        right.setPrefWidth(340);
+        right.setPrefWidth(470);
         HBox.setHgrow(right, Priority.ALWAYS);
 
         HBox content = new HBox(22, qrBox, right);
@@ -186,7 +192,7 @@ final class SentinelPairingDialog {
         pane.setContent(content);
         pane.getButtonTypes().add(ButtonType.CLOSE);
         WalletCreationFlow.styleWizardButtons(pane);
-        pane.setPrefWidth(900);
+        pane.setPrefWidth(DIALOG_WIDTH);
 
         return new Built(dlg, wordsLabel, qrView, newWords, copyWords, copyPairing, included, missing, state, steps, sentinelLink, right);
     }

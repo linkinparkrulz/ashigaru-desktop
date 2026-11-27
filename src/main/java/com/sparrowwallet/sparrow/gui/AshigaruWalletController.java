@@ -539,8 +539,8 @@ public class AshigaruWalletController implements Initializable {
     }
 
     /**
-     * Start Mixing needs coins in this account to mix: any coin in Premix, a mixed coin in Postmix. No selection is needed, as the
-     * engine mixes the whole account. Stop Mixing stays available while mixing.
+     * Start/Stop Mixing needs coins in this account to mix: any coin in Premix, a mixed coin in Postmix. No selection is needed, as the
+     * engine mixes the whole account. With nothing to mix the button is off either way, and its tooltip says whether Whirlpool is on.
      */
     private void updateStartMixButton(Wallet wallet, boolean isMixing) {
         boolean postmix = wallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX;
@@ -563,7 +563,12 @@ public class AshigaruWalletController implements Initializable {
         if(syncing) {
             return "Wait for the wallet to finish syncing.";
         }
-        if(!mixing && !hasCoins) {
+        if(!hasCoins) {
+            //Whirlpool may already be running (it starts on its own once connected): with nothing here to mix, there is nothing to
+            //start or stop from this account, so say what it is doing instead
+            if(mixing) {
+                return postmix ? "Whirlpool is on and will remix mixed coins as they arrive in Postmix." : "Whirlpool is on and will mix coins as they arrive in Premix.";
+            }
             return postmix ? "No mixed coins in Postmix yet." : "No coins in Premix to mix yet.";
         }
         return null;

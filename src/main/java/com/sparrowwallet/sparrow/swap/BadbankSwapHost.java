@@ -204,12 +204,34 @@ public class BadbankSwapHost {
      * the coin's value less this, and it is agreed with the maker up front.
      */
     public long estimateLockFee() {
-        long max = badbank.getMaxSpendable(List.of(placeholderLockAddress()), AppServices.getDefaultFeeRate(), coinTxo());
+        long max = badbank.getMaxSpendable(List.of(placeholderLockAddress()), currentSwapFeeRate(), coinTxo());
         long fee = lockFee(coin.getValue() - max);
         if(max <= 0 || coin.getValue() - fee <= DUST_SATS) {
             throw new IllegalStateException("This coin is too small to pay the network fee");
         }
         return fee;
+    }
+
+    private static double currentSwapFeeRate() {
+        return swapFeeRate(AppServices.getTargetBlockFeeRates(), AppServices.getDefaultFeeRate(), AppServices.getMinimumRelayFeeRate());
+    }
+
+    /**
+     * The fee rate a swap is set up at, as eigenwallet's own taker works it out: the rate for the next block (not the slower default
+     * Ashigaru sends at), never below the default or the minimum relay fee. The engine accepts a maker's proposed rate for the
+     * cancel, refund and redeem transactions only within half to three times this, so an estimate below the market (a slow target,
+     * or a fee source that failed) had swaps refused outright: "Proposed swap fee rate 6224 sat/kvb is outside local limits
+     * 1000..=3000 sat/kvb". The lock pays it too, as makers also refuse a lock below half their own estimate.
+     */
+    static double swapFeeRate(Map<Integer, Double> targetBlockFeeRates, Double defaultRate, double minRelay) {
+        double rate = minRelay;
+        if(defaultRate != null) {
+            rate = Math.max(rate, defaultRate);
+        }
+        if(targetBlockFeeRates != null && targetBlockFeeRates.get(1) != null) {
+            rate = Math.max(rate, targetBlockFeeRates.get(1));
+        }
+        return rate;
     }
 
     /**
@@ -329,7 +351,7 @@ public class BadbankSwapHost {
 
     private JsonObject feeRate() {
         JsonObject answer = new JsonObject();
-        answer.addProperty("satPerVb", (long)Math.ceil(AppServices.getDefaultFeeRate()));
+        answer.addProperty("satPerVb", (long)Math.ceil(currentSwapFeeRate()));
         answer.addProperty("minRelaySatPerVb", (long)Math.ceil(AppServices.getMinimumRelayFeeRate()));
         return answer;
     }

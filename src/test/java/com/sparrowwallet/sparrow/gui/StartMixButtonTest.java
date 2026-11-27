@@ -20,8 +20,18 @@ public class StartMixButtonTest {
     }
 
     @Test
-    public void stopStaysAvailableWhileMixingEvenWhenTheAccountEmpties() {
-        assertFalse(AshigaruWalletController.startMixDisabled(true, false, true, false));
+    public void stopIsAvailableWhileMixingCoinsHere() {
+        assertFalse(AshigaruWalletController.startMixDisabled(true, false, true, true));
+    }
+
+    @Test
+    public void whirlpoolRunningWithNothingHereIsGreyedAndSaysSo() {
+        //Whirlpool starts on its own once connected: an empty Premix or Postmix offers no Stop, and says Whirlpool is on
+        assertTrue(AshigaruWalletController.startMixDisabled(true, false, true, false));
+        assertEquals("Whirlpool is on and will mix coins as they arrive in Premix.",
+                AshigaruWalletController.startMixDisabledReason(true, false, true, false, false));
+        assertEquals("Whirlpool is on and will remix mixed coins as they arrive in Postmix.",
+                AshigaruWalletController.startMixDisabledReason(true, false, true, false, true));
     }
 
     @Test
