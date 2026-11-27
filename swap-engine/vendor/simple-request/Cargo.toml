@@ -1,0 +1,39 @@
+# Ashigaru: simple-request 0.2.0 from crates.io (MIT, see LICENSE), with one change in src/lib.rs:
+# the single-connection client replaces a connection the node has closed instead of failing the
+# next request with ChannelClosed. Used through [patch.crates-io] in the swap engine workspace.
+[package]
+name = "simple-request"
+version = "0.2.0"
+description = "A simple HTTP(S) request library"
+license = "MIT"
+repository = "https://github.com/serai-dex/serai/tree/develop/common/request"
+authors = ["Luke Parker <lukeparker5132@gmail.com>"]
+keywords = ["http", "https", "async", "request", "ssl"]
+edition = "2021"
+rust-version = "1.82"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+tower-service = { version = "0.3", default-features = false }
+hyper = { version = "1", default-features = false, features = ["http1", "client"] }
+hyper-util = { version = "0.1", default-features = false, features = ["http1", "client-legacy", "tokio"] }
+http-body-util = { version = "0.1", default-features = false }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+tokio = { version = "1", default-features = false }
+
+hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "ring", "rustls-native-certs", "native-tokio"], optional = true }
+
+zeroize = { version = "1", optional = true }
+base64ct = { version = "1", features = ["alloc"], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", default-features = false, features = ["rt", "macros", "net", "io-util", "time"] }
+
+[features]
+tls = ["hyper-rustls"]
+webpki-roots = ["tls", "hyper-rustls/webpki-roots"]
+basic-auth = ["zeroize", "base64ct"]
+default = ["tls"]

@@ -203,3 +203,29 @@ What changed for Ashigaru, and what was done:
   patch 0008 already dials onion addresses first), and the GUI's Apollo default (Apollo stays off).
 - **Lock:** 5.0.5's `Cargo.lock` with `ashigaru-swap` added and the same compatible updates as before
   (`Cargo.lock.overlay`, resolves with `--locked`). cargo-audit: 52 vulnerabilities, unchanged.
+
+
+## Vendored simple-request: a closed Monero node connection no longer fails the claim
+
+A tester's swap (engine 5.0.4) failed twice to claim its XMR, each time after about 8 minutes:
+
+    Failed to construct sweep transaction to destinations: Decoys(InterfaceError("Hyper(hyper::Error(ChannelClosed))"))
+
+It only went through after a Tor restart, which restarted the engine. 5.0.5 does not fix it: its idle-connection
+fix is in `monero-rpc-pool`, which Ashigaru does not use (the engine reaches the node straight through its Tor relay).
+
+- **Cause.** monero-oxide's `SimpleRequestTransport` talks to the node over a single kept-alive connection
+  (`simple-request` 0.2.0, `without_connection_pool`). Once the node or Tor closes that connection, the next request
+  fails at once with `ChannelClosed`. Only the request after that one reconnects. The claim's decoy selection is one
+  step: it downloads the full output distribution (uncompressed, about 28 MB, several minutes over Tor) and then
+  makes more requests. One `ChannelClosed` fails the whole step after its 45-second retry window
+  (`bob/common.rs`) has already passed, so the next attempt starts again from the download.
+- **Fix.** `swap-engine/vendor/simple-request` is crates.io's 0.2.0 with one change in `Client::request`: a held
+  connection that has closed is replaced before the request is sent. If hyper hands an unsent request back
+  (`try_send_request`), it is sent once more on a new connection. A request that was already sent is never sent
+  again. `fetch.sh` puts the crate in the workspace's `[patch.crates-io]` and adds it as a member, so its tests run in
+  CI with the same lock (`cargo test -p simple-request`). Only `monero-simple-request-rpc` uses it.
+- **Lock.** `simple-request` loses its registry source. As a member, its optional features' crates (`base64ct`,
+  `zeroize`, `webpki-roots`) are listed in the lock but are not built into the engine. cargo-audit is unchanged at 52.
+- **Not done.** monero-oxide asks for the distribution uncompressed (`compress: 0`, a TODO upstream). A compressed
+  request would make each claim attempt much shorter.

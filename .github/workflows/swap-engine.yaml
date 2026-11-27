@@ -213,13 +213,14 @@ jobs:
             swap-engine/build/eigenwallet/target/${{ matrix.target }}/release/.fingerprint/monero-sys-*
           # The lock overlay and this workflow (its flags change every compiled file) are in the key: when either changes, the key changes, so the
           # new build is saved instead of the old cache being restored from restore-keys and never saved again (Monero rebuilt every run)
-          key: swap-engine-${{ matrix.target }}-${{ hashFiles('swap-engine/EIGENWALLET_REV', 'swap-engine/patches/**', 'swap-engine/ashigaru-swap/Cargo.toml', 'swap-engine/Cargo.lock.overlay', '.github/workflows/swap-engine.yaml') }}
+          key: swap-engine-${{ matrix.target }}-${{ hashFiles('swap-engine/EIGENWALLET_REV', 'swap-engine/patches/**', 'swap-engine/vendor/**', 'swap-engine/ashigaru-swap/Cargo.toml', 'swap-engine/Cargo.lock.overlay', '.github/workflows/swap-engine.yaml') }}
           restore-keys: swap-engine-${{ matrix.target }}-
 
+      # With the vendored simple-request (swap-engine/vendor), whose fix keeps the Monero node connection usable
       - name: Test ashigaru-swap
         if: matrix.test
         working-directory: swap-engine/build/eigenwallet
-        run: cargo test -p ashigaru-swap --target ${{ matrix.target }} --release ${{ steps.lock.outputs.flag }}
+        run: cargo test -p ashigaru-swap -p simple-request --target ${{ matrix.target }} --release ${{ steps.lock.outputs.flag }}
 
       # Ashigaru's own crate only (--no-deps): eigenwallet's crates are linted upstream. Warnings fail the job too.
       - name: Clippy ashigaru-swap

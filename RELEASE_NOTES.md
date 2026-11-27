@@ -41,6 +41,10 @@ misunderstand, and the interface typeface changes across the whole app.
 - **The engine does not turn on eigenwallet's new on-chain backup (Apollo).** 5.0.3 added it as an
   optional feature; once it has run, older versions cannot open the swap database. Ashigaru never
   enables it. As before, finish or refund running swaps before updating.
+- **Claiming your XMR no longer stalls when the connection to the Monero node drops.** When the
+  node or Tor closed the engine's connection to it, the next request failed. The claim then started
+  over, re-downloading several minutes of data over Tor each time, and could keep failing until Tor
+  was restarted. The engine now opens a new connection and carries on.
 - **Engine 5.0.5 fixes for refunds and confirmations.** A swap whose cancel transaction has
   confirmed now goes on to the refund even when the Bitcoin server still reports the lock as
   unconfirmed, instead of stopping. The block height follows the highest chain tip of the Electrum
