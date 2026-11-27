@@ -335,11 +335,40 @@ jobs:
               exit 1
             fi
             echo "Version: \`$(cargo audit --version)\`"
-            echo '```'
             status=0
-            cargo audit > "$RUNNER_TEMP/cargo-audit.log" 2>&1 || status=$?
-            tail -n 60 "$RUNNER_TEMP/cargo-audit.log"
-            echo '```'
+            cargo audit --json > "$RUNNER_TEMP/cargo-audit.json" 2> "$RUNNER_TEMP/cargo-audit.log" || status=$?
+            # What is compiled into the library, on any platform, so each advisory says whether it reaches Ashigaru at all
+            cargo tree -p ashigaru-swap --locked --target all -e normal,build --prefix none --format '{p}' 2>/dev/null \
+              | sed 's/ (.*//' | sort -u > "$RUNNER_TEMP/engine-deps.txt" || true
+            # Every vulnerability as a row (the plain output's tail used to show only the warnings), then the warnings by kind
+            if ! python3 - "$RUNNER_TEMP/cargo-audit.json" "$RUNNER_TEMP/engine-deps.txt" <<'PY'
+          import json, sys
+          report = json.load(open(sys.argv[1]))
+          engine = {line.strip() for line in open(sys.argv[2]) if line.strip()}
+          def in_engine(pkg):
+              return "yes" if f"{pkg['name']} v{pkg['version']}" in engine else "no"
+          vulns = report["vulnerabilities"]["list"]
+          built = sum(1 for v in vulns if in_engine(v["package"]) == "yes")
+          print(f"**{len(vulns)} vulnerabilities**, {built} in crates built into the swap engine.\n")
+          if vulns:
+              print("| Advisory | Crate | In the engine | Title | Fixed in |")
+              print("|---|---|---|---|---|")
+              for v in sorted(vulns, key=lambda v: (in_engine(v["package"]) == "no", v["package"]["name"], v["advisory"]["id"])):
+                  adv, pkg = v["advisory"], v["package"]
+                  fixed = ", ".join(v["versions"]["patched"]) or "no fix yet"
+                  title = adv["title"].replace("|", "\\|")
+                  print(f"| [{adv['id']}](https://rustsec.org/advisories/{adv['id']}) | {pkg['name']} {pkg['version']} | {in_engine(pkg)} | {title} | {fixed} |")
+          for kind, warnings in sorted(report.get("warnings", {}).items()):
+              names = sorted({f"{w['package']['name']} {w['package']['version']}" for w in warnings})
+              print(f"\n**{len(warnings)} {kind}**: {', '.join(names)}")
+          PY
+            then
+              echo "The report could not be read:"
+              echo '```'
+              tail -n 30 "$RUNNER_TEMP/cargo-audit.log"
+              echo '```'
+            fi
+            echo ""
             echo "cargo audit exit status: $status"
             exit "$status"
           } >> "$GITHUB_STEP_SUMMARY"
