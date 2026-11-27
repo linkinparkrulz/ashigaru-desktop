@@ -62,7 +62,7 @@ public class BadbankSwapHost {
     /** The keys are never held longer than this, whatever happens to the swap */
     private static final int KEYS_HELD_MAX_MINUTES = 15;
     /** eigenwallet's absolute minimum transaction fee, the lowest a maker accepts for the lock */
-    static final long MIN_LOCK_FEE_SATS = 1000;
+    static final long MIN_LOCK_FEE_SATS = SwapReview.MIN_LOCK_FEE_SATS;
     /** eigenwallet's dust limit: the lock must be worth more than this */
     private static final long DUST_SATS = 546;
 

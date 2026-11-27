@@ -177,6 +177,19 @@ class SwapScreenshotsTest {
     }
 
     @Test
+    void aMinimumLockFeeSaysSo() throws Exception {
+        SwapReviewPane pane = onFx(SwapReviewPane::new);
+        onFx(() -> {
+            pane.show(SwapReview.commit(5_000_000, 4_999_000, SwapReview.MIN_LOCK_FEE_SATS, 14_816_324_640_000L, 0, true, ADDRESS, "12D3KooW…b3f9",
+                    Instant.now().plusSeconds(81), recorder()));
+            return null;
+        });
+        shoot(pane, 845, 714, "review-commit-minfee-845");
+        assertTrue(onFx(() -> pane.lookupAll(".label").stream().anyMatch(n -> ((javafx.scene.control.Label)n).getText() != null
+                && ((javafx.scene.control.Label)n).getText().contains("the minimum a swap lock pays"))));
+    }
+
+    @Test
     void approveAndRejectReportTheChoice() throws Exception {
         SwapReviewPane pane = onFx(SwapReviewPane::new);
         onFx(() -> {
@@ -342,10 +355,12 @@ class SwapScreenshotsTest {
 
         //The one action is the banner's button, and it is only enabled when it can work
         List<com.sparrowwallet.sparrow.swap.SwapDashboard.Action> pressed = new ArrayList<>();
-        SwapDashboardPane needsYou = draw(cases.get(3).dashboard(), HEALTHY, false);
+        //By name: an index went stale when a case was added before it
+        Case needsYouCase = cases.stream().filter(c -> c.name().equals("dash-4-recovery-needs-you")).findFirst().orElseThrow();
+        SwapDashboardPane needsYou = draw(needsYouCase.dashboard(), HEALTHY, false);
         onFx(() -> {
             needsYou.setOnAction(pressed::add);
-            needsYou.show(SWAP_ID, cases.get(3).dashboard(), HEALTHY);
+            needsYou.show(SWAP_ID, needsYouCase.dashboard(), HEALTHY);
             return null;
         });
         shoot(needsYou, 845, 1100, "dash-4-recovery-needs-you-again");
@@ -358,12 +373,12 @@ class SwapScreenshotsTest {
         });
         assertEquals(List.of(com.sparrowwallet.sparrow.swap.SwapDashboard.Action.CANCEL_AND_REFUND), pressed);
 
-        SwapDashboardPane notYet = draw(cases.get(4).dashboard(), HEALTHY, false);
+        SwapDashboardPane notYet = draw(cases.stream().filter(c -> c.name().equals("dash-5-recovery-not-yet")).findFirst().orElseThrow().dashboard(), HEALTHY, false);
         shoot(notYet, 845, 1100, "dash-5-recovery-not-yet-again");
         Button disabled = onFx(() -> button(notYet, "Cancel and refund"));
         assertTrue(onFx(disabled::isDisabled), "cancelling is not open yet, so the button says when and cannot be pressed");
 
-        SwapDashboardPane automatic = draw(cases.get(2).dashboard(), HEALTHY, false);
+        SwapDashboardPane automatic = draw(cases.stream().filter(c -> c.name().equals("dash-3-recovery-automatic")).findFirst().orElseThrow().dashboard(), HEALTHY, false);
         shoot(automatic, 845, 1100, "dash-3-recovery-automatic-again");
         assertNull(onFx(() -> button(automatic, "Cancel and refund")), "a running swap is refunded by Ashigaru itself, so there is no button");
     }

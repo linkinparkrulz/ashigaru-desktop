@@ -50,6 +50,17 @@ public record SwapReview(long coinSats, long lockSats, long feeSats, long picone
         return new SwapReview(coinSats, lockSats, feeSats, piconero, amnestySats, fullRefund, xmrAddress, maker, expiresAt, decision, acceptedWorsePercent);
     }
 
+    /**
+     * The least a swap lock pays, as eigenwallet's own taker pays it (bitcoin_wallet::MIN_ABSOLUTE_TX_FEE_SATS): some nodes relay
+     * nothing under 1,000 sats whatever its size. When fees are low this is more than the fee rate alone asks for.
+     */
+    public static final long MIN_LOCK_FEE_SATS = 1000;
+
+    /** True when the lock pays the minimum fee rather than the fee rate times its size */
+    public boolean minimumFee() {
+        return feeSats == MIN_LOCK_FEE_SATS;
+    }
+
     /** True when the user accepted a price worse than the offer they chose */
     public boolean hasAcceptedWorsePrice() {
         return acceptedWorsePercent > 0;

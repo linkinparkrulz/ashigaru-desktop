@@ -82,7 +82,8 @@ public class SwapReviewPane extends BorderPane {
         hero.getStyleClass().addAll("ag-card", "review-hero");
         hero.setAlignment(Pos.CENTER_LEFT);
         VBox send = new VBox(6, eyebrow("You send"), amount(review.coinBtc(), null, "BTC"),
-                wrapped("Whole Badbank coin, no change. Includes the " + sats(review.feeSats()) + " sat network fee.", "review-fine"));
+                wrapped("Whole Badbank coin, no change. Includes the " + sats(review.feeSats()) + " sat network fee"
+                        + (review.minimumFee() ? ", the minimum a swap lock pays." : "."), "review-fine"));
         Label arrow = Icons.label(FontAwesome5.Glyph.LONG_ARROW_ALT_RIGHT, 20, "review-arrow");
         String xmr = review.xmr();
         int split = Math.min(xmr.length(), xmr.indexOf('.') + 4);
@@ -138,9 +139,14 @@ public class SwapReviewPane extends BorderPane {
         VBox rows = new VBox();
         rows.getChildren().addAll(
                 row("Locked in the swap", review.lockBtc() + " BTC", false),
-                row("Network fee (inside the coin)", review.feeBtc() + " BTC", false),
+                row(review.minimumFee() ? "Network fee (inside the coin, minimum)" : "Network fee (inside the coin)", review.feeBtc() + " BTC", false),
                 totalRow("Total leaving Badbank", review.coinBtc() + " BTC"));
         transaction.getChildren().addAll(eyebrow("Transaction"), rows);
+        //A block explorer shows the minimum as a fee rate above the market's: say why it is not one
+        if(review.minimumFee()) {
+            transaction.getChildren().add(wrapped("A swap lock pays at least " + sats(SwapReview.MIN_LOCK_FEE_SATS) + " sats, as eigenwallet does, so that "
+                    + "every node relays it. With fees this low that is more than the fee rate alone asks for.", "review-fine"));
+        }
 
         VBox destination = card();
         Button copy = button("Copy", "secondary-btn");
