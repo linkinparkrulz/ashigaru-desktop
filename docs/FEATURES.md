@@ -4,7 +4,7 @@ This is the long version of the feature list in the [README](../README.md). Each
 sends over the network and to whom, and what it cannot do. The pictures use a made-up wallet and sample data, drawn by the real application
 (see *Regenerating the pictures* in [DEVELOPMENT.md](DEVELOPMENT.md)). Nothing in them belongs to a real wallet, address or swap.
 
-Swaps need a build that includes the swap engine, and the first build with engine 5.0.4 has not yet met a real maker. Everything else works in every build.
+Swaps need a build that includes the swap engine, and the first build with engine 5.0.5 has not yet met a real maker. Everything else works in every build.
 
 - [Getting started](#getting-started)
 - [Creating and restoring a wallet](#creating-and-restoring-a-wallet)
@@ -122,7 +122,7 @@ The link to Sentinel opens through the *Leaving Tor* window.
 
 ## Swaps: Badbank coin to Monero
 
-Turn swaps on in **Settings → Swaps**. They are off by default, mainnet only, and need a build with the swap engine (eigenwallet 5.0.4). Swaps use Ashigaru's Tor only.
+Turn swaps on in **Settings → Swaps**. They are off by default, mainnet only, and need a build with the swap engine (eigenwallet 5.0.5). Swaps use Ashigaru's Tor only.
 **Tools → Swaps** then lists your swaps and the offers for a Badbank coin. A **Swaps** light in the top bar says whether the engine is running.
 
 ![Offers for a Badbank coin, compared on the XMR each would give](images/swap-offers.png)

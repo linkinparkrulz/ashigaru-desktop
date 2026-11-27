@@ -29,6 +29,7 @@ use swap::protocol::{Database, State};
 use swap::seed::Seed;
 use swap_env::env::{Config as EnvConfig, GetConfig, Mainnet};
 use swap_p2p::libp2p_ext::MultiAddrVecExt;
+use swap_p2p::protocols::tor_dial_filter::TorDialFilter;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use uuid::Uuid;
@@ -254,7 +255,11 @@ impl Engine {
             XmrBtcNamespace::Mainnet,
             rendezvous_peer_ids,
             sqlite.clone(),
+            // No arti dial limiter here: dials go through the SOCKS proxy and SlotLimited
+            None,
         );
+        // Every dial goes through Tor's SOCKS proxy, so onion addresses are always dialable
+        let behaviour = TorDialFilter::new(behaviour, true);
         // One address of a peer at a time: dialling all of a maker's addresses at once would take that many
         // slots for one maker, and its onion address (added first, below) is the one most likely to work
         let swarm_config = libp2p::swarm::Config::with_tokio_executor()

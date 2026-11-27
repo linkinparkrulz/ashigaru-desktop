@@ -182,3 +182,24 @@ What changed for Ashigaru, and what was done:
   Thresholds come from the 5.0.4 release notes: warn above 2% less XMR; refuse above 5% less, on a changed
   refund policy, or on terms that cannot be read.
 - **Not enabled:** Apollo. After it has run, older engines cannot open the database.
+
+
+## Update: 5.0.4 to 5.0.5
+
+Pin `9696d756f707709d8afc10b36813cc68f0968504`. 43 upstream files. No protocol or wire change, so
+`MIN_MAKER_VERSION` stays 5.0.0.
+
+What changed for Ashigaru, and what was done:
+
+- **Patches:** all eight apply in order with `fetch.sh` (checked in a scratch clone).
+- **Shim** (`swap-engine/ashigaru-swap`): `cli::Behaviour::new` takes an optional `DialPriorityTracker`
+  (`None`: Ashigaru dials through Tor's SOCKS port with its own `SlotLimited`, not arti's dial limiter), and
+  `EventLoop::new` takes a `Swarm<TorDialFilter<Behaviour>>`. The filter is built with Tor enabled, since every
+  dial goes through Tor, so onion addresses are never filtered out. Checked against the upstream source by hand;
+  the first compile is the `Swap engine` workflow.
+- **Taken as is:** refund after a confirmed cancel despite a stale lock status, the highest Electrum chain tip,
+  and the Monero RPC pool's idle-connection fix.
+- **Not applicable:** upstream's separate onion and clearnet dial limiters (Ashigaru has its own slots, and
+  patch 0008 already dials onion addresses first), and the GUI's Apollo default (Apollo stays off).
+- **Lock:** 5.0.5's `Cargo.lock` with `ashigaru-swap` added and the same compatible updates as before
+  (`Cargo.lock.overlay`, resolves with `--locked`). cargo-audit: 52 vulnerabilities, unchanged.

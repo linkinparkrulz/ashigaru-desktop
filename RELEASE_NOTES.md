@@ -14,7 +14,7 @@ misunderstand, and the interface typeface changes across the whole app.
   in plain words (nothing was locked; choose another maker), and leaves that maker out of the offers
   for coins it would refuse again until Ashigaru is closed. A maker with a fault of its own is left
   out for 15 minutes. If every maker refuses a very small coin, it is too small to swap.
-- **The swap engine is eigenwallet 5.0.4.** Makers are moving to version 5, which changed the swap
+- **The swap engine is eigenwallet 5.0.5.** Makers are moving to version 5, which changed the swap
   protocol: both sides must run it, so a version 4 engine could not swap with them. Ashigaru now
   can, and offers from makers still on version 4 are left out and counted in the "not shown" line.
   Version 5 makes a taker prove, while the swap is set up, that it controls the coin. Ashigaru
@@ -41,6 +41,12 @@ misunderstand, and the interface typeface changes across the whole app.
 - **The engine does not turn on eigenwallet's new on-chain backup (Apollo).** 5.0.3 added it as an
   optional feature; once it has run, older versions cannot open the swap database. Ashigaru never
   enables it. As before, finish or refund running swaps before updating.
+- **Engine 5.0.5 fixes for refunds and confirmations.** A swap whose cancel transaction has
+  confirmed now goes on to the refund even when the Bitcoin server still reports the lock as
+  unconfirmed, instead of stopping. The block height follows the highest chain tip of the Electrum
+  servers, so one server stuck on an old block no longer freezes confirmations and timelocks. The
+  Monero node pool no longer fails after a node closes an idle connection. Nothing changes in the
+  swap protocol, and 5.0.5's GUI change to turn Apollo on by default does not apply to Ashigaru.
 - **A Bitcoin server on your own network works with swaps.** The swap engine used to reach every
   Electrum server through Tor, and Tor refuses private addresses, so a Dojo or Electrum server at
   192.168.x.x, on this computer or at a `.local` name could never publish the swap's lock: the swap

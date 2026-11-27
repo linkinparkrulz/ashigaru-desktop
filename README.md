@@ -18,7 +18,7 @@ The full list, with a picture of each screen, is in [docs/FEATURES.md](docs/FEAT
 - **Status lights.** The top bar shows Tor, your server, the Whirlpool coordinator, the swap engine, the block height and the network at a glance.
 
 **Swaps (BTC to XMR)**
-- **Badbank coin to Monero.** Swap one Badbank coin for XMR through the eigenwallet 5.0.4 swap engine, over Tor only. Off by default (Settings → Swaps), mainnet only, and it needs a build that includes the swap engine.
+- **Badbank coin to Monero.** Swap one Badbank coin for XMR through the eigenwallet 5.0.5 swap engine, over Tor only. Off by default (Settings → Swaps), mainnet only, and it needs a build that includes the swap engine.
 - **Offers compared on what you receive.** Estimated XMR, refund percentage if the swap is cancelled, and how far each maker is from the market.
 - **Protection from a worse price.** If the maker's final terms give you more than 2% less XMR than the offer you chose, a "Price changed" window asks you; more than 5% less, or a changed refund policy, and the swap is refused. Nothing is locked until you approve the final review.
 - **A dashboard for every swap.** Where your funds are, whether you need to do anything, and what happens if the swap stalls. A running swap is cancelled and refunded by Ashigaru itself when the timelock allows.
