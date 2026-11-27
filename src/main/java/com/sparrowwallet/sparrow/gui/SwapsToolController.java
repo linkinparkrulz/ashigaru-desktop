@@ -283,10 +283,10 @@ public class SwapsToolController implements Initializable {
         String footer(boolean marketKnown, String amountBtc) {
             List<String> hidden = new ArrayList<>();
             if(belowMarket > 0) {
-                hidden.add(belowMarket + " offering more XMR than the market pays (makers that undercut the market refuse swaps)");
+                hidden.add(belowMarket + " priced below market (these makers refuse swaps)");
             }
             if(wrongSize > 0) {
-                hidden.add(wrongSize + " that cannot take " + (amountBtc == null ? "this amount" : amountBtc + " BTC"));
+                hidden.add(wrongSize + " that can't take " + (amountBtc == null ? "this amount" : amountBtc + " BTC"));
             }
             if(soldOut > 0) {
                 hidden.add(soldOut + " with no XMR to sell right now");
@@ -297,7 +297,7 @@ public class SwapsToolController implements Initializable {
             if(newer > 0) {
                 hidden.add(newer + " running newer swap software than this version of Ashigaru supports");
             }
-            String text = hidden.isEmpty() ? "" : "Not shown: " + String.join(", ", hidden) + ".";
+            String text = hidden.isEmpty() ? "" : "Hidden: " + String.join(", ", hidden) + ".";
             if(!marketKnown && (shown.size() + wrongSize) > 0) {
                 text = (text.isEmpty() ? "" : text + " ") + "Offers promising more XMR than the market pays are filtered out once the market price has loaded.";
             }
@@ -445,7 +445,7 @@ public class SwapsToolController implements Initializable {
         };
         task.setOnSucceeded(event -> {
             price = task.getValue();
-            marketText = String.format(Locale.ROOT, "Market 1 BTC ≈ %.2f XMR (%s, over Tor). Not an offer you can take.", 1 / price.btcPerXmr(), price.source());
+            marketText = String.format(Locale.ROOT, "Market price: 1 BTC ≈ %.2f XMR (%s, over Tor). For comparison only.", 1 / price.btcPerXmr(), price.source());
             renderOffers();
         });
         task.setOnFailed(event -> {

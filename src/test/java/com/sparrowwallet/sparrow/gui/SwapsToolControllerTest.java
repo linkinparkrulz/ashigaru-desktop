@@ -49,11 +49,12 @@ class SwapsToolControllerTest {
         assertEquals(0, offers.newer());
         assertEquals(1, offers.wrongSize());
         String footer = offers.footer(true, "0.00373000");
-        assertTrue(footer.contains("1 offering more XMR than the market pays"), footer);
-        assertTrue(footer.contains("1 that cannot take 0.00373000 BTC"), footer);
-        assertFalse(footer.contains("priced below"), "below the market means the opposite of what the visible rows say, so it is not used");
+        assertTrue(footer.contains("1 priced below market"), footer);
+        assertTrue(footer.contains("1 that can't take 0.00373000 BTC"), footer);
+        //Rows say "premium" (priced above market) or "discount" (below it), so the hidden ones are put in the same terms
+        assertFalse(footer.contains("more XMR than the market"), footer);
         //With no coin chosen no amount is mentioned
-        assertTrue(offers.footer(true, null).contains("1 that cannot take this amount"));
+        assertTrue(offers.footer(true, null).contains("1 that can't take this amount"));
 
         //Before the market price loads nothing can be called fake, and the footer says so
         SwapsToolController.Offers early = SwapsToolController.Offers.of(List.of(fake, fair), 373_000, null);

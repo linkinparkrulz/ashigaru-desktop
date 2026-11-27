@@ -172,7 +172,7 @@ public record SwapDashboard(Banner banner, Milestones milestones, Now now, Summa
                                          boolean automatic, boolean complete, boolean refunded, boolean stopped, boolean recoveryPath) {
         if(recoveryPath) {
             int current = refunded ? RECOVERY.size() : 1;
-            List<String> notes = List.of(refunded ? "Cancelled" : stopped ? "Swap stopped" : "Timelock expired",
+            List<String> notes = List.of(refunded ? "Cancelled" : stopped ? "Swap stopped" : "Cancel time reached",
                     refunded ? "Done" : needsYou ? "Ready to publish" : "Publishing", refunded ? "Refunded" : "Not started");
             return new Milestones(RECOVERY, current, true, true, stoppedAt(reached), notes);
         }

@@ -102,20 +102,21 @@ public final class SwapOffers {
     }
 
     /**
-     * How an offer's rate compares with the market, in words. A bare sign is read both ways: "−3.4%" looked like a
-     * discount to some and a penalty to others. Negative here means fewer XMR than the market pays.
+     * How an offer's rate compares with the market, in the plainest words and with no sign: a maker asking more than the market
+     * price charges a "premium" (fewer XMR), one asking less gives a "discount". A bare "−3.4%" was read both ways, and "worse than
+     * market" left people asking whether it meant a premium. Negative {@code value} here means fewer XMR than the market pays.
      */
     public static String versusMarketText(double value) {
         double rounded = Math.round(Math.abs(value) * 10) / 10.0;
         if(rounded == 0) {
-            return "at market";
+            return "At market price";
         }
-        return String.format(Locale.ROOT, "%.1f%%", rounded) + (value < 0 ? " worse than market" : " better than market");
+        return String.format(Locale.ROOT, "%.1f%%", rounded) + (value < 0 ? " premium" : " discount");
     }
 
-    /** How many XMR fewer than the offer with the most, in words */
+    /** How many XMR fewer than the best offer (the one paying the most), in words */
     public static String behindMostText(double xmr) {
-        return String.format(Locale.ROOT, "%.4f", xmr) + " XMR less than the most";
+        return String.format(Locale.ROOT, "%.4f", xmr) + " XMR less than the best offer";
     }
 
     /**

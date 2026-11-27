@@ -163,7 +163,7 @@ public class SwapOffersPane extends VBox {
         } else {
             VBox send = new VBox(6, eyebrow("You send"), amount(BtcText.btc(state.coinSats()), "BTC"),
                     wrapped(state.coinProblem() != null ? "This coin cannot be swapped: " + state.coinProblem()
-                            : state.walletName() + "’s Badbank coin, whole. " + BtcText.btc(state.swapSats()) + " BTC is swapped after the " + String.format(Locale.ROOT, "%,d", state.feeSats()) + " sat fee.", "review-body"));
+                            : state.walletName() + "’s whole Badbank coin. " + BtcText.btc(state.swapSats()) + " BTC is swapped after the " + String.format(Locale.ROOT, "%,d", state.feeSats()) + " sat network fee.", "review-body"));
             Button change = button("Choose a different coin", "offer-link");
             change.setOnAction(event -> listener.chooseCoin());
             send.getChildren().add(change);
@@ -216,13 +216,13 @@ public class SwapOffersPane extends VBox {
         Row most = summary.mostXmr();
         box.getChildren().add(amount(String.format(Locale.ROOT, "%.6f", most.xmr()), "XMR"));
         String mostRefund = SwapOffers.refundText(most.deductionRatio());
-        box.getChildren().add(wrapped(most.noDeduction() ? "Most XMR, with a full refund if the swap is cancelled."
-                : "Most XMR, " + (mostRefund == null ? "refund terms unknown" : mostRefund + " if the swap is cancelled") + " (the maker may keep " + BtcText.btc(most.deductionSats()) + " BTC).", "review-fine"));
+        box.getChildren().add(wrapped(most.noDeduction() ? "Best offer, with a full refund if the swap is cancelled."
+                : "Best offer. " + (mostRefund == null ? "Refund terms unknown" : mostRefund + " if the swap is cancelled") + " (the maker may keep " + BtcText.btc(most.deductionSats()) + " BTC).", "review-fine"));
         if(summary.mostWithNoDeduction() != null) {
             Row clean = summary.mostWithNoDeduction();
             Label figure = label(String.format(Locale.ROOT, "%.6f", clean.xmr()) + "  XMR", "offer-figure-small");
             VBox.setMargin(figure, new Insets(10, 0, 0, 0));
-            box.getChildren().addAll(figure, wrapped("Most XMR with no cancellation deduction.", "review-fine"));
+            box.getChildren().addAll(figure, wrapped("Best offer with a full refund if cancelled.", "review-fine"));
         }
         return box;
     }
@@ -330,8 +330,8 @@ public class SwapOffersPane extends VBox {
             }
         }
         Label foot = wrapped((state.footer().isEmpty() ? "" : state.footer() + " ")
-                + "Review offer contacts the maker over Tor and takes a few minutes, and nothing is locked until you approve. "
-                + "XMR amounts are estimated from each maker’s rate; the maker confirms the final amount before you approve.", "review-fine");
+                + "Review offer asks the maker for final terms over Tor (a few minutes). Amounts are estimates until then, and nothing is "
+                + "locked until you approve.", "review-fine");
         foot.setPadding(new Insets(14, 20, 14, 20));
         tableBox.getChildren().add(foot);
     }
@@ -407,12 +407,13 @@ public class SwapOffersPane extends VBox {
         if(coin && row.xmr() != null) {
             TextFlow flow = flowAmount(String.format(Locale.ROOT, "%.6f", row.xmr()), "XMR");
             amount.getChildren().add(flow);
+            //The premium or discount first, the shortfall from the best offer after it
             List<String> gaps = new java.util.ArrayList<>();
-            if(row.behindMost() != null && row.behindMost() > 0) {
-                gaps.add(SwapOffers.behindMostText(row.behindMost()));
-            }
             if(row.versusMarket() != null) {
                 gaps.add(SwapOffers.versusMarketText(row.versusMarket()));
+            }
+            if(row.behindMost() != null && row.behindMost() > 0) {
+                gaps.add(SwapOffers.behindMostText(row.behindMost()));
             }
             if(!gaps.isEmpty()) {
                 amount.getChildren().add(wrapped(String.join(" · ", gaps), "review-fine"));
@@ -422,7 +423,7 @@ public class SwapOffersPane extends VBox {
             amount.getChildren().add(wrapped(row.versusMarket() == null ? "Choose a coin" : "Choose a coin · " + SwapOffers.versusMarketText(row.versusMarket()), "review-fine"));
         }
         if(row.mostXmr()) {
-            amount.getChildren().add(chip("Most XMR"));
+            amount.getChildren().add(chip("Best offer"));
         }
         if(narrow) {
             amount.getChildren().add(wrapped(quote.provider() + " · " + String.format(Locale.ROOT, "%.2f", row.xmrPerBtc()) + " XMR per BTC", "review-fine"));

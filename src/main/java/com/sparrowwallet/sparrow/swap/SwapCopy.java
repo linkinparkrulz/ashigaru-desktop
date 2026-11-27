@@ -148,6 +148,6 @@ public final class SwapCopy {
 
     /** Shown beside the terms in the final review, once the user has accepted a worse price */
     public static String priceAccepted(double percentLess) {
-        return "You accepted a price " + percentText(percentLess) + " below the offer you chose.";
+        return "You accepted " + percentText(percentLess) + " less XMR than the offer you chose.";
     }
 }

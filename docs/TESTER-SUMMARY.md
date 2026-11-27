@@ -22,7 +22,7 @@ Start with a small coin. Report the maker you used and what the screen said.
       a "Price changed" window shows both XMR amounts and the difference.
   - [ ] "Reject swap" is the red default button. Enter, Esc and the window's X all reject.
   - [ ] It counts down and closes as a rejection when the approval time runs out.
-  - [ ] "Accept the worse price" leads to the normal review, which says "You accepted a price X% below the offer".
+  - [ ] "Accept new price" leads to the normal review, which says "You accepted X% less XMR than the offer you chose".
 - [ ] **Refusal.** More than 5% less XMR, or a changed refund policy: no window, the swap stops, and the dashboard
       says why. Your coin is still in Badbank.
 - [ ] Nothing is locked until you press Approve on the final review, in every case above.
@@ -66,7 +66,7 @@ Start with a small coin. Report the maker you used and what the screen said.
 - [ ] A top-bar message goes back to "Ready" by itself after about 20 seconds.
 - [ ] New **Coordinator** and **Swaps** lights at the top right (hover for why). Tell us if the Coordinator light says
       unreachable while mixing works, or online while it does not.
-- [ ] Offers read "x.x% worse than market" and show "98% refund" / "100% refund".
+- [ ] Offers read "x.x% premium" (or "x.x% discount") and "0.0000 XMR less than the best offer", and show "98% refund" / "100% refund".
 - [ ] "Could not load the offer list" goes away by itself; the review's note says the fee breakdown is above.
 
 ## 3d. Pair with Sentinel, new

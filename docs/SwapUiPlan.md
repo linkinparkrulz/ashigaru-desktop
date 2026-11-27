@@ -62,7 +62,7 @@ features. It is making the swap easier to read, harder to misunderstand, and hon
 - The deposit is stated as "the maker may keep X%" with the BTC amount, in its own callout.
 - "Estimated XMR" until the maker confirms terms. "You receive" only where the amount is final.
 - A completed swap says "XMR sent". Spendability is general Monero guidance, not a live count.
-- "Priced below market" is not user wording. Hidden offers are "offering more XMR than the market pays".
+- Plain words, no signs: an offer above the market price shows a "premium", one below it a "discount". Hidden offers are "priced below market (these makers refuse swaps)".
 
 ## Status
 

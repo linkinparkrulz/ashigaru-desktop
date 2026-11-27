@@ -76,7 +76,7 @@ public final class PriceWarningDialog {
         VBox figures = new VBox(0,
                 figure("The offer you chose", expected + " XMR", false),
                 figure("The maker's final terms", offered + " XMR", false),
-                figure("Difference", "−" + SwapCopy.percentText(result.percentLess()), true));
+                figure("Difference", SwapCopy.percentText(result.percentLess()) + " less XMR", true));
         figures.getStyleClass().add("price-figures");
 
         Label countdown = new Label();
@@ -87,7 +87,7 @@ public final class PriceWarningDialog {
         VBox content = new VBox(14, warning, figures, countdown);
         content.setPadding(new Insets(20));
 
-        ButtonType accept = new ButtonType("Accept the worse price", ButtonBar.ButtonData.OTHER);
+        ButtonType accept = new ButtonType("Accept new price", ButtonBar.ButtonData.OTHER);
         //Cancel-type, so the window's X and Esc also reject
         ButtonType reject = new ButtonType("Reject swap", ButtonBar.ButtonData.CANCEL_CLOSE);
         DialogPane pane = dlg.getDialogPane();

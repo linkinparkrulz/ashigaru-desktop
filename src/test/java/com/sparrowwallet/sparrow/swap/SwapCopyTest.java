@@ -101,6 +101,6 @@ class SwapCopyTest {
 
     @Test
     void anAcceptedWorsePriceIsNamedInTheReview() {
-        assertEquals("You accepted a price 3.0% below the offer you chose.", SwapCopy.priceAccepted(3.0));
+        assertEquals("You accepted 3.0% less XMR than the offer you chose.", SwapCopy.priceAccepted(3.0));
     }
 }

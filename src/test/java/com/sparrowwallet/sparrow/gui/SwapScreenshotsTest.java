@@ -505,8 +505,8 @@ class SwapScreenshotsTest {
                 attention ? com.sparrowwallet.sparrow.swap.SwapAttention.of(com.google.gson.JsonParser.parseString(
                         "[{\"swapId\":\"c20e9a17-0000-4000-8000-000000000000\",\"state\":\"waiting for cancel timelock expiration\",\"complete\":false,\"running\":false,\"past\":false}]").getAsJsonArray(), Instant.now()) : List.of(),
                 coin, coin ? 5_000_000 : 0, coin ? "Main" : "", coin ? 4_998_760 : 0, 1_240, null, makers(),
-                "Not shown: 3 offering more XMR than the market pays (makers that undercut the market refuse swaps)" + (coin ? ", 2 that cannot take 0.04998760 BTC" : "") + ", 1 running outdated software.",
-                "Market 1 BTC ≈ 298.80 XMR (Kraken, over Tor). Not an offer you can take.", 1 / 298.80, true, null,
+                "Hidden: 3 priced below market (these makers refuse swaps)" + (coin ? ", 2 that can't take 0.04998760 BTC" : "") + ", 1 running outdated software.",
+                "Market price: 1 BTC ≈ 298.80 XMR (Kraken, over Tor). For comparison only.", 1 / 298.80, true, null,
                 quote -> !coin ? "Choose a Badbank coin first" : !SwapsToolController.isMainnetMoneroAddress(pane.getAddress()) ? "Enter your receiving XMR address first" : null,
                 working, requesting, Instant.now());
     }
@@ -591,7 +591,7 @@ class SwapScreenshotsTest {
         assertEquals(9, buttons.size(), "nine offers, nine ways to review one");
         assertTrue(buttons.stream().noneMatch(Button::isDisable));
         //The first is the one with the most XMR, and it is marked as such
-        assertEquals(1, onFx(() -> pane.lookupAll(".offer-chip").stream().filter(n -> n instanceof javafx.scene.control.Label l && l.getText().equals("Most XMR")).count()));
+        assertEquals(1, onFx(() -> pane.lookupAll(".offer-chip").stream().filter(n -> n instanceof javafx.scene.control.Label l && l.getText().equals("Best offer")).count()));
         assertEquals(1, onFx(() -> pane.lookupAll(".offer-chip").stream().filter(n -> n instanceof javafx.scene.control.Label l && l.getText().equals("Best refund")).count()));
         //The unfinished swap comes first, with a way to its recovery
         Button recovery = onFx(() -> {
@@ -639,7 +639,7 @@ class SwapScreenshotsTest {
         assertEquals(List.of("choose"), pressed);
         assertTrue(onFx(() -> reviewButtons(pane)).stream().allMatch(Button::isDisable));
         //With no coin the footer never mentions an amount
-        assertEquals(0, onFx(() -> pane.lookupAll(".review-fine").stream().filter(n -> n instanceof javafx.scene.control.Label l && l.getText().contains("cannot take 0.")).count()));
+        assertEquals(0, onFx(() -> pane.lookupAll(".review-fine").stream().filter(n -> n instanceof javafx.scene.control.Label l && l.getText().contains("can't take 0.")).count()));
     }
 
     @Test

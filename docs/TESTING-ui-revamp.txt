@@ -574,8 +574,8 @@ WHAT THE REVAMP IS FOR
       default button; Enter and the window's X both reject.
   [ ] The window counts down and closes as a rejection when the
       approval time runs out.
-  [ ] "Accept the worse price" goes to the normal review, which shows
-      "You accepted a price X% below the offer".
+  [ ] "Accept new price" goes to the normal review, which shows
+      "You accepted X% less XMR than the offer you chose".
   [ ] More than 5% short, or a changed refund policy: no window, the
       swap stops, and the dashboard says why.
 
@@ -601,8 +601,8 @@ WHAT THE REVAMP IS FOR
       failing). Hover it for the reason.
   [ ] With swaps on, a Swaps light: on, starting (amber, also while
       waiting for Tor), or red when it could not start.
-  [ ] Offers say "x.x% worse/better than market" (no minus sign),
-      "0.0123 XMR less than the most", and a "98% refund" /
+  [ ] Offers say "x.x% premium" or "x.x% discount" (no sign),
+      "0.0123 XMR less than the best offer", and a "98% refund" /
       "100% refund" line under REFUND IF CANCELLED.
   [ ] "Could not load the offer list. Ashigaru will try again..."
       disappears by itself when the list loads again.

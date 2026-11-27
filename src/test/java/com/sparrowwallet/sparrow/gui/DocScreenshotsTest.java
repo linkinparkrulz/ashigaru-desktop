@@ -589,8 +589,8 @@ class DocScreenshotsTest {
             setSwapStatus();
             SwapOffersPane offers = find(SwapOffersPane.class);
             offers.show(new SwapOffersPane.State(List.of(), true, 5_000_000, "Sample", 4_998_760, 1_240, null, makers(),
-                    "Not shown: 3 offering more XMR than the market pays (makers that undercut the market refuse swaps), 1 running outdated software.",
-                    "Market 1 BTC \u2248 298.80 XMR (Kraken, over Tor). Not an offer you can take.", 1 / 298.80, true, null, quote -> null, null, null,
+                    "Hidden: 3 priced below market (these makers refuse swaps), 1 running outdated software.",
+                    "Market price: 1 BTC \u2248 298.80 XMR (Kraken, over Tor). For comparison only.", 1 / 298.80, true, null, quote -> null, null, null,
                     java.time.Instant.now()));
             for(Node node : offers.lookupAll(".text-field")) {
                 if(node instanceof javafx.scene.control.TextField field) {

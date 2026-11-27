@@ -93,11 +93,11 @@ class SwapOffersTest {
         assertEquals("−1.9%", SwapOffers.percent(a.versusMarket()));
         assertEquals("+0.3%", SwapOffers.percent(0.26));
         //In words, so that a sign is not read the other way
-        assertEquals("1.9% worse than market", SwapOffers.versusMarketText(a.versusMarket()));
-        assertEquals("0.3% better than market", SwapOffers.versusMarketText(0.26));
-        assertEquals("at market", SwapOffers.versusMarketText(0.04));
-        assertEquals("at market", SwapOffers.versusMarketText(-0.04));
-        assertEquals("3.4% worse than market", SwapOffers.versusMarketText(-3.4));
+        assertEquals("1.9% premium", SwapOffers.versusMarketText(a.versusMarket()));
+        assertEquals("0.3% discount", SwapOffers.versusMarketText(0.26));
+        assertEquals("At market price", SwapOffers.versusMarketText(0.04));
+        assertEquals("At market price", SwapOffers.versusMarketText(-0.04));
+        assertEquals("3.4% premium", SwapOffers.versusMarketText(-3.4));
         assertNull(SwapOffers.rows(SHOWN, COIN, null, Sort.MOST_XMR).get(0).versusMarket(), "no market price, no comparison");
     }
 
@@ -193,6 +193,6 @@ class SwapOffersTest {
 
     @Test
     void theGapToTheMostIsInWords() {
-        assertEquals("0.0123 XMR less than the most", SwapOffers.behindMostText(0.0123));
+        assertEquals("0.0123 XMR less than the best offer", SwapOffers.behindMostText(0.0123));
     }
 }
