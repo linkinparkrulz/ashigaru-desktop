@@ -395,6 +395,26 @@ class SwapServiceTest {
     }
 
     @Test
+    void theEngineIsOnlyWantedWhileSomethingNeedsIt() {
+        //Nothing to do: leaving the engine up only makes Tor dial makers no one is looking at
+        assertFalse(SwapService.wanted(false, false, 0));
+        assertTrue(SwapService.wanted(true, false, 0), "the Swaps screen is open");
+        assertTrue(SwapService.wanted(false, true, 0), "a swap is running or being set up");
+        assertTrue(SwapService.wanted(false, false, 1), "a swap still holds BTC");
+        //A missing unfinished list is not a reason to assume there is nothing to finish
+        assertTrue(SwapService.wanted(false, false, UnfinishedSwaps.UNKNOWN));
+    }
+
+    @Test
+    void theOnDemandStatusDoesNotLookLikeAStartOrAFailure() {
+        //The top bar shows no light while idle; it must not show "starting" or "not running" for an engine that is simply not needed
+        assertEquals(SwapLight.State.HIDDEN, SwapLight.state(true, false, SwapService.ON_DEMAND));
+        assertEquals(SwapLight.State.UNFINISHED_DOWN, SwapLight.state(true, false, SwapService.ON_DEMAND, 1),
+                "a swap that still holds BTC is shown even while the engine is idle for lack of use");
+        assertFalse(SwapService.ON_DEMAND.contains("Tor"), "Tor in a status reads as starting to the light");
+    }
+
+    @Test
     void torStoppingRightAfterTheEngineStartsIsPutDownToTheEngine() {
         long started = 1_000_000;
         assertTrue(SwapService.diedSoonAfterStart(started, started + 6_000, false));

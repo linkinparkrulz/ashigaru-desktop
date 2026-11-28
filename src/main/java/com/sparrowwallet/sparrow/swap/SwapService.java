@@ -45,10 +45,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
- * The app's one swap engine. It runs whenever swaps are on and Tor is up, whichever wallets are open,
- * and resumes unfinished swaps when it starts. Swaps go one at a time, each spending one Badbank coin;
- * the wallet is only involved until the lock is signed, after which the engine finishes or refunds
- * the swap with keys of its own.
+ * The app's one swap engine. It runs while the Swaps screen is open, while a swap is running or being set up, and
+ * while a swap is unfinished; otherwise it stops and leaves Tor alone, and resumes unfinished swaps when it starts
+ * again. Swaps go one at a time, each spending one Badbank coin; the wallet is only involved until the lock is
+ * signed, after which the engine finishes or refunds the swap with keys of its own.
  *
  * <p>The engine's identity is renewed whenever no swap is unfinished, so makers cannot link swaps.
  *
@@ -122,6 +122,8 @@ public class SwapService implements SwapHost {
     private final Map<String, SwapTimelock> timelocks = new ConcurrentHashMap<>();
     //The Swaps screen, while it can show a swap's reviews
     private volatile ReviewPresenter reviewPresenter;
+    //The Swaps screen is open: the engine runs on demand, while this or a swap needs it
+    private boolean swapsScreenOpen;
     //What was agreed for each swap of this identity: amounts, address, maker. Opened when the engine starts.
     private volatile SwapDetails.Store detailsStore;
     //Earlier identities' records, read only: a finished swap stays in the list under the identity it ran as
@@ -298,12 +300,64 @@ public class SwapService implements SwapHost {
 
     static final String OFFLINE = "Off: Ashigaru is in offline mode. Swaps start when it goes online.";
 
+    /** What the status says while swaps are on and nothing needs the engine */
+    static final String ON_DEMAND = "On. The swap engine runs while Swaps is open, or while a swap is running or unfinished.";
+
     /** Whether the engine must not start: Ashigaru is in offline mode */
     static boolean blockedOffline(com.sparrowwallet.sparrow.Mode mode) {
         return mode == com.sparrowwallet.sparrow.Mode.OFFLINE;
     }
 
-    /** Starts the engine if swaps are on and everything it needs is there; says why not otherwise */
+    /**
+     * Whether the engine is needed now. It runs on demand rather than all the time: every dial it makes reaches a
+     * maker's onion service through Tor, which costs a circuit, and one that asks for a proof of work costs a core
+     * until it is solved. It is needed while the Swaps screen is open, while a swap is running or being set up, and
+     * while a swap is unfinished, since only a running engine can complete or refund one. An unfinished count that is
+     * not known counts as unfinished.
+     */
+    boolean wanted() {
+        return wanted(swapsScreenOpen, isSwapActive(), unfinished.count());
+    }
+
+    /** The same rule in pure form, so it can be checked without starting a service or an engine */
+    static boolean wanted(boolean screenOpen, boolean swapActive, int unfinished) {
+        return screenOpen || swapActive || unfinished != 0;
+    }
+
+    /** The Swaps screen opened: the engine is needed from here on */
+    public void screenOpened() {
+        swapsScreenOpen = true;
+        startIfEnabled();
+    }
+
+    /** The Swaps screen closed: the engine stops unless a swap is running or still unfinished */
+    public void screenClosed() {
+        swapsScreenOpen = false;
+        stopIdle();
+    }
+
+    /**
+     * Stops the engine when nothing needs it any more: swaps are on, the Swaps screen is closed, and no swap is running, being set up or
+     * unfinished. A start that is under way is left to decide for itself, since it may still turn out to be needed.
+     */
+    private void stopIdle() {
+        if(starting || wanted() || !Config.get().isSwapsEnabled()) {
+            return;
+        }
+        if(!running.get()) {
+            status.set(blockedOffline(Config.get().getMode()) ? OFFLINE : ON_DEMAND);
+            return;
+        }
+        SwapEngine stopping = engine;
+        running.set(false);
+        status.set(ON_DEMAND);
+        runInBackground(() -> {
+            stopping.shutdown();
+            return null;
+        }, ignored -> appendLog("Swap engine stopped: nothing needs it until Swaps is opened"), e -> {});
+    }
+
+    /** Starts the engine if swaps are on, something needs it and everything it needs is there; says why not otherwise */
     public void startIfEnabled() {
         if(!Config.get().isSwapsEnabled()) {
             status.set("Off.");
@@ -315,6 +369,11 @@ public class SwapService implements SwapHost {
             return;
         }
         if(running.get() || starting) {
+            return;
+        }
+        //Nothing needs it: no dialling through Tor until the Swaps screen is opened or a swap needs finishing
+        if(!wanted()) {
+            status.set(ON_DEMAND);
             return;
         }
         if(pausedForTor) {
@@ -495,6 +554,16 @@ public class SwapService implements SwapHost {
                 } else {
                     status.set(PAUSED_FOR_TOR);
                 }
+                return;
+            }
+            //The Swaps screen was closed while this was starting, and nothing needs the engine now: stop it, as screenClosed() could not,
+            //having found nothing running yet. A resumed swap is one that still needs it, so it is only stopped when there is none.
+            if(!wanted() && resumed.isEmpty()) {
+                runInBackground(() -> {
+                    loaded.shutdown();
+                    return null;
+                }, ignored -> appendLog("Swap engine stopped: nothing needs it until Swaps is opened"), e -> {});
+                status.set(ON_DEMAND);
                 return;
             }
             runningSwaps.addAll(resumed);
@@ -1423,15 +1492,23 @@ public class SwapService implements SwapHost {
             return;
         }
         listSwaps(swaps -> {
+            //listSwaps has just refreshed the unfinished list, so this is the first point where a swap that finished is known to be finished
+            if(!wanted()) {
+                //Nothing needs the engine: stopping beats taking a fresh identity no one will use. The next start renews an identity that
+                //makers have already seen, so they still cannot link swaps.
+                stopIdle();
+                return;
+            }
             boolean anyUnfinished = false;
             for(JsonElement swap : swaps) {
                 if(!isComplete(swap.getAsJsonObject())) {
                     anyUnfinished = true;
                 }
             }
-            if(!anyUnfinished && !isSwapActive() && problem() == null) {
-                start(true);
+            if(anyUnfinished || isSwapActive() || problem() != null) {
+                return;
             }
+            start(true);
         }, e -> {});
     }
 

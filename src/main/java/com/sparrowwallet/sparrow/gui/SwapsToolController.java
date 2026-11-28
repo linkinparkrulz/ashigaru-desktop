@@ -192,12 +192,15 @@ public class SwapsToolController implements Initializable {
         refresher.play();
         ticker.play();
         updateProgress();
+        //The engine follows the screen: no background dialling through Tor while Swaps is not being used
+        service.screenOpened();
     }
 
     private void close() {
         SwapService service = SwapService.get();
         refresher.stop();
         ticker.stop();
+        service.screenClosed();
         //A review still on this page moves to a dialog, so the request is not left waiting
         service.clearReviewPresenter(presenter);
         reviewPane.clear();
@@ -226,8 +229,12 @@ public class SwapsToolController implements Initializable {
         Offers offers = Offers.of(quotes, swapSats, market, SwapService.get().getRefusals());
         SwapService.Coin coin = SwapService.get().coinProperty().get();
         boolean running = SwapService.get().runningProperty().get();
+        //Swaps can be on while the engine is idle between uses: only say "turn them on" when they really are off
+        String notRunning = SwapService.get().isEnabled()
+                ? "No offers until the swap engine is running."
+                : "Swaps are not running. Turn them on in Settings → Swaps.";
         String empty = !offers.shown().isEmpty() ? null
-                : !running ? "Swaps are not running. Turn them on in Settings → Swaps."
+                : !running ? notRunning
                 : quotes.isEmpty() ? "No makers yet. They are found over a minute or two after swaps start."
                 : offers.outdated() > 0 && offers.outdated() == quotes.size() ? "Every maker found still runs eigenwallet 4 or older, which this version of Ashigaru cannot swap with. "
                         + "eigenwallet 5 changed the protocol and both sides must run it. Makers are upgrading, so try again later."
