@@ -18,9 +18,11 @@ import java.util.List;
  * proportions, and that the change has a destination.
  */
 public class Tx0Flow extends Canvas {
-    private static final Color INK = Color.web("#ECECEC"), DIM = Color.web("#A6A7AD"), FAINT = Color.web("#8B8D95");
-    private static final Color INPUT = Color.web("#C9CAD0"), PREMIX = Color.web("#CC1111"), PREMIX_INK = Color.web("#FF5A4D");
-    private static final Color CHANGE = Color.web("#E5A00C"), CHANGE_INK = Color.web("#F2B53A"), FEE = Color.web("#6B6E79");
+    private static final Color INK = AgPalette.TEXT, DIM = AgPalette.TEXT_DIM, FAINT = AgPalette.TEXT_FAINT;
+    private static final Color PREMIX = AgPalette.ACCENT, PREMIX_INK = AgPalette.ACCENT_INK;
+    private static final Color CHANGE = AgPalette.WARN, CHANGE_INK = AgPalette.WARN_INK;
+    /** Shades this drawing owns: no CSS token, because nothing else paints them. */
+    private static final Color INPUT = Color.web("#C9CAD0"), FEE = Color.web("#6B6E79"), NODE = Color.web("#23252D");
     private static final double TOP = 34, HEIGHT = 300, X_IN = 16, X_NODE = 120, NODE_W = 16, X_OUT = 216, BAR = 12, MIN_BLOCK = 13, GAP = 22;
 
     private record Out(long sats, Color fill, Color ink, String value, String label) {}
@@ -34,7 +36,7 @@ public class Tx0Flow extends Canvas {
         GraphicsContext g = getGraphicsContext2D();
         g.clearRect(0, 0, getWidth(), getHeight());
         g.setFill(FAINT);
-        g.setFont(Font.font("Inter", 12));
+        g.setFont(Font.font(AgPalette.FONT_BODY, 12));
         g.setTextAlign(TextAlignment.CENTER);
         g.fillText(message, getWidth() / 2, getHeight() / 2);
     }
@@ -68,18 +70,18 @@ public class Tx0Flow extends Canvas {
         //Input bar and the transaction itself
         g.setFill(INPUT);
         g.fillRoundRect(X_IN, TOP, BAR, HEIGHT, 3, 3);
-        band(g, X_IN + BAR, TOP, TOP + HEIGHT, X_NODE, TOP, TOP + HEIGHT, Color.web("#A6A7AD", 0.2));
-        g.setFill(Color.web("#23252D"));
+        band(g, X_IN + BAR, TOP, TOP + HEIGHT, X_NODE, TOP, TOP + HEIGHT, DIM.deriveColor(0, 1, 1, 0.2));
+        g.setFill(NODE);
         g.fillRoundRect(X_NODE, TOP, NODE_W, HEIGHT, 3, 3);
         g.setFill(PREMIX);
         g.fillRect(X_NODE, TOP, NODE_W, 3);
         g.setFill(INK);
-        g.setFont(Font.font("Nikkyou Sans", 11));
+        g.setFont(Font.font(AgPalette.FONT_BODY, 11));
         g.setTextAlign(TextAlignment.CENTER);
         g.setTextBaseline(VPos.BASELINE);
         g.fillText("TX0", X_NODE + NODE_W / 2, TOP - 12);
         g.setFill(FAINT);
-        g.setFont(Font.font("Roboto Mono", 10.5));
+        g.setFont(Font.font(AgPalette.FONT_MONO, 10.5));
         g.setTextAlign(TextAlignment.LEFT);
         g.fillText(amount(fmt, total) + " in", X_IN, TOP + HEIGHT + 20);
 
@@ -109,10 +111,10 @@ public class Tx0Flow extends Canvas {
             g.fillRoundRect(X_OUT, outY, BAR, heights[i], 3, 3);
             g.setTextBaseline(VPos.CENTER);
             g.setFill(i < 2 ? INK : DIM);
-            g.setFont(Font.font("Roboto Mono", 11.5));
+            g.setFont(Font.font(AgPalette.FONT_MONO, 11.5));
             g.fillText(o.value(), X_OUT + BAR + 12, outY + heights[i] / 2 - 7);
             g.setFill(o.ink());
-            g.setFont(Font.font("Inter", 11));
+            g.setFont(Font.font(AgPalette.FONT_BODY, 11));
             g.fillText(o.label(), X_OUT + BAR + 12, outY + heights[i] / 2 + 8);
             srcY += seg;
             outY += heights[i] + GAP;
