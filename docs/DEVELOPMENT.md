@@ -50,6 +50,14 @@ headless package; build one locally with `./gradlew -Djava.awt.headless=true jpa
   `darkjar/build.gradle` if either changes.
 - Reproducible-build flags are set on all archive tasks; don't add tasks that break
   `preserveFileTimestamps=false` / `reproducibleFileOrder=true`.
+- **macOS re-signs the Tor daemon.** `signTorDaemon` signs the daemon inside
+  `build/jlinkbase/jlinkjars/resource-exec-tor-gpl-*-filtered.jar` with
+  `src/main/deploy/package/osx/Ashigaru.entitlements` before `jlink` links that jar, so Tor can compile
+  its proof-of-work solver instead of interpreting it. The signature travels in the binary, so the jar
+  is rewritten once and later builds see it already signed. `./gradlew run` uses the daemon as kmp-tor
+  ships it, which carries no entitlements: `Tor.daemonCanCompileProofOfWork()` reads the payload and
+  asks for the interpreted solver there. The task fails if it cannot find the jar or the daemon in it,
+  rather than shipping a daemon that silently interprets.
 
 **Versioning.** The repository keeps a base version (`1.5.x`) in two places that must agree:
 `ashigaruTerminalVersion` in `build.gradle` (the installer) and `AshigaruTerminal.APP_VERSION` (the app); `AppVersionTest`

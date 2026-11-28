@@ -20,15 +20,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ServerSocket;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPInputStream;
 
 public class Tor {
     private static final Logger log = LoggerFactory.getLogger(Tor.class);
@@ -49,6 +52,8 @@ public class Tor {
     private static volatile IPSocketAddress socksAddress;
     //Set while the daemon is being stopped on purpose, so its listener going away is not taken for a death
     private static volatile boolean stopRequested;
+    //Whether the daemon this build carries may compile its proof-of-work solver, read from the daemon once
+    private static volatile Boolean daemonMayCompile;
     //What the running daemon said when asked, for the diagnostics block and the log. Never read from a file:
     //kmp-tor hands Tor its configuration on stdin (--torrc-file -), so nothing on disk shows what it was given.
     private static volatile String daemonFacts = "Tor:      not asked yet\nTor PoW:  not asked yet\n";
@@ -136,11 +141,13 @@ public class Tor {
                 }
             });
 
-            //On a Mac, Tor stopped dead seconds after the swap engine began dialling makers' onion services.
-            //Those can ask for a proof of work, which Tor solves with code it compiles while running, something
-            //macOS restricts. Unconfirmed as the cause, so this is a precaution: there, solve it interpreted,
-            //which is slower and compiles nothing.
-            if(isMac()) {
+            //Tor stopped dead on a Mac seconds after the swap engine began dialling makers' onion services.
+            //Those can ask for a proof of work, which Tor solves fastest with code it compiles while running.
+            //macOS lets only a hardened-runtime binary that carries allow-jit allocate executable memory, and
+            //the daemon kmp-tor ships does not. The build signs it with this app's entitlements where it can
+            //(signTorDaemon in build.gradle); when the daemon in use carries that signature, Tor's own default
+            //is the right answer. When it does not, as in a development run, ask for the interpreted solver.
+            if(isMac() && !daemonCanCompileProofOfWork()) {
                 b.config((config, environment) -> config.put(TorOption.CompiledProofOfWorkHash.asSetting(setting -> setting.disable())));
             }
 
@@ -202,8 +209,9 @@ public class Tor {
     /**
      * Asks the running daemon for its version, its pid and the proof-of-work setting it actually has, over the
      * control connection, and keeps the answer for {@link #diagnostics()} and the log. On macOS Ashigaru asks for
-     * interpreted proof of work (CompiledProofOfWorkHash 0); a Java callback saying so does not show that the daemon
-     * took it, and this does. Called when the daemon's listener comes up, before anything is dialled through it.
+     * interpreted proof of work unless the daemon carries the entitlement that lets it compile one; a Java callback
+     * saying so does not show that the daemon took it, and this does. Called when the daemon's listener comes up,
+     * before anything is dialled through it.
      */
     private static void askDaemon() {
         TorRuntime asked = runtime;
@@ -224,16 +232,62 @@ public class Tor {
         asked.enqueue(new TorCmd.Config.Get(TorOption.CompiledProofOfWorkHash.INSTANCE), throwable -> {
             log.warn("Could not ask Tor for CompiledProofOfWorkHash", throwable);
         }, entries -> {
-            String setting = describeProofOfWork(entries.stream().map(entry -> entry.setting + (entry.isDefault ? " (default)" : " (set)")).toList(), isMac());
+            boolean mayCompile = !isMac() || daemonCanCompileProofOfWork();
+            String setting = describeProofOfWork(entries.stream().map(entry -> entry.setting + (entry.isDefault ? " (default)" : " (set)")).toList(), mayCompile);
             daemonFacts = daemonFacts.substring(0, daemonFacts.indexOf("Tor PoW:")) + "Tor PoW:  " + setting + "\n";
             log.info("Tor daemon: " + setting);
         });
     }
 
     /** Words for the answer to GETCONF CompiledProofOfWorkHash, with what Ashigaru asked for on this system */
-    static String describeProofOfWork(List<String> answers, boolean mac) {
+    static String describeProofOfWork(List<String> answers, boolean mayCompile) {
         String got = answers.isEmpty() ? "no answer" : String.join(", ", answers);
-        return "CompiledProofOfWorkHash=" + got + "; Ashigaru asks for " + (mac ? "0 (interpreted) on this system" : "Tor's default on this system");
+        return "CompiledProofOfWorkHash=" + got + "; Ashigaru asks for " + (mayCompile ? "Tor's default on this system" : "0 (interpreted) on this system");
+    }
+
+    /**
+     * True when the Tor daemon this build carries is signed so macOS lets it allocate executable memory, which is
+     * what its compiled proof-of-work solver needs. The build signs the daemon where it can; a development build
+     * carries the one kmp-tor ships, hardened-runtime signed with no entitlements, so this stays false there. That
+     * shipped copy is the one that runs: kmp-tor unpacks it over any older daemon in the work directory on the first
+     * extraction of every run.
+     */
+    static boolean daemonCanCompileProofOfWork() {
+        Boolean known = daemonMayCompile;
+        if(known == null) {
+            known = carriesJitEntitlement(readShippedDaemon());
+            daemonMayCompile = known;
+        }
+        return known;
+    }
+
+    /** The daemon kmp-tor ships, before it is extracted, or null when it cannot be read */
+    private static byte[] readShippedDaemon() {
+        String arch = System.getProperty("os.arch", "").contains("aarch64") ? "aarch64" : "x86_64";
+        String path = "io/matthewnelson/kmp/tor/resource/exec/tor/native/macos/" + arch + "/tor.gz";
+        //A class loader search is not subject to the module system's resource encapsulation, so this finds the
+        //resource in the kmp-tor module whether the app runs from a classpath or from a jlink image
+        try(InputStream in = Tor.class.getClassLoader().getResourceAsStream(path)) {
+            if(in == null) {
+                log.warn("Could not read the Tor daemon at " + path + " to see whether it may compile its proof of work");
+                return null;
+            }
+            try(GZIPInputStream gzip = new GZIPInputStream(in)) {
+                return gzip.readAllBytes();
+            }
+        } catch(IOException e) {
+            log.warn("Could not read the Tor daemon at " + path + " to see whether it may compile its proof of work", e);
+            return null;
+        }
+    }
+
+    /** True when these bytes are a Mach-O binary signed with the entitlement macOS requires to run compiled code */
+    static boolean carriesJitEntitlement(byte[] daemon) {
+        if(daemon == null) {
+            return false;
+        }
+        //The entitlements travel inside the signature the binary carries, so they are in its bytes
+        return new String(daemon, StandardCharsets.ISO_8859_1).contains("com.apple.security.cs.allow-jit");
     }
 
     private static String executableOf(String pid) {

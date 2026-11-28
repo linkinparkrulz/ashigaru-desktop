@@ -517,6 +517,98 @@ kmpTorResourceFilterJar {
     keepTorCompilation("current", "current")
 }
 
+//macOS hands out executable memory only to a hardened-runtime binary that carries allow-jit and
+//allow-unsigned-executable-memory. kmp-tor's daemon is hardened-runtime signed with neither, so Tor cannot
+//compile its proof-of-work solver and interprets it instead: a core per onion service that asks for a puzzle.
+//Sign the daemon inside the resource jar here, before jlink links that jar into the image, so the copy
+//kmp-tor extracts at start is one macOS lets compile it. The signature lives in the binary, so the jar only
+//has to be rewritten once and a later build sees it already signed.
+if (os.macOsX) {
+    def torEntry = "io/matthewnelson/kmp/tor/resource/exec/tor/native/macos/${releaseArch}/tor.gz"
+    def torEntitlements = file('src/main/deploy/package/osx/Ashigaru.entitlements')
+    def torResourceJar = file("${buildDir}/jlinkbase/jlinkjars/resource-exec-tor-gpl-jvm-${vTor}-filtered.jar")
+    def jitEntitlement = 'com.apple.security.cs.allow-jit'
+
+    tasks.register('signTorDaemon') {
+        description = 'Signs the Tor daemon in the resource jar so macOS lets it compile its proof of work'
+        //prepareModulesDir is what copies the filtered resource jar into the directory jlink reads
+        dependsOn 'prepareModulesDir'
+        inputs.file(torEntitlements)
+        outputs.file(torResourceJar)
+
+        doLast {
+            if(!torResourceJar.isFile()) {
+                throw new GradleException("${torResourceJar} is not there to sign")
+            }
+
+            byte[] daemon = null
+            new java.util.zip.ZipFile(torResourceJar).withCloseable { zip ->
+                def entry = zip.getEntry(torEntry)
+                if(entry == null) {
+                    throw new GradleException("${torResourceJar} carries no ${torEntry}")
+                }
+                new java.util.zip.GZIPInputStream(zip.getInputStream(entry)).withCloseable { stream ->
+                    daemon = stream.readAllBytes()
+                }
+            }
+
+            //An already signed daemon needs nothing: re-signing it would rewrite the jar on every build
+            if(new String(daemon, 'ISO-8859-1').contains(jitEntitlement)) {
+                return
+            }
+
+            def signDir = file("${buildDir}/tmp/signTorDaemon")
+            delete(signDir)
+            signDir.mkdirs()
+            def binary = new File(signDir, 'tor')
+            binary.bytes = daemon
+            binary.setExecutable(true)
+
+            exec {
+                commandLine 'codesign', '--force', '--sign', '-', '--options', 'runtime',
+                            '--entitlements', torEntitlements.absolutePath, binary.absolutePath
+            }
+
+            byte[] signed = binary.bytes
+            if(!new String(signed, 'ISO-8859-1').contains(jitEntitlement)) {
+                throw new GradleException('codesign did not put the JIT entitlement on the Tor daemon')
+            }
+
+            def compressed = new java.io.ByteArrayOutputStream()
+            new java.util.zip.GZIPOutputStream(compressed).withCloseable { it.write(signed) }
+
+            //Rewrite the jar with that one entry replaced and every other entry, manifest and versioned module
+            //descriptor included, copied as it was, so the jar stays the module jlink links
+            def rewritten = new File(signDir, torResourceJar.name)
+            new java.util.zip.ZipOutputStream(new java.io.BufferedOutputStream(new java.io.FileOutputStream(rewritten))).withCloseable { out ->
+                new java.util.zip.ZipFile(torResourceJar).withCloseable { zip ->
+                    zip.entries().each { entry ->
+                        def copy = new java.util.zip.ZipEntry(entry.name)
+                        copy.time = entry.time
+                        if(!entry.isDirectory() && entry.extra != null) {
+                            copy.setExtra(entry.extra)
+                        }
+                        out.putNextEntry(copy)
+                        if(entry.name == torEntry) {
+                            out.write(compressed.toByteArray())
+                        } else if(!entry.isDirectory()) {
+                            zip.getInputStream(entry).withCloseable { it.transferTo(out) }
+                        }
+                        out.closeEntry()
+                    }
+                }
+            }
+            java.nio.file.Files.move(rewritten.toPath(), torResourceJar.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            logger.lifecycle("Signed the Tor daemon in ${torResourceJar.name} for compiled proof of work")
+        }
+    }
+
+    //jlink links that jar into lib/modules, so the signing has to land before it runs
+    tasks.named('jlink').configure {
+        dependsOn 'signTorDaemon'
+    }
+}
+
 //JNA and Argon2 bundle native libraries for ~20 OS/architectures into the merged module.
 //Keep only the target OS/architecture to cut ~5 MB from the packaged image.
 tasks.named('prepareMergedJarsDir').configure {
