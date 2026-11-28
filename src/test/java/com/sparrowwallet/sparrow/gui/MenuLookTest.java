@@ -112,9 +112,7 @@ class MenuLookTest {
             java.util.List<TextField> reached = new java.util.ArrayList<>();
             for(TextField field : new TextField[] {secret, plain}) {
                 field.addEventHandler(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> reached.add(field));
-                javafx.scene.input.KeyEvent copy = new javafx.scene.input.KeyEvent(javafx.scene.input.KeyEvent.KEY_PRESSED, "", "",
-                        javafx.scene.input.KeyCode.C, false, true, false, false);
-                javafx.event.Event.fireEvent(field, copy);
+                javafx.event.Event.fireEvent(field, JavaFXTestSupport.shortcut(javafx.scene.input.KeyCode.C));
             }
             assertEquals(java.util.List.of(plain), reached, "Ctrl+C is stopped before it reaches the secret field");
             assertTrue(TextFieldMenu.isSecret(secret));

@@ -17,7 +17,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -240,7 +239,7 @@ class Bip47MessageSignerScreenTest {
     void controlEnterSignsFromTheMessageBox() throws Exception {
         screen(List.of(wallet("main")), s -> {
             s.message().setText("keyboard");
-            s.message().fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "\r", KeyCode.ENTER, false, true, false, false));
+            s.message().fireEvent(JavaFXTestSupport.shortcut(KeyCode.ENTER));
             assertEquals("Message signed", s.title().getText());
         });
     }

@@ -1,7 +1,10 @@
 package com.sparrowwallet.sparrow.testutil;
 
 import javafx.application.Platform;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 
+import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,6 +28,15 @@ public final class JavaFXTestSupport {
                 // Toolkit already started by another test class in this JVM - fine.
             }
         }
+    }
+
+    /**
+     * A press of the platform's shortcut combination with this key: Ctrl off a Mac, Cmd on one. KeyEvent.isShortcutDown()
+     * reads the platform's own modifier, so an event built with controlDown alone is the shortcut only off a Mac.
+     */
+    public static KeyEvent shortcut(KeyCode code) {
+        boolean mac = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("mac");
+        return new KeyEvent(KeyEvent.KEY_PRESSED, "", "", code, false, !mac, false, mac);
     }
 
     /**

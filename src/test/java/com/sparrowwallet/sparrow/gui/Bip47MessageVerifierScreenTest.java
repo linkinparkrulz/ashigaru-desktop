@@ -9,7 +9,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -156,7 +155,7 @@ class Bip47MessageVerifierScreenTest {
             s.code().setText(CODE);
             s.block().setText(BLOCK);
             //Enter alone types a line break in a text area; Ctrl+Enter is the shortcut
-            s.block().fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "\r", KeyCode.ENTER, false, true, false, false));
+            s.block().fireEvent(JavaFXTestSupport.shortcut(KeyCode.ENTER));
             assertEquals("Signature verified", s.title().getText());
         });
     }
