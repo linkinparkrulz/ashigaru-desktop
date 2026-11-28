@@ -416,7 +416,10 @@ public class SwapOffersPane extends VBox {
                 gaps.add(SwapOffers.behindMostText(row.behindMost()));
             }
             if(!gaps.isEmpty()) {
-                amount.getChildren().add(wrapped(String.join(" · ", gaps), "review-fine"));
+                Label gap = wrapped(String.join(" · ", gaps), "review-fine");
+                //The word is in every row, so its meaning follows the pointer rather than a line of explanation above the table
+                gap.setTooltip(new Tooltip(SwapOffers.PREMIUM_EXPLAINED));
+                amount.getChildren().add(gap);
             }
         } else {
             amount.getChildren().add(label("—", "offer-figure-dim"));
