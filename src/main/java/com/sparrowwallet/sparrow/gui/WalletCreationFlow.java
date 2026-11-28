@@ -169,6 +169,9 @@ public class WalletCreationFlow {
         label.setMinHeight(Region.USE_PREF_SIZE);
     }
 
+    /** The two cards in the type step, and the value the step returns for each. */
+    private static final String TYPE_HOT = "Hot wallet", TYPE_WATCH = "Watch-only";
+
     /** Entry point — call from the JavaFX UI thread. */
     public void start() {
         String walletName = askWalletName();
@@ -177,7 +180,7 @@ public class WalletCreationFlow {
         String walletType = askWalletType();
         if (walletType == null) return;
 
-        if ("Hot Wallet".equals(walletType)) {
+        if (TYPE_HOT.equals(walletType)) {
             showBip39Dialog(walletName);
         } else {
             showWatchOnlyDialog(walletName);
@@ -223,7 +226,7 @@ public class WalletCreationFlow {
 
             String name = nameField.getText().trim();
             if (name.isEmpty()) {
-                showError("Invalid Name", "Please enter a name for the wallet.");
+                showError("Name needed", "Enter a name for the wallet.");
                 continue;
             }
             if (Storage.walletExists(name)) {
@@ -246,10 +249,10 @@ public class WalletCreationFlow {
                 "How do you want to set up this wallet?");
         dlg.getDialogPane().getButtonTypes().add(ButtonType.CANCEL);
 
-        Button hot = typeCard("Hot Wallet", "Create a new wallet or restore from a BIP39 seed phrase.");
-        Button watch = typeCard("Watch Only", "Import an xpub or output descriptor to watch addresses.");
-        hot.setOnAction(e -> { dlg.setResult("Hot Wallet"); dlg.close(); });
-        watch.setOnAction(e -> { dlg.setResult("Watch Only"); dlg.close(); });
+        Button hot = typeCard(TYPE_HOT, "Create a new wallet, or restore one from its seed words.");
+        Button watch = typeCard(TYPE_WATCH, "Import an xpub or output descriptor to watch addresses.");
+        hot.setOnAction(e -> { dlg.setResult(TYPE_HOT); dlg.close(); });
+        watch.setOnAction(e -> { dlg.setResult(TYPE_WATCH); dlg.close(); });
 
         VBox content = new VBox(12, hot, watch);
         content.setPadding(new Insets(20));
@@ -746,12 +749,12 @@ public class WalletCreationFlow {
     }
 
     // -------------------------------------------------------------------------
-    // Step 3b – Watch Only wallet dialog
+    // Step 3b – watch-only wallet dialog
     // -------------------------------------------------------------------------
 
     private void showWatchOnlyDialog(String walletName) {
         Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("Create Watch Only Wallet – " + walletName);
+        dlg.setTitle("Create watch-only wallet – " + walletName);
         dlg.initOwner(owner);
         styleWizardDialog(dlg, "NEW / RESTORE WALLET", "Watch-only wallet",
                 "Import an xpub or output descriptor to watch addresses without spending.");

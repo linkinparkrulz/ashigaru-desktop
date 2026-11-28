@@ -175,10 +175,10 @@ public class AshigaruTx0Controller implements Initializable {
         svc.setOnFailed(e -> {
             Throwable ex = e.getSource().getException();
             while (ex.getCause() != null) ex = ex.getCause();
-            String msg = ex.getMessage();
+            log.warn("Could not reach the Whirlpool coordinator", ex);
             Platform.runLater(() -> {
                 var result = AppServices.showWarningDialog(
-                        "Error fetching pools", "Could not reach Whirlpool coordinator. Try again?\n" + msg,
+                        "Pools not fetched", "Could not reach the Whirlpool coordinator. Try again?",
                         ButtonType.CANCEL, ButtonType.OK);
                 if (result.isPresent() && result.get() == ButtonType.OK) {
                     fetchPools(true);
@@ -243,20 +243,20 @@ public class AshigaruTx0Controller implements Initializable {
         previewSvc.setOnFailed(e -> {
             Throwable ex = e.getSource().getException();
             while (ex.getCause() != null) ex = ex.getCause();
-            String msg = ex.getMessage();
-            Platform.runLater(() ->
-                    AppServices.showErrorDialog("Error fetching Tx0 preview", msg));
+            log.warn("Could not calculate the Tx0 preview", ex);
+            Platform.runLater(() -> AppServices.showErrorDialog("Tx0 preview not calculated",
+                    "Could not calculate the Tx0 preview. See Tools → Logs for the details."));
         });
         previewSvc.start();
     }
 
     private void setPreviewCalculating() {
         flow.clear("Calculating\u2026");
-        premixOutputsValue.setText("Calculating...");
-        amountToWhirlpoolValue.setText("Calculating...");
-        unmixedChangeValue.setText("Calculating...");
-        minerFeeValue.setText("Calculating...");
-        totalFeesValue.setText("Calculating...");
+        premixOutputsValue.setText("Calculating…");
+        amountToWhirlpoolValue.setText("Calculating…");
+        unmixedChangeValue.setText("Calculating…");
+        minerFeeValue.setText("Calculating…");
+        totalFeesValue.setText("Calculating…");
         broadcastBtn.setDisable(true);
         selectedPool = null;
     }
@@ -349,9 +349,10 @@ public class AshigaruTx0Controller implements Initializable {
         svc.setOnFailed(e -> {
             Throwable ex = e.getSource().getException();
             while (ex != null && ex.getCause() != null) ex = ex.getCause();
-            String msg = ex != null ? ex.getMessage() : "Unknown error";
+            log.error("Could not broadcast Transaction Zero", ex);
             hideOverlay();
-            AppServices.showErrorDialog("Error broadcasting Transaction Zero", msg);
+            AppServices.showErrorDialog("Transaction Zero not broadcast",
+                    "The transaction was not sent. See Tools → Logs for the details.");
         });
         svc.start();
     }
@@ -416,7 +417,7 @@ public class AshigaruTx0Controller implements Initializable {
     record DisplayPool(Pool pool) {
         @Override
         public String toString() {
-            if (pool == null) return "Fetching pools...";
+            if (pool == null) return "Fetching pools…";
             UnitFormat fmt = Config.get().getUnitFormat() == null ? UnitFormat.DOT : Config.get().getUnitFormat();
             return fmt.formatBtcValue(pool.getDenomination()) + " BTC";
         }

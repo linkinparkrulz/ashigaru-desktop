@@ -28,7 +28,7 @@ import java.util.NoSuchElementException;
 import java.util.ResourceBundle;
 
 /**
- * Controller for the "Mix To..." configuration dialog.
+ * Controller for the "Mix To…" configuration dialog.
  * Lets the user pick a destination wallet and minimum mix count.
  */
 public class AshigaruMixToController implements Initializable {

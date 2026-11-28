@@ -124,7 +124,7 @@ public class XprvKeystoreImportPane extends TitledDescriptionPane {
         xprvField.setPrefRowCount(2);
         xprvField.setWrapText(true);
         xprvField.getStyleClass().add("fixed-width");
-        xprvField.setPromptText(ExtendedKey.Header.fromScriptType(ScriptType.P2PKH, true).getName() + (wallet != null ? "/" + ExtendedKey.Header.fromScriptType(wallet.getScriptType(), true).getName() : "") + "...");
+        xprvField.setPromptText(ExtendedKey.Header.fromScriptType(ScriptType.P2PKH, true).getName() + (wallet != null ? "/" + ExtendedKey.Header.fromScriptType(wallet.getScriptType(), true).getName() : "") + "\u2026");
         HBox.setHgrow(xprvField, Priority.ALWAYS);
 
         if(xprv != null) {

@@ -133,7 +133,7 @@ public class WhirlpoolServices {
                     exception = exception.getCause();
                 }
                 if (exception instanceof TimeoutException || exception instanceof SocketTimeoutException) {
-                    EventManager.get().post(new StatusEvent("Error connecting to Whirlpool server, will retry soon..."));
+                    EventManager.get().post(new StatusEvent("Could not connect to the Whirlpool server, will retry soon\u2026"));
                     if (torProxy != null) {
                         whirlpool.refreshTorCircuits();
                     }
@@ -395,7 +395,7 @@ public class WhirlpoolServices {
             if (whirlpool != null && whirlpool.isStarted() && !whirlpool.isStopping()) {
                 log.warn("Rapidly increasing address index detected, temporarily disconnecting " + event.getWallet().getMasterName() + " from Whirlpool");
                 Platform.runLater(() -> {
-                    EventManager.get().post(new StatusEvent("Error communicating with Whirlpool, will retry soon..."));
+                    EventManager.get().post(new StatusEvent("Could not reach the Whirlpool server, will retry soon\u2026"));
                     whirlpool.setStartupServiceDelay(Duration.minutes(5));
                     stopWhirlpool(whirlpool, false);
                 });

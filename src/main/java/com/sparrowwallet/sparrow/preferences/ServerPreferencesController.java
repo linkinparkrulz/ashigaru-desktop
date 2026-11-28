@@ -59,7 +59,7 @@ import java.util.stream.Collectors;
 public class ServerPreferencesController extends PreferencesDetailController {
     private static final Logger log = LoggerFactory.getLogger(ServerPreferencesController.class);
 
-    private static final Server MANAGE_ALIASES_SERVER = new Server("tcp://localhost", "Manage Aliases...");
+    private static final Server MANAGE_ALIASES_SERVER = new Server("tcp://localhost", "Manage aliases\u2026");
 
     @FXML
     private GridPane serverDetailPane;
@@ -463,7 +463,7 @@ public class ServerPreferencesController extends PreferencesDetailController {
         boolean isConnected = AppServices.isConnecting() || AppServices.isConnected();
 
         if(Config.get().getServerType() == ServerType.BITCOIN_CORE && AppServices.isConnecting()) {
-            testResults.appendText("Connecting to server, please wait...");
+            testResults.appendText("Connecting to the server\u2026");
         }
 
         testConnection.managedProperty().bind(testConnection.visibleProperty());
@@ -499,7 +499,7 @@ public class ServerPreferencesController extends PreferencesDetailController {
         restartTor.setOnAction(event -> {
             if(AppServices.get().restartTor()) {
                 restartingTor = true;
-                testResults.setText("Restarting Tor...");
+                testResults.setText("Restarting Tor\u2026");
             }
         });
 
@@ -748,7 +748,7 @@ public class ServerPreferencesController extends PreferencesDetailController {
         if(serverBanner != null) {
             testResults.setText(testResults.getText() + "\nServer Banner: " + serverBanner);
         }
-        testResults.appendText("\n\nSettings saved. Establishing connection in the background...");
+        testResults.appendText("\n\nSettings saved. Establishing a connection in the background\u2026");
     }
 
     private void showConnectionFailure(Throwable exception) {
@@ -775,7 +775,7 @@ public class ServerPreferencesController extends PreferencesDetailController {
                             Platform.runLater(this::startElectrumConnection);
                             return;
                         } else {
-                            AppServices.showErrorDialog("Could not delete certificate", "The certificate file at " + savedCrtFile.getAbsolutePath() + " could not be deleted.\n\nPlease delete this file manually.");
+                            AppServices.showErrorDialog("Could not delete certificate", "The certificate file at " + savedCrtFile.getAbsolutePath() + " could not be deleted.\n\nDelete it yourself, then try again.");
                         }
                     }
                 }
@@ -1175,7 +1175,7 @@ public class ServerPreferencesController extends PreferencesDetailController {
             }
             if(restartingTor && event instanceof TorReadyStatusEvent) {
                 restartingTor = false;
-                testResults.appendText("\nTor restarted, reconnecting...");
+                testResults.appendText("\nTor restarted, reconnecting\u2026");
             } else if(restartingTor && event instanceof TorFailedStatusEvent) {
                 restartingTor = false;
                 testResults.appendText("\nTor failed to restart");

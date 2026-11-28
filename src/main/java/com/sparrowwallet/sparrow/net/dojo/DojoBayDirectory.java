@@ -55,7 +55,7 @@ public class DojoBayDirectory {
     static final int MAX_SIGNED_CHARS = 4 * 1024;
 
     private static final Pattern PAYMENT_CODE = Pattern.compile("PM8T[1-9A-HJ-NP-Za-km-z]+");
-    /** The signed pairing, then the signer's code on a line of its own: "{...}\nBIP47: PM8T..." */
+    /** The signed pairing, then the signer's code on a line of its own: "{...}\nBIP47: PM8T\u2026" */
     private static final Pattern LISTING_TAIL = Pattern.compile("^([\\s\\S]*?)\\n\\s*BIP47:\\s*\\n?(\\S+)\\s*$");
 
     /** Why a directory or listing is not trusted */

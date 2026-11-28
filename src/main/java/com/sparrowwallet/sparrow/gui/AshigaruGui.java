@@ -157,22 +157,22 @@ public class AshigaruGui extends Application {
         AppServices.get().start();
 
         if (Config.get().getMode() != Mode.ONLINE) {
-            setSplashStatus(splashStage, "Offline mode enabled. Opening workspace...");
+            setSplashStatus(splashStage, "Offline mode enabled. Opening workspace…");
             skipRemainingSplashSteps(splashStage);
             PauseTransition offlineDelay = new PauseTransition(Duration.seconds(3));
             offlineDelay.setOnFinished(e -> revealMain.run());
             offlineDelay.play();
         } else {
-            setSplashStatus(splashStage, "Starting network services...");
+            setSplashStatus(splashStage, "Starting network services…");
             PauseTransition timeout = new PauseTransition(Duration.seconds(30));
             timeout.setOnFinished(e -> {
-                setSplashStatus(splashStage, "Opening workspace while network connects...");
+                setSplashStatus(splashStage, "Opening workspace while network connects…");
                 revealMain.run();
             });
 
             AppServices.onlineProperty().addListener((obs, wasOnline, isOnline) -> {
                 if (isOnline) {
-                    setSplashStatus(splashStage, "Connected. Opening workspace...");
+                    setSplashStatus(splashStage, "Connected. Opening workspace…");
                     timeout.stop();
                     revealMain.run();
                 }

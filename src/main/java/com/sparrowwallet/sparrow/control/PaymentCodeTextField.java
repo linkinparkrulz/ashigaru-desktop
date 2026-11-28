@@ -16,7 +16,7 @@ public class PaymentCodeTextField extends CopyableTextField {
     }
 
     private void setPaymentCodeString() {
-        String abbrevPcode = paymentCodeStr.substring(0, 12) + "..." + paymentCodeStr.substring(paymentCodeStr.length() - 5);
+        String abbrevPcode = paymentCodeStr.substring(0, 12) + "\u2026" + paymentCodeStr.substring(paymentCodeStr.length() - 5);
         setText(abbrevPcode);
     }
 

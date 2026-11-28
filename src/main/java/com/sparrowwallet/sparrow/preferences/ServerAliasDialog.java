@@ -69,7 +69,7 @@ public class ServerAliasDialog extends Dialog<Server> {
         });
         aliasColumn.setCellFactory(value -> new AliasCell());
         aliasColumn.setGraphic(getTagGlyph());
-        //Room for a name to be read whole, rather than "FART9 FULC..."
+        //Room for a name to be read whole, rather than "FART9 FULC\u2026"
         aliasColumn.setMinWidth(200);
 
         serverTable.getColumns().add(urlColumn);

@@ -59,7 +59,7 @@
                             <MenuItem fx:id="lockWalletBtn" text="Lock wallet" onAction="#onLockWallet"/>
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="openWalletItem" text="Open another wallet…" onAction="#onOpenWallet"/>
-                            <MenuItem fx:id="createWalletItem" text="New / restore…" onAction="#onCreateWallet"/>
+                            <MenuItem fx:id="createWalletItem" text="New / Restore…" onAction="#onCreateWallet"/>
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="deleteWalletBtn" text="Delete wallet…" onAction="#onDeleteWallet"/>
                         </items>

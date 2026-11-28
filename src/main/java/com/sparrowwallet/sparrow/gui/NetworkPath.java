@@ -69,7 +69,7 @@ public class NetworkPath extends HBox {
             torFailed = false;
             tor.set(true, false, "Connected", "Bundled Tor, every connection");
         } else if(torFailed) {
-            tor.set(false, false, "Failed to start", "Use Restart Tor below");
+            tor.set(false, false, "Didn't start", "Use Restart Tor below");
         } else {
             tor.set(false, connecting, connecting ? "Starting…" : "Not running", "Bundled Tor, every connection");
         }

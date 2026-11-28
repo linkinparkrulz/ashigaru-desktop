@@ -37,7 +37,7 @@
                     <Button minWidth="-Infinity" fx:id="releaseCodeBtn" text="Use Release Signing Code"
                             onAction="#onUseReleaseCode" styleClass="secondary-btn"/>
                 </HBox>
-                <TextField fx:id="paymentCodeField" promptText="PM8T..." styleClass="address-field"/>
+                <TextField fx:id="paymentCodeField" promptText="PM8T…" styleClass="address-field"/>
                 <HBox alignment="CENTER_LEFT" spacing="8">
                     <TextField fx:id="payNymHandleField" promptText="Or look one up by +handle" HBox.hgrow="ALWAYS"/>
                     <Button minWidth="-Infinity" fx:id="payNymLookupBtn" text="Look up" onAction="#onLookupPayNym"
@@ -70,7 +70,7 @@
                                   promptText="Message that was signed" styleClass="mono-area"/>
                         <Label text="Base64 signature" styleClass="field-label"/>
                         <TextArea fx:id="signatureArea" prefRowCount="2" minHeight="56" wrapText="true"
-                                  promptText="H9..." styleClass="mono-area"/>
+                                  promptText="H9…" styleClass="mono-area"/>
                         <Label minHeight="-Infinity" wrapText="true" styleClass="field-label"
                                text="Spaces and line breaks in the message must match exactly what was signed."/>
                     </VBox>

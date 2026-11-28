@@ -399,7 +399,7 @@ public class AppServices {
                                     Platform.runLater(() -> restartService(connectionService));
                                     return;
                                 } else {
-                                    AppServices.showErrorDialog("Could not delete certificate", "The certificate file at " + crtFile.getAbsolutePath() + " could not be deleted.\n\nPlease delete this file manually.");
+                                    AppServices.showErrorDialog("Certificate not deleted", "Could not delete the certificate file at " + crtFile.getAbsolutePath() + ". Delete it yourself, then connect again.");
                                 }
                             }
                         }
@@ -827,7 +827,7 @@ public class AppServices {
     }
 
     public static Optional<ButtonType> showErrorDialog(String title, String content, ButtonType... buttons) {
-        return showAlertDialog(title, content == null ? "See log file (Help menu)" : content, Alert.AlertType.ERROR, buttons);
+        return showAlertDialog(title, content == null ? "See Tools → Logs for the details." : content, Alert.AlertType.ERROR, buttons);
     }
 
     public static Optional<ButtonType> showSuccessDialog(String title, String content, ButtonType... buttons) {
@@ -1214,7 +1214,8 @@ public class AppServices {
                 Platform.runLater(() -> EventManager.get().post(new SendPaymentsEvent(sendingWallet, List.of(bitcoinURI.toPayment()))));
             }
         } catch(Exception e) {
-            showErrorDialog("Not a valid bitcoin URI", e.getMessage());
+            log.warn("Could not read the bitcoin URI", e);
+            showErrorDialog("Bitcoin link not recognised", "That link is not a valid bitcoin URI.");
         }
     }
 
@@ -1229,13 +1230,13 @@ public class AppServices {
                     auth47.sendResponse(wallet);
                     EventManager.get().post(new StatusEvent("Successfully authenticated to " + auth47.getCallback().getHost()));
                 } catch(Exception e) {
-                    log.error("Error authenticating auth47 URI", e);
-                    showErrorDialog("Error authenticating", "Failed to authenticate.\n\n" + e.getMessage());
+                    log.error("Could not authenticate the auth47 URI", e);
+                    showErrorDialog("Not authenticated", "Could not log in to " + auth47.getCallback().getHost() + ". See Tools → Logs for the details.");
                 }
             }
         } catch(Exception e) {
             log.error("Not a valid auth47 URI", e);
-            showErrorDialog("Not a valid auth47 URI", e.getMessage());
+            showErrorDialog("Auth47 link not recognised", "That link is not a valid auth47 URI.");
         }
     }
 
@@ -1273,7 +1274,7 @@ public class AppServices {
                         keyDerivationService.setOnFailed(workerStateEvent -> {
                             EventManager.get().post(new StorageEvent(storage.getWalletId(wallet), TimedEvent.Action.END, "Failed"));
                             if(keyDerivationService.getException() instanceof InvalidPasswordException) {
-                                Optional<ButtonType> optResponse = showErrorDialog("Invalid Password", "The wallet password was invalid. Try again?", ButtonType.CANCEL, ButtonType.OK);
+                                Optional<ButtonType> optResponse = showErrorDialog("Password not accepted", "That wallet password was not accepted. Try again?", ButtonType.CANCEL, ButtonType.OK);
                                 if(optResponse.isPresent() && optResponse.get().equals(ButtonType.OK)) {
                                     Platform.runLater(() -> openLnurlAuthUri(uri));
                                 }
@@ -1281,7 +1282,7 @@ public class AppServices {
                                 log.error("Error deriving wallet key", keyDerivationService.getException());
                             }
                         });
-                        EventManager.get().post(new StorageEvent(storage.getWalletId(wallet), TimedEvent.Action.START, "Decrypting wallet..."));
+                        EventManager.get().post(new StorageEvent(storage.getWalletId(wallet), TimedEvent.Action.START, "Decrypting wallet\u2026"));
                         keyDerivationService.start();
                     }
                 } else {
@@ -1289,16 +1290,17 @@ public class AppServices {
                         lnurlAuth.sendResponse(wallet);
                         EventManager.get().post(new StatusEvent("Successfully authenticated to " + lnurlAuth.getDomain()));
                     } catch(LnurlAuth.LnurlAuthException e) {
-                        showErrorDialog("Error authenticating", "Failed to authenticate.\n\n" + e.getMessage());
+                        log.warn("Could not authenticate with LNURL-auth", e);
+                        showErrorDialog("Not authenticated", "Could not log in to " + lnurlAuth.getDomain() + ". See Tools → Logs for the details.");
                     } catch(Exception e) {
                         log.error("Failed to authenticate using LNURL-auth", e);
-                        showErrorDialog("Error authenticating", "Failed to authenticate.\n\n" + e.getMessage());
+                        showErrorDialog("Not authenticated", "Could not log in to " + lnurlAuth.getDomain() + ". See Tools → Logs for the details.");
                     }
                 }
             }
         } catch(Exception e) {
             log.error("Not a valid LNURL-auth URI", e);
-            showErrorDialog("Not a valid LNURL-auth URI", e.getMessage());
+            showErrorDialog("Login link not recognised", "That link is not a valid LNURL-auth URI.");
         }
     }
 

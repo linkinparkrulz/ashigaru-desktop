@@ -78,7 +78,7 @@ public class GeneralPreferencesController extends PreferencesDetailController {
                 }
 
                 if(server == CUSTOM_BLOCK_EXPLORER) {
-                    return "Custom...";
+                    return "Custom\u2026";
                 }
 
                 return server.getAlias() != null ? server.getAlias() : server.getHost();
@@ -135,7 +135,7 @@ public class GeneralPreferencesController extends PreferencesDetailController {
                 }
 
                 if(server == CUSTOM_AM_I_EXPOSED) {
-                    return "Custom...";
+                    return "Custom\u2026";
                 }
 
                 return server.getHost();

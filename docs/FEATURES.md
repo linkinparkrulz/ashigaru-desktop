@@ -37,7 +37,7 @@ With no wallet open, the sidebar offers **Open Wallet…** and **New / Restore�
 ![Naming the wallet](images/create-wallet-name.png)
 ![Choosing between a hot wallet and a watch-only wallet](images/create-wallet-type.png)
 
-- **Hot Wallet** creates a new BIP39 wallet or restores one from its seed words. **Watch Only** imports an xpub or output descriptor.
+- **Hot wallet** creates a new BIP39 wallet or restores one from its seed words. **Watch-only** imports an xpub or output descriptor.
 - A seed of 12 or 24 words (24 is recommended for a new wallet), generated here or entered.
 
 ![Choosing a 12 or 24 word seed](images/create-wallet-length.png)
@@ -81,7 +81,7 @@ Tick coins to act on them: **Preview Tx0** on Deposit, **Remix selected** on Pos
 - **View seed words…** (asks for the password of an encrypted wallet).
 - **Export labels… / Import labels…** in the BIP-329 format, to move labels to and from any wallet that supports it.
 - **Pair with Sentinel…** (below).
-- **Open another wallet… / New / restore… / Delete wallet…**
+- **Open another wallet… / New / Restore… / Delete wallet…**
 
 A wrong wallet password gives one plain message, and the password window is the same compact one everywhere.
 
@@ -113,7 +113,7 @@ Wallet menu → **Pair with Sentinel…** lets [Sentinel](https://github.com/Sen
 3. Scan the QR code, or press **Copy pairing text** and paste it into Sentinel.
 4. Type the three pairing words (with the hyphens between them) and tap **DECRYPT**.
 
-What is in the QR: the Deposit BIP44, BIP49 and BIP84 keys, Premix, Postmix and Bad Bank, and the wallet fingerprint. They are public keys only (XPUB, YPUB and ZPUB),
+What is in the QR: the Deposit BIP44, BIP49 and BIP84 keys, Premix, Postmix and Badbank, and the wallet fingerprint. (Sentinel names that last one "Bad Bank" on its own screen.) They are public keys only (XPUB, YPUB and ZPUB),
 never a seed or private key. An encrypted wallet asks for its password once, because the BIP44 and BIP49 keys are worked out from the seed. Keys the wallet does not
 have are left out and the window says which. **New words** makes different words and a different QR; the old ones stop working. Nothing is saved, logged or sent
 anywhere. Anyone who holds both the QR and the words can see the accounts' addresses and balances, so show it only to your own phone.

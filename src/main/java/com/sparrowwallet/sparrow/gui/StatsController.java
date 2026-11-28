@@ -155,8 +155,8 @@ public class StatsController implements Initializable {
 
         task.setOnFailed(e -> Platform.runLater(() -> {
             Throwable ex = task.getException();
-            log.error("Failed to fetch whirlpool stats", ex);
-            statusLabel.setText("Could not fetch statistics: " + (ex == null ? "unknown error" : ex.getMessage()));
+            log.error("Could not fetch the Whirlpool statistics", ex);
+            statusLabel.setText("Could not fetch the statistics. See Tools → Logs for the details.");
             refreshBtn.setDisable(false);
         }));
 

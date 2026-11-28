@@ -88,9 +88,9 @@ public class CoinTreeTable extends TreeTableView<Entry> {
                         setPlaceholder(new Label("Error loading transactions: " + event.getErrorMessage()));
                     } else if(event.isLoading()) {
                         if(event.getStatusMessage() != null) {
-                            setPlaceholder(new Label(event.getStatusMessage() + "..."));
+                            setPlaceholder(new Label(event.getStatusMessage()));
                         } else {
-                            setPlaceholder(new Label("Loading transactions..."));
+                            setPlaceholder(new Label("Loading transactions\u2026"));
                         }
                     } else {
                         setPlaceholder(getDefaultPlaceholder(event.getWallet()));
@@ -102,7 +102,7 @@ public class CoinTreeTable extends TreeTableView<Entry> {
 
     protected Node getDefaultPlaceholder(Wallet wallet) {
         StackPane stackPane = new StackPane();
-        stackPane.getChildren().add(AppServices.isConnecting() ? new Label("Loading transactions...") : new Label("No transactions"));
+        stackPane.getChildren().add(AppServices.isConnecting() ? new Label("Loading transactions\u2026") : new Label("No transactions"));
 
         if(Config.get().getServerType() == ServerType.BITCOIN_CORE && !AppServices.isConnecting()) {
             Hyperlink hyperlink = new Hyperlink();

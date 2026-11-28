@@ -149,7 +149,7 @@ public final class Bip47Signing {
                     + "Listings are signed with the Dojo's own listing tool, so this is not signed here.");
         }
 
-        //An Auth47 login is a signature of its challenge, "auth47://..." and nothing else, made with this very key. Someone who asks you to "sign a message"
+        //An Auth47 login is a signature of its challenge, "auth47://\u2026" and nothing else, made with this very key. Someone who asks you to "sign a message"
         //that is such a challenge would be asking you to log in as yourself on their behalf, so these are not signed here.
         if(message.toLowerCase(Locale.ROOT).contains(AUTH47_SCHEME)) {
             throw new IllegalArgumentException("The message contains an auth47:// login challenge. Signing it here would log you in to that service with this payment code, "

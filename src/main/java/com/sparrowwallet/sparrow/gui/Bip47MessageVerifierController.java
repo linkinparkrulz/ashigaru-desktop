@@ -120,7 +120,7 @@ public class Bip47MessageVerifierController {
 
         final String nymIdentifier = handle;
         payNymLookupBtn.setDisable(true);
-        showLookupStatus("Looking up " + nymIdentifier + "...");
+        showLookupStatus("Looking up " + nymIdentifier + "…");
 
         //compact: this needs the payment code, not the follower and following lists. A directory that does not answer is given
         //LOOKUP_TIMEOUT_SECONDS, and the request ends with the wait: its connection has the same timeout, and is closed if the wait ends first

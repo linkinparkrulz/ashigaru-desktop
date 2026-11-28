@@ -61,7 +61,7 @@ public class SwapService implements SwapHost {
     //Tor stopping by itself this soon after the engine started is put down to the engine
     static final long TOR_LOSS_WINDOW_MILLIS = 90_000;
     static final String PAUSED_FOR_TOR = "Swaps paused: Tor stopped right after the swap engine started, twice in a row. Your wallet stays connected. "
-            + "To try again, turn swaps off and on in Settings → Swaps. Please send the log from Tools → Logs.";
+            + "To try again, turn swaps off and on in Settings → Swaps. Send the log from Tools → Logs.";
 
     private static SwapService instance;
 

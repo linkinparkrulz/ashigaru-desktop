@@ -71,7 +71,7 @@ public class TitledDescriptionPane extends TitledPane {
 
         descriptionLabel = new Label(description);
         descriptionLabel.getStyleClass().add("description-label");
-        showHideLink = new Hyperlink("Details...");
+        showHideLink = new Hyperlink("Details\u2026");
         showHideLink.managedProperty().bind(showHideLink.visibleProperty());
         showHideLink.setOnAction(event -> {
             setExpanded(!this.isExpanded());

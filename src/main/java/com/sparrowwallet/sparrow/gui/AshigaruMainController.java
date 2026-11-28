@@ -525,7 +525,7 @@ public class AshigaruMainController implements Initializable {
             }
         } catch (Exception e) {
             log.error("Error loading wallet panel", e);
-            showError("Error", "Could not load wallet view: " + e.getMessage());
+            showError("Wallet view didn't load", "Could not load the wallet view. See Tools → Logs for the details.");
         }
     }
 
@@ -812,9 +812,11 @@ public class AshigaruMainController implements Initializable {
             verifySvc.setOnFailed(e -> {
                 Throwable ex = verifySvc.getException();
                 if (ex instanceof InvalidPasswordException) {
-                    showError("Wrong Password", "Incorrect password — wallet not deleted.");
+                    showError("Password not verified", "Incorrect password. The wallet was not deleted.");
                 } else {
-                    showError("Verification Failed", "Could not verify password: " + ex.getMessage());
+                    log.error("Could not verify the wallet password", ex);
+                    showError("Password not verified",
+                            "Could not verify the password, so the wallet was not deleted. See Tools → Logs for the details.");
                 }
             });
             verifySvc.start();

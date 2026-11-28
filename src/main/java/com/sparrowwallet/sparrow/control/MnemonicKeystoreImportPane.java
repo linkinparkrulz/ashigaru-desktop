@@ -94,7 +94,7 @@ public class MnemonicKeystoreImportPane extends MnemonicKeystorePane {
     }
 
     protected List<Node> createRightButtons() {
-        confirmButton = new Button("Re-enter Words...");
+        confirmButton = new Button("Re-enter words\u2026");
         confirmButton.setOnAction(event -> {
             confirmBackup();
         });
@@ -120,7 +120,7 @@ public class MnemonicKeystoreImportPane extends MnemonicKeystorePane {
         backButton.setTooltip(new Tooltip("Go back to the generated word list"));
         backButton.setVisible(false);
 
-        nextButton = new Button("Confirm Backup...");
+        nextButton = new Button("Confirm backup\u2026");
         nextButton.setOnAction(event -> {
             confirmRecord();
         });
@@ -241,7 +241,7 @@ public class MnemonicKeystoreImportPane extends MnemonicKeystorePane {
             importButton.setVisible(true);
             importButton.setDisable(false);
             setDescription("Ready to import");
-            showHideLink.setText("Show Derivation...");
+            showHideLink.setText("Show derivation\u2026");
             showHideLink.setVisible(false);
             setContent(getDerivationEntry(wallet.getScriptType().getDefaultDerivation()));
         }

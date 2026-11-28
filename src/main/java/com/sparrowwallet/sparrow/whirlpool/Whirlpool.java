@@ -696,7 +696,7 @@ public class Whirlpool {
             return new Task<>() {
                 protected Tx0Previews call() throws Exception {
                     updateProgress(-1, 1);
-                    updateMessage("Fetching premix preview...");
+                    updateMessage("Fetching premix preview\u2026");
 
                     Collection<UnspentOutput> utxos = utxoEntries.stream().map(utxoEntry -> Whirlpool.getUnspentOutput(utxoEntry.getNode(), utxoEntry.getBlockTransaction(), (int)utxoEntry.getHashIndex().getIndex())).collect(Collectors.toList());
                     return whirlpool.getTx0Previews(utxos);
@@ -721,7 +721,7 @@ public class Whirlpool {
             return new Task<>() {
                 protected Sha256Hash call() throws Exception {
                     updateProgress(-1, 1);
-                    updateMessage("Broadcasting premix transaction...");
+                    updateMessage("Broadcasting premix transaction\u2026");
 
                     Tx0 tx0 = whirlpool.broadcastTx0(pool, utxos);
                     return Sha256Hash.wrap(tx0.getTxid());
@@ -742,7 +742,7 @@ public class Whirlpool {
             return new Task<>() {
                 protected WhirlpoolWallet call() throws Exception {
                     updateProgress(-1, 1);
-                    updateMessage("Starting Whirlpool...");
+                    updateMessage("Starting Whirlpool\u2026");
 
                     try {
                         whirlpool.startingProperty.set(true);
@@ -772,7 +772,7 @@ public class Whirlpool {
             return new Task<>() {
                 protected Boolean call() throws Exception {
                     updateProgress(-1, 1);
-                    updateMessage("Disconnecting from Whirlpool...");
+                    updateMessage("Disconnecting from Whirlpool\u2026");
 
                     try {
                         whirlpool.stoppingProperty.set(true);

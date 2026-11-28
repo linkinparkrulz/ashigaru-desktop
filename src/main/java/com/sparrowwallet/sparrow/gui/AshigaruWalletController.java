@@ -368,7 +368,7 @@ public class AshigaruWalletController implements Initializable {
     // Rebinds the mix button's start/stop/mixing listener to the given wallet's Whirlpool
     // engine, so button text recovers on its own after a start/stop transition (including one
     // that produces no eligible-to-mix UTXOs, or a failed start) instead of staying stuck on
-    // "Starting..."/"Stopping..." until some unrelated event happens to call configureMixButtons.
+    // "Starting…"/"Stopping…" until some unrelated event happens to call configureMixButtons.
     private void bindWhirlpoolState(Wallet wallet) {
         rebindWhirlpoolState(AppServices.getWhirlpoolServices().getWhirlpool(wallet));
     }
@@ -592,7 +592,7 @@ public class AshigaruWalletController implements Initializable {
                 mixToBtn.setText("⚠ Mix-to wallet not open");
             }
         } else {
-            mixToBtn.setText("Mix To...");
+            mixToBtn.setText("Mix To…");
         }
     }
 
@@ -801,7 +801,7 @@ public class AshigaruWalletController implements Initializable {
 
     private void startMixing(Wallet wallet) {
         startMixBtn.setDisable(true);
-        startMixBtn.setText("Starting...");
+        startMixBtn.setText("Starting…");
         Platform.runLater(() -> {
             wallet.getMasterMixConfig().setMixOnStartup(Boolean.TRUE);
             EventManager.get().post(new WalletMasterMixConfigChangedEvent(wallet));
@@ -810,14 +810,14 @@ public class AshigaruWalletController implements Initializable {
             if (wp != null && !wp.isStarted() && AppServices.isConnected()) {
                 AppServices.getWhirlpoolServices().startWhirlpool(wallet, wp, true);
             } else if (activeAccountForm != null) {
-                //Nothing was started, so no engine state will change to put the button right: do it here, not leave it on "Starting..."
+                //Nothing was started, so no engine state will change to put the button right: do it here, not leave it on "Starting…"
                 configureMixButtons(activeAccountForm.getWallet());
             }
         });
     }
 
     private void stopMixing(Wallet wallet) {
-        startMixBtn.setText("Stopping...");
+        startMixBtn.setText("Stopping…");
         Platform.runLater(() -> {
             wallet.getMasterMixConfig().setMixOnStartup(Boolean.FALSE);
             EventManager.get().post(new WalletMasterMixConfigChangedEvent(wallet));
@@ -866,13 +866,13 @@ public class AshigaruWalletController implements Initializable {
         if (!AppServices.isConnected()) {
             AppServices.showAlertDialog("Not connected yet",
                     "Ashigaru isn't connected to a server yet. Mixing will be available once the "
-                            + "connection is established — please try again in a moment.",
+                            + "connection is established. Try again in a moment.",
                     Alert.AlertType.INFORMATION);
             return;
         }
         if (activeAccountSyncing) {
             AppServices.showAlertDialog("Still syncing",
-                    "Your wallet is still syncing to the latest block. Please wait until syncing "
+                    "Your wallet is still syncing to the latest block. Wait until syncing "
                             + "finishes, then try mixing again.",
                     Alert.AlertType.INFORMATION);
             return;
@@ -882,12 +882,12 @@ public class AshigaruWalletController implements Initializable {
         if (!forceTx0 && activeWallet.getStandardAccountType() == StandardAccount.WHIRLPOOL_POSTMIX) {
             Whirlpool wp = AppServices.getWhirlpoolServices().getWhirlpool(activeAccountForm.getMasterWalletId());
             if (wp == null) {
-                AppServices.showErrorDialog("Mix error", "Whirlpool service not available for this wallet");
+                AppServices.showErrorDialog("Mixing unavailable", "The mixing service is not available for this wallet.");
                 return;
             }
             if (!wp.isStarted()) {
                 AppServices.showAlertDialog("Mixing is starting up",
-                        "The mixing service is still starting up for this wallet. Please try again "
+                        "The mixing service is still starting up for this wallet. Try again "
                                 + "in a moment.",
                         Alert.AlertType.INFORMATION);
                 return;
@@ -903,9 +903,9 @@ public class AshigaruWalletController implements Initializable {
             }
             log.info("Queued " + queued + " of " + selectedEntries.size() + " Postmix UTXO(s) for remix");
             if (queued == 0) {
-                AppServices.showErrorDialog("Could not queue remix",
-                        "None of the selected UTXOs could be queued for remixing. See the log file "
-                                + "(Help menu) for details.");
+                AppServices.showErrorDialog("Remix not queued",
+                        "None of the selected UTXOs could be queued for remixing. See Tools → Logs "
+                                + "for the details.");
             } else {
                 AppServices.showSuccessDialog("Remix queued",
                         "Queued " + queued + " UTXO" + (queued == 1 ? "" : "s") + " for remix. They'll "
