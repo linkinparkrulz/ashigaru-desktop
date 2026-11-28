@@ -1337,8 +1337,8 @@ public class AshigaruMainController implements Initializable {
             contentPane.setCenter(wrapper);
             contentPane.setUserData(loader.getController());
         } catch(IOException e) {
-            log.error("Error opening tools", e);
-            showError("Error", "Could not open tools: " + e.getMessage());
+            log.error("Could not open the tools panel", e);
+            showError("Tools didn't open", "Could not open the tools panel. See Tools → Logs for the details.");
         }
     }
 
@@ -1413,8 +1413,8 @@ public class AshigaruMainController implements Initializable {
             contentPane.setCenter(wrapper);
             contentPane.setUserData(prefsController);
         } catch (IOException e) {
-            log.error("Error loading preferences panel", e);
-            showError("Error", "Could not load preferences: " + e.getMessage());
+            log.error("Could not load the preferences panel", e);
+            showError("Settings didn't open", "Could not open settings. See Tools → Logs for the details.");
         }
     }
 

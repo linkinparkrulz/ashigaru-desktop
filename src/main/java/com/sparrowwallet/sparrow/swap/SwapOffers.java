@@ -114,6 +114,12 @@ public final class SwapOffers {
         return String.format(Locale.ROOT, "%.1f%%", rounded) + (value < 0 ? " premium" : " discount");
     }
 
+    /**
+     * What the two words on each row mean, said once under the table where the figures are. The percentage alone was read both
+     * ways, so the definition sits next to it rather than in a manual.
+     */
+    public static final String PREMIUM_EXPLAINED = "A premium pays you fewer XMR than the market rate; a discount pays more.";
+
     /** How many XMR fewer than the best offer (the one paying the most), in words */
     public static String behindMostText(double xmr) {
         return String.format(Locale.ROOT, "%.4f", xmr) + " XMR less than the best offer";

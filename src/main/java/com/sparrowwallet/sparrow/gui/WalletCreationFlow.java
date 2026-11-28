@@ -301,7 +301,8 @@ public class WalletCreationFlow {
             wallet.setDefaultPolicy(Policy.getPolicy(PolicyType.SINGLE, ScriptType.P2WPKH, wallet.getKeystores(), 1));
             discoverAndSave(walletName, List.of(wallet));
         } catch (ImportException e) {
-            showError("Invalid Seed", "Could not import wallet from seed: " + e.getMessage());
+            log.warn("Could not import the wallet from its seed words", e);
+            showError("Seed not accepted", "Could not make a wallet from those seed words. Check them and try again.");
         }
     }
 
@@ -919,7 +920,7 @@ public class WalletCreationFlow {
             wallet.checkWallet();
         } catch (InvalidWalletException e) {
             log.error("Refusing to save incomplete wallet " + walletName, e);
-            showError("Save Error", "Could not save wallet: it is incomplete (" + e.getMessage() + ").");
+            showError("Wallet not saved", "Could not save the wallet because it is incomplete. See Tools → Logs for the details.");
             return;
         }
 
@@ -972,8 +973,8 @@ public class WalletCreationFlow {
                 @Override
                 protected void failed() {
                     log.error("Error saving wallet", getException());
-                    Platform.runLater(() -> showError("Save Error",
-                            "Could not save wallet: " + getException().getMessage()));
+                    Platform.runLater(() -> showError("Wallet not saved",
+                            "Could not save the wallet. See Tools → Logs for the details."));
                 }
             }).start();
         } else {
@@ -1020,8 +1021,8 @@ public class WalletCreationFlow {
                     @Override
                     protected void failed() {
                         log.error("Error saving encrypted wallet", getException());
-                        Platform.runLater(() -> showError("Save Error",
-                                "Could not save wallet: " + getException().getMessage()));
+                        Platform.runLater(() -> showError("Wallet not saved",
+                                "Could not save the wallet. See Tools → Logs for the details."));
                     }
                 }).start();
             });

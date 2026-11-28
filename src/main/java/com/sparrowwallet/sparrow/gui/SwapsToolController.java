@@ -34,6 +34,8 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 import javafx.util.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URL;
 import java.time.Instant;
@@ -51,6 +53,8 @@ import java.util.Set;
  * The engine itself lives in {@link SwapService}, so leaving this page never stops a swap.
  */
 public class SwapsToolController implements Initializable {
+    private static final Logger log = LoggerFactory.getLogger(SwapsToolController.class);
+
     @FXML private StackPane swapsRoot;
     @FXML private VBox mainView;
     @FXML private Label engineStatus;
@@ -402,7 +406,7 @@ public class SwapsToolController implements Initializable {
             renderOffers();
         }, e -> {
             //Why goes to the log; the screen says what will happen next, in words that do not need the engine's
-            org.slf4j.LoggerFactory.getLogger(SwapsToolController.class).info("Could not list swap offers: " + e.getMessage());
+            log.info("Could not list swap offers: " + e.getMessage());
             offersPane.setMessage(LIST_FAILED);
         });
     }
@@ -538,12 +542,14 @@ public class SwapsToolController implements Initializable {
                     //A wrong password was already explained in its own window; cancelling needs no error
                     offersPane.setMessage(stopped.reason() == SwapSetupStopped.Reason.CANCELLED ? "Swap setup cancelled. Nothing was locked or sent." : null);
                 } else {
-                    offersPane.setMessage("Could not start the swap: " + e.getMessage());
+                    log.error("Could not start the swap", e);
+                    offersPane.setMessage("Could not start the swap. See Tools → Logs for the details.");
                 }
             });
         }, e -> {
             endTaking();
-            offersPane.setMessage("Could not check the Monero nodes: " + e.getMessage());
+            log.error("Could not check the Monero nodes", e);
+            offersPane.setMessage("Could not check the Monero nodes. See Tools → Logs for the details.");
         });
     }
 
@@ -659,7 +665,8 @@ public class SwapsToolController implements Initializable {
             updateProgress();
         }, e -> {
             refunding.remove(swapId);
-            dashboardPane.setMessage("Could not cancel and refund yet: " + e.getMessage());
+            log.error("Could not cancel and refund the swap", e);
+            dashboardPane.setMessage("Could not cancel and refund yet. See Tools → Logs for the details.");
             lastDashboard = null;
             updateProgress();
         });

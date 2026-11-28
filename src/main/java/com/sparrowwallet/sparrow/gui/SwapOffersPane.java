@@ -331,7 +331,7 @@ public class SwapOffersPane extends VBox {
         }
         Label foot = wrapped((state.footer().isEmpty() ? "" : state.footer() + " ")
                 + "Review offer asks the maker for final terms over Tor (a few minutes). Amounts are estimates until then, and nothing is "
-                + "locked until you approve.", "review-fine");
+                + "locked until you approve. " + SwapOffers.PREMIUM_EXPLAINED, "review-fine");
         foot.setPadding(new Insets(14, 20, 14, 20));
         tableBox.getChildren().add(foot);
     }
